@@ -47,9 +47,7 @@ function _measure(expr)
                 par :: NamedTuple{N,T}
             end
 
-            KeywordCalls._kwstruct(:($μ($(p...))))
-
-            (::Type{$μ})() where {N,T} = $μ(NamedTuple()) 
+            @kwstruct $expr
         end   
         
         if !isempty(p)
