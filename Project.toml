@@ -4,6 +4,7 @@ authors = ["Chad Scherrer <chad.scherrer@gmail.com> and contributors"]
 version = "0.1.0"
 
 [deps]
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 KeywordCalls = "4d827475-d3e4-43d6-abe3-9688362ede9f"
 MLStyle = "d8e11817-5142-5d16-987a-aa16d5891078"
@@ -14,9 +15,10 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [compat]
+Compat = "3.28"
 ConcreteStructs = "0.2"
-MLStyle = "0.4"
 KeywordCalls = "0.1.3"
+MLStyle = "0.4"
 MappedArrays = "0.4"
 NamedTupleTools = "0.13"
 SpecialFunctions = "1.3"
