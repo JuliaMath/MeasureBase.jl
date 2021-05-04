@@ -47,15 +47,15 @@ function _measure(expr)
                 par :: NamedTuple{N,T}
             end
 
-            (::Type{$μ{N}})(nt::NamedTuple{N,T}) where {N,T} = $μ{N,T}(nt) 
+            KeywordCalls._kwstruct(:($μ($(p...))))
 
             (::Type{$μ})() where {N,T} = $μ(NamedTuple()) 
         end   
         
         if !isempty(p)
             # e.g. Normal(μ,σ) = Normal(;μ=μ, σ=σ)
-            # Requires Julia 1.5
-            push!(q.args, :($μ($(p...)) = $μ(;$(p...))))
+            pnames = QuoteNode.(p)
+            push!(q.args, :($μ($(p...)) = $μ(NamedTuple($(p...)))))
         end
         
         return q
