@@ -152,13 +152,13 @@ function _half(ex)
                 
                 unhalf(μ::$halfdist) = $dist(getfield(μ, :par))
 
-                function basemeasure(μ::$halfdist) 
+                function $MeasureBase.basemeasure(μ::$halfdist) 
                     b = basemeasure(unhalf(μ))
                     lw = b.logweight
                     return WeightedMeasure(logtwo + lw, Lebesgue(ℝ₊))
                 end
             
-                function logdensity(μ::$halfdist, x)
+                function $MeasureBase.logdensity(μ::$halfdist, x)
                     return logdensity(unhalf(μ), x)
                 end
 
