@@ -1,3 +1,0 @@
-module MeasureTheory
-
-end # module

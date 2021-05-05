@@ -19,7 +19,7 @@ end
 end
 
 @testset "Kernel" begin
-    κ = MeasureTheory.kernel(identity, MeasureTheory.Dirac)
+    κ = MeasureBase.kernel(identity, MeasureBase.Dirac)
     @test rand(κ(1.1)) == 1.1
 end
 
@@ -54,7 +54,7 @@ end
     end
 end
 
-import MeasureTheory.:⋅
+import MeasureBase.:⋅
 function ⋅(μ::Normal, kernel) 
     m = kernel(μ)
     Normal(μ = m.μ.μ, σ = sqrt(m.μ.σ^2 + m.σ^2))
