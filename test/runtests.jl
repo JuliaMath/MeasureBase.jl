@@ -14,10 +14,12 @@ function draw2(μ)
     return (x,y)
 end
 
+const sqrt2π = sqrt(2π)
+
 @testset "Parameterized Measures" begin
    @measure Normal(μ,σ)
    @kwstruct Normal()
-
+   
    MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
 
    MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
