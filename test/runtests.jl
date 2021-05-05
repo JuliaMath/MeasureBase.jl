@@ -1,9 +1,9 @@
 using MeasureBase
 using Test
-using StatsFuns
 using Base.Iterators: take
 using Random
 using LinearAlgebra
+using KeywordCalls
 
 function draw2(μ)
     x = rand(μ)
@@ -15,7 +15,16 @@ function draw2(μ)
 end
 
 @testset "Parameterized Measures" begin
-   
+   @measure Normal(μ,σ)
+   @kwstruct Normal()
+
+   MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
+
+   MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(σ) - (x - d.μ)^2 / (2 * d.σ^2)
+   MeasureBase.logdensity(d::Normal{()}, x) = -0.5 * x^2
+
+   @test Normal(2,4) == Normal(μ=2, σ=4)
+   @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
 end
 
 @testset "Kernel" begin
@@ -32,12 +41,6 @@ end
     @test (bm.s*bm.w)*bm.m == 1.0*basemeasure(Normal())
     @test density(m, 1.0)*(bm.s*bm.w) == w*density(Normal(),1.0)
     @test density(m, 0)*(bm.s*(1-bm.w)) ≈ (1-w)
-end
-
-@testset "Dirac" begin
-    @test rand(Dirac(0.2)) == 0.2
-    @test logdensity(Dirac(0.3), 0.3) == 0.0
-    @test logdensity(Dirac(0.3), 0.4) == -Inf
 end
 
 @testset "For" begin

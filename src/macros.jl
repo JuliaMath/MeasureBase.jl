@@ -1,8 +1,6 @@
 
 using MLStyle
-using StatsFuns
 using Random: AbstractRNG
-using StatsFuns: logtwo
 
 export @measure
 
@@ -40,6 +38,8 @@ macro capture(template, ex, action)
     capture(template, ex, action) |> esc
 end
 
+
+
 function _measure(expr)
     @capture $μ($(p...)) expr begin
         q = quote
@@ -47,13 +47,13 @@ function _measure(expr)
                 par :: NamedTuple{N,T}
             end
 
-            @kwstruct $expr
+            $KeywordCalls.@kwstruct $expr
         end   
         
         if !isempty(p)
             # e.g. Normal(μ,σ) = Normal((μ=μ, σ=σ))
             pnames = QuoteNode.(p)
-            push!(q.args, :($μ($(p...)) = $μ(NamedTuple($(p...)))))
+            push!(q.args, :($μ($(p...)) = $μ(NamedTuple{($(pnames...),)}(($(p...),)))))
         end
         
         return q
