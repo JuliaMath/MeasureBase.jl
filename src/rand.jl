@@ -4,7 +4,7 @@ Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.GLOBAL_RNG, T, μ)
 
 Base.rand(rng::AbstractRNG, d::AbstractMeasure) = rand(rng, Float64, d)
 
-Base.rand(rng::AbstractRNG, T::Type, d::ParameterizedMeasure) = rand(rng, distproxy(d))
+# Base.rand(rng::AbstractRNG, T::Type, d::ParameterizedMeasure) = rand(rng, distproxy(d))
 
 # TODO: Make this easily configurable, e.g. we should be able to use `collect` or `tuple` at least
 # Maybe RandomExtensions can help here?
