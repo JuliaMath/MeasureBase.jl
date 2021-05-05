@@ -1,3 +1,5 @@
+abstract type PrimitiveMeasure <: AbstractMeasure end
+
 export isprimitive
 
 """
@@ -16,10 +18,6 @@ that returns `true`.
 """
 isprimitive(μ) = false
 isprimitive(::PrimitiveMeasure) = true
-
-abstract type PrimitiveMeasure <: AbstractMeasure end
-
-
 
 export basemeasure
 
