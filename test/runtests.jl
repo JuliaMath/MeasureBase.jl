@@ -4,6 +4,7 @@ using Base.Iterators: take
 using Random
 using LinearAlgebra
 using KeywordCalls
+using Statistics
 
 function draw2(μ)
     x = rand(μ)
@@ -17,17 +18,22 @@ end
 const sqrt2π = sqrt(2π)
 
 @testset "Parameterized Measures" begin
-   @measure Normal(μ,σ)
-   @kwstruct Normal()
-   
-   MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
+    @measure Normal(μ,σ)
+    @kwstruct Normal(μ)
+    @kwstruct Normal()
+    
+    MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
+    MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
+    MeasureBase.logdensity(d::Normal{(:μ,)}, x) = - (x - d.μ)^2 / 2
+    MeasureBase.logdensity(d::Normal{()}, x) = - x^2 / 2
+     
+    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,:σ)}) = d.μ + d.σ * randn(rng, T)
+    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,)}) = d.μ + randn(rng, T)
+    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{()}) = randn(rng, T)
 
-   MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
-   MeasureBase.logdensity(d::Normal{()}, x) = -0.5 * x^2
-
-   @test Normal(2,4) == Normal(μ=2, σ=4)
-   @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
-   @test logdensity(Normal(), 3) == logdensity(Normal(0,1), 3)
+    @test Normal(2,4) == Normal(μ=2, σ=4)
+    @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
+    @test logdensity(Normal(), 3) == logdensity(Normal(0,1), 3)
 end
 
 @testset "Kernel" begin
