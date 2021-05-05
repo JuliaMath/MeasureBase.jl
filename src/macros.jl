@@ -66,30 +66,20 @@ end
 The <declaration> gives a measure and its default parameters, and specifies
 its relation to its base measure. For example,
 
-    @measure Normal(μ,σ) ≃ Lebesgue{X}
+    @measure Normal(μ,σ)
 
-declares the `Normal` is a measure with default parameters `μ and σ`, and it is
-equivalent to its base measure, which is `Lebesgue{X}`
+declares the `Normal` is a measure with default parameters `μ and σ`. The result is equivalent to
+```
+struct Normal{N,T} <: ParameterizedMeasure{N}
+    par :: NamedTuple{N,T}
+end
 
-You can see the generated code like this:
+KeywordCalls.@kwstruct Normal(μ,σ)
 
-    julia> MacroTools.prettify(@macroexpand @measure Normal(μ,σ) ≃ Lebesgue{X})
-    quote
-        struct Normal{P, X} <: AbstractMeasure
-            par::P
-        end
-        function Normal(nt::NamedTuple)
-            P = typeof(nt)
-            return Normal{P, eltype(Normal{P})}
-        end
-        Normal(; kwargs...) = Normal((; kwargs...))
-        (basemeasure(μ::Normal{P, X}) where {P, X}) = Lebesgue{X}
-        Normal(μ, σ) = Normal(; Any[:μ, :σ])
-        ((:≪)(::Normal{P, X}, ::Lebesgue{X}) where {P, X}) = true
-        ((:≪)(::Lebesgue{X}, ::Normal{P, X}) where {P, X}) = true
-    end
+Normal(μ,σ) = Normal((μ=μ, σ=σ))
+```
 
-Note that the `eltype` function needs to be defined separately by the user.
+See [KeywordCalls.jl](https://github.com/cscherrer/KeywordCalls.jl) for details on `@kwstruct`.
 """
 macro measure(expr)
     esc(_measure(expr))
