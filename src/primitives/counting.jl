@@ -1,6 +1,6 @@
 export CountingMeasure
 
-struct CountingMeasure{X} <: AbstractMeasure end
+struct CountingMeasure{X} <: PrimitiveMeasure end
 
 function Base.show(io::IO, μ::CountingMeasure{X}) where {X}
     io = IOContext(io, :compact => true)
@@ -8,10 +8,6 @@ function Base.show(io::IO, μ::CountingMeasure{X}) where {X}
 end
 
 CountingMeasure(X) = CountingMeasure{X}()
-
-basemeasure(μ::CountingMeasure) = μ
-
-isprimitive(::CountingMeasure) = true
 
 # sampletype(::CountingMeasure{ℝ}) = Float64
 # sampletype(::CountingMeasure{ℝ₊}) = Float64

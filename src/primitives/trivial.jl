@@ -1,5 +1,5 @@
 export TrivialMeasure
 
-struct TrivialMeasure <: AbstractMeasure end
+struct TrivialMeasure <: PrimitiveMeasure end
 
 sampletype(::TrivialMeasure) = Nothing
