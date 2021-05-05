@@ -20,11 +20,12 @@ end
 
    MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
 
-   MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(σ) - (x - d.μ)^2 / (2 * d.σ^2)
+   MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
    MeasureBase.logdensity(d::Normal{()}, x) = -0.5 * x^2
 
    @test Normal(2,4) == Normal(μ=2, σ=4)
    @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
+   @test logdensity(Normal(), 3) == logdensity(Normal(0,1), 3)
 end
 
 @testset "Kernel" begin
