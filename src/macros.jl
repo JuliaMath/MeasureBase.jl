@@ -51,7 +51,7 @@ function _measure(expr)
         end   
         
         if !isempty(p)
-            # e.g. Normal(μ,σ) = Normal(;μ=μ, σ=σ)
+            # e.g. Normal(μ,σ) = Normal((μ=μ, σ=σ))
             pnames = QuoteNode.(p)
             push!(q.args, :($μ($(p...)) = $μ(NamedTuple($(p...)))))
         end
