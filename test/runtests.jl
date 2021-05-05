@@ -66,7 +66,6 @@ end
     end
 end
 
-import MeasureBase.:⋅
 function ⋅(μ::Normal, kernel) 
     m = kernel(μ)
     Normal(μ = m.μ.μ, σ = sqrt(m.μ.σ^2 + m.σ^2))
