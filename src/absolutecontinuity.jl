@@ -58,21 +58,15 @@ function representative(μ)
     function f(μ)
         # Check if we're done
         isprimitive(μ) && return μ
-        
         ν = basemeasure(μ)
-
-        # TODO: Make sure we don't leave the equivalence class
-        # Make sure not to leave the equivalence class
-        # (ν ≪ μ) || return μ
-
         return ν
     end
 
     fix(f, μ)
 end
 
-# TODO: ≪ needs more work
 function ≪(μ, ν)
     μ == ν && return true
     representative(μ) ≪ representative(ν) && return true
+    return false
 end
