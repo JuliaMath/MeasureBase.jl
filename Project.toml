@@ -19,6 +19,7 @@ TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 [compat]
 Compat = "3.28"
 ConcreteStructs = "0.2"
+DynamicIterators = "0.4"
 KeywordCalls = "0.1.3"
 MLStyle = "0.4"
 MappedArrays = "0.4"
