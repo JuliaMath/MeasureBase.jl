@@ -48,9 +48,9 @@ include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/spikemixture.jl")
 include("combinators/chain.jl")
+include("combinators/transforms.jl")
 include("rand.jl")
 include("density.jl")
-# include("pushforward.jl")
 include("kernel.jl")
 
 end
