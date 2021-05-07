@@ -32,7 +32,7 @@ const sqrt2π = sqrt(2π)
     Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,)}) = d.μ + randn(rng, T)
     Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{()}) = randn(rng, T)
 
-    MeasureBase.representative(d::Normal{(:μ,:σ)}) = σ > 0.0 ? Lebesgue(ℝ) : Dirac(d.μ)
+    MeasureBase.representative(d::Normal{(:μ,:σ)}) = d.σ > 0.0 ? Lebesgue(ℝ) : Dirac(d.μ)
     MeasureBase.representative(d::Normal{(:μ,)}) = Lebesgue(ℝ)
 
     # Leave this undefined to test fallback inference algorithm
