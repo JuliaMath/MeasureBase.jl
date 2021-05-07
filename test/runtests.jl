@@ -6,6 +6,7 @@ using LinearAlgebra
 using KeywordCalls
 using Statistics
 
+
 function draw2(μ)
     x = rand(μ)
     y = rand(μ)
@@ -26,19 +27,40 @@ const sqrt2π = sqrt(2π)
     MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
     MeasureBase.logdensity(d::Normal{(:μ,)}, x) = - (x - d.μ)^2 / 2
     MeasureBase.logdensity(d::Normal{()}, x) = - x^2 / 2
-     
+
     Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,:σ)}) = d.μ + d.σ * randn(rng, T)
     Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,)}) = d.μ + randn(rng, T)
     Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{()}) = randn(rng, T)
 
+    MeasureBase.representative(d::Normal{(:μ,:σ)}) = σ > 0.0 ? Lebesgue(ℝ) : Dirac(d.μ)
+    MeasureBase.representative(d::Normal{(:μ,)}) = Lebesgue(ℝ)
+
+    # Leave this undefined to test fallback inference algorithm
+    # MeasureBase.representative(::Normal) = Lebesgue(ℝ)
+
     @test Normal(2,4) == Normal(μ=2, σ=4)
     @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
     @test logdensity(Normal(), 3) == logdensity(Normal(0,1), 3)
+
+    x = randn()
+    @test_broken logdensity(Normal(3,2), Lebesgue(ℝ), x) ≈ logdensity(Normal(3,2), Normal(), x ) + logdensity(Normal(), Lebesgue(ℝ),x)
+    @test_broken 𝒹(Normal(3,2), Normal())(x) ≈ logdensity(Normal(3,2), Normal(), x)
 end
 
+@testset "Density" begin
+    x = randn()
+    f(x) = -x^2
+    μ = Normal()
+    ν = Lebesgue(ℝ)
+    @test_broken 𝒹(∫(f, μ), μ)(x) ≈ f(x)
+    @test_broken logdensity(∫(𝒹(μ, ν), ν), x) ≈ logdensity(μ, x)
+end
+
+
 @testset "Kernel" begin
-    κ = MeasureBase.kernel(identity, MeasureBase.Dirac)
+    κ = kernel(identity, Dirac)
     @test rand(κ(1.1)) == 1.1
+    @test kernelize(Normal(0,1)) == (Kernel{Normal, UnionAll}(NamedTuple{(:μ, :σ), T} where T<:Tuple), (0, 1))
 end
 
 @testset "SpikeMixture" begin
