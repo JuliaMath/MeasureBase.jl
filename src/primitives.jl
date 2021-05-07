@@ -15,7 +15,7 @@ that returns `true`.
 function isprimtype end
 
 @traitdef IsPrimType{X}
-@traitdef IsPrimType{X} <- isprimtype(X)
+@traitimpl IsPrimType{X} <- isprimtype(X)
 isprimtype(X) = false # default
 
 export basemeasure
@@ -30,7 +30,7 @@ For measures not defined in this way, we'll typically have `basemeasure(μ) == �
 """
 function basemeasure end
 
-basemeasure(μ::M) where {IsPrimType{M}} = μ
+@traitfn basemeasure(μ::M) where {M; IsPrimType{M}} = μ
 
 include("primitives/trivial.jl")
 include("primitives/lebesgue.jl")
@@ -43,4 +43,4 @@ include("primitives/dirac.jl")
 isreptype(X) = false # set default
 
 # Every primitive measure is also a representative
-isreptype(μ::M) where {IsPrimType{M}} = true
+@traitfn isreptype(μ::M) where {M; IsPrimType{M}} = true
