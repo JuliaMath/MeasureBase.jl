@@ -68,7 +68,7 @@ not, it should be a  transform (`Pushforward` or `Pullback`) of a
 function representative(μ)
     function f(μ)
         # Check if we're done
-        isprimitive(μ) && return μ
+        isprimtype(μ) && return μ
         ν = basemeasure(μ)
         return ν
     end

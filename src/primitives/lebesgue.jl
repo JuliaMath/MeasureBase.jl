@@ -2,7 +2,9 @@
 
 export Lebesgue
 
-struct Lebesgue{X} <: PrimitiveMeasure end
+struct Lebesgue{X} <: AbstractMeasure end
+
+isprimtype(::Lebesgue) = true
 
 function Base.show(io::IO, μ::Lebesgue{X}) where X
     io = IOContext(io, :compact => true)

@@ -6,6 +6,7 @@ using Random
 using ConcreteStructs
 using MLStyle
 using KeywordCalls
+using SimpleTraits
 using Compat
 
 export ≪
