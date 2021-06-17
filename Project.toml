@@ -20,7 +20,7 @@ TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 [compat]
 Compat = "3.28"
 ConcreteStructs = "0.2"
-KeywordCalls = "0.1.5"
+KeywordCalls = "0.1.5, 0.2"
 MLStyle = "0.4"
 MappedArrays = "0.4"
 NamedTupleTools = "0.13"
