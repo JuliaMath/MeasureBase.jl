@@ -269,7 +269,11 @@ function _half(__module__, ex)
                 function Base.rand(rng::AbstractRNG, T::Type, μ::$halfdist)
                     return abs(rand(rng, T, unhalf(μ)))
                 end
-                
+                 
+                function decompose(μ::$halfdist)
+                    return Half($dist)
+                end
+
                 (::$halfdist ≪ ::Lebesgue{ℝ₊}) = true
             end
         end

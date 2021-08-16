@@ -30,7 +30,7 @@ Methods for computing density relative to other measures will be
 """
 function logdensity end
 
-
+include("combinators/half.jl")
 include("exp.jl")
 include("domains.jl")
 include("utils.jl")
