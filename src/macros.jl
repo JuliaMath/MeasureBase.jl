@@ -1,7 +1,9 @@
 
 using MLStyle
 using Random: AbstractRNG
-export @parameterized
+using KeywordCalls
+using ConstructionBase
+export @parameterized, @μσ_methods, @σ_methods, @half
 
 # A fold over ASTs. Example usage in `replace`
 function foldast(leaf, branch; kwargs...)
@@ -49,12 +51,12 @@ function _parameterized(__module__, expr)
 
         # @gensym basename
         q = quote
-            struct $μ{N,T} <: MeasureTheory.ParameterizedMeasure{N}
+            struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
                 par :: NamedTuple{N,T}
             end
             
             const $μbase = $base
-            MeasureTheory.basemeasure(::$μ) = $μbase
+            MeasureBase.basemeasure(::$μ) = $μbase
         end   
         
         if !isempty(p)
@@ -70,7 +72,7 @@ function _parameterized(__module__, expr)
         μ = esc(μ)
 
         q = quote
-            struct $μ{N,T} <: MeasureTheory.ParameterizedMeasure{N}
+            struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
                 par :: NamedTuple{N,T}
             end
         end   
@@ -88,7 +90,7 @@ function _parameterized(__module__, expr)
         μ = esc(μ)
 
         q = quote
-            struct $μ{N,T} <: MeasureTheory.ParameterizedMeasure{N}
+            struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
                 par :: NamedTuple{N,T}
             end
         end   
@@ -141,6 +143,7 @@ end
 function _μσ_methods(__module__, ex)
     @match ex begin
         :($dist($(args...))) => begin
+            
             argnames = QuoteNode.(args)
 
             d_args = (:(d.$arg) for arg in args)
@@ -148,8 +151,8 @@ function _μσ_methods(__module__, ex)
             method_μσ = KeywordCalls._kwstruct(__module__, :($dist($(args...), μ, σ)))
             method_μ  = KeywordCalls._kwstruct(__module__, :($dist($(args...), μ)))
             method_σ  = KeywordCalls._kwstruct(__module__, :($dist($(args...), σ)))
-
             C = constructorof(getproperty(__module__, dist))
+            dist = esc(dist)
             q = quote
 
                  $method_μσ
@@ -160,7 +163,7 @@ function _μσ_methods(__module__, ex)
                     d.σ * rand(rng, T, $dist($(d_args...))) + d.μ
                 end
 
-                function MeasureTheory.logdensity(d::$dist{($(argnames...), :μ, :σ)}, x)
+                function MeasureBase.logdensity(d::$dist{($(argnames...), :μ, :σ)}, x)
                     z = (x - d.μ) / d.σ   
                     return logdensity($dist($(d_args...)), z) - log(d.σ)
                 end
@@ -169,7 +172,7 @@ function _μσ_methods(__module__, ex)
                     d.σ * rand(rng, T, $dist($(d_args...)))
                 end
 
-                function MeasureTheory.logdensity(d::$dist{($(argnames...), :σ)}, x)
+                function MeasureBase.logdensity(d::$dist{($(argnames...), :σ)}, x)
                     z = x / d.σ   
                     return logdensity($dist($(d_args...)), z) - log(d.σ) 
                 end
@@ -178,15 +181,10 @@ function _μσ_methods(__module__, ex)
                     rand(rng, T, $dist($(d_args...))) + d.μ
                 end
 
-                function MeasureTheory.logdensity(d::$dist{($(argnames...), :μ)}, x)
+                function MeasureBase.logdensity(d::$dist{($(argnames...), :μ)}, x)
                     z = x - d.μ
                     return logdensity($dist($(d_args...)), z)
                 end
-
-                
-                MeasureTheory.asparams(::Type{<: $C}, ::Val{:μ}) = asℝ
-                MeasureTheory.asparams(::Type{<: $C}, ::Val{:σ}) = asℝ₊
-                MeasureTheory.asparams(::Type{<: $C}, ::Val{:logσ}) = asℝ
             end 
 
             return q
@@ -208,6 +206,7 @@ function _σ_methods(__module__, ex)
 
             method_σ  = KeywordCalls._kwstruct(__module__, :($dist($(args...), σ)))
 
+            dist = esc(dist)
             q = quote
                 $method_σ
 
@@ -215,7 +214,7 @@ function _σ_methods(__module__, ex)
                     d.σ * rand(rng, T, $dist($(d_args...)))
                 end
 
-                function MeasureTheory.logdensity(d::$dist{($(argnames...), :σ)}, x)
+                function MeasureBase.logdensity(d::$dist{($(argnames...), :σ)}, x)
                     z = x / d.σ   
                     return logdensity($dist($(d_args...)), z) - log(d.σ) 
                 end
@@ -241,34 +240,29 @@ creates `HalfNormal()`, and
 creates `HalfStudentT(ν)`.
 """
 macro half(ex)
-    esc(_half(__module__, ex))
+    _half(__module__, ex)
 end
 
 function _half(__module__, ex)
     @match ex begin
         :($dist($(args...))) => begin
-            halfdist = Symbol(:Half, dist)
-
-            TV = TransformVariables
-
+            halfdist = esc(Symbol(:Half, dist))
+            
             quote
-
-                export $halfdist
-                
                 struct $halfdist{N,T} <: ParameterizedMeasure{N}
                     par :: NamedTuple{N,T}
                 end
 
                 unhalf(μ::$halfdist) = $dist(getfield(μ, :par))
 
-                function MeasureTheory.basemeasure(μ::$halfdist) 
+                function MeasureBase.basemeasure(μ::$halfdist) 
                     b = basemeasure(unhalf(μ))
                     @assert basemeasure(b) == Lebesgue(ℝ)
                     lw = b.logweight
                     return WeightedMeasure(logtwo + lw, Lebesgue(ℝ₊))
                 end
             
-                function MeasureTheory.logdensity(μ::$halfdist, x)
+                function MeasureBase.logdensity(μ::$halfdist, x)
                     return logdensity(unhalf(μ), x)
                 end
 

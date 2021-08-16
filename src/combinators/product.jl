@@ -135,35 +135,35 @@ end
 
 
 
-# @propagate_inbounds function MeasureTheory.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,1}}
+# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,1}}
 #     data = marginals(d)
 #     @boundscheck size(data) == size(x) || throw(BoundsError)
 #     @tullio s = logdensity(data[i], x[i])
 #     s
 # end
 
-# @propagate_inbounds function MeasureTheory.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,2}}
+# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,2}}
 #     data = marginals(d)
 #     @boundscheck size(data) == size(x) || throw(BoundsError)
 #     @tullio s = @inbounds logdensity(data[i,j], x[i,j])
 #     s
 # end
 
-# @propagate_inbounds function MeasureTheory.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,3}}
+# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,3}}
 #     data = marginals(d)
 #     @boundscheck size(data) == size(x) || throw(BoundsError)
 #     @tullio s = @inbounds logdensity(data[i,j,k], x[i,j,k])
 #     s
 # end
 
-# @propagate_inbounds function MeasureTheory.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,4}}
+# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,4}}
 #     data = marginals(d)
 #     @boundscheck size(data) == size(x) || throw(BoundsError)
 #     @tullio s = @inbounds logdensity(data[i,j,k,l], x[i,j,k,l])
 #     s
 # end
 
-# @propagate_inbounds function MeasureTheory.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,5}}
+# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,5}}
 #     data = marginals(d)
 #     @boundscheck size(data) == size(x) || throw(BoundsError)
 #     @tullio s = @inbounds logdensity(data[i,j,k,l,m], x[i,j,k,l,m])

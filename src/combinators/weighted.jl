@@ -1,4 +1,4 @@
-export WeightedMeasure
+export WeightedMeasure, AbstractWeightedMeasure
 
 """
     struct WeightedMeasure{R,M} <: AbstractMeasure

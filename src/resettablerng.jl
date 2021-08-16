@@ -1,5 +1,5 @@
 using Random
-
+export ResettableRNG
 struct ResettableRNG{R,S} <: Random.AbstractRNG
     rng::R
     seed::S

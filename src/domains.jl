@@ -1,3 +1,5 @@
+export IntegerRange
+
 abstract type AbstractDomain end
 
 """
