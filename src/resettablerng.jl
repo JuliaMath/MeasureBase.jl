@@ -1,5 +1,7 @@
 using Random
 export ResettableRNG
+
+export reset!
 struct ResettableRNG{R,S} <: Random.AbstractRNG
     rng::R
     seed::S
