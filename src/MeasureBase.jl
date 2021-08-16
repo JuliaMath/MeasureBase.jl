@@ -5,9 +5,6 @@ using Random
 
 using ConcreteStructs
 using MLStyle
-using KeywordCalls
-using SimpleTraits
-using Compat
 
 export ≪
 export sampletype
@@ -33,25 +30,33 @@ Methods for computing density relative to other measures will be
 """
 function logdensity end
 
+
 include("exp.jl")
 include("domains.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
-include("primitives.jl")
 include("parameterized.jl")
 include("macros.jl")
+include("resettablerng.jl")
+
+include("primitive.jl")
+include("primitives/counting.jl")
+include("primitives/lebesgue.jl")
+include("primitives/dirac.jl")
+include("primitives/trivial.jl")
+
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
 include("combinators/for.jl")
 include("combinators/power.jl")
+include("combinators/spikemixture.jl")
+include("kernel.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
-include("combinators/spikemixture.jl")
-include("combinators/chain.jl")
-include("combinators/transforms.jl")
+
 include("rand.jl")
+
 include("density.jl")
-include("kernel.jl")
 
 end

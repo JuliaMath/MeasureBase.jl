@@ -15,6 +15,7 @@ function Base.show(io::IO, μ::PointwiseProductMeasure)
 end
 
 function Base.show_unquoted(io::IO, μ::PointwiseProductMeasure, indent::Int, prec::Int)
+    io = IOContext(io, :compact => true)
     if Base.operator_precedence(:*) ≤ prec
         print(io, "(")
         show(io, μ)
@@ -32,12 +33,12 @@ function ⊙(μ::PointwiseProductMeasure{X}, ν::PointwiseProductMeasure{Y}) whe
     PointwiseProductMeasure(data...)
 end
 
-function ⊙(μ, ν::PointwiseProductMeasure{Y}) where {Y}
+function ⊙(μ::AbstractMeasure, ν::PointwiseProductMeasure)
     data = (μ, ν.data...)
     PointwiseProductMeasure(data...)
 end
 
-function ⊙(μ::PointwiseProductMeasure{X}, ν::N) where {X, N <: AbstractMeasure}
+function ⊙(μ::PointwiseProductMeasure, ν::N) where {N <: AbstractMeasure}
     data = (μ.data..., ν)
     PointwiseProductMeasure(data...)
 end
@@ -47,7 +48,7 @@ function ⊙(μ::M, ν::N) where {M <: AbstractMeasure, N <: AbstractMeasure}
     PointwiseProductMeasure(data...)
 end
 
-function ⊙(μ::AbstractMeasure, ℓ::LogLikelihood)
+function ⊙(μ::AbstractMeasure, ℓ::Likelihood)
     data = (μ, ℓ)
     PointwiseProductMeasure(data...)
 end
@@ -60,4 +61,4 @@ function sampletype(d::PointwiseProductMeasure)
     @inbounds sampletype(first(d.data))
 end
 
-basemeasure(μ::PointwiseProductMeasure) =  @inbounds basemeasure(first(d.data))
+basemeasure(d::PointwiseProductMeasure) =  @inbounds basemeasure(first(d.data))

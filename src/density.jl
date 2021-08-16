@@ -20,17 +20,24 @@ end
 
 export 𝒹
 
-"""
-    𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=true)
+export log𝒹
 
-Compute the Radom-Nikodym derivative (or its log, if `log=true`) of μ with
+log𝒹(μ, base) = Density(μ, base, Val{true}())
+
+"""
+    𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=false)
+
+Compute the Radom-Nikodym derivative (or its log, if `log=false`) of μ with
 respect to `base`.
 """
-function 𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=true)
+function 𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=false)
     return Density(μ, base, Val(log))
 end
 
-(f::Density{M,B,Val{true}})(x) where {M,B} = logdensity(f.μ, f.base, x) 
+(f::Density{M,B,Val{true}})(x) where {M,B} = logdensity(f.μ, f.base, x)
+
+
+(f::Density{M,B,Val{false}})(x) where {M,B} = density(f.μ, f.base, x)
 
 """
     struct DensityMeasure{F,B} <: AbstractMeasure
@@ -48,6 +55,7 @@ struct DensityMeasure{F,B,L} <: AbstractMeasure
 end
 
 function Base.show(io::IO, μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
+    io = IOContext(io, :compact => true)
     print(io, "DensityMeasure ")
     print(io, "∫(", μ.f)
     print(io, ", ", μ.base)
@@ -63,31 +71,65 @@ basemeasure(μ::DensityMeasure) = μ.base
 
 logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
 
+density(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = μ.f(x)
+
+logdensity(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = log(density(μ,x))
+
 export ∫
 
 """
-    ∫(f, base::AbstractMeasure; log=true)
+    ∫(f, base::AbstractMeasure)
 
-Define a new measure in terms of a density `f` over some measure `base`. If
-`log=true` (the default), `f` is considered as a log-density.
+Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f, base::AbstractMeasure; log=true) = DensityMeasure(f, base, Val(log))
+∫(f, base::AbstractMeasure) = DensityMeasure(f, base, Val(false))
 
-∫(μ::AbstractMeasure, base::AbstractMeasure; log=true) = ∫(𝒹(μ,base), base; log=log)
+∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫exp(log𝒹(μ, base), base)
+
+
+export ∫exp
+
+"""
+    ∫exp(f, base::AbstractMeasure; log=false)
+
+Define a new measure in terms of a density `f` over some measure `base`.
+"""
+∫exp(f,μ) = DensityMeasure(f,μ,Val{true}())
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
-    α = representative(μ)
-    β = representative(ν)
-        
-    logdensity(μ, α, x) - logdensity(ν, β, x) + logdensity(α, β, x)
+function logdensity(μ::T, ν::T, x) where {T<:AbstractMeasure}
+    μ==ν && return 0.0
+    invoke(logdensity, Tuple{AbstractMeasure, AbstractMeasure, typeof(x)}, μ, ν, x)
 end
 
-logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
+function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
+    α = basemeasure(μ)
+    β = basemeasure(ν)
+
+    ℓμ = @trysupport logdensity(μ, x)
+    ℓν = @trysupport logdensity(ν, x)
+
+    if α==μ && β==ν
+        @warn """
+        No method found for logdensity(μ, ν, x) where
+        μ == $μ
+        ν == $ν
+
+        Assuming logdensity of 0.0
+        """
+        return ℓμ - ℓν
+    end
+        
+    ℓμ - ℓν + logdensity(α, β, x)
+end
+
+logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
+
+# logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
 
 export density
 
-density(μ::AbstractMeasure, ν::AbstractMeasure, x) = exp(logdensity(μ, ν, x))
+density(μ, ν::AbstractMeasure, x) = exp(logdensity(μ, ν, x))
 
-density(μ::AbstractMeasure, x) = exp(logdensity(μ, x))
+density(μ, x) = exp(logdensity(μ, x))

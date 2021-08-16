@@ -2,13 +2,13 @@
 
 export Lebesgue
 
-struct Lebesgue{X} <: AbstractMeasure end
-
-isprimtype(::Lebesgue) = true
+struct Lebesgue{X} <: PrimitiveMeasure end
 
 function Base.show(io::IO, μ::Lebesgue{X}) where X
     io = IOContext(io, :compact => true)
-    print(io, "Lebesgue(", X, ")")
+    print(io, "Lebesgue(")
+    print(io, X)
+    print(io, ")")
 end
 
 Lebesgue(X) = Lebesgue{X}()
@@ -24,3 +24,7 @@ testvalue(::Lebesgue{ℝ₊}) = 1.0
 testvalue(::Lebesgue{<:Real}) = 0.0
 
 logdensity(::Lebesgue, x) = zero(x)
+
+
+
+Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = Lebesgue
