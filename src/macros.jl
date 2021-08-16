@@ -245,36 +245,12 @@ end
 
 function _half(__module__, ex)
     @match ex begin
-        :($dist($(args...))) => begin
+        :($dist) => begin
             halfdist = esc(Symbol(:Half, dist))
             
             quote
-                struct $halfdist{N,T} <: ParameterizedMeasure{N}
-                    par :: NamedTuple{N,T}
-                end
-
-                unhalf(μ::$halfdist) = $dist(getfield(μ, :par))
-
-                function MeasureBase.basemeasure(μ::$halfdist) 
-                    b = basemeasure(unhalf(μ))
-                    @assert basemeasure(b) == Lebesgue(ℝ)
-                    lw = b.logweight
-                    return WeightedMeasure(logtwo + lw, Lebesgue(ℝ₊))
-                end
-            
-                function MeasureBase.logdensity(μ::$halfdist, x)
-                    return logdensity(unhalf(μ), x)
-                end
-
-                function Base.rand(rng::AbstractRNG, T::Type, μ::$halfdist)
-                    return abs(rand(rng, T, unhalf(μ)))
-                end
-                 
-                function decompose(μ::$halfdist)
-                    return Half($dist)
-                end
-
-                (::$halfdist ≪ ::Lebesgue{ℝ₊}) = true
+                $halfdist(args...) = Half($dist(args...))
+                $halfdist(;kwargs...) = Half($dist(;kwargs...))
             end
         end
     end
