@@ -86,22 +86,22 @@ end
 #     @test rand(κ(1.1)) == 1.1
 # end
 
-# @testset "SpikeMixture" begin
-#     @test rand(SpikeMixture(Dirac(0), 0.5)) == 0
-#     @test rand(SpikeMixture(Dirac(1), 1.0)) == 1
-#     w = 1/3
-#     m = SpikeMixture(Normal(), w)
-#     bm = basemeasure(m)
-#     @test (bm.s*bm.w)*bm.m == 1.0*basemeasure(Normal())
-#     @test density(m, 1.0)*(bm.s*bm.w) == w*density(Normal(),1.0)
-#     @test density(m, 0)*(bm.s*(1-bm.w)) ≈ (1-w)
-# end
+@testset "SpikeMixture" begin
+    @test rand(SpikeMixture(Dirac(0), 0.5)) == 0
+    @test rand(SpikeMixture(Dirac(1), 1.0)) == 1
+    w = 1/3
+    m = SpikeMixture(d, w)
+    bm = basemeasure(m)
+    @test (bm.s*bm.w)*bm.m == 1.0*basemeasure(d)
+    @test density(m, 1.0)*(bm.s*bm.w) ≈ w*density(d,1.0)
+    @test density(m, 0)*(bm.s*(1-bm.w)) ≈ (1-w)
+end
 
-# @testset "Dirac" begin
-#     @test rand(Dirac(0.2)) == 0.2
-#     @test logdensity(Dirac(0.3), 0.3) == 0.0
-#     @test logdensity(Dirac(0.3), 0.4) == -Inf
-# end
+@testset "Dirac" begin
+    @test rand(Dirac(0.2)) == 0.2
+    @test logdensity(Dirac(0.3), 0.3) == 0.0
+    @test logdensity(Dirac(0.3), 0.4) == -Inf
+end
 
 # @testset "For" begin
 #     FORDISTS = [
