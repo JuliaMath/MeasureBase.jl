@@ -18,6 +18,7 @@ sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 # sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
 
 export logdensity
+export basemeasure
 
 """
     logdensity(μ::AbstractMeasure{X}, x::X)
