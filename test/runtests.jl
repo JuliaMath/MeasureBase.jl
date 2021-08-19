@@ -8,6 +8,19 @@ using MeasureBase
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities=false, unbound_args=false)
 
+using JETTest
+
+@test_nodispatch density(Lebesgue(ℝ), 0.3)
+
+@test_nodispatch density(Dirac(0), 0.3)
+@test_nodispatch density(Dirac(0), 0)
+
+d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+
+@test_nodispatch density(d, 3)
+
+@test_nodispatch basemeasure(d)
+
 # function draw2(μ)
 #     x = rand(μ)
 #     y = rand(μ)
