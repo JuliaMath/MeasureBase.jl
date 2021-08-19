@@ -48,6 +48,7 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/affine.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
