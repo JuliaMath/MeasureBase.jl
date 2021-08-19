@@ -22,6 +22,8 @@ if VERSION ≥ v"1.6"
         @test_nodispatch density(d, 3)
 
         @test_nodispatch basemeasure(d)
+
+        @test_nodispatch logdensity(For(3) do j Dirac(j) end, [1,2,3])
     end
 end
 
