@@ -18,6 +18,8 @@ struct SuperpositionMeasure{NT} <: AbstractMeasure
     components :: NT   
 end
 
+testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
+
 # SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
 
 # SuperpositionMeasure(m::NTuple{N, Measure{X}}) where {N,X} = SuperpositionMeasure(m...)

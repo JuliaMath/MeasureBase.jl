@@ -36,49 +36,45 @@ end
 #     return (x,y)
 # end
 
-# function test_measure(μ)
-#     logdensity(μ, testvalue(μ)) isa AbstractFloat
-# end
+function test_testvalue(μ)
+    logdensity(μ, testvalue(μ)) isa AbstractFloat
+end
 
-# test_measures = [
-#     # Chain(x -> Normal(μ=x), Normal(μ=0.0))
-#     For(3) do j Normal(σ=j) end
-#     For(2,3) do i,j Normal(i,j) end
-#     Lebesgue(ℝ) ^ 3
-#     Lebesgue(ℝ) ^ (2,3)
-#     3 * Lebesgue(ℝ)
-#     Dirac(π)
-#     Lebesgue(ℝ)
-#     # Normal() ⊙ Cauchy()
-# ]
+test_measures = [
+    # Chain(x -> Normal(μ=x), Normal(μ=0.0))
+    For(3) do j Dirac(j) end
+    For(2,3) do i,j Dirac(i) + Dirac(j) end
+    Lebesgue(ℝ) ^ 3
+    Lebesgue(ℝ) ^ (2,3)
+    3 * Lebesgue(ℝ)
+    Dirac(π)
+    Lebesgue(ℝ)
+    Dirac(0.0) + Lebesgue(ℝ)
+    # Normal() ⊙ Cauchy()
+]
 
-# testbroken_measures = [
-#     Pushforward(as𝕀, Normal())
-#     SpikeMixture(Normal(), 2)
-#     # InverseGamma(2) # Not defined yet
-#     # MvNormal(I(3)) # Entirely broken for now
-#     CountingMeasure(Float64)
-#     Likelihood
-#     Dirac(0.0) + Lebesgue(ℝ)
+testbroken_measures = [
+    SpikeMixture(Lebesgue(ℝ), 2)
+    # InverseGamma(2) # Not defined yet
+    # MvNormal(I(3)) # Entirely broken for now
+    CountingMeasure(Float64)
+    Likelihood
 
-#     TrivialMeasure()
-# ]
+    TrivialMeasure()
+]
 
-# @testset "testvalue" begin
-#     for μ in test_measures
-#         @test test_measure(μ)
-#     end
+@testset "testvalue" begin
+    for μ in test_measures
+        @info "testing $μ"
+        @test test_testvalue(μ)
+    end
 
-#     for μ in testbroken_measures
-#         @test_broken test_measure(μ)
-#     end
+    for μ in testbroken_measures
+        @info "testing $μ"
+        @test_broken test_testvalue(μ)
+    end
     
-#     @testset "testvalue(::Chain)" begin
-#         mc =  Chain(x -> Normal(μ=x), Normal(μ=0.0))
-#         r = testvalue(mc)
-#         @test logdensity(mc, Iterators.take(r, 10)) isa AbstractFloat
-#     end
-# end
+end
 
 
 # @testset "Kernel" begin
