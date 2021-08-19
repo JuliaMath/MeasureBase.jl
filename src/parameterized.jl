@@ -23,7 +23,6 @@ function Base.show(io::IO, μ::ParameterizedMeasure{N}) where {N}
     print(io, getfield(μ,:par))
 end
 
-export asparams
 
 # Allow things like
 #

@@ -1,11 +1,12 @@
-using MeasureBase
 using Test
 using Base.Iterators: take
 using Random
 using LinearAlgebra
-using KeywordCalls
-using Statistics
 
+using MeasureBase
+
+using Aqua
+Aqua.test_all(MeasureBase; ambiguities=false, unbound_args=false)
 
 function draw2(μ)
     x = rand(μ)
@@ -16,51 +17,54 @@ function draw2(μ)
     return (x,y)
 end
 
-const sqrt2π = sqrt(2π)
-
-@testset "Parameterized Measures" begin
-    @measure Normal(μ,σ)
-    @kwstruct Normal(μ)
-    @kwstruct Normal()
-    
-    MeasureBase.basemeasure(::Normal)= (1/sqrt2π) * Lebesgue(ℝ)
-    MeasureBase.logdensity(d::Normal{(:μ,:σ)}, x) = -log(d.σ) - (x - d.μ)^2 / (2 * d.σ^2)
-    MeasureBase.logdensity(d::Normal{(:μ,)}, x) = - (x - d.μ)^2 / 2
-    MeasureBase.logdensity(d::Normal{()}, x) = - x^2 / 2
-
-    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,:σ)}) = d.μ + d.σ * randn(rng, T)
-    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{(:μ,)}) = d.μ + randn(rng, T)
-    Base.rand(rng::Random.AbstractRNG, T::Type, d::Normal{()}) = randn(rng, T)
-
-    MeasureBase.representative(d::Normal{(:μ,:σ)}) = d.σ > 0.0 ? Lebesgue(ℝ) : Dirac(d.μ)
-    MeasureBase.representative(d::Normal{(:μ,)}) = Lebesgue(ℝ)
-
-    # Leave this undefined to test fallback inference algorithm
-    # MeasureBase.representative(::Normal) = Lebesgue(ℝ)
-
-    @test Normal(2,4) == Normal(μ=2, σ=4)
-    @test Normal(σ=4, μ=2) == Normal(μ=2, σ=4)
-    @test logdensity(Normal(), 3) == logdensity(Normal(0,1), 3)
-
-    x = randn()
-    @test_broken logdensity(Normal(3,2), Lebesgue(ℝ), x) ≈ logdensity(Normal(3,2), Normal(), x ) + logdensity(Normal(), Lebesgue(ℝ),x)
-    @test_broken 𝒹(Normal(3,2), Normal())(x) ≈ logdensity(Normal(3,2), Normal(), x)
+function test_measure(μ)
+    logdensity(μ, testvalue(μ)) isa AbstractFloat
 end
 
-@testset "Density" begin
-    x = randn()
-    f(x) = -x^2
-    μ = Normal()
-    ν = Lebesgue(ℝ)
-    @test_broken 𝒹(∫(f, μ), μ)(x) ≈ f(x)
-    @test_broken logdensity(∫(𝒹(μ, ν), ν), x) ≈ logdensity(μ, x)
+test_measures = [
+    # Chain(x -> Normal(μ=x), Normal(μ=0.0))
+    For(3) do j Normal(σ=j) end
+    For(2,3) do i,j Normal(i,j) end
+    Lebesgue(ℝ) ^ 3
+    Lebesgue(ℝ) ^ (2,3)
+    3 * Lebesgue(ℝ)
+    Dirac(π)
+    Lebesgue(ℝ)
+    # Normal() ⊙ Cauchy()
+]
+
+testbroken_measures = [
+    Pushforward(as𝕀, Normal())
+    SpikeMixture(Normal(), 2)
+    # InverseGamma(2) # Not defined yet
+    # MvNormal(I(3)) # Entirely broken for now
+    CountingMeasure(Float64)
+    Likelihood
+    Dirac(0.0) + Lebesgue(ℝ)
+
+    TrivialMeasure()
+]
+
+@testset "testvalue" begin
+    for μ in test_measures
+        @test test_measure(μ)
+    end
+
+    for μ in testbroken_measures
+        @test_broken test_measure(μ)
+    end
+    
+    @testset "testvalue(::Chain)" begin
+        mc =  Chain(x -> Normal(μ=x), Normal(μ=0.0))
+        r = testvalue(mc)
+        @test logdensity(mc, Iterators.take(r, 10)) isa AbstractFloat
+    end
 end
 
 
 @testset "Kernel" begin
-    κ = kernel(identity, Dirac)
+    κ = MeasureBase.kernel(MeasureBase.Dirac, identity)
     @test rand(κ(1.1)) == 1.1
-    @test kernelize(Normal(0,1)) == (Kernel{Normal, UnionAll}(NamedTuple{(:μ, :σ), T} where T<:Tuple), (0, 1))
 end
 
 @testset "SpikeMixture" begin
@@ -72,6 +76,12 @@ end
     @test (bm.s*bm.w)*bm.m == 1.0*basemeasure(Normal())
     @test density(m, 1.0)*(bm.s*bm.w) == w*density(Normal(),1.0)
     @test density(m, 0)*(bm.s*(1-bm.w)) ≈ (1-w)
+end
+
+@testset "Dirac" begin
+    @test rand(Dirac(0.2)) == 0.2
+    @test logdensity(Dirac(0.3), 0.3) == 0.0
+    @test logdensity(Dirac(0.3), 0.4) == -Inf
 end
 
 @testset "For" begin
@@ -88,22 +98,11 @@ end
     end
 end
 
+import MeasureBase.:⋅
 function ⋅(μ::Normal, kernel) 
     m = kernel(μ)
     Normal(μ = m.μ.μ, σ = sqrt(m.μ.σ^2 + m.σ^2))
 end
-
-"""
-    ConstantMap(β)
-Represents a function `f = ConstantMap(β)`
-such that `f(x) == β`.
-"""
-struct ConstantMap{T}
-    x::T
-end
-(a::ConstantMap)(x) = a.x
-(a::ConstantMap)() = a.x
-
 struct AffineMap{S,T}
     B::S
     β::T
@@ -125,8 +124,92 @@ end
     end
 end
 
-@testset "LogLikelihood" begin
-    d = Normal()
-    ℓ = LogLikelihood(Normal{(:μ,)}, 3.0) 
-    @test logdensity(d ⊙ ℓ, 2.0) == logdensity(d, 2.0) + logdensity(ℓ, 2.0)
+@testset "Univariate chain" begin
+    ξ0 = 1.
+    x = 1.2
+    P0 = 1.0
+
+    Φ = 0.8
+    β = 0.1
+    Q = 0.2
+
+    μ = Normal(μ=ξ0, σ=sqrt(P0))
+    kernel = MeasureBase.kernel(Normal; μ=AffineMap(Φ, β), σ=Const(Q))
+    
+    @test (μ ⋅ kernel).μ == Normal(μ = 0.9, σ = 0.824621).μ
+    
+    chain = Chain(kernel, μ)
+    
+
+    dyniterate(iter::TimeLift, ::Nothing) = dyniterate(iter, 0=>nothing) 
+    tr1 = trace(TimeLift(chain), nothing, u -> u[1] > 15)
+    tr2 = trace(TimeLift(rand(Random.GLOBAL_RNG, chain)), nothing, u -> u[1] > 15)
+    collect(Iterators.take(chain, 10))
+    collect(Iterators.take(rand(Random.GLOBAL_RNG, chain), 10))
+end
+
+@testset "Likelihood" begin
+    dps = [
+        (Normal()                             ,    2.0  )
+        # (Pushforward(as((μ=asℝ,)), Normal()^1), (μ=2.0,))
+    ]
+
+    ℓs = [
+        Likelihood(Normal{(:μ,)},              3.0)
+        Likelihood(kernel(Normal, x -> (μ=x, σ=2.0)), 3.0)
+    ]
+
+    for (d,p) in dps
+        for ℓ in ℓs
+            @test logdensity(d ⊙ ℓ, p) == logdensity(d, p) + logdensity(ℓ, p)
+        end
+    end
+end
+
+
+@testset "ProductMeasure" begin
+    d = For(1:10) do j Poisson(exp(j)) end
+    x = Vector{Int16}(undef, 10)
+    @test rand!(d,x) isa Vector
+    @test rand(d) isa Vector
+
+    @testset "Indexed by Generator" begin
+        d = For((j^2 for j in 1:10)) do i Poisson(i) end
+        x = Vector{Int16}(undef, 10)
+        @test rand!(d,x) isa Vector
+        @test_broken rand(d) isa Base.Generator
+    end
+
+    @testset "Indexed by multiple Ints" begin
+        d = For(2,3) do μ,σ Normal(μ,σ) end
+        x = Matrix{Float16}(undef, 2, 3)
+        @test rand!(d, x) isa Matrix
+        @test_broken rand(d) isa Matrix{Float16}
+    end
+end
+
+@testset "Show methods" begin
+    @testset "PowerMeasure" begin
+        @test repr(Lebesgue(ℝ) ^ 5) == "Lebesgue(ℝ) ^ 5"
+        @test repr(Lebesgue(ℝ) ^ (3, 2)) == "Lebesgue(ℝ) ^ (3, 2)"
+    end
+end
+
+@testset "Density measures and Radon-Nikodym" begin
+    x = randn()
+    let d = ∫(𝒹(Cauchy(), Normal()), Normal())
+        @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+    end
+
+    let f = 𝒹(∫(x -> x^2, Normal()), Normal())
+        @test f(x) ≈ x^2
+    end
+
+    let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
+        @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+    end
+
+    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+        @test f(x) ≈ x^2
+    end
 end
