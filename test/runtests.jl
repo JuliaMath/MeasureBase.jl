@@ -10,22 +10,22 @@ Aqua.test_all(MeasureBase; ambiguities=false, unbound_args=false)
 
 d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 
-if VERSION ≥ v"1.6"
-    @eval using JETTest
+# if VERSION ≥ v"1.6"
+#     @eval using JETTest
 
-    @eval begin     
-        @test_nodispatch density(Lebesgue(ℝ), 0.3)
+#     @eval begin     
+#         @test_nodispatch density(Lebesgue(ℝ), 0.3)
 
-        @test_nodispatch density(Dirac(0), 0.3)
-        @test_nodispatch density(Dirac(0), 0)
+#         @test_nodispatch density(Dirac(0), 0.3)
+#         @test_nodispatch density(Dirac(0), 0)
         
-        @test_nodispatch density(d, 3)
+#         @test_nodispatch density(d, 3)
 
-        @test_nodispatch basemeasure(d)
+#         @test_nodispatch basemeasure(d)
 
-        @test_nodispatch logdensity(For(3) do j Dirac(j) end, [1,2,3])
-    end
-end
+#         @test_nodispatch logdensity(For(3) do j Dirac(j) end, [1,2,3])
+#     end
+# end
 
 # function draw2(μ)
 #     x = rand(μ)
