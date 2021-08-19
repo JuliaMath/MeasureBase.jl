@@ -99,6 +99,26 @@ end
     @test logdensity(Dirac(0.3), 0.4) == -Inf
 end
 
+@testset "AffineTransform" begin
+    f = AffineTransform((μ=3,σ=2))
+    @test f(inv(f)(1)) == 1
+    @test inv(f)(f(1)) == 1
+    
+    g = AffineTransform((μ=3,ω=2))
+    @test g(inv(g)(1)) == 1
+    @test inv(g)(g(1)) == 1
+end
+
+@testset "Affine" begin
+    unif = ∫(x -> 0<x<1, Lebesgue(ℝ))
+    f = AffineTransform((μ=3,σ=2))
+    g = AffineTransform((μ=3,ω=2))
+
+    @test Affine((μ=3,σ=2))(unif) == Affine(f, unif)
+    @test Affine((μ=3,ω=2))(unif) == Affine(g, unif)
+    @test_broken logdensity(Affine(f, Affine(inv(f), unif)), 0.5) == 1
+end
+
 # @testset "For" begin
 #     FORDISTS = [
 #         For(1:10) do j Normal(μ=j) end
