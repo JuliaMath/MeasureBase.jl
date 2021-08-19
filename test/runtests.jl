@@ -116,7 +116,7 @@ end
 
     @test Affine((μ=3,σ=2))(unif) == Affine(f, unif)
     @test Affine((μ=3,ω=2))(unif) == Affine(g, unif)
-    @test_broken logdensity(Affine(f, Affine(inv(f), unif)), 0.5) == 1
+    @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
 end
 
 # @testset "For" begin

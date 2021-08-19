@@ -32,7 +32,7 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
     if s === :parent
         return getfield(d, :parent)
     else
-        return getfield(getfield(d, :f), s)
+        return getproperty(getfield(d, :f), s)
     end
 end
 
