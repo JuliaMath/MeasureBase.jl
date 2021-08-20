@@ -45,7 +45,7 @@ logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x)
 logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x)
 logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
 
-basemeasure(d::Affine) = Affine(d.f, basemeasure(d.parent))
+basemeasure(d::Affine) = Affine(getfield(d, :f), basemeasure(d.parent))
 
 basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = d.parent
 
