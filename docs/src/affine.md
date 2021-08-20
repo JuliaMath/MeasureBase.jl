@@ -73,3 +73,29 @@ This allows a more efficient log-density,
 logdensity(d::Normal{(:μ,:ω)}, x) = logdensity(d.ω * (x - d.μ)) + logdet(d.ω)
 ```
 
+## `AffineTransform`
+
+Transforms like ``z → σ z + μ`` and ``z → ω \ z + μ`` can be represented using an `AffineTransform`. For example,
+
+```julia
+julia> f = AffineTransform((μ=3.,σ=2.))
+AffineTransform{(:μ, :σ), Tuple{Float64, Float64}}((μ = 3.0, σ = 2.0))
+
+julia> f(1.0)
+5.0
+```
+
+In the scalar case this is relatively simple to invert. But if `σ` is a matrix, this would require matrix inversion. Adding to this complication is that lower triangular matrices are not closed under matrix inversion. 
+
+Our multiple parameterizations make it convenient to deal with these issues. The inverse transform of a ``(μ,σ)`` transform will be in terms of ``(μ,ω)``, and vice-versa. So
+
+```julia
+julia> f⁻¹ = inv(f)
+AffineTransform{(:μ, :ω), Tuple{Float64, Float64}}((μ = -1.5, ω = 2.0))
+
+julia> f(f⁻¹(4))
+4.0
+
+julia> f⁻¹(f(4))
+4.0
+```
