@@ -36,9 +36,24 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
     end
 end
 
-logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ)) - log(d.σ)
-logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ)) + log(d.ω)
+# Note: We could also write
+# logdensity(d::Affine, x) = logdensity(inv(getfield(d, :f)), x)
 
-logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x) - log(d.σ)
-logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x) + log(d.ω)
+logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
+logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
+logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x)
+logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x)
 logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
+
+basemeasure(d::Affine) = Affine(d.f, basemeasure(d.parent))
+
+basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = d.parent
+
+logdensity(d::Affine{N,L}, x) where {N,L<:Lebesgue} = logjac(getfield(d, :f))
+
+# TODO: `log` doesn't work for the multivariate case, we need the log absolute determinant
+logjac(::AffineTransform{(:μ,:σ)}) = -log(d.σ)
+logjac(::AffineTransform{(:μ,:ω)}) = log(d.ω)
+logjac(::AffineTransform{(:σ,)}) = -log(d.σ)
+logjac(::AffineTransform{(:ω,)}) = log(d.ω)
+logjac(::AffineTransform{(:μ,)}) = 0.0
