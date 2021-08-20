@@ -33,25 +33,43 @@ Then given a (multivariate) standard normal ``z``, the covariance matrix of ``σ
 𝕍[σ z + μ] = Σ
 ```
 
-This is similar to the one dimensional case where
+Comparing to the one dimensional case where
 
 ```math
-𝕍[σ z + μ] = σ² ,
+𝕍[σ z + μ] = σ²
 ```
 
-and so the lower Cholesky factor of the covariance generalizes the concept of standard deviation, justifying the notation.
+shows that the lower Cholesky factor of the covariance generalizes the concept of standard deviation, justifying the notation.
 
-## `Affine` and `AffineTransform`
+## The "Cholesky precision" parameterization
 
+The ``(μ,σ)`` parameterization is especially convenient for random sampling. Any `z ~ Normal()` determines an `x ~ Normal(μ,σ)` through
 
+```math
+x = σ z + μ
+```
 
-unif = ∫(x -> 0<x<1, Lebesgue(ℝ))
-    f = AffineTransform((μ=3,σ=2))
-    g = AffineTransform((μ=3,ω=2))
+On the other hand, the log-density computation is not quite so simple. Starting with an ``x``, we need to find ``z`` using
 
-So for example, the implementation of `StudentT(ν=1, μ=3, σ=4)` is equivalent to
+```math
+z = σ⁻¹ (x - μ)
+```
+
+so the log-density is
 
 ```julia
-StudentT(nt::NamedTuple{(:ν,:μ,:σ)}) = Affine((μ=nt.μ, σ=nt.σ), StudentT((ν=1)))
+logdensity(d::Normal{(:μ,:σ)}, x) = logdensity(d.σ \ (x - d.μ)) - logdet(d.σ)
+```
+
+Here the `- logdet(σ)` is the "log absolute Jacobian", required to account for the stretching of the space.
+
+The above requires solving a linear system, which adds some overhead. Even with the convenience of a lower triangular system, it's still not quite a efficient as a multiplication.
+
+In addition to the covariance ``Σ``, it's also common to parameterize a multivariate normal by its _precision matrix_, ``Ω = Σ⁻¹``. Similarly to our use of ``σ``, we'll use ``ω`` for the lower Cholesky factor of ``Ω``.
+
+This allows a more efficient log-density,
+
+```julia
+logdensity(d::Normal{(:μ,:ω)}, x) = logdensity(d.ω * (x - d.μ)) + logdet(d.ω)
 ```
 
