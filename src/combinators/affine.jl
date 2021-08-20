@@ -37,5 +37,8 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
 end
 
 logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ)) - log(d.σ)
-
 logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ)) + log(d.ω)
+
+logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x) - log(d.σ)
+logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x) + log(d.ω)
+logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
