@@ -99,3 +99,16 @@ julia> f(f⁻¹(4))
 julia> f⁻¹(f(4))
 4.0
 ```
+
+## `Affine`
+
+Of particular interest (the whole point of all of this, really) is to have a natural way to work with affine transformations of measures. In accordance with the principle of "common things should have shorter names", we call this `Affine`.
+
+The structure of `Affine` is relatively simple:
+
+```julia
+struct Affine{N,M,T} <: AbstractMeasure
+    f::AffineTransform{N,T}
+    parent::M
+end
+```
