@@ -62,7 +62,7 @@ logjac(::AffineTransform{(:σ,)}) = -log(d.σ)
 logjac(::AffineTransform{(:ω,)}) = log(d.ω)
 logjac(::AffineTransform{(:μ,)}) = 0.0
 
-function Base.rand(rng::Random.AbstractRNG. ::Type{T}, d::Affine) where {T}
+function Base.rand(rng::Random.AbstractRNG, ::Type{T}, d::Affine) where {T}
     z = rand(rng, T, parent(d))
     f = getfield(d, :f)
     return f(z)
