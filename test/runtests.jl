@@ -111,12 +111,17 @@ end
 
 @testset "Affine" begin
     unif = ∫(x -> 0<x<1, Lebesgue(ℝ))
-    f = AffineTransform((μ=3,σ=2))
-    g = AffineTransform((μ=3,ω=2))
+    f1 = AffineTransform((μ=3.,σ=2.))
+    f2 = AffineTransform((μ=3.,ω=2.))
+    f3 = AffineTransform((μ=3.,))
+    f4 = AffineTransform((σ=2.,))
+    f5 = AffineTransform((ω=2.,))
 
-    @test Affine((μ=3,σ=2))(unif) == Affine(f, unif)
-    @test Affine((μ=3,ω=2))(unif) == Affine(g, unif)
-    @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
+    for f in [f1,f2,f3,f4,f5]
+        par = getfield(f, :par)
+        @test Affine(par)(unif) == Affine(f, unif)
+        @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
+    end
 end
 
 # @testset "For" begin
