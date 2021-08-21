@@ -11,8 +11,10 @@ Base.propertynames(d::AffineTransform{N}) where {N} = N
 @inline Base.inv(f::AffineTransform{(:μ,:σ)}) = AffineTransform((μ = -(f.σ \ f.μ), ω = f.σ))
 @inline Base.inv(f::AffineTransform{(:μ,:ω)}) = AffineTransform((μ = - f.ω * f.μ, σ = f.ω))
 
+(f::AffineTransform{(:μ,)})(x) = x + f.μ
+(f::AffineTransform{(:σ,)})(x) = f.σ * x
+(f::AffineTransform{(:ω,)})(x) = f.ω \ x
 (f::AffineTransform{(:μ,:σ)})(x) = f.σ * x + f.μ
-
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
 
 ###############################################################################
