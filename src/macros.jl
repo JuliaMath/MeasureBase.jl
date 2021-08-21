@@ -3,7 +3,7 @@ using MLStyle
 using Random: AbstractRNG
 using KeywordCalls
 using ConstructionBase
-export @parameterized, @μσ_methods, @σ_methods, @half
+export @parameterized, @half, @affinepars
 
 # A fold over ASTs. Example usage in `replace`
 function foldast(leaf, branch; kwargs...)
@@ -129,8 +129,6 @@ See [KeywordCalls.jl](https://github.com/cscherrer/KeywordCalls.jl) for details 
 macro parameterized(expr)
     _parameterized(__module__, expr)
 end
-
-export @affinepars
 
 macro affinepars(expr)
     _affinepars(__module__, expr)
