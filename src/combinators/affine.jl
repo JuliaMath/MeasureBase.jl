@@ -22,6 +22,8 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
+parent(d::Affine) = getfield(d, :parent)
+
 Affine(nt::NamedTuple, μ::AbstractMeasure) = Affine(AffineTransform(nt), μ)
 
 Affine(nt::NamedTuple) = μ -> Affine(nt, μ)
@@ -35,6 +37,8 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
         return getproperty(getfield(d, :f), s)
     end
 end
+
+
 
 # Note: We could also write
 # logdensity(d::Affine, x) = logdensity(inv(getfield(d, :f)), x)
@@ -57,3 +61,9 @@ logjac(::AffineTransform{(:μ,:ω)}) = log(d.ω)
 logjac(::AffineTransform{(:σ,)}) = -log(d.σ)
 logjac(::AffineTransform{(:ω,)}) = log(d.ω)
 logjac(::AffineTransform{(:μ,)}) = 0.0
+
+function Base.rand(rng::Random.AbstractRNG. ::Type{T}, d::Affine) where {T}
+    z = rand(rng, T, parent(d))
+    f = getfield(d, :f)
+    return f(z)
+end
