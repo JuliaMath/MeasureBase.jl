@@ -44,7 +44,6 @@ function params(::Type{M}, constraints::NamedTuple{N2}) where {N1, N2, M<: Param
     tuple((k for k in N1 if k ∉ N2)...)
 end
 
-params(::Type{A}, nt::NamedTuple{C}) where {A<:Affine{N,M}} where {N,M,C} = tuple(setdiff(union(N, params(M)),C)...)
 
 params(μ) = ()
 
