@@ -58,19 +58,17 @@ Base.:*(m::AbstractMeasure, k::Real) = k * m
 sampletype(μ:: WeightedMeasure) = sampletype(μ.base)
 
 ###############################################################################
-struct ParamWeightedMeasure{F,N,T,R,B} <: AbstractWeightedMeasure 
-    f::F
+struct ParamWeightedMeasure{L,N,T,B} <: AbstractWeightedMeasure 
+    ℓ::L
     par::NamedTuple{N,T}
-    logweight::R
     base::B
-
-    function ParamWeightedMeasure(f::F, par::NamedTuple{N,T}, base::B) where {F,N,T,B}
-        ℓ = f(par)
-        new{F,N,T,typeof(ℓ),B}(f,par,ℓ,base)
-    end
 end
 
 function Base.show(io::IO, d::ParamWeightedMeasure)
     io = IOContext(io, :compact => true)
-    print(io, "ParamWeighted(",d.f, ", ", d.par,", ", d.base, ")")
+    print(io, "ParamWeighted(",d.ℓ, ", ", d.par,", ", d.base, ")")
 end
+
+basemeasure(d::ParamWeightedMeasure) = μ.base
+
+logdensity(d::ParamWeightedMeasure, x) = d.ℓ(d.par)
