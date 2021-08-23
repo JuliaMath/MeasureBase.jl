@@ -58,6 +58,8 @@ Base.:*(m::AbstractMeasure, k::Real) = k * m
 sampletype(μ:: WeightedMeasure) = sampletype(μ.base)
 
 ###############################################################################
+
+export ParamWeightedMeasure
 struct ParamWeightedMeasure{L,N,T,B} <: AbstractWeightedMeasure 
     ℓ::L
     par::NamedTuple{N,T}
