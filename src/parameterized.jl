@@ -36,18 +36,36 @@ end
 
 (::Type{P})(;kwargs...) where {P <: ParameterizedMeasure} = P(NamedTuple(kwargs))
 
+function ConstructionBase.setproperties(d::P, nt::NamedTuple) where {P<:ParameterizedMeasure}
+    return constructorof(P)(merge(params(d), nt)) 
+end
+
+###############################################################################
+# params
+
 export params
+
+params(μ::ParameterizedMeasure) = getfield(μ, :par)
+
+function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {N1, N2, M<: ParameterizedMeasure{N1}} 
+    NamedTuple{paramnames(μ, constraints)}(params(μ))
+end
+
+params(μ::AbstractMeasure) = NamedTuple()
+
+###############################################################################
+# paramnames
+
+export paramnames
+
+paramnames(μ) = paramnames(typeof(μ))
+
+paramnames(::Type{PM}) where {N, PM<:ParameterizedMeasure{N}} = N
+
+paramnames(μ::AbstractMeasure) = propertynames(μ)
 
 params(::Type{PM}) where {N, PM<:ParameterizedMeasure{N}} = N
 
-function params(::Type{M}, constraints::NamedTuple{N2}) where {N1, N2, M<: ParameterizedMeasure{N1}} 
-    tuple((k for k in N1 if k ∉ N2)...)
-end
-
-
-params(μ) = ()
-
-
-function ConstructionBase.setproperties(d::P, nt::NamedTuple) where {P<:ParameterizedMeasure}
-    return constructorof(P)(merge(params(d), nt)) 
+function paramnames(μ, constraints::NamedTuple{N}) where {N}
+    tuple((k for k in paramnames(μ) if k ∉ N)...)
 end

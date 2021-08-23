@@ -27,10 +27,17 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
-params(::Type{A}, nt::NamedTuple{C}) where {A<:Affine{N,M}} where {N,M,C} = tuple(setdiff(union(N, params(M)),C)...)
-
-
 parent(d::Affine) = getfield(d, :parent)
+
+function params(μ::Affine)
+    nt1 = getfield(getfield(μ, :f), :par)
+    nt2 = params(parent(μ))
+    return merge(nt1, nt2)
+end
+
+function paramnames(::Type{A}) where {N,M, A<:Affine{N,M}}
+    tuple(union(N, paramnames(M))...)
+end
 
 Affine(nt::NamedTuple, μ::AbstractMeasure) = Affine(AffineTransform(nt), μ)
 
