@@ -47,7 +47,7 @@ export params
 
 params(μ::ParameterizedMeasure) = getfield(μ, :par)
 
-function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {N1, N2, M<: ParameterizedMeasure{N1}} 
+function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C} 
     NamedTuple{paramnames(μ, constraints)}(params(μ))
 end
 
