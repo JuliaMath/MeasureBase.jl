@@ -31,3 +31,5 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::SpikeMixture)
     μ.s != 1 && throw(ArgumentError("Not a probability measure"))
     return (rand(rng, T) < μ.w) * rand(rng, T, μ.m)
 end
+
+testvalue(μ::SpikeMixture) = testvalue(μ.m)
