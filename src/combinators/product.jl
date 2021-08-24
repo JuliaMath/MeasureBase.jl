@@ -72,6 +72,10 @@ function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
     mapreduce(logdensity, +, d.f.(d.pars), x)
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:Tuple}
+    rand.(d.pars)
+end
+
 ###############################################################################
 # I <: AbstractArray
 
@@ -100,6 +104,11 @@ function Base.show(io::IO, d::ProductMeasure{F,I}) where {F, I<:CartesianIndices
     print(io, ")")
 end
 
+
+# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:CartesianIndices}
+
+# end
+
 ###############################################################################
 # I <: Base.Generator
 
@@ -122,8 +131,18 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T
     Base.Generator(s -> rand(r, d.pars.f(s)), d.pars.iter)
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:Base.Generator}
+    mar = marginals(d)
+    elT = typeof(rand(rng, T, first(mar)))
+
+    sz = size(mar)
+    r = ResettableRNG(rng, rand(rng, UInt))
+    Base.Generator(s -> rand(r, d.pars.f(s)), d.pars.iter)
+end
+
 @propagate_inbounds function Random.rand!(rng::AbstractRNG, d::ProductMeasure, x::AbstractArray)
-    T = float(eltype(x))
+    # TODO: Generalize this
+    T = Float64
     for(j,m) in zip(eachindex(x), marginals(d))
         @inbounds x[j] = rand(rng, T, m)
     end
@@ -134,41 +153,6 @@ end
 
 
 
-
-# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,1}}
-#     data = marginals(d)
-#     @boundscheck size(data) == size(x) || throw(BoundsError)
-#     @tullio s = logdensity(data[i], x[i])
-#     s
-# end
-
-# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,2}}
-#     data = marginals(d)
-#     @boundscheck size(data) == size(x) || throw(BoundsError)
-#     @tullio s = @inbounds logdensity(data[i,j], x[i,j])
-#     s
-# end
-
-# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,3}}
-#     data = marginals(d)
-#     @boundscheck size(data) == size(x) || throw(BoundsError)
-#     @tullio s = @inbounds logdensity(data[i,j,k], x[i,j,k])
-#     s
-# end
-
-# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,4}}
-#     data = marginals(d)
-#     @boundscheck size(data) == size(x) || throw(BoundsError)
-#     @tullio s = @inbounds logdensity(data[i,j,k,l], x[i,j,k,l])
-#     s
-# end
-
-# @propagate_inbounds function MeasureBase.logdensity(d::ProductMeasure{A}, x) where{T, A<:AbstractArray{T,5}}
-#     data = marginals(d)
-#     @boundscheck size(data) == size(x) || throw(BoundsError)
-#     @tullio s = @inbounds logdensity(data[i,j,k,l,m], x[i,j,k,l,m])
-#     s
-# end
 
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG

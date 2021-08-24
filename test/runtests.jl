@@ -50,11 +50,11 @@ test_measures = [
     Dirac(π)
     Lebesgue(ℝ)
     Dirac(0.0) + Lebesgue(ℝ)
+    SpikeMixture(Lebesgue(ℝ), 2)
     # Normal() ⊙ Cauchy()
 ]
 
 testbroken_measures = [
-    SpikeMixture(Lebesgue(ℝ), 2)
     # InverseGamma(2) # Not defined yet
     # MvNormal(I(3)) # Entirely broken for now
     CountingMeasure(Float64)
@@ -124,19 +124,20 @@ end
     end
 end
 
-# @testset "For" begin
-#     FORDISTS = [
-#         For(1:10) do j Normal(μ=j) end
-#         For(4,3) do μ,σ Normal(μ,σ) end
-#         For(1:4, 1:4) do μ,σ Normal(μ,σ) end
-#         For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end
-#         For(rand(4), rand(4)) do μ,σ Normal(μ,σ) end
-#     ]
+@testset "For" begin
+    FORDISTS = [
+        For(1:10) do j Dirac(j) end
+        For(4,3) do i,j Dirac(i) ⊗ Dirac(j) end
+        For(1:4, 1:4) do i,j Dirac(i) ⊗ Dirac(j) end
+        For(eachrow(rand(4,2))) do x Dirac(x[1]) ⊗ Dirac(x[2]) end
+        For(rand(4), rand(4)) do i,j Dirac(i) ⊗ Dirac(j) end
+    ]
 
-#     for d in FORDISTS
-#         @test logdensity(d, rand(d)) isa Float64
-#     end
-# end
+    for d in FORDISTS
+        @info "testing $d"
+        @test logdensity(d, rand(d)) isa Float64
+    end
+end
 
 # import MeasureBase.:⋅
 # function ⋅(μ::Normal, kernel) 
