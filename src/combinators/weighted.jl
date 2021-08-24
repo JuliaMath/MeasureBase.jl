@@ -71,6 +71,6 @@ function Base.show(io::IO, d::ParamWeightedMeasure)
     print(io, "ParamWeighted(",d.ℓ, ", ", d.par,", ", d.base, ")")
 end
 
-basemeasure(d::ParamWeightedMeasure) = μ.base
+basemeasure(d::ParamWeightedMeasure) = d.base
 
 logdensity(d::ParamWeightedMeasure, x) = d.ℓ(d.par)
