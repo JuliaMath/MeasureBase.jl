@@ -104,9 +104,21 @@ end
     @test f(inv(f)(1)) == 1
     @test inv(f)(f(1)) == 1
     
-    g = AffineTransform((μ=3,ω=2))
-    @test g(inv(g)(1)) == 1
-    @test inv(g)(g(1)) == 1
+    f = AffineTransform((μ=3,ω=2))
+    @test f(inv(f)(1)) == 1
+    @test inv(f)(f(1)) == 1
+
+    f = AffineTransform((σ=2,))
+    @test f(inv(f)(1)) == 1
+    @test inv(f)(f(1)) == 1
+
+    f = AffineTransform((ω=2,))
+    @test f(inv(f)(1)) == 1
+    @test inv(f)(f(1)) == 1
+
+    f = AffineTransform((μ=3,))
+    @test f(inv(f)(1)) == 1
+    @test inv(f)(f(1)) == 1
 end
 
 @testset "Affine" begin
