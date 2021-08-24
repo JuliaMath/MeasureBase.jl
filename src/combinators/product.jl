@@ -131,14 +131,6 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T
     Base.Generator(s -> rand(r, d.pars.f(s)), d.pars.iter)
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:Base.Generator}
-    mar = marginals(d)
-    elT = typeof(rand(rng, T, first(mar)))
-
-    sz = size(mar)
-    r = ResettableRNG(rng, rand(rng, UInt))
-    Base.Generator(s -> rand(r, d.pars.f(s)), d.pars.iter)
-end
 
 @propagate_inbounds function Random.rand!(rng::AbstractRNG, d::ProductMeasure, x::AbstractArray)
     # TODO: Generalize this
