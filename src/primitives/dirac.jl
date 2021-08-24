@@ -12,6 +12,8 @@ function (μ::Dirac{X})(s) where {X}
     return 0
 end
 
+density(μ::Dirac, x) = x == μ.x
+
 logdensity(μ::Dirac, x) = (x == μ.x) ? 0.0 : -Inf
 
 
@@ -23,14 +25,7 @@ export dirac
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
 function logdensity(μ::Dirac{M}, ν::Dirac{M}, x) where {M} 
-    if μ.x == ν.x
-        x == μ.x && return 0.0
-        return -Inf
-    elseif μ.x == x
-        return Inf
-    else
-        return -Inf
-    end
+    logdensity(μ,x) - logdensity(ν,x)
 end
 
 testvalue(d::Dirac) = d.x
