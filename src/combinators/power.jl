@@ -39,12 +39,14 @@ function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Intege
     ProductMeasure(identity, Fill(μ, dims))
 end
 
-function Base.show(io::IO, d::PowerMeasure)
+# Same as PowerMeasure
+function Base.show(io::IO, d::ProductMeasure{F,<:Fill}) where {F}
     io = IOContext(io, :compact => true)
     print(io, d.f(first(d.pars)), " ^ ", size(d.pars))
 end
 
-function Base.show(io::IO, d::PowerMeasure{F,T,1}) where {F,T}
+# Same as PowerMeasure{F,T,1} where {F,T}
+function Base.show(io::IO, d::ProductMeasure{F,Fill{T,1,A}}) where {F,T,A}
     io = IOContext(io, :compact => true)
     print(io, d.f(first(d.pars)), " ^ ", size(d.pars)[1])
 end
@@ -56,7 +58,8 @@ function Base.:^(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
     return WeightedMeasure(k, μ.base^dims)
 end
 
-params(d::PowerMeasure{D}) where {D} = params(first(marginals(d)))
-params(::Type{PowerMeasure{D}}) where {D} = params(D)
+params(d::ProductMeasure{F,<:Fill}) where {F} = params(first(marginals(d)))
+
+params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)

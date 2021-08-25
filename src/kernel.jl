@@ -89,7 +89,7 @@ function kernelfactor(::P) where {N, P <: ParameterizedMeasure{N}}
     (constructorof(P), N)
 end
 
-function kernelfactor(μ::PowerMeasure)
+function kernelfactor(μ::ProductMeasure{F,<:Fill}) where {F}
     k = kernel(first(marginals(μ)))
     (p -> k.f(p)^size(μ), k.ops)
 end
