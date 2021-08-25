@@ -151,6 +151,13 @@ end
     end
 end
 
+@testset "Half" begin
+    Nrml = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+    @half Nrmal
+    @test logdensity(HalfNrml(), -0.2) == -Inf
+    @test logdensity(HalfNrml(), 0.2) == logdesnity(Nrml(), 0.2)
+end
+
 # import MeasureBase.:⋅
 # function ⋅(μ::Normal, kernel) 
 #     m = kernel(μ)
