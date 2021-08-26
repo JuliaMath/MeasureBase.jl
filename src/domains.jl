@@ -20,7 +20,7 @@ For example, `@domain ℝ RealNumbers` is equivalent to
 """
 macro domain(name, T)
     sname = String(name)
-    
+
     name = esc(name)
     quote
         struct $T <: AbstractDomain end
@@ -65,3 +65,21 @@ testvalue(::IntegerRange{lo, hi}) where {lo, hi} = lo
 
 
 struct RealInterval{lo, hi} <: AbstractDomain end
+
+
+###########################################################
+# Euclidean space
+
+struct EuclideanSpace{T} <: AbstractDomain
+    dimension::T
+end
+
+function Base.show(io::IO, es::EuclideanSpace)
+    print(io, "ℝ ^ ", dimension(es))
+end
+
+Base.:^(::RealNumbers, n::Integer) = EuclideanSpace(n)
+
+dimension(es::EuclideanSpace) = es.dimension
+
+export EuclideanSpace, dimension
