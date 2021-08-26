@@ -25,17 +25,6 @@ constructor(::T) where {T} = constructor(T)
 
 constructor(::Type{T}) where {T} = constructorof(T)
 
-macro trysupport(ex)
-    ex = esc(ex)
-    quote
-        try
-            return $ex
-        catch 
-            return -Inf
-        end
-    end
-end
-
 export testvalue
 testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
 
