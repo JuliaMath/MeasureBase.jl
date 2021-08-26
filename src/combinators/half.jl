@@ -17,4 +17,4 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
     return abs(rand(rng, T, unhalf(μ)))
 end
 
-logdensity(μ::Half, x) = logdensity(unhalf(μ), x)
+logdensity(μ::Half, x) = (x < 0) * (-Inf) + (x > 0) * logdensity(unhalf(μ), x)
