@@ -168,7 +168,7 @@ function _half(__module__, ex)
     @match ex begin
         :($dist) => begin
             halfdist = esc(Symbol(:Half, dist))
-            
+            dist = esc(dist)
             quote
                 $halfdist(args...) = Half($dist(args...))
                 $halfdist(;kwargs...) = Half($dist(;kwargs...))
