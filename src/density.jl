@@ -113,8 +113,7 @@ function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
         typeof(μ) == $(typeof(μ))
         typeof(ν) == $(typeof(ν))
 
-        Returning NaN. If this is incorrect, please add a method for
-        
+        Returning NaN. If this is incorrect, please add a method        
         logdensity(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
         """
         return NaN
