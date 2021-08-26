@@ -156,6 +156,9 @@ end
     @half Normal
     @test logdensity(HalfNormal(), -0.2) == -Inf
     @test logdensity(HalfNormal(), 0.2) == logdensity(Normal(), 0.2)
+    
+    @half Lebesgue
+    @test basemeasure(HalfLebesgue(ℝ)) == 2 * Lebesgue(ℝ)
 end
 
 # import MeasureBase.:⋅
