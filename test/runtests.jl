@@ -155,7 +155,7 @@ end
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     @half Normal
     @test logdensity(HalfNormal(), -0.2) == -Inf
-    @test logdensity(HalfNormal(), 0.2) == logdensity(Nrml(), 0.2)
+    @test logdensity(HalfNormal(), 0.2) == logdensity(Normal(), 0.2)
 end
 
 # import MeasureBase.:⋅
