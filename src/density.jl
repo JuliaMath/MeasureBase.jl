@@ -107,21 +107,23 @@ function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
     α = basemeasure(μ)
     β = basemeasure(ν)
 
-    ℓμ = @trysupport logdensity(μ, x)
-    ℓν = @trysupport logdensity(ν, x)
-
-    if α==μ && β==ν
+    if α===μ && β===ν
         @warn """
         No method found for logdensity(μ, ν, x) where
-        μ == $μ
-        ν == $ν
+        typeof(μ) == $(typeof(μ))
+        typeof(ν) == $(typeof(ν))
 
-        Assuming logdensity of 0.0
-        """
-        return ℓμ - ℓν
-    end
+        Returning NaN. If this is incorrect, please add a method for
         
-    ℓμ - ℓν + logdensity(α, β, x)
+        logdensity(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
+        """
+        return NaN
+    end
+
+    ℓμ = logdensity(μ, x)
+    ℓν = logdensity(ν, x)
+
+    return ℓμ - ℓν + logdensity(α, β, x)
 end
 
 logdensity(::Lebesgue, ::Lebesgue, x) = 0.0

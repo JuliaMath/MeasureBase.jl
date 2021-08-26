@@ -1,5 +1,6 @@
 module MeasureBase
 
+const logtwo = log(2.0)
 
 using Random
 
