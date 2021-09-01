@@ -20,6 +20,13 @@ Base.propertynames(d::AffineTransform{N}) where {N} = N
 (f::AffineTransform{(:μ,:σ)})(x) = f.σ * x + f.μ
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
 
+# TODO: `log` doesn't work for the multivariate case, we need the log absolute determinant
+logjac(f::AffineTransform{(:μ,:σ)}) = log(f.σ)
+logjac(f::AffineTransform{(:μ,:ω)}) = -log(f.ω)
+logjac(f::AffineTransform{(:σ,)}) = log(f.σ)
+logjac(f::AffineTransform{(:ω,)}) = -log(f.ω)
+logjac(f::AffineTransform{(:μ,)}) = 0.0
+
 ###############################################################################
 
 struct Affine{N,M,T} <: AbstractMeasure
@@ -53,8 +60,6 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
     end
 end
 
-
-
 # Note: We could also write
 # logdensity(d::Affine, x) = logdensity(inv(getfield(d, :f)), x)
 
@@ -66,16 +71,12 @@ logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ)
 
 basemeasure(d::Affine) = Affine(getfield(d, :f), basemeasure(d.parent))
 
-basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = d.parent
+# We can't do this until we know we're working with Lebesgue measure, since for
+# example it wouldn't make sense to apply a log-Jacobian to a point measure
+basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = WeightedMeasure(-logjac(d), d.parent)
 
-logdensity(d::Affine{N,L}, x) where {N,L<:Lebesgue} = logjac(getfield(d, :f))
+logjac(d::Affine) = logjac(getfield(d, :f))
 
-# TODO: `log` doesn't work for the multivariate case, we need the log absolute determinant
-logjac(::AffineTransform{(:μ,:σ)}) = -log(d.σ)
-logjac(::AffineTransform{(:μ,:ω)}) = log(d.ω)
-logjac(::AffineTransform{(:σ,)}) = -log(d.σ)
-logjac(::AffineTransform{(:ω,)}) = log(d.ω)
-logjac(::AffineTransform{(:μ,)}) = 0.0
 
 function Base.rand(rng::Random.AbstractRNG, ::Type{T}, d::Affine) where {T}
     z = rand(rng, T, parent(d))
