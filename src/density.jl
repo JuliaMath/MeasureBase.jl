@@ -107,6 +107,8 @@ function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
     α = basemeasure(μ)
     β = basemeasure(ν)
 
+    # If α===μ and β===ν, The recursive call would be exactly the same as the
+    # original one. We need to break the recursion.
     if α===μ && β===ν
         @warn """
         No method found for logdensity(μ, ν, x) where
@@ -119,10 +121,18 @@ function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
         return NaN
     end
 
-    ℓμ = logdensity(μ, x)
-    ℓν = logdensity(ν, x)
+    # Infinite or NaN results occur when outside the support of α or β, 
+    # and also when one measure is singular wrt the other. Computing the base
+    # measures first is often much cheaper, and allows the numerically-intensive
+    # computation to "fall through" in these cases.
+    # TODO: Add tests to check that NaN cases work properly
+    ℓ = logdensity(α, β, x)
+    isfinite(ℓ) || return ℓ
 
-    return ℓμ - ℓν + logdensity(α, β, x)
+    ℓ += logdensity(μ, x)
+    ℓ -= logdensity(ν, x)
+
+    return ℓ
 end
 
 logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
