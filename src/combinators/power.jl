@@ -63,3 +63,21 @@ params(d::ProductMeasure{F,<:Fill}) where {F} = params(first(marginals(d)))
 params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
+
+@inline basemeasure(d::PowerMeasure) = _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+
+@inline _basemeasure(d::PowerMeasure, b) = b ^ size(d.pars)
+
+@inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
+    n = length(d.pars)
+    inbounds(x) = all(xj -> b.inbounds(xj), x)
+    constℓ = n * b.constℓ
+    varℓ = n * b.varℓ
+    base = b.base ^ size(d.pars)
+    FactoredBase(inbounds, constℓ, varℓ, base)
+end
+
+function logdensity(d::PowerMeasure, x)
+    d1 = d.f(first(d.pars))
+    sum(xj -> logdensity(d1, xj), x)
+end
