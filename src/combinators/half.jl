@@ -11,10 +11,16 @@ end
 
 unhalf(μ::Half) = μ.parent
 
-basemeasure(μ::Half) = WeightedMeasure(logtwo, basemeasure(unhalf(μ)))
+function basemeasure(μ::Half)
+    inbounds(x) = x > 0
+    constℓ = logtwo
+    varℓ = 0.0
+    base = basemeasure(unhalf(μ))
+    FactoredBase(inbounds, constℓ, varℓ, base)
+end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
     return abs(rand(rng, T, unhalf(μ)))
 end
 
-logdensity(μ::Half, x) = x > 0 ? logdensity(unhalf(μ), x) : -Inf
+logdensity(μ::Half, x) = logdensity(unhalf(μ), x)
