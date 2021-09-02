@@ -4,6 +4,8 @@ struct AffineTransform{N,T}
     par::NamedTuple{N,T}
 end
 
+params(f::AffineTransform) = getfield(f, :par)
+
 @inline Base.getproperty(d::AffineTransform, s::Symbol) = getfield(getfield(d, :par), s)
 
 Base.propertynames(d::AffineTransform{N}) where {N} = N 
@@ -32,6 +34,12 @@ logjac(f::AffineTransform{(:μ,)}) = 0.0
 struct Affine{N,M,T} <: AbstractMeasure
     f::AffineTransform{N,T}
     parent::M
+
+    function Affine(f::AffineTransform, parent::WeightedMeasure)
+        WeightedMeasure(parent.logweight, Affine(f, parent.base))
+    end
+
+    Affine(f::AffineTransform{N,T}, parent::M) where {N,M,T} = new{N,M,T}(f, parent)
 end
 
 parent(d::Affine) = getfield(d, :parent)

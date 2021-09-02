@@ -1,7 +1,7 @@
 name = "MeasureBase"
 uuid = "fa1605e6-acd5-459c-a1e6-7e635759db14"
 authors = ["Chad Scherrer <chad.scherrer@gmail.com> and contributors"]
-version = "0.3.6"
+version = "0.3.7"
 
 [deps]
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
