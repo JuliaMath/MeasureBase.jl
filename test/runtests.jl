@@ -156,6 +156,7 @@ end
     @half Normal
     @test logdensity(HalfNormal(), Lebesgue(ℝ), -0.2) == -Inf
     @test logdensity(HalfNormal(), 0.2) == logdensity(Normal(), 0.2)
+    @test density(HalfNormal(), Lebesgue(ℝ), 0.2) ≈ 2 * density(Normal(), Lebesgue(ℝ), 0.2)
 end
 
 
