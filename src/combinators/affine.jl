@@ -34,12 +34,6 @@ logjac(f::AffineTransform{(:μ,)}) = 0.0
 struct Affine{N,M,T} <: AbstractMeasure
     f::AffineTransform{N,T}
     parent::M
-
-    function Affine(f::AffineTransform, parent::WeightedMeasure)
-        WeightedMeasure(parent.logweight, Affine(f, parent.base))
-    end
-
-    Affine(f::AffineTransform{N,T}, parent::M) where {N,M,T} = new{N,M,T}(f, parent)
 end
 
 parent(d::Affine) = getfield(d, :parent)
@@ -53,10 +47,6 @@ end
 function paramnames(::Type{A}) where {N,M, A<:Affine{N,M}}
     tuple(union(N, paramnames(M))...)
 end
-
-Affine(nt::NamedTuple, μ::AbstractMeasure) = Affine(AffineTransform(nt), μ)
-
-Affine(nt::NamedTuple) = μ -> Affine(nt, μ)
 
 Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
 
