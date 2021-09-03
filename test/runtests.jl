@@ -154,12 +154,11 @@ end
 @testset "Half" begin
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     @half Normal
-    @test logdensity(HalfNormal(), -0.2) == -Inf
+    @test logdensity(HalfNormal(), Lebesgue(ℝ), -0.2) == -Inf
     @test logdensity(HalfNormal(), 0.2) == logdensity(Normal(), 0.2)
-    
-    @half Lebesgue
-    @test basemeasure(HalfLebesgue(ℝ)) == 2 * Lebesgue(ℝ)
+    @test density(HalfNormal(), Lebesgue(ℝ), 0.2) ≈ 2 * density(Normal(), Lebesgue(ℝ), 0.2)
 end
+
 
 # import MeasureBase.:⋅
 # function ⋅(μ::Normal, kernel) 
