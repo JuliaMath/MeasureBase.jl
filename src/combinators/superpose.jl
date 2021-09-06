@@ -18,6 +18,8 @@ struct SuperpositionMeasure{NT} <: AbstractMeasure
     components :: NT   
 end
 
+
+
 testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 
 # SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
@@ -41,10 +43,7 @@ testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 #     SuperpositionMeasure{X,N+1}(components)
 # end
 
-function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
-    components = (μ, ν)
-    SuperpositionMeasure(components)
-end
+Base.:+(μ::AbstractMeasure...) = superpose(μ...)
 
 logdensity(μ::SuperpositionMeasure, x) = logsumexp((logdensity(m,x) for m in μ.components))
 

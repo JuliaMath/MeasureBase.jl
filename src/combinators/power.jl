@@ -32,11 +32,11 @@ export PowerMeasure
 const PowerMeasure{F,T,N,A} = ProductMeasure{F,Fill{T,N,A}}
 
 function Base.:^(μ::AbstractMeasure, dims::Integer...)
-    return μ^dims
+    return μ ^ dims
 end
 
 function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
-    ProductMeasure(identity, Fill(μ, dims))
+    powermeasure(μ, dims)
 end
 
 # Same as PowerMeasure
@@ -53,10 +53,7 @@ end
 
 # sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}
 
-function Base.:^(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
-    k = prod(dims) * μ.logweight
-    return WeightedMeasure(k, μ.base^dims)
-end
+
 
 params(d::ProductMeasure{F,<:Fill}) where {F} = params(first(marginals(d)))
 
