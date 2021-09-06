@@ -69,7 +69,7 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
     n = length(d.pars)
     inbounds(x) = all(xj -> b.inbounds(xj), x)
     constℓ = n * b.constℓ
-    varℓ = n * b.varℓ
+    varℓ() = n * b.varℓ()
     base = b.base ^ size(d.pars)
     FactoredBase(inbounds, constℓ, varℓ, base)
 end

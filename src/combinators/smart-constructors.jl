@@ -13,12 +13,11 @@ function affine(f::AffineTransform, parent::WeightedMeasure)
 end
 
 function affine(f::AffineTransform, parent::FactoredBase)
-    finv = inv(f)
-    inbounds(x) = parent.inbounds(finv(x))
     constℓ = parent.constℓ
     varℓ = parent.varℓ
-    base = AffineTransform(f, parent.base)
-    FactoredBase(inbounds, constℓ, varℓ, base)
+    # Avoid transforming `inbounds`, which is expensive
+    base = affine(f, restrict(parent.inbounds, parent.base))
+    FactoredBase(Returns(true), constℓ, varℓ, base)
 end
 
 
