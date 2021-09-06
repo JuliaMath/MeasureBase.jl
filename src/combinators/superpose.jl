@@ -4,30 +4,16 @@ export SuperpositionMeasure
     struct SuperpositionMeasure{X,NT} <: AbstractMeasure
         components :: NT
     end
-
 Superposition of measures is analogous to mixture distributions, but (because
 measures need not be normalized) requires no scaling.
-
 The superposition of two measures μ and ν can be more concisely written as μ + ν.
-
 Superposition measures satisfy
     
     basemeasure(μ + ν) == basemeasure(μ) + basemeasure(ν)
 """
-abstract type SuperpositionMeasure <: AbstractMeasure end
-
-@concrete terse struct SuperpositionCommonBase
-    components
-    base
+struct SuperpositionMeasure{NT} <: AbstractMeasure
+    components :: NT   
 end
-
-@concrete terse struct SuperpositionDistinctBase
-    l
-    r
-end
-
-
-
 
 testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 
@@ -52,11 +38,14 @@ testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 #     SuperpositionMeasure{X,N+1}(components)
 # end
 
-Base.:+(μ::AbstractMeasure...) = superpose(μ...)
+function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
+    components = (μ, ν)
+    superpose(components)
+end
 
 logdensity(μ::SuperpositionMeasure, x) = logsumexp((logdensity(m,x) for m in μ.components))
 
-basemeasure(μ::SuperpositionMeasure) = SuperpositionMeasure(map(basemeasure, μ.components))
+basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
