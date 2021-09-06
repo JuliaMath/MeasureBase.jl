@@ -36,6 +36,8 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
+Affine(nt::NamedTuple, μ::AbstractMeasure) = affine(nt, μ)
+
 Affine(nt::NamedTuple) = affine(nt)
 
 parent(d::Affine) = getfield(d, :parent)
