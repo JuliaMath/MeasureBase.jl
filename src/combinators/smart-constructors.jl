@@ -47,14 +47,9 @@ function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N <: Abstra
     return pointwiseproduct(data...)
 end
 
-function pointwiseproduct(μ::M, ν::N) where {M <: AbstractMeasure, N <: AbstractMeasure}
-    data = (μ, ν)
-    return pointwiseproduct(data...)
-end
-
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
     data = (μ, ℓ)
-    return pointwiseproduct(data...)
+    return PointwiseProductMeasure(data)
 end
 
 ###############################################################################
@@ -84,8 +79,10 @@ restrict(f, b) = RestrictedMeasure(f, b)
 ###############################################################################
 # SuperpositionMeasure
 
-function superpose(μ...)
-end
+superpose(a::AbstractArray) = SuperpositionMeasure(a)
+
+superpose(t::Tuple) = SuperpositionMeasure(t)
+superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
 function superpose(μ::AbstractMeasure, ν::AbstractMeasure)
     components = (μ, ν)
