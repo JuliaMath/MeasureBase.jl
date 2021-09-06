@@ -5,10 +5,10 @@ end
 
 function logdensity(d::Restricted, x)
     d.f(x) || return -Inf
-    logdensity(d.base, x)
 end
 
 function density(d::Restricted, x)
     d.f(x) || return 0.0
-    density(d.base, x)
 end
+
+basemeasure(μ::RestrictedMeasure) = μ.base
