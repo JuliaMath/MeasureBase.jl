@@ -14,9 +14,18 @@ Superposition measures satisfy
     
     basemeasure(μ + ν) == basemeasure(μ) + basemeasure(ν)
 """
-struct SuperpositionMeasure{NT} <: AbstractMeasure
-    components :: NT   
+abstract type SuperpositionMeasure <: AbstractMeasure end
+
+@concrete terse struct SuperpositionCommonBase
+    components
+    base
 end
+
+@concrete terse struct SuperpositionDistinctBase
+    l
+    r
+end
+
 
 
 

@@ -15,7 +15,6 @@ Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 # TODO: Pull weights outside
 basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
 
-
 export marginals
 
 function marginals(d::ProductMeasure{F,I}) where {F,I}
@@ -36,9 +35,6 @@ function Base.show(io::IO, μ::ProductMeasure{NamedTuple{N,T}}) where {N,T}
     io = IOContext(io, :compact => true)
     print(io, "Product(",μ.data, ")")
 end
-
-
-
 
 function Base.show_unquoted(io::IO, μ::ProductMeasure, indent::Int, prec::Int)
     io = IOContext(io, :compact => true)

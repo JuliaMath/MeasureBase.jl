@@ -60,6 +60,7 @@ include("combinators/spikemixture.jl")
 include("kernel.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
+include("combinators/smart-constructors.jl")
 
 include("rand.jl")
 

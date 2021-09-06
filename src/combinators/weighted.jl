@@ -43,7 +43,7 @@ end
 
 function Base.:*(k::T, m::AbstractMeasure) where {T <: Number}
     logk = log(k)
-    return WeightedMeasure(logk,m)
+    return weightedmeasure(logk,m)
 end
 
 Base.:*(m::AbstractMeasure, k::Real) = k * m

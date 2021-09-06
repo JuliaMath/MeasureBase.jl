@@ -36,6 +36,8 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
+Affine(nt::NamedTuple) = affine(nt)
+
 parent(d::Affine) = getfield(d, :parent)
 
 function params(μ::Affine)
@@ -67,11 +69,11 @@ logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x)
 logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x)
 logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
 
-basemeasure(d::Affine) = Affine(getfield(d, :f), basemeasure(d.parent))
+basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 
 # We can't do this until we know we're working with Lebesgue measure, since for
 # example it wouldn't make sense to apply a log-Jacobian to a point measure
-basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = WeightedMeasure(-logjac(d), d.parent)
+basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = weightedmeasure(-logjac(d), d.parent)
 
 logjac(d::Affine) = logjac(getfield(d, :f))
 

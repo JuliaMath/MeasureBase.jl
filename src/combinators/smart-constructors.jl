@@ -2,9 +2,11 @@
 ###############################################################################
 # Affine
 
+affine(f::AffineTransform, μ::AbstractMeasure) = Affine(f, μ)
+
 affine(nt::NamedTuple, μ::AbstractMeasure) = affine(AffineTransform(nt), μ)
 
-affine(nt::NamedTuple) = μ -> affine(nt, μ)
+affine(f) = μ -> affine(f, μ)
 
 function affine(f::AffineTransform, parent::WeightedMeasure)
     WeightedMeasure(parent.logweight, affine(f, parent.base))
@@ -23,12 +25,37 @@ end
 ###############################################################################
 # Half
 
-function half end
+half(μ::AbstractMeasure) = Half(μ)
 
 ###############################################################################
 # PointwiseProductMeasure
 
-function pointwiseproduct end
+pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
+
+function pointwiseproduct(μ::PointwiseProductMeasure{X}, ν::PointwiseProductMeasure{Y}) where {X,Y}
+    data = (μ.data..., ν.data...)
+    pointwiseproduct(data...)
+end
+
+function pointwiseproduct(μ::AbstractMeasure, ν::PointwiseProductMeasure)
+    data = (μ, ν.data...)
+    return pointwiseproduct(data...)
+end
+
+function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N <: AbstractMeasure}
+    data = (μ.data..., ν)
+    return pointwiseproduct(data...)
+end
+
+function pointwiseproduct(μ::M, ν::N) where {M <: AbstractMeasure, N <: AbstractMeasure}
+    data = (μ, ν)
+    return pointwiseproduct(data...)
+end
+
+function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
+    data = (μ, ℓ)
+    return pointwiseproduct(data...)
+end
 
 ###############################################################################
 # PowerMeaure
@@ -39,13 +66,13 @@ end
 
 function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
     k = prod(dims) * μ.logweight
-    return WeightedMeasure(k, μ.base^dims)
+    return weightedmeasure(k, μ.base^dims)
 end
 
 ###############################################################################
 # ProductMeasure
 
-function productmeasure end
+productmeasure(f, pars) = ProductMeasure(f, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 
@@ -60,6 +87,10 @@ restrict(f, b) = RestrictedMeasure(f, b)
 function superpose(μ...)
 end
 
+function superpose(μ::AbstractMeasure, ν::AbstractMeasure)
+    components = (μ, ν)
+    superpose(components)
+end
 
 ###############################################################################
 # WeightedMeasure
@@ -71,4 +102,3 @@ end
 function weightedmeasure(ℓ, b::WeightedMeasure)
     weightedmeasure(ℓ + b.logweight, b.base)
 end 
-

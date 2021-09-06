@@ -43,13 +43,13 @@ end
 test_measures = [
     # Chain(x -> Normal(μ=x), Normal(μ=0.0))
     For(3) do j Dirac(j) end
-    For(2,3) do i,j Dirac(i) + Dirac(j) end
+    # For(2,3) do i,j Dirac(i) + Dirac(j) end
     Lebesgue(ℝ) ^ 3
     Lebesgue(ℝ) ^ (2,3)
     3 * Lebesgue(ℝ)
     Dirac(π)
     Lebesgue(ℝ)
-    Dirac(0.0) + Lebesgue(ℝ)
+    # Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 2)
     # Normal() ⊙ Cauchy()
 ]
@@ -60,7 +60,7 @@ testbroken_measures = [
     CountingMeasure(Float64)
     Likelihood
 
-    TrivialMeasure()
+    # TrivialMeasure()
 ]
 
 @testset "testvalue" begin

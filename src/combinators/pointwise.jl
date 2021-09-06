@@ -2,9 +2,6 @@ export ⊙
 
 @concrete terse struct PointwiseProductMeasure{T} <: AbstractMeasure
     data :: T
-
-    PointwiseProductMeasure(μs...) = new{typeof(μs)}(μs)
-    PointwiseProductMeasure(μs) = new{typeof(μs)}(μs)
 end
 
 Base.size(μ::PointwiseProductMeasure) = size(μ.data)
@@ -28,30 +25,7 @@ end
 
 Base.length(m::PointwiseProductMeasure{T}) where {T} = length(m.data)
 
-function ⊙(μ::PointwiseProductMeasure{X}, ν::PointwiseProductMeasure{Y}) where {X,Y}
-    data = (μ.data..., ν.data...)
-    PointwiseProductMeasure(data...)
-end
-
-function ⊙(μ::AbstractMeasure, ν::PointwiseProductMeasure)
-    data = (μ, ν.data...)
-    PointwiseProductMeasure(data...)
-end
-
-function ⊙(μ::PointwiseProductMeasure, ν::N) where {N <: AbstractMeasure}
-    data = (μ.data..., ν)
-    PointwiseProductMeasure(data...)
-end
-
-function ⊙(μ::M, ν::N) where {M <: AbstractMeasure, N <: AbstractMeasure}
-    data = (μ, ν)
-    PointwiseProductMeasure(data...)
-end
-
-function ⊙(μ::AbstractMeasure, ℓ::Likelihood)
-    data = (μ, ℓ)
-    PointwiseProductMeasure(data...)
-end
+⊙(args...) = pointwiseproduct(args...)
 
 function logdensity(d::PointwiseProductMeasure, x)
     sum((logdensity(dⱼ, x) for dⱼ in d.data))
