@@ -36,7 +36,13 @@ function logdensity end
 
 
 if VERSION < v"1.7.0-beta1.0"
-    @eval Returns(x) = _ -> x
+    @eval begin
+        struct Returns{T}
+            value::T
+        end
+
+        (f::Returns)(x) = f.value
+    end
 end
 
 include("combinators/half.jl")
