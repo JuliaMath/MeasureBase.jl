@@ -61,11 +61,14 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
-@inline basemeasure(d::PowerMeasure) = _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+# Same as PowerMeasure
+@inline basemeasure(d::ProductMeasure{F,<:Fill}) where {F}= _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
 
-@inline _basemeasure(d::PowerMeasure, b) = b ^ size(d.pars)
+# Same as PowerMeasure
+@inline _basemeasure(d::ProductMeasure{F,<:Fill}, b) where {F} = b ^ size(d.pars)
 
-@inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
+# Same as PowerMeasure
+@inline function _basemeasure(d::ProductMeasure{F,<:Fill}, b::FactoredBase) where {F}
     n = length(d.pars)
     inbounds(x) = all(xj -> b.inbounds(xj), x)
     constℓ = n * b.constℓ
@@ -74,7 +77,8 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function logdensity(d::PowerMeasure, x)
+# Same as PowerMeasure
+function logdensity(d::ProductMeasure{F,<:Fill}, x) where {F}
     d1 = d.f(first(d.pars))
     sum(xj -> logdensity(d1, xj), x)
 end
