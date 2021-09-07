@@ -7,6 +7,13 @@ using Random
 using ConcreteStructs
 using MLStyle
 
+using DomainSets
+
+ℝ₊ = HalfLine()
+𝕀 = UnitInterval()
+
+export ℝ, ℝ₊, 𝕀
+
 export ≪
 export sampletype
 
@@ -41,7 +48,7 @@ end
 
 include("combinators/half.jl")
 include("exp.jl")
-include("domains.jl")
+# include("domains.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
 include("parameterized.jl")
