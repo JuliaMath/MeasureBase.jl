@@ -13,9 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         pkg: [
-          "cscherrer/MeasureTheory.jl",
-          "cscherrer/Soss.jl",
-          "mschauer/Mitosis.jl"
+          "cscherrer/MeasureTheory.jl"
         ]
         pkgversion: [latest, stable]
 
