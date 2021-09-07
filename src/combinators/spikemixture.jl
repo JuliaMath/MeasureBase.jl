@@ -1,5 +1,7 @@
 export SpikeMixture
 
+# TODO: Add `AbstractSuperposition <: AbstractMeasure`, and make SpikeMixture a
+# subtype of this 
 struct SpikeMixture{T,S} <: AbstractMeasure
     m::T # parent
     w::S # relative weight of parent

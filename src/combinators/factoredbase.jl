@@ -9,7 +9,7 @@ end
 
 function logdensity(d::FactoredBase, x)
     d.inbounds(x) || return -Inf
-    d.constℓ + d.varℓ
+    d.constℓ + d.varℓ()
 end
 
 basemeasure(d::FactoredBase) = d.base

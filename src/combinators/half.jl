@@ -14,7 +14,7 @@ unhalf(μ::Half) = μ.parent
 function basemeasure(μ::Half)
     inbounds(x) = x > 0
     constℓ = logtwo
-    varℓ = 0.0
+    varℓ() = 0.0
     base = basemeasure(unhalf(μ))
     FactoredBase(inbounds, constℓ, varℓ, base)
 end

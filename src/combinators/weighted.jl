@@ -22,14 +22,6 @@ end
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight :: R
     base :: M
-
-    function WeightedMeasure(ℓ, b::WeightedMeasure)
-        WeightedMeasure(ℓ + b.logweight, b.base)
-    end 
-
-    function WeightedMeasure(ℓ::R, b::M) where {R,M}
-        new{R,M}(ℓ, b)
-    end 
 end
 
 function Base.show(io::IO, μ::WeightedMeasure)
@@ -51,17 +43,13 @@ end
 
 function Base.:*(k::T, m::AbstractMeasure) where {T <: Number}
     logk = log(k)
-    return WeightedMeasure(logk,m)
+    return weightedmeasure(logk,m)
 end
 
 Base.:*(m::AbstractMeasure, k::Real) = k * m
 
 ≪(::M, ::WeightedMeasure{R,M}) where {R,M} = true
 ≪(::WeightedMeasure{R,M}, ::M) where {R,M} = true
-
-
-
-
 
 sampletype(μ:: WeightedMeasure) = sampletype(μ.base)
 

@@ -34,6 +34,11 @@ Methods for computing density relative to other measures will be
 """
 function logdensity end
 
+
+if VERSION < v"1.7.0-beta1.0"
+    @eval Returns(x) = _ -> x
+end
+
 include("combinators/half.jl")
 include("exp.jl")
 include("domains.jl")
@@ -60,6 +65,8 @@ include("combinators/spikemixture.jl")
 include("kernel.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
+include("combinators/restricted.jl")
+include("combinators/smart-constructors.jl")
 
 include("rand.jl")
 

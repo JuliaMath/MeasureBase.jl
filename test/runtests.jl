@@ -51,7 +51,7 @@ test_measures = [
     Lebesgue(ℝ)
     Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 2)
-    # Normal() ⊙ Cauchy()
+    d ⊙ d
 ]
 
 testbroken_measures = [

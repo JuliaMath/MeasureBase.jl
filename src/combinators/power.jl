@@ -32,11 +32,11 @@ export PowerMeasure
 const PowerMeasure{F,T,N,A} = ProductMeasure{F,Fill{T,N,A}}
 
 function Base.:^(μ::AbstractMeasure, dims::Integer...)
-    return μ^dims
+    return μ ^ dims
 end
 
 function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
-    ProductMeasure(identity, Fill(μ, dims))
+    powermeasure(μ, dims)
 end
 
 # Same as PowerMeasure
@@ -53,10 +53,7 @@ end
 
 # sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}
 
-function Base.:^(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
-    k = prod(dims) * μ.logweight
-    return WeightedMeasure(k, μ.base^dims)
-end
+
 
 params(d::ProductMeasure{F,<:Fill}) where {F} = params(first(marginals(d)))
 
@@ -64,20 +61,24 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
-@inline basemeasure(d::PowerMeasure) = _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+# Same as PowerMeasure
+@inline basemeasure(d::ProductMeasure{F,<:Fill}) where {F}= _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
 
-@inline _basemeasure(d::PowerMeasure, b) = b ^ size(d.pars)
+# Same as PowerMeasure
+@inline _basemeasure(d::ProductMeasure{F,<:Fill}, b) where {F} = b ^ size(d.pars)
 
-@inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
+# Same as PowerMeasure
+@inline function _basemeasure(d::ProductMeasure{F,<:Fill}, b::FactoredBase) where {F}
     n = length(d.pars)
     inbounds(x) = all(xj -> b.inbounds(xj), x)
     constℓ = n * b.constℓ
-    varℓ = n * b.varℓ
+    varℓ() = n * b.varℓ()
     base = b.base ^ size(d.pars)
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function logdensity(d::PowerMeasure, x)
+# Same as PowerMeasure
+function logdensity(d::ProductMeasure{F,<:Fill}, x) where {F}
     d1 = d.f(first(d.pars))
     sum(xj -> logdensity(d1, xj), x)
 end

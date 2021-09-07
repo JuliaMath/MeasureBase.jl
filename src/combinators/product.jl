@@ -8,15 +8,12 @@ struct ProductMeasure{F,I} <: AbstractMeasure
     pars::I
 end
 
-ProductMeasure(nt::NamedTuple) = ProductMeasure(identity, nt)
-
 Base.size(μ::ProductMeasure) = size(marginals(μ))
 
 Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 
 # TODO: Pull weights outside
 basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
-
 
 export marginals
 
@@ -38,9 +35,6 @@ function Base.show(io::IO, μ::ProductMeasure{NamedTuple{N,T}}) where {N,T}
     io = IOContext(io, :compact => true)
     print(io, "Product(",μ.data, ")")
 end
-
-
-
 
 function Base.show_unquoted(io::IO, μ::ProductMeasure, indent::Int, prec::Int)
     io = IOContext(io, :compact => true)
@@ -140,11 +134,6 @@ end
     end
     return x
 end
-
-
-
-
-
 
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
