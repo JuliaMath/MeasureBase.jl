@@ -74,16 +74,18 @@ Base.size(d::Affine{(:ω,)}) = (size(d.ω, 2),)
 logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x)
 logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x)
 logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
+logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ)) 
+logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ)) 
 
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
-function logdensity(d::Affine{(:μ,:σ)}, x)
+function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}}, x)
     z = x - d.μ
     ldiv!(d.σ, z)
     logdensity(d.parent, z)
 end
     
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
-function logdensity(d::Affine{(:μ,:ω)}, x)
+function logdensity(d::Affine{(:μ,:ω), Tuple{AbstractVector, AbstractMatrix}}, x)
     z = x - d.μ
     lmul!(d.ω, z)
     logdensity(d.parent, z)
