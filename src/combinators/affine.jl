@@ -1,6 +1,6 @@
 export Affine, AffineTransform
 using LinearAlgebra
-struct AffineTransform{N,T}
+@concrete terse struct AffineTransform{N,T}
     par::NamedTuple{N,T}
 end
 
@@ -22,16 +22,21 @@ Base.propertynames(d::AffineTransform{N}) where {N} = N
 (f::AffineTransform{(:μ,:σ)})(x) = f.σ * x + f.μ
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
 
+
+logjac(x::AbstractMatrix) = first(logabsdet(x))
+
+logjac(x::Number) = log(abs(x))
+
 # TODO: `log` doesn't work for the multivariate case, we need the log absolute determinant
-logjac(f::AffineTransform{(:μ,:σ)}) = log(f.σ)
-logjac(f::AffineTransform{(:μ,:ω)}) = -log(f.ω)
-logjac(f::AffineTransform{(:σ,)}) = log(f.σ)
-logjac(f::AffineTransform{(:ω,)}) = -log(f.ω)
+logjac(f::AffineTransform{(:μ,:σ)}) = logjac(f.σ)
+logjac(f::AffineTransform{(:μ,:ω)}) = -logjac(f.ω)
+logjac(f::AffineTransform{(:σ,)}) = logjac(f.σ)
+logjac(f::AffineTransform{(:ω,)}) = -logjac(f.ω)
 logjac(f::AffineTransform{(:μ,)}) = 0.0
 
 ###############################################################################
 
-struct Affine{N,M,T} <: AbstractMeasure
+@concrete terse struct Affine{N,M,T} <: AbstractMeasure
     f::AffineTransform{N,T}
     parent::M
 end
@@ -89,6 +94,10 @@ basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 # We can't do this until we know we're working with Lebesgue measure, since for
 # example it wouldn't make sense to apply a log-Jacobian to a point measure
 basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = weightedmeasure(-logjac(d), d.parent)
+
+function basemeasure(d::Affine{N,L}) where {N, L<:PowerMeasure{typeof(identity), <:Lebesgue}}
+    weightedmeasure(-logjac(d), d.parent)
+end
 
 logjac(d::Affine) = logjac(getfield(d, :f))
 
