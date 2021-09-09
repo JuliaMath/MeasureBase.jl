@@ -143,9 +143,9 @@ end
 
     x = randn(3)
 
-    @test logdensity(Affine((;μ,σ), d^3), x) ≈  logdensity(Affine((;μ,ω), d^3), x)
-    @test logdensity(Affine((;σ), d^3), x) ≈  logdensity(Affine((;ω), d^3), x)
-    @test logdensity(Affine((;μ), d^3), x) ≈  logdensity(d^3, x-μ)
+    @test logdensity(Affine((μ=μ,σ=σ), d^3), x) ≈  logdensity(Affine((μ=μ,ω=ω), d^3), x)
+    @test logdensity(Affine((σ=σ,), d^3), x) ≈  logdensity(Affine((ω=ω,), d^3), x)
+    @test logdensity(Affine((μ=μ,), d^3), x) ≈  logdensity(d^3, x-μ)
 
 end
 
