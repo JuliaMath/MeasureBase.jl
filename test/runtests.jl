@@ -134,6 +134,19 @@ end
         @test Affine(par)(unif) == Affine(f, unif)
         @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
     end
+
+    d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+
+    μ = randn(3)
+    σ = LowerTriangular(randn(3,3))
+    ω = inv(σ)
+
+    x = randn(3)
+
+    @test logdensity(Affine((μ=μ,σ=σ), d^3), x) ≈  logdensity(Affine((μ=μ,ω=ω), d^3), x)
+    @test logdensity(Affine((σ=σ,), d^3), x) ≈  logdensity(Affine((ω=ω,), d^3), x)
+    @test logdensity(Affine((μ=μ,), d^3), x) ≈  logdensity(d^3, x-μ)
+
 end
 
 @testset "For" begin
