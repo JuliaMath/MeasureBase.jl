@@ -1,5 +1,5 @@
 export Affine, AffineTransform
-
+using LinearAlgebra
 struct AffineTransform{N,T}
     par::NamedTuple{N,T}
 end
@@ -62,14 +62,27 @@ Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
     end
 end
 
-# Note: We could also write
-# logdensity(d::Affine, x) = logdensity(inv(getfield(d, :f)), x)
+Base.size(d) = size(d.μ)
+Base.size(d::Affine{(:σ,)}) = (size(d.σ, 1),)
+Base.size(d::Affine{(:ω,)}) = (size(d.ω, 2),)
 
-logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
-logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
 logdensity(d::Affine{(:σ,)}, x) = logdensity(d.parent, d.σ \ x)
 logdensity(d::Affine{(:ω,)}, x) = logdensity(d.parent, d.ω * x)
 logdensity(d::Affine{(:μ,)}, x) = logdensity(d.parent, x - d.μ) 
+
+# logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
+function logdensity(d::Affine{(:μ,:σ)}, x)
+    z = x - d.μ
+    ldiv!(d.σ, z)
+    logdensity(d.parent, z)
+end
+    
+# logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
+function logdensity(d::Affine{(:μ,:ω)}, x)
+    z = x - d.μ
+    lmul!(d.ω, z)
+    logdensity(d.parent, z)
+end
 
 basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 
