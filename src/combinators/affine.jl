@@ -87,6 +87,12 @@ logjac(f::AffineTransform{(:μ,)}) = 0.0
     parent::M
 end
 
+function testvalue(d::Affine)
+    f = getfield(d, :f)
+    z = testvalue(parent(d))
+    return f(z)
+end
+
 Base.size(d::Affine) = size(getfield(d, :f))
 
 Affine(nt::NamedTuple, μ::AbstractMeasure) = affine(nt, μ)
