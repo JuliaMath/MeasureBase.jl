@@ -23,7 +23,14 @@ Base.propertynames(d::AffineTransform{N}) where {N} = N
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
 
 
-logjac(x::AbstractMatrix) = first(logabsdet(x))
+function logjac(x::AbstractMatrix) 
+    (m,n) = size(x)
+    m == n && return first(logabsdet(x))
+
+    # Equivalent to sum(log, svdvals(x)), but much faster
+    m > n && return first(logabsdet(x' * x)) / 2
+    return first(logabsdet(x * x')) / 2
+end
 
 logjac(x::Number) = log(abs(x))
 
