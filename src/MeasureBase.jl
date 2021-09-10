@@ -3,6 +3,7 @@ module MeasureBase
 const logtwo = log(2.0)
 
 using Random
+import Random: rand!
 
 using ConcreteStructs
 using MLStyle

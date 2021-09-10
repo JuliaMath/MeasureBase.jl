@@ -6,9 +6,12 @@ Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.GLOBAL_RNG, T, μ)
 
 Base.rand(rng::AbstractRNG, d::AbstractMeasure) = rand(rng, Float64, d)
 
-@inline Random.rand!(d::AbstractMeasure, arr::AbstractArray) = rand!(GLOBAL_RNG, d, arr)
+@inline Random.rand!(d::AbstractMeasure, args...) = rand!(GLOBAL_RNG, d, args...)
 
-
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractMeasure) where {T}
+    x = testvalue(d)
+    rand!(d, x)
+end
 
 # struct ArraySlot{A,I}
 #     arr::A
