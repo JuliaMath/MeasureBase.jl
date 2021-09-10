@@ -134,7 +134,12 @@ logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
 function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}}, x)
     z = x - d.μ
-    ldiv!(factorize(d.σ), z)
+    σ = d.σ
+    if σ isa Factorization
+        ldiv!(σ, z)
+    else
+        ldiv!(factorize(σ), z)
+    end
     logdensity(d.parent, z)
 end
     
