@@ -93,8 +93,6 @@ function testvalue(d::Affine)
     return f(z)
 end
 
-Base.size(d::Affine) = size(getfield(d, :f))
-
 Affine(nt::NamedTuple, μ::AbstractMeasure) = affine(nt, μ)
 
 Affine(nt::NamedTuple) = affine(nt)
