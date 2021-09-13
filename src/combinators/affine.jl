@@ -45,6 +45,11 @@ end
     return x
 end
 
+@inline function apply!(x, f::AffineTransform{(:ω,),::Factorization}, z)
+    ldiv!(x, f.ω, z)
+    return x
+end
+
 @inline function apply!(x, f::AffineTransform{(:ω,)}, z)
     ldiv!(x, factorize(f.ω), z)
     return x
