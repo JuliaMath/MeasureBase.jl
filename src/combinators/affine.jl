@@ -45,7 +45,7 @@ end
     return x
 end
 
-@inline function apply!(x, f::AffineTransform{(:ω,),::Factorization}, z)
+@inline function apply!(x, f::AffineTransform{(:ω,), Tuple{F}}, z) where {F<:Factorization}
     ldiv!(x, f.ω, z)
     return x
 end
