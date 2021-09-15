@@ -192,3 +192,9 @@ end
 # function Accessors.set(d::ProductMeasure{F,T}, ::typeof(params), p::Tuple) where {F, T<:Tuple}
 #     set.(marginals(d), params, p)
 # end
+
+function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
+    sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
+        logdensity(μ_ν_x...)
+    end
+end
