@@ -193,8 +193,8 @@ end
 #     set.(marginals(d), params, p)
 # end
 
-function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
-    sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
-        logdensity(μ_ν_x...)
-    end
-end
+# function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
+#     sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
+#         logdensity(μ_ν_x...)
+#     end
+# end
