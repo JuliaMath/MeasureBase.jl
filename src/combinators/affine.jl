@@ -114,11 +114,13 @@ function paramnames(::Type{A}) where {N,M, A<:Affine{N,M}}
     tuple(union(N, paramnames(M))...)
 end
 
-Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,)
+Base.propertynames(d::Affine{N}) where {N} = N ∪ (:parent,:f)
 
 @inline function Base.getproperty(d::Affine, s::Symbol) 
     if s === :parent
         return getfield(d, :parent)
+    elseif s === :f 
+        return getfield(d, :f)
     else
         return getproperty(getfield(d, :f), s)
     end
