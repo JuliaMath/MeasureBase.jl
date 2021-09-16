@@ -135,6 +135,17 @@ function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
     return ℓ
 end
 
+function logpdf(d::AbstractMeasure, x)
+    _logpdf(d, basemeasure(d), x, zero(Float64))
+end
+
+@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ::Float64)
+    d === β && return ℓ
+    Δℓ = logdensity(d, x)
+    # @show Δℓ, d
+    _logpdf(β, basemeasure(β), x, ℓ + Δℓ)
+end
+
 logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
 
 # logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
