@@ -135,7 +135,7 @@ logdensity(d::Affine{(:μ,:σ)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
 logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ)) 
 
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
-function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}}, x)
+@inline function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}}, x)
     z = x - d.μ
     σ = d.σ
     if σ isa Factorization
@@ -147,7 +147,7 @@ function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}},
 end
     
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
-function logdensity(d::Affine{(:μ,:ω), Tuple{AbstractVector, AbstractMatrix}}, x)
+@inline function logdensity(d::Affine{(:μ,:ω), Tuple{AbstractVector, AbstractMatrix}}, x)
     z = x - d.μ
     lmul!(d.ω, z)
     logdensity(d.parent, z)

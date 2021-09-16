@@ -98,12 +98,12 @@ Define a new measure in terms of a density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-function logdensity(μ::T, ν::T, x) where {T<:AbstractMeasure}
+@inline function logdensity(μ::T, ν::T, x) where {T<:AbstractMeasure}
     μ==ν && return 0.0
     invoke(logdensity, Tuple{AbstractMeasure, AbstractMeasure, typeof(x)}, μ, ν, x)
 end
 
-function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
+@inline function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
     α = basemeasure(μ)
     β = basemeasure(ν)
 
