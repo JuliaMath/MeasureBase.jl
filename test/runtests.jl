@@ -152,7 +152,15 @@ end
     d = ∫exp(x -> -x^2, Lebesgue(ℝ))
     a = Affine((σ=[1 0]',), d^1)
     x = randn(2)
+    y = randn(1)
     @test logpdf(a, x) ≈ logpdf(d, inv(a.f)(x)[1])
+    @test logpdf(a, a.f(y)) ≈ logpdf(d^1, y)
+
+    b = Affine((ω=[1 0]'',), d^1)
+    @test logpdf(b, x) ≈ logpdf(d, inv(b.f)(x)[1])
+    @test logpdf(b, b.f(y)) ≈ logpdf(d^1, y)
+
+    @test 
 end
 
 @testset "For" begin
