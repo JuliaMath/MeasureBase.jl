@@ -78,7 +78,7 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 end
 
 # Same as PowerMeasure
-function logdensity(d::ProductMeasure{F,<:Fill}, x) where {F}
+@inline function logdensity(d::ProductMeasure{F,<:Fill}, x) where {F}
     d1 = d.f(first(d.pars))
     sum(xj -> logdensity(d1, xj), x)
 end

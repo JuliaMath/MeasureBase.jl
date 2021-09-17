@@ -62,7 +62,7 @@ function Base.show(io::IO, μ::ProductMeasure{F,T}) where {F,T <: Tuple}
     print(io, join(string.(marginals(μ)), " ⊗ "))
 end
 
-function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
+@inline function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
     mapreduce(logdensity, +, d.f.(d.pars), x)
 end
 
@@ -191,4 +191,10 @@ end
 
 # function Accessors.set(d::ProductMeasure{F,T}, ::typeof(params), p::Tuple) where {F, T<:Tuple}
 #     set.(marginals(d), params, p)
+# end
+
+# function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
+#     sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
+#         logdensity(μ_ν_x...)
+#     end
 # end
