@@ -159,8 +159,6 @@ end
     b = Affine((ω=[1 0]'',), d^1)
     @test logpdf(b, x) ≈ logpdf(d, inv(b.f)(x)[1])
     @test logpdf(b, b.f(y)) ≈ logpdf(d^1, y)
-
-    @test 
 end
 
 @testset "For" begin
