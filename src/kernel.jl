@@ -67,16 +67,17 @@ mapcall(t, x) = map(func -> func(x), t)
 
 (k::Kernel{M,<:NamedTuple})(x) where {M} = k.f(;mapcall(k.ops, x)...)
 
-(k::Kernel)(x) = k.f(k.ops(x)...)
-
 (k::Kernel{F,S})(x...) where {F, N, S<:NTuple{N,Symbol}} = k(x)
-
 
 function (k::Kernel{F,S})(x::Tuple) where {F, N, S<:NTuple{N,Symbol}}
     k.f(NamedTuple{k.ops}(x))
 end
 
+(k::Kernel)(x) = kernelapply(k.f, k.ops(x)) 
 
+kernelapply(f, par::NamedTuple) = f(par)
+
+kernelapply(f, par::Tuple) = f(par...)
 
 # export kernelize
 
