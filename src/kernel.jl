@@ -54,6 +54,12 @@ function kernel(::Type{M}; ops...) where {M}
     Kernel{Type{M},typeof(nt)}(M,nt)
 end
 
+# kernel(Normal) do x
+#     (μ=x,σ=x^2)
+# end
+
+kernel(f, ::Type{M}) where {M} = kernel(M, f)
+
 # TODO: Would this benefit from https://github.com/tisztamo/FunctionWranglers.jl?
 mapcall(t, x) = map(func -> func(x), t)
 
