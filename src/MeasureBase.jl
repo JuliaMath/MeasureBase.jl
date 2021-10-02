@@ -46,6 +46,7 @@ if VERSION < v"1.7.0-beta1.0"
     end
 end
 
+include("combinators/mapsto.jl")
 include("combinators/half.jl")
 include("exp.jl")
 include("domains.jl")
