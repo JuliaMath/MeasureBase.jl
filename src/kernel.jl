@@ -73,11 +73,7 @@ function (k::Kernel{F,S})(x::Tuple) where {F, N, S<:NTuple{N,Symbol}}
     k.f(NamedTuple{k.ops}(x))
 end
 
-(k::Kernel)(x) = kernelapply(k.f, k.ops(x)) 
-
-kernelapply(f, par::NamedTuple) = f(par)
-
-kernelapply(f, par::Tuple) = f(par...)
+(κ::Kernel)(x) = κ.f(κ.ops(x))
 
 # export kernelize
 
