@@ -3,12 +3,14 @@ struct RestrictedMeasure{F,M} <: AbstractMeasure
     base::M
 end
 
-function logdensity(d::RestrictedMeasure, x)
+@inline function logdensity(d::RestrictedMeasure, x)
     d.f(x) || return -Inf
+    return 0.0
 end
 
 function density(d::RestrictedMeasure, x)
     d.f(x) || return 0.0
+    return 1.0
 end
 
 basemeasure(μ::RestrictedMeasure) = μ.base

@@ -4,6 +4,7 @@ using Random
 using LinearAlgebra
 
 using MeasureBase
+using MeasureBase: logpdf
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities=false, unbound_args=false)
@@ -134,6 +135,30 @@ end
         @test Affine(par)(unif) == Affine(f, unif)
         @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
     end
+
+    d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+
+    μ = randn(3)
+    σ = LowerTriangular(randn(3,3))
+    ω = inv(σ)
+
+    x = randn(3)
+
+    @test logdensity(Affine((μ=μ,σ=σ), d^3), x) ≈  logdensity(Affine((μ=μ,ω=ω), d^3), x)
+    @test logdensity(Affine((σ=σ,), d^3), x) ≈  logdensity(Affine((ω=ω,), d^3), x)
+    @test logdensity(Affine((μ=μ,), d^3), x) ≈  logdensity(d^3, x-μ)
+
+
+    d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+    a = Affine((σ=[1 0]',), d^1)
+    x = randn(2)
+    y = randn(1)
+    @test logpdf(a, x) ≈ logpdf(d, inv(a.f)(x)[1])
+    @test logpdf(a, a.f(y)) ≈ logpdf(d^1, y)
+
+    b = Affine((ω=[1 0]'',), d^1)
+    @test logpdf(b, x) ≈ logpdf(d, inv(b.f)(x)[1])
+    @test logpdf(b, b.f(y)) ≈ logpdf(d^1, y)
 end
 
 @testset "For" begin

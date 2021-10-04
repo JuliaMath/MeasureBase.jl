@@ -2,6 +2,7 @@ export ProductMeasure
 
 using MappedArrays
 using Base: @propagate_inbounds
+using FillArrays
 
 struct ProductMeasure{F,I} <: AbstractMeasure
     f::F
@@ -14,6 +15,8 @@ Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 
 # TODO: Pull weights outside
 basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
+basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
+basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
 
 export marginals
 
@@ -62,7 +65,7 @@ function Base.show(io::IO, μ::ProductMeasure{F,T}) where {F,T <: Tuple}
     print(io, join(string.(marginals(μ)), " ⊗ "))
 end
 
-function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
+@inline function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
     mapreduce(logdensity, +, d.f.(d.pars), x)
 end
 
@@ -191,4 +194,10 @@ end
 
 # function Accessors.set(d::ProductMeasure{F,T}, ::typeof(params), p::Tuple) where {F, T<:Tuple}
 #     set.(marginals(d), params, p)
+# end
+
+# function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
+#     sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
+#         logdensity(μ_ν_x...)
+#     end
 # end

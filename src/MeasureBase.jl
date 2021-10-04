@@ -3,6 +3,7 @@ module MeasureBase
 const logtwo = log(2.0)
 
 using Random
+import Random: rand!
 
 using ConcreteStructs
 using MLStyle
@@ -69,11 +70,11 @@ include("primitives/trivial.jl")
 
 include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
-include("combinators/affine.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
 include("combinators/for.jl")
 include("combinators/power.jl")
+include("combinators/affine.jl")
 include("combinators/spikemixture.jl")
 include("kernel.jl")
 include("combinators/likelihood.jl")
