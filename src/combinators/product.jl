@@ -2,6 +2,7 @@ export ProductMeasure
 
 using MappedArrays
 using Base: @propagate_inbounds
+using FillArrays
 
 struct ProductMeasure{F,I} <: AbstractMeasure
     f::F
@@ -14,6 +15,8 @@ Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 
 # TODO: Pull weights outside
 basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
+basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
+basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
 
 export marginals
 
