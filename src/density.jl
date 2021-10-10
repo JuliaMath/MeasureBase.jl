@@ -136,13 +136,13 @@ end
 end
 
 function logpdf(d::AbstractMeasure, x)
-    _logpdf(d, basemeasure(d), x, zero(Float64))
+    _logpdf(d, basemeasure(d), x, 0.0)
 end
 
-@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ::Float64)
-    @show d
+@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ)
+    # @show d
     # @show x
-    d === β && return ℓ
+    d == β && return ℓ
     Δℓ = logdensity(d, x)
     # @show Δℓ, d
     _logpdf(β, basemeasure(β), x, ℓ + Δℓ)
