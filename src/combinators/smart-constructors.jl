@@ -66,9 +66,26 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(f, pars) = ProductMeasure(f, pars)
+productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
+
+productmeasure(f::Returns, ::typeof(identity), pars) = ProductMeasure(kernel(f, identity), pars)
+
+productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
+
+productmeasure(f::Function, pars) = productmeasure(f, identity, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
+
+
+productmeasure(f::Returns, ops, pars) = productmeasure(f, identity, pars)
+
+
+function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W <: WeightedMeasure}
+    ℓ = f.value.logweight
+    base = f.value.base
+    newbase = productmeasure(Returns(base), identity, pars)
+    weightedmeasure(length(pars) * ℓ, newbase)
+end
 
 ###############################################################################
 # RestrictedMeasure

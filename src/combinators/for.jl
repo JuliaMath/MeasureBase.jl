@@ -75,12 +75,12 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, dims...) = ProductMeasure(i -> f(i...), zip(dims...))
+For(f, dims...) = productmeasure(i -> f(i...), zip(dims...))
 
-For(f, inds::AbstractArray) = ProductMeasure(f, inds)
+For(f, inds::AbstractArray) = productmeasure(f, inds)
 
-For(f, n::Int) = ProductMeasure(f, 1:n)
-For(f, dims::Int...) = ProductMeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
+For(f, n::Int) = productmeasure(f, 1:n)
+For(f, dims::Int...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
 
 
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}

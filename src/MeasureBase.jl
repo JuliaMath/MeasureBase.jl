@@ -5,6 +5,7 @@ const logtwo = log(2.0)
 using Random
 import Random: rand!
 
+using FillArrays
 using ConcreteStructs
 using MLStyle
 
@@ -46,13 +47,14 @@ if VERSION < v"1.7.0-beta1.0"
     end
 end
 
+include("kernel.jl")
+include("parameterized.jl")
 include("combinators/mapsto.jl")
 include("combinators/half.jl")
 include("exp.jl")
 include("domains.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
-include("parameterized.jl")
 include("macros.jl")
 include("resettablerng.jl")
 
@@ -70,7 +72,6 @@ include("combinators/for.jl")
 include("combinators/power.jl")
 include("combinators/affine.jl")
 include("combinators/spikemixture.jl")
-include("kernel.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")

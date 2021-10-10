@@ -134,8 +134,8 @@ logdensity(d::Affine, x::MapsTo) = logdensity(d.parent, x.x)
 
 function logdensity(d::Affine{(:σ,)}, x)
     z = d.σ \ x
-    @show z
-    println()
+    # @show z
+    # println()
     logdensity(d.parent, z)
 end
 
