@@ -6,6 +6,9 @@ abstract type AbstractKernel <: AbstractMeasure end
 struct Kernel{F,S} <: AbstractKernel
     f::F
     ops::S
+
+    Kernel(::Type{T}, ops::S) where {T,S} = new{Type{T}, S}(T,ops)
+    Kernel(f::F, ops::S) where {F,S} = new{F, S}(f,ops)
 end
 
 """
@@ -28,31 +31,6 @@ function kernel end
 
 export kernel
 
-kernel(μ, ops...) = Kernel(μ, ops)
-kernel(μ, op) = Kernel(μ, op)
-
-# kernel(Normal(μ=2))
-function kernel(μ::P) where {P <: AbstractMeasure}
-    (f, ops) = kernelfactor(μ)
-    Kernel{instance_type(f), typeof(ops)}(f,ops)
-end
-
-
-
-# kernel(Normal{(:μ,), Tuple{Int64}})
-function kernel(::Type{P}) where {P <: AbstractMeasure}
-    (f, ops) = kernelfactor(P)
-    Kernel{instance_type(f), typeof(ops)}(f,ops)
-end
-
-
-
-# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = Kernel{constructorof(P),O}(op)
-
-function kernel(::Type{M}; ops...) where {M}
-    nt = NamedTuple(ops)
-    Kernel{Type{M},typeof(nt)}(M,nt)
-end
 
 # kernel(Normal) do x
 #     (μ=x,σ=x^2)
@@ -73,11 +51,15 @@ function (k::Kernel{F,S})(x::Tuple) where {F, N, S<:NTuple{N,Symbol}}
     k.f(NamedTuple{k.ops}(x))
 end
 
-(k::Kernel)(x) = kernelapply(k.f, k.ops(x)) 
+(k::Kernel)(x) = k.f(k.ops(x)) 
 
-kernelapply(f, par::NamedTuple) = f(par)
 
-kernelapply(f, par::Tuple) = f(par...)
+# TODO: Using Core.Compiler.return_type, we can sometimes do better than this
+basekernel(f::Function) = basemeasure ∘ f
+
+basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
+basekernel(f::Returns) = f
+
 
 # export kernelize
 
@@ -87,20 +69,3 @@ kernelapply(f, par::Tuple) = f(par...)
 # end
 
 export kernelfactor
-
-function kernelfactor(::Type{P}) where {N, P <: ParameterizedMeasure{N}}
-    (constructorof(P), N)
-end
-
-function kernelfactor(::P) where {N, P <: ParameterizedMeasure{N}}
-    (constructorof(P), N)
-end
-
-function kernelfactor(μ::ProductMeasure{F,<:Fill}) where {F}
-    k = kernel(first(marginals(μ)))
-    (p -> k.f(p)^size(μ), k.ops)
-end
-
-function kernelfactor(μ::ProductMeasure{F,A}) where {F,A<:AbstractArray}
-    (p -> set.(marginals(μ), params, p), μ.pars)
-end

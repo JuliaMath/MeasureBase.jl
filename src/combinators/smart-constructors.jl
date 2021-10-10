@@ -98,3 +98,31 @@ end
 function weightedmeasure(ℓ, b::WeightedMeasure)
     weightedmeasure(ℓ + b.logweight, b.base)
 end 
+
+###############################################################################
+# Kernel
+
+kernel(μ, ops...) = Kernel(μ, ops)
+kernel(μ, op) = Kernel(μ, op)
+
+# kernel(Normal(μ=2))
+function kernel(μ::P) where {P <: AbstractMeasure}
+    (f, ops) = kernelfactor(μ)
+    Kernel(f,ops)
+end
+
+# kernel(Normal{(:μ,), Tuple{Int64}})
+function kernel(::Type{P}) where {P <: AbstractMeasure}
+    (f, ops) = kernelfactor(P)
+    Kernel(f,ops)
+end
+
+# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = Kernel{constructorof(P),O}(op)
+
+function kernel(::Type{M}; ops...) where {M}
+    nt = NamedTuple(ops)
+    Kernel(M,nt)
+end
+
+kernel(f::Returns, op::typeof(identity)) = Kernel(f, op)
+kernel(f::Returns, op) = kernel(f, identity)
