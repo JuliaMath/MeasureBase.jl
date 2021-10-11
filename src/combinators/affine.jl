@@ -10,11 +10,11 @@ params(f::AffineTransform) = getfield(f, :par)
 
 Base.propertynames(d::AffineTransform{N}) where {N} = N 
 
-@inline Base.inv(f::AffineTransform{(:μ,:σ)}) = AffineTransform((μ = -(f.σ \ f.μ), ω = f.σ))
-@inline Base.inv(f::AffineTransform{(:μ,:ω)}) = AffineTransform((μ = - f.ω * f.μ, σ = f.ω))
-@inline Base.inv(f::AffineTransform{(:σ,)}) = AffineTransform((ω = f.σ,))
-@inline Base.inv(f::AffineTransform{(:ω,)}) = AffineTransform((σ = f.ω,))
-@inline Base.inv(f::AffineTransform{(:μ,)}) = AffineTransform((μ = -f.μ,))
+@inline Base.inv(f::AffineTransform{(:μ,:σ)}) = affineTransform((μ = -(f.σ \ f.μ), ω = f.σ))
+@inline Base.inv(f::AffineTransform{(:μ,:ω)}) = affineTransform((μ = - f.ω * f.μ, σ = f.ω))
+@inline Base.inv(f::AffineTransform{(:σ,)}) = affineTransform((ω = f.σ,))
+@inline Base.inv(f::AffineTransform{(:ω,)}) = affineTransform((σ = f.ω,))
+@inline Base.inv(f::AffineTransform{(:μ,)}) = affineTransform((μ = -f.μ,))
 
 # `size(f) == (m,n)` means `f : ℝⁿ → ℝᵐ`  
 Base.size(f::AffineTransform{(:μ,:σ)}) = size(f.σ)
@@ -34,6 +34,12 @@ Base.size(f::AffineTransform, n::Int) = @inbounds size(f)[n]
 (f::AffineTransform{(:ω,)})(x) = f.ω \ x
 (f::AffineTransform{(:μ,:σ)})(x) = f.σ * x + f.μ
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
+
+rowsize(x) = ()
+rowsize(x::AbstractArray) = (size(x,1),)
+
+colsize(x) = ()
+colsize(x::AbstractArray) = (size(x,2),)
 
 @inline function apply!(x, f::AffineTransform{(:μ,)}, z)
     x .= z .+ f.μ
@@ -184,7 +190,7 @@ basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 # example it wouldn't make sense to apply a log-Jacobian to a point measure
 basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = weightedmeasure(-logjac(d), d.parent)
 
-function basemeasure(d::Affine{N,L}) where {N, L<:PowerMeasure{typeof(identity), <:Lebesgue}}
+function basemeasure(d::Affine{N,L}) where {N, L<:PowerMeasure{typeof(identity), typeof(identity), <:Lebesgue}}
     weightedmeasure(-logjac(d), d.parent)
 end
 

@@ -22,6 +22,7 @@ sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 export logdensity
 export basemeasure
+export basekernel
 
 using LogExpFunctions: logsumexp
 

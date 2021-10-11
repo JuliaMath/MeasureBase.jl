@@ -136,10 +136,10 @@ end
 end
 
 function logpdf(d::AbstractMeasure, x)
-    _logpdf(d, basemeasure(d), x, 0.0)
+    _logpdf(d, basemeasure(d), x)
 end
 
-@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ)
+@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ=zero(Float64))
     # @show d
     # @show x
     d == β && return ℓ
