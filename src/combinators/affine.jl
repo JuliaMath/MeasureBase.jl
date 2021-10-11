@@ -10,11 +10,11 @@ params(f::AffineTransform) = getfield(f, :par)
 
 Base.propertynames(d::AffineTransform{N}) where {N} = N 
 
-@inline Base.inv(f::AffineTransform{(:μ,:σ)}) = affineTransform((μ = -(f.σ \ f.μ), ω = f.σ))
-@inline Base.inv(f::AffineTransform{(:μ,:ω)}) = affineTransform((μ = - f.ω * f.μ, σ = f.ω))
-@inline Base.inv(f::AffineTransform{(:σ,)}) = affineTransform((ω = f.σ,))
-@inline Base.inv(f::AffineTransform{(:ω,)}) = affineTransform((σ = f.ω,))
-@inline Base.inv(f::AffineTransform{(:μ,)}) = affineTransform((μ = -f.μ,))
+@inline Base.inv(f::AffineTransform{(:μ,:σ)}) = AffineTransform((μ = -(f.σ \ f.μ), ω = f.σ))
+@inline Base.inv(f::AffineTransform{(:μ,:ω)}) = AffineTransform((μ = - f.ω * f.μ, σ = f.ω))
+@inline Base.inv(f::AffineTransform{(:σ,)}) = AffineTransform((ω = f.σ,))
+@inline Base.inv(f::AffineTransform{(:ω,)}) = AffineTransform((σ = f.ω,))
+@inline Base.inv(f::AffineTransform{(:μ,)}) = AffineTransform((μ = -f.μ,))
 
 # `size(f) == (m,n)` means `f : ℝⁿ → ℝᵐ`  
 Base.size(f::AffineTransform{(:μ,:σ)}) = size(f.σ)
