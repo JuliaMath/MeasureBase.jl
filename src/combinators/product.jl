@@ -3,6 +3,7 @@ export ProductMeasure
 using MappedArrays
 using Base: @propagate_inbounds
 import Base
+using FillArrays
 
 struct ProductMeasure{F,S,I} <: AbstractMeasure
     f::Kernel{F,S}
@@ -25,6 +26,11 @@ Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 function basemeasure(d::ProductMeasure)
     productmeasure(basekernel(d.f), d.pars)
 end
+
+# TODO: Do we need these methods?
+# basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
+# basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
+# basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
 
 export marginals
 
@@ -209,9 +215,6 @@ end
 #         logdensity(μ_ν_x...)
 #     end
 # end
-
-
-
 
 function kernelfactor(μ::ProductMeasure{F,S,<:Fill}) where {F,S}
     k = kernel(first(marginals(μ)))
