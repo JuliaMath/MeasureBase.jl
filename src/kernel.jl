@@ -53,6 +53,19 @@ end
 
 (k::Kernel)(x) = k.f(k.ops(x)) 
 
+"""
+For any `k::Kernel`, `basekernel` is expected to satisfy
+```
+basemeasure(k(p)) == basekernel(k)(p)
+```
+
+The main purpose of `basekernel` is to make it efficient to compute
+```
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
+```
+"""
+function basekernel end
+
 
 # TODO: Using Core.Compiler.return_type, we can sometimes do better than this
 basekernel(f::Function) = basemeasure ∘ f
