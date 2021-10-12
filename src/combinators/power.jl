@@ -29,7 +29,9 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-const PowerMeasure{F,T,N,A} = ProductMeasure{F,Fill{T,N,A}}
+const PowerMeasure{F,S,T,N,A} = ProductMeasure{F,S,Fill{T,N,A}}
+
+Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 
 function Base.:^(μ::AbstractMeasure, dims::Integer...)
     return μ ^ dims
@@ -40,13 +42,13 @@ function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Intege
 end
 
 # Same as PowerMeasure
-function Base.show(io::IO, d::ProductMeasure{F,<:Fill}) where {F}
+function Base.show(io::IO, d::ProductMeasure{F,S,<:Fill}) where {F,S}
     io = IOContext(io, :compact => true)
     print(io, d.f(first(d.pars)), " ^ ", size(d.pars))
 end
 
 # Same as PowerMeasure{F,T,1} where {F,T}
-function Base.show(io::IO, d::ProductMeasure{F,Fill{T,1,A}}) where {F,T,A}
+function Base.show(io::IO, d::ProductMeasure{F,S,Fill{T,1,A}}) where {F,S,T,A}
     io = IOContext(io, :compact => true)
     print(io, d.f(first(d.pars)), " ^ ", size(d.pars)[1])
 end
@@ -55,20 +57,24 @@ end
 
 
 
-params(d::ProductMeasure{F,<:Fill}) where {F} = params(first(marginals(d)))
+params(d::ProductMeasure{F,S,<:Fill}) where {F,S} = params(first(marginals(d)))
 
-params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
+params(::Type{P}) where {F,S,P<:ProductMeasure{F,S,<:Fill}} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 # Same as PowerMeasure
-@inline basemeasure(d::ProductMeasure{F,<:Fill}) where {F}= _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+@inline function basemeasure(d::ProductMeasure{F,S,<:Fill}) where {F,S}
+    _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+end
 
 # Same as PowerMeasure
-@inline _basemeasure(d::ProductMeasure{F,<:Fill}, b) where {F} = b ^ size(d.pars)
+@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b) where {F,S}
+    b ^ size(d.pars)
+end
 
 # Same as PowerMeasure
-@inline function _basemeasure(d::ProductMeasure{F,<:Fill}, b::FactoredBase) where {F}
+@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b::FactoredBase) where {F,S}
     n = length(d.pars)
     inbounds(x) = all(xj -> b.inbounds(xj), x)
     constℓ = n * b.constℓ
@@ -78,7 +84,7 @@ params(::Type{P}) where {F,P<:ProductMeasure{F,<:Fill}} = params(D)
 end
 
 # Same as PowerMeasure
-@inline function logdensity(d::ProductMeasure{F,<:Fill}, x) where {F}
+@inline function logdensity(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
     d1 = d.f(first(d.pars))
     sum(xj -> logdensity(d1, xj), x)
 end

@@ -2,39 +2,54 @@ export ProductMeasure
 
 using MappedArrays
 using Base: @propagate_inbounds
+import Base
 using FillArrays
 
-struct ProductMeasure{F,I} <: AbstractMeasure
-    f::F
+abstract type AbstractProductMeasure <: AbstractMeasure end
+
+
+struct ProductMeasure{F,S,I} <: AbstractProductMeasure
+    f::Kernel{F,S}
     pars::I
+end
+
+
+# TODO: Test for equality without traversal, probably by first converting to a
+# canonical form
+function Base.:(==)(a::ProductMeasure, b::ProductMeasure)
+    all(zip(a.pars, b.pars)) do (aᵢ, bᵢ)
+        a.f(aᵢ) == b.f(bᵢ)
+    end
 end
 
 Base.size(μ::ProductMeasure) = size(marginals(μ))
 
 Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 
-# TODO: Pull weights outside
-basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
-basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
-basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
+
+# TODO: Do we need these methods?
+# basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
+# basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
+# basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
 
 export marginals
 
-function marginals(d::ProductMeasure{F,I}) where {F,I}
+function marginals(d::ProductMeasure{F,S,I}) where {F,S,I}
     _marginals(d, isiterable(I))
 end
 
-function _marginals(d::ProductMeasure{F,I}, ::Iterable) where {F,I}
+function _marginals(d::ProductMeasure, ::Iterable)
     return (d.f(i) for i in d.pars)
 end
 
-function _marginals(d::ProductMeasure{F,I}, ::NonIterable) where {F,I}
+function _marginals(d::ProductMeasure{F,S,I}, ::NonIterable) where {F,S,I}
     error("Type $I is not iterable. Add an `iterate` or `marginals` method to fix.")
 end
 
 testvalue(d::ProductMeasure) = map(testvalue, marginals(d))
 
-function Base.show(io::IO, μ::ProductMeasure{NamedTuple{N,T}}) where {N,T}
+function Base.show(io::IO, μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
     io = IOContext(io, :compact => true)
     print(io, "Product(",μ.data, ")")
 end
@@ -55,21 +70,25 @@ end
 ###############################################################################
 # I <: Tuple
 
+struct TupleProductMeasure{T} <: AbstractProductMeasure
+    pars::T
+end
+
 export ⊗
-⊗(μs::AbstractMeasure...) = ProductMeasure(identity, μs)
+⊗(μs::AbstractMeasure...) = productmeasure(μs)
 
-marginals(d::ProductMeasure{F,T}) where {F, T<:Tuple} = map(d.f, d.pars)
+marginals(d::TupleProductMeasure{T}) where {F, T<:Tuple} = d.pars
 
-function Base.show(io::IO, μ::ProductMeasure{F,T}) where {F,T <: Tuple}
+function Base.show(io::IO, μ::TupleProductMeasure{T}) where {F,T <: Tuple}
     io = IOContext(io, :compact => true)
     print(io, join(string.(marginals(μ)), " ⊗ "))
 end
 
-@inline function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
-    mapreduce(logdensity, +, d.f.(d.pars), x)
+@inline function logdensity(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
+    mapreduce(logdensity, +, d.pars, x)
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:Tuple}
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::TupleProductMeasure) where {T}
     rand.(d.pars)
 end
 
@@ -93,7 +112,7 @@ end
 ###############################################################################
 # I <: CartesianIndices
 
-function Base.show(io::IO, d::ProductMeasure{F,I}) where {F, I<:CartesianIndices}
+function Base.show(io::IO, d::ProductMeasure{F,S,I}) where {F, S, I<:CartesianIndices}
     io = IOContext(io, :compact => true)
     print(io, "For(")
     print(io, d.f, ", ")
@@ -102,7 +121,7 @@ function Base.show(io::IO, d::ProductMeasure{F,I}) where {F, I<:CartesianIndices
 end
 
 
-# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:CartesianIndices}
+# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,I<:CartesianIndices}
 
 # end
 
@@ -114,12 +133,12 @@ export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
 
-function logdensity(d::ProductMeasure{F,I}, x) where {F, I<:Base.Generator}
+function logdensity(d::ProductMeasure{F,S,I}, x) where {F, S, I<:Base.Generator}
     sum((logdensity(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,I}) where {T,F,I<:Base.Generator}
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,S,I<:Base.Generator}
     mar = marginals(d)
     elT = typeof(rand(rng, T, first(mar)))
 
@@ -183,8 +202,8 @@ end
 #     μ.data
 # end
 
-function ConstructionBase.constructorof(::Type{P}) where {F,I,P <: ProductMeasure{F,I}}
-    p -> ProductMeasure(d.f, p)
+function ConstructionBase.constructorof(::Type{P}) where {F,S,I,P <: ProductMeasure{F,S,I}}
+    p -> productmeasure(d.f, p)
 end
 
 # function Accessors.set(d::ProductMeasure{N}, ::typeof(params), p) where {N}
@@ -201,3 +220,12 @@ end
 #         logdensity(μ_ν_x...)
 #     end
 # end
+
+function kernelfactor(μ::ProductMeasure{F,S,<:Fill}) where {F,S}
+    k = kernel(first(marginals(μ)))
+    (p -> k.f(p)^size(μ), k.ops)
+end
+
+function kernelfactor(μ::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray}
+    (p -> set.(marginals(μ), params, p), μ.pars)
+end

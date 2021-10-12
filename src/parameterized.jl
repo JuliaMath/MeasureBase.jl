@@ -69,3 +69,14 @@ params(::Type{PM}) where {N, PM<:ParameterizedMeasure{N}} = N
 function paramnames(μ, constraints::NamedTuple{N}) where {N}
     tuple((k for k in paramnames(μ) if k ∉ N)...)
 end
+
+###############################################################################
+# kernelfactor
+
+function kernelfactor(::Type{P}) where {N, P <: ParameterizedMeasure{N}}
+    (constructorof(P), N)
+end
+
+function kernelfactor(::P) where {N, P <: ParameterizedMeasure{N}}
+    (constructorof(P), N)
+end

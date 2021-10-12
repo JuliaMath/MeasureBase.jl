@@ -66,9 +66,30 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(f, pars) = ProductMeasure(f, pars)
+productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
+
+productmeasure(μs::Tuple) = TupleProductMeasure(μs)
+
+productmeasure(f::Returns, ::typeof(identity), pars) = ProductMeasure(kernel(f, identity), pars)
+
+productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
+
+productmeasure(f::Function, pars) = productmeasure(f, identity, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
+
+
+productmeasure(f::Returns, ops, pars) = productmeasure(f, identity, pars)
+
+
+function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W <: WeightedMeasure}
+    ℓ = f.value.logweight
+    base = f.value.base
+    newbase = productmeasure(Returns(base), identity, pars)
+    weightedmeasure(length(pars) * ℓ, newbase)
+end
+
+
 
 ###############################################################################
 # RestrictedMeasure
@@ -98,3 +119,31 @@ end
 function weightedmeasure(ℓ, b::WeightedMeasure)
     weightedmeasure(ℓ + b.logweight, b.base)
 end 
+
+###############################################################################
+# Kernel
+
+kernel(μ, ops...) = Kernel(μ, ops)
+kernel(μ, op) = Kernel(μ, op)
+
+# kernel(Normal(μ=2))
+function kernel(μ::P) where {P <: AbstractMeasure}
+    (f, ops) = kernelfactor(μ)
+    kernel(f,ops)
+end
+
+# kernel(Normal{(:μ,), Tuple{Int64}})
+function kernel(::Type{P}) where {P <: AbstractMeasure}
+    (f, ops) = kernelfactor(P)
+    kernel(f,ops)
+end
+
+# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
+
+function kernel(::Type{M}; ops...) where {M}
+    nt = NamedTuple(ops)
+    kernel(M,nt)
+end
+
+kernel(f::Returns, op::typeof(identity)) = Kernel(f, op)
+kernel(f::Returns, op) = kernel(f, identity)
