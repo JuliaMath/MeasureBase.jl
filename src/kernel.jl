@@ -67,7 +67,7 @@ basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 function basekernel end
 
 
-# TODO: Using Core.Compiler.return_type, we can sometimes do better than this
+# TODO: Find a way to do better than this
 basekernel(f::Function) = basemeasure ∘ f
 
 basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
