@@ -5,13 +5,17 @@ using Base: @propagate_inbounds
 import Base
 using FillArrays
 
-struct ProductMeasure{F,S,I} <: AbstractMeasure
+abstract type AbstractProductMeasure <: AbstractMeasure end
+
+
+struct ProductMeasure{F,S,I} <: AbstractProductMeasure
     f::Kernel{F,S}
     pars::I
 end
 
 
-
+# TODO: Test for equality without traversal, probably by first converting to a
+# canonical form
 function Base.:(==)(a::ProductMeasure, b::ProductMeasure)
     all(zip(a.pars, b.pars)) do (aᵢ, bᵢ)
         a.f(aᵢ) == b.f(bᵢ)
