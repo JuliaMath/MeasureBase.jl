@@ -5,7 +5,8 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 @inline function fix(f, x)
     y = f(x)
-    while x ≢ y
+    # Workaround bug https://github.com/JuliaLang/julia/issues/42615
+    while x !== y
         (x,y) = (y, f(y))
     end
 
