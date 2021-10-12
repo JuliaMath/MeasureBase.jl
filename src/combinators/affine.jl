@@ -34,7 +34,7 @@ Base.size(f::AffineTransform, n::Int) = @inbounds size(f)[n]
 (f::AffineTransform{(:ω,)})(x) = f.ω \ x
 (f::AffineTransform{(:μ,:σ)})(x) = f.σ * x + f.μ
 (f::AffineTransform{(:μ,:ω)})(x) = f.ω \ x + f.μ
-
+1
 rowsize(x) = ()
 rowsize(x::AbstractArray) = (size(x,1),)
 
@@ -166,7 +166,7 @@ function logdensity(d::Affine{(:μ,:ω)}, x)
 end 
 
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
-@inline function logdensity(d::Affine{(:μ,:σ), Tuple{AbstractVector, AbstractMatrix}}, x)
+@inline function logdensity(d::Affine{(:μ,:σ), P, Tuple{V,M}}, x) where {P, V<:AbstractVector, M<:AbstractMatrix}
     z = x - d.μ
     σ = d.σ
     if σ isa Factorization
@@ -174,14 +174,14 @@ end
     else
         ldiv!(factorize(σ), z)
     end
-    logdensity(d, z ↦ x)
+    logdensity(d.parent, z)
 end
     
 # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
-@inline function logdensity(d::Affine{(:μ,:ω), Tuple{AbstractVector, AbstractMatrix}}, x)
+@inline function logdensity(d::Affine{(:μ,:ω), P,Tuple{V,M}}, x) where {P,V<:AbstractVector, M<:AbstractMatrix}
     z = x - d.μ
     lmul!(d.ω, z)
-    logdensity(d, z ↦ x)
+    logdensity(d.parent, z)
 end
 
 basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
