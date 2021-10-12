@@ -68,6 +68,8 @@ end
 
 productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
 
+productmeasure(μs::Tuple) = TupleProductMeasure(μs)
+
 productmeasure(f::Returns, ::typeof(identity), pars) = ProductMeasure(kernel(f, identity), pars)
 
 productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
@@ -86,6 +88,8 @@ function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W <: Wei
     newbase = productmeasure(Returns(base), identity, pars)
     weightedmeasure(length(pars) * ℓ, newbase)
 end
+
+
 
 ###############################################################################
 # RestrictedMeasure

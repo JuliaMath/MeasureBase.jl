@@ -73,21 +73,25 @@ end
 ###############################################################################
 # I <: Tuple
 
+struct TupleProductMeasure{T} <: AbstractProductMeasure
+    pars::T
+end
+
 export ⊗
-⊗(μs::AbstractMeasure...) = ProductMeasure(identity, μs)
+⊗(μs::AbstractMeasure...) = productmeasure(μs)
 
-marginals(d::ProductMeasure{F,T}) where {F, T<:Tuple} = map(d.f, d.pars)
+marginals(d::TupleProductMeasure{T}) where {F, T<:Tuple} = d.pars
 
-function Base.show(io::IO, μ::ProductMeasure{F,T}) where {F,T <: Tuple}
+function Base.show(io::IO, μ::TupleProductMeasure{T}) where {F,T <: Tuple}
     io = IOContext(io, :compact => true)
     print(io, join(string.(marginals(μ)), " ⊗ "))
 end
 
-@inline function logdensity(d::ProductMeasure{F,T}, x::Tuple) where {F,T<:Tuple}
-    mapreduce(logdensity, +, d.f.(d.pars), x)
+@inline function logdensity(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
+    mapreduce(logdensity, +, d.pars, x)
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,S,I<:Tuple}
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::TupleProductMeasure) where {T}
     rand.(d.pars)
 end
 
