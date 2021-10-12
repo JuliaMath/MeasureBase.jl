@@ -26,10 +26,7 @@ Base.size(μ::ProductMeasure) = size(marginals(μ))
 
 Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
 
-# TODO: Pull weights outside
-function basemeasure(d::ProductMeasure)
-    productmeasure(basekernel(d.f), d.pars)
-end
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 
 # TODO: Do we need these methods?
 # basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
