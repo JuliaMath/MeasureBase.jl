@@ -76,14 +76,14 @@ end
 end
 
 @inline function apply!(x, f::AffineTransform{(:μ,:σ)}, z)
-    apply!(x, AffineTransform((σ = f.σ,)))
-    apply!(x, AffineTransform((μ = f.μ,)))
+    apply!(x, AffineTransform((σ = f.σ,)), z)
+    apply!(x, AffineTransform((μ = f.μ,)), x)
     return x
 end
 
 @inline function apply!(x, f::AffineTransform{(:μ,:ω)}, z)
-    apply!(x, AffineTransform((ω = f.ω,)))
-    apply!(x, AffineTransform((μ = f.μ,)))
+    apply!(x, AffineTransform((ω = f.ω,)), z)
+    apply!(x, AffineTransform((μ = f.μ,)), x)
     return x
 end
 
