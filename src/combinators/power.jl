@@ -42,15 +42,14 @@ function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Intege
 end
 
 # Same as PowerMeasure
-function Base.show(io::IO, d::ProductMeasure{F,S,<:Fill}) where {F,S}
+function Base.show(io::IO, d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
     io = IOContext(io, :compact => true)
-    print(io, d.f(first(d.pars)), " ^ ", size(d.pars))
+    print(io, d.f.f.value, " ^ ", size(d.pars))
 end
 
-# Same as PowerMeasure{F,T,1} where {F,T}
-function Base.show(io::IO, d::ProductMeasure{F,S,Fill{T,1,A}}) where {F,S,T,A}
+function Base.show(io::IO, d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
     io = IOContext(io, :compact => true)
-    print(io, d.f(first(d.pars)), " ^ ", size(d.pars)[1])
+    print(io, d.f.f.value, " ^ ", length(d.pars))
 end
 
 # sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}

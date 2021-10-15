@@ -68,7 +68,7 @@ function basekernel end
 
 
 # TODO: Find a way to do better than this
-basekernel(f::Function) = basemeasure ∘ f
+basekernel(f) = basemeasure ∘ f
 
 basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
 basekernel(f::Returns) = f

@@ -55,7 +55,11 @@ end
 # PowerMeaure
 
 function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
-    productmeasure(identity, Fill(μ, dims))
+    productmeasure(Returns(μ), identity, CartesianIndices(dims))
+end
+
+function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I<:Integer}
+    productmeasure(Returns(μ), identity, 1:first(dims))
 end
 
 function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
@@ -68,13 +72,13 @@ end
 
 productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
 
+productmeasure(f, pars) = productmeasure(f, identity, pars)
+
 productmeasure(μs::Tuple) = TupleProductMeasure(μs)
 
 productmeasure(f::Returns, ::typeof(identity), pars) = ProductMeasure(kernel(f, identity), pars)
 
 productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
-
-productmeasure(f::Function, pars) = productmeasure(f, identity, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 

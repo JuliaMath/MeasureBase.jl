@@ -238,12 +238,12 @@ end
 #     end
 # end
 
-# @testset "Show methods" begin
-#     @testset "PowerMeasure" begin
-#         @test repr(Lebesgue(ℝ) ^ 5) == "Lebesgue(ℝ) ^ 5"
-#         @test repr(Lebesgue(ℝ) ^ (3, 2)) == "Lebesgue(ℝ) ^ (3, 2)"
-#     end
-# end
+@testset "Show methods" begin
+    @testset "PowerMeasure" begin
+        @test repr(Lebesgue(ℝ) ^ 5) == "Lebesgue(ℝ) ^ 5"
+        @test repr(Lebesgue(ℝ) ^ (3, 2)) == "Lebesgue(ℝ) ^ (3, 2)"
+    end
+end
 
 # @testset "Density measures and Radon-Nikodym" begin
 #     x = randn()
