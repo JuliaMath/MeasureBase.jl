@@ -204,7 +204,7 @@ basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 # example it wouldn't make sense to apply a log-Jacobian to a point measure
 basemeasure(d::Affine{N,L}) where {N, L<:Lebesgue} = weightedmeasure(-logjac(d), d.parent)
 
-function basemeasure(d::Affine{N,L}) where {N, L<:PowerMeasure{typeof(identity), typeof(identity), <:Lebesgue}}
+function basemeasure(d::Affine{N,M}) where {N,L<:Lebesgue, M<:ProductMeasure{Returns{L}}}
     weightedmeasure(-logjac(d), d.parent)
 end
 

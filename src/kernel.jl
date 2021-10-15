@@ -71,7 +71,7 @@ function basekernel end
 basekernel(f) = basemeasure ∘ f
 
 basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
-basekernel(f::Returns) = f
+basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 
 # export kernelize
