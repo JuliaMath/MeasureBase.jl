@@ -142,10 +142,11 @@ end
 @inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ=zero(Float64))
     # @show d
     # @show x
-    d == β && return ℓ
     Δℓ = logdensity(d, x)
+    newℓ = ℓ + Δℓ
+    d == β && return newℓ
     # @show Δℓ, d
-    _logpdf(β, basemeasure(β), x, ℓ + Δℓ)
+    _logpdf(β, basemeasure(β), x, newℓ)
 end
 
 logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
