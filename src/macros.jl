@@ -3,7 +3,7 @@ using MLStyle
 using Random: AbstractRNG
 using KeywordCalls
 using ConstructionBase
-export @parameterized, @half, @affinepars
+export @parameterized, @half
 
 # A fold over ASTs. Example usage in `replace`
 function foldast(leaf, branch; kwargs...)
@@ -130,21 +130,6 @@ macro parameterized(expr)
     _parameterized(__module__, expr)
 end
 
-macro affinepars(expr)
-    _affinepars(__module__, expr)
-end
-
-function _affinepars(__module__, ex)
-    ex = esc(ex)
-    quote
-        function Base.show(io::IO, d::Affine{N, <:$ex}) where N
-            nt1 = getfield(d.parent, :par)
-            nt2 = getfield(getfield(d, :f), :par) 
-            par = merge(nt1, nt2)
-            print(io, $ex, par)
-        end
-    end
-end
 
 """
     @half dist([paramnames])
