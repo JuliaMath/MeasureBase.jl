@@ -224,3 +224,9 @@ end
 #     apply!(x, f, z)
 #     return z
 # end
+
+supportdim(nt::NamedTuple{(:μ,:σ)}) = colsize(nt.σ)
+supportdim(nt::NamedTuple{(:μ,:ω)}) = rowsize(nt.ω)
+supportdim(nt::NamedTuple{(:σ,)})   = colsize(nt.σ)
+supportdim(nt::NamedTuple{(:ω,)})   = rowsize(nt.ω)
+supportdim(nt::NamedTuple{(:μ,)})   = size(nt.μ)
