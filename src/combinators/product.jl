@@ -95,13 +95,22 @@ end
 ###############################################################################
 # I <: AbstractArray
 
-marginals(d::ProductMeasure{F,A}) where {F,A<:AbstractArray} = mappedarray(d.f, d.pars)
+marginals(d::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray} = mappedarray(d.f, d.pars)
+
+function marginals(d::ProductMeasure{<:Returns, S, A}) where {F,S,A<:AbstractArray}
+    Fill(d.f.f.value, size(d.pars))
+    # mappedarray(d.f.f, d.pars)
+end
 
 function logdensity(d::ProductMeasure, x)
     mapreduce(logdensity, +, marginals(d), x)
 end
 
-function Base.show(io::IO, d::ProductMeasure{F,A}) where {F,A<:AbstractArray}
+function logdensity(d::ProductMeasure{<:Returns}, x)
+    sum(x -> logdensity(d.f.f.value, x), x)
+end
+
+function Base.show(io::IO, d::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray}
     io = IOContext(io, :compact => true)
     print(io, "For(")
     print(io, d.f, ", ")

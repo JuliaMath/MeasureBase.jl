@@ -54,18 +54,20 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
+function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
     productmeasure(Returns(μ), identity, CartesianIndices(dims))
 end
 
-function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I<:Integer}
+function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
     productmeasure(Returns(μ), identity, 1:first(dims))
 end
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:Integer}
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
+
+
 
 ###############################################################################
 # ProductMeasure
@@ -76,15 +78,22 @@ productmeasure(f, pars) = productmeasure(f, identity, pars)
 
 productmeasure(μs::Tuple) = TupleProductMeasure(μs)
 
-productmeasure(f::Returns, ::typeof(identity), pars) = ProductMeasure(kernel(f, identity), pars)
+productmeasure(f::Returns, ops, pars) = ProductMeasure(kernel(f, identity), pars)
 
 productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 
-
-productmeasure(f::Returns, ops, pars) = productmeasure(f, identity, pars)
-
+function productmeasure(f::Returns{FB}, ops, pars) where {FB<:FactoredBase}
+    fb = f.value
+    dims = size(pars)
+    n = prod(dims)
+    inbounds(x) = all(fb.inbounds, x)
+    constℓ = n * fb.constℓ
+    varℓ() = n * fb.varℓ()
+    base = fb.base ^ dims
+    FactoredBase(inbounds, constℓ, varℓ, base)
+end
 
 function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W <: WeightedMeasure}
     ℓ = f.value.logweight

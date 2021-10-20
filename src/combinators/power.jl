@@ -75,7 +75,7 @@ end
 # Same as PowerMeasure
 @inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b::FactoredBase) where {F,S}
     n = length(d.pars)
-    inbounds(x) = all(xj -> b.inbounds(xj), x)
+    inbounds(x) = all(b.inbounds, x)
     constℓ = n * b.constℓ
     varℓ() = n * b.varℓ()
     base = b.base ^ size(d.pars)
