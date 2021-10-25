@@ -49,23 +49,11 @@ end
 
 testvalue(d::ProductMeasure) = map(testvalue, marginals(d))
 
-function Base.show(io::IO, μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
-    io = IOContext(io, :compact => true)
-    print(io, "Product(",μ.data, ")")
+function Pretty.tile(μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
+    result = Pretty.literal("Product(")
+    result *= Pretty.pair_layout(μ.f, μ.pars; sep=", ")
+    result *= Pretty.literal(")")
 end
-
-function Base.show_unquoted(io::IO, μ::ProductMeasure, indent::Int, prec::Int)
-    io = IOContext(io, :compact => true)
-    if Base.operator_precedence(:*) ≤ prec
-        print(io, "(")
-        show(io, μ)
-        print(io, ")")
-    else
-        show(io, μ)
-    end
-    return nothing
-end
-
 
 ###############################################################################
 # I <: Tuple
@@ -79,9 +67,9 @@ export ⊗
 
 marginals(d::TupleProductMeasure{T}) where {F, T<:Tuple} = d.pars
 
-function Base.show(io::IO, μ::TupleProductMeasure{T}) where {F,T <: Tuple}
-    io = IOContext(io, :compact => true)
-    print(io, join(string.(marginals(μ)), " ⊗ "))
+function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T <: Tuple}
+    mar = marginals(μ)
+    Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep=" ⊗ ")
 end
 
 @inline function logdensity(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
@@ -110,23 +98,20 @@ function logdensity(d::ProductMeasure{<:Returns}, x)
     sum(x -> logdensity(d.f.f.value, x), x)
 end
 
-function Base.show(io::IO, d::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray}
-    io = IOContext(io, :compact => true)
-    print(io, "For(")
-    print(io, d.f, ", ")
-    print(io, d.pars, ")")
+function Pretty.tile(d::ProductMeasure{F,S,A}) where {F,S,A}
+    result = Pretty.literal("For(")
+    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.pars); sep=", ")
+    result *= Pretty.literal(")")
 end
 
 
 ###############################################################################
 # I <: CartesianIndices
 
-function Base.show(io::IO, d::ProductMeasure{F,S,I}) where {F, S, I<:CartesianIndices}
-    io = IOContext(io, :compact => true)
-    print(io, "For(")
-    print(io, d.f, ", ")
-    join(io, size(d.pars), ", ")
-    print(io, ")")
+function Pretty.tile(d::ProductMeasure{F,S,I}) where {F, S, I<:CartesianIndices}
+    result = Pretty.literal("For(")
+    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(size(d.pars)); sep=", ")
+    result *= Pretty.literal(")")
 end
 
 

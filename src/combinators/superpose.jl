@@ -1,6 +1,6 @@
 export SuperpositionMeasure
 
-"""
+@doc raw"""
     struct SuperpositionMeasure{X,NT} <: AbstractMeasure
         components :: NT
     end
@@ -10,9 +10,24 @@ The superposition of two measures μ and ν can be more concisely written as μ 
 Superposition measures satisfy
     
     basemeasure(μ + ν) == basemeasure(μ) + basemeasure(ν)
+
+
+```math
+    \begin{aligned}\frac{\mathrm{d}(\mu+\nu)}{\mathrm{d}(\alpha+\beta)} & =\frac{f\,\mathrm{d}\alpha+g\,\mathrm{d}\beta}{\mathrm{d}\alpha+\mathrm{d}\beta}\\
+     & =\frac{f\,\mathrm{d}\alpha}{\mathrm{d}\alpha+\mathrm{d}\beta}+\frac{g\,\mathrm{d}\beta}{\mathrm{d}\alpha+\mathrm{d}\beta}\\
+     & =\frac{f}{1+\frac{\mathrm{d}\beta}{\mathrm{d}\alpha}}+\frac{g}{\frac{\mathrm{d}\alpha}{\mathrm{d}\beta}+1}\\
+     & =\frac{f}{1+\left(\frac{\mathrm{d}\alpha}{\mathrm{d}\beta}\right)^{-1}}+\frac{g}{\frac{\mathrm{d}\alpha}{\mathrm{d}\beta}+1}\ .
+    \end{aligned}
+```
 """
 struct SuperpositionMeasure{NT} <: AbstractMeasure
     components :: NT   
+end
+
+function Pretty.tile(d::SuperpositionMeasure)
+    result = Pretty.literal("SuperpositionMeasure(")
+    result *= Pretty.list_layout([Pretty.tile.(d.components)...])
+    result *= Pretty.literal(")")
 end
 
 testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))

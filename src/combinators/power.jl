@@ -42,14 +42,12 @@ function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Intege
 end
 
 # Same as PowerMeasure
-function Base.show(io::IO, d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
-    io = IOContext(io, :compact => true)
-    print(io, d.f.f.value, " ^ ", size(d.pars))
+function Pretty.tile(d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.pars)); sep=" ^ ")
 end
 
-function Base.show(io::IO, d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
-    io = IOContext(io, :compact => true)
-    print(io, d.f.f.value, " ^ ", length(d.pars))
+function Pretty.tile(d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.pars)); sep=" ^ ")
 end
 
 # sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}

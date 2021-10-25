@@ -54,12 +54,12 @@ struct DensityMeasure{F,B,L} <: AbstractMeasure
     log  :: L
 end
 
-function Base.show(io::IO, μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
-    io = IOContext(io, :compact => true)
-    print(io, "DensityMeasure ")
-    print(io, "∫(", μ.f)
-    print(io, ", ", μ.base)
-    print(io, "; log = ", L, ")")
+function Pretty.tile(μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
+    result = Pretty.literal("DensityMeasure ∫(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep=", ")
+    result *= Pretty.literal("; log = ")
+    result *= Pretty.tile(L)
+    result *= Pretty.literal(")")
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, d::DensityMeasure)

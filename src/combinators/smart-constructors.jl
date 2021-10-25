@@ -59,7 +59,7 @@ function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
 end
 
 function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Returns(μ), identity, 1:first(dims))
+    productmeasure(Returns(μ), identity, Base.OneTo(first(dims)))
 end
 
 function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}

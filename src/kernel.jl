@@ -3,12 +3,19 @@ export Kernel
 
 abstract type AbstractKernel <: AbstractMeasure end
 
+
 struct Kernel{F,S} <: AbstractKernel
     f::F
     ops::S
 
     Kernel(::Type{T}, ops::S) where {T,S} = new{Type{T}, S}(T,ops)
     Kernel(f::F, ops::S) where {F,S} = new{F, S}(f,ops)
+end
+
+function Pretty.quoteof(k::Kernel)
+    qf = Pretty.quoteof(k.f)
+    qops = Pretty.quoteof(k.ops)
+    :(Kernel($qf, $qops))
 end
 
 """

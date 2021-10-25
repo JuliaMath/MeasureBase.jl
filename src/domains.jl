@@ -26,7 +26,7 @@ macro domain(name, T)
         struct $T <: AbstractDomain end
         export $name
         const $name = $T()
-        Base.show(io::IO, ::$T) = print(io, $sname)
+        Pretty.tile(::$T) = Pretty.literal($sname)
     end
 end
 

@@ -16,6 +16,9 @@ export AbstractMeasure
 
 abstract type AbstractMeasure end
 
+import PrettyPrinting as Pretty
+
+
 sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))

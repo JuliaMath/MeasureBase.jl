@@ -79,7 +79,7 @@ For(f, dims...) = productmeasure(i -> f(i...), zip(dims...))
 
 For(f, inds::AbstractArray) = productmeasure(f, inds)
 
-For(f, n::Int) = productmeasure(f, 1:n)
+For(f, n::Int) = productmeasure(f, Base.OneTo(n))
 For(f, dims::Int...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
 
 

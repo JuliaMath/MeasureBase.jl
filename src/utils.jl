@@ -1,5 +1,10 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
+function Base.show(io::IO, μ::AbstractMeasure)
+    io = IOContext(io, :compact => true)
+    Pretty.pprint(io, μ)
+end
+
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
@@ -51,3 +56,9 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F<:Function} = F
 @inline instance_type(f::UnionAll) = Type{f}
+
+using MLStyle
+
+macro quoteof(ex)
+
+end

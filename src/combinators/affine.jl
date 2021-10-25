@@ -4,6 +4,8 @@ using LinearAlgebra
     par::NamedTuple{N,T}
 end
 
+quoteof(f::AffineTransform) = :(AffineTransform($(quoteof(f.par))))
+
 params(f::AffineTransform) = getfield(f, :par)
 
 @inline Base.getproperty(d::AffineTransform, s::Symbol) = getfield(getfield(d, :par), s)
