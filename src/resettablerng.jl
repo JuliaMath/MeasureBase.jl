@@ -13,6 +13,7 @@ function Base.show(io::IO, r::ResettableRNG)
 end
 
 function reset!(r::ResettableRNG)
+    @info "Calling reset!"
     Random.seed!(r.rng, r.seed)
 end
 
@@ -42,9 +43,26 @@ end
 # Base.rand(r::ResettableRNG, d::AbstractMeasure) = rand(r.rng, d)
 # Base.rand(r::ResettableRNG, ::Type{T}, d::AbstractMeasure) where {T} = rand(r.rng, T, d)
 # Base.rand(r::ResettableRNG) = rand(r.rng, Float64)
-Base.rand(r::ResettableRNG, ::Type{T}) where {T} =  rand(r.rng, T)
-Base.randn(r::ResettableRNG, ::Type{T}) where {T} =  randn(r.rng, T)
-Base.randn(r::ResettableRNG, ::Type{Float64}) where {T} =  randn(r.rng, Float64)
+
+import Random
+using Random: randexp
+
+for T in isbits_subtypes(Real)
+    @eval begin
+        
+        function Base.rand(r::ResettableRNG, ::Type{$T}) 
+            rand(r.rng, $T)
+        end
+
+        function Base.randn(r::ResettableRNG, ::Type{$T}) 
+            randn(r.rng, $T)
+        end
+
+        function Random.randexp(r::ResettableRNG, ::Type{$T})
+            randexp(r.rng, $T)
+        end
+    end
+end
 
 function Base.iterate(r::ResettableRNG)
     reset!(r)
@@ -53,3 +71,11 @@ end
 
 Base.iterate(r::ResettableRNG, _) = (rand(r), nothing)
 Base.IteratorSize(r::ResettableRNG) = Base.IsInfinite()
+
+function Random.Sampler(r::Type{R}, s::Random.Sampler, rep::Random.Repetition) where {R<:ResettableRNG}
+    return Random.Sampler(r.rng, s, r)
+end
+
+function Base.rand(r::ResettableRNG, sp::Random.Sampler)
+    rand(r.rng, sp)
+end
