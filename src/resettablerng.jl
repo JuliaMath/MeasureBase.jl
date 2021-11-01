@@ -47,7 +47,6 @@ Base.randn(r::ResettableRNG, ::Type{T}) where {T} =  randn(r.rng, T)
 Base.randn(r::ResettableRNG, ::Type{Float64}) where {T} =  randn(r.rng, Float64)
 
 function Base.iterate(r::ResettableRNG)
-    r = deepcopy(r)
     reset!(r)
     return (rand(r), nothing)
 end
