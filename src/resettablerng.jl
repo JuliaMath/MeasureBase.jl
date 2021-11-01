@@ -65,6 +65,7 @@ for T in isbits_subtypes(Real)
 end
 
 function Base.iterate(r::ResettableRNG)
+    r = deepcopy(r)
     reset!(r)
     return (rand(r), nothing)
 end
