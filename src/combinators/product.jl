@@ -51,7 +51,7 @@ testvalue(d::ProductMeasure) = map(testvalue, marginals(d))
 
 function Pretty.tile(μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
     result = Pretty.literal("Product(")
-    result *= Pretty.pair_layout(μ.f, μ.pars; sep=", ")
+    result *= Pretty.pair_layout(μ.f, μ.pars; sep = ", ")
     result *= Pretty.literal(")")
 end
 
@@ -73,11 +73,11 @@ end
 export ⊗
 ⊗(μs::AbstractMeasure...) = productmeasure(μs)
 
-marginals(d::TupleProductMeasure{T}) where {F, T<:Tuple} = d.pars
+marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.pars
 
-function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T <: Tuple}
+function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T<:Tuple}
     mar = marginals(μ)
-    Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep=" ⊗ ")
+    Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep = " ⊗ ")
 end
 
 @inline function logdensity(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
@@ -93,7 +93,7 @@ end
 
 marginals(d::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray} = mappedarray(d.f, d.pars)
 
-function marginals(d::ProductMeasure{<:Returns, S, A}) where {F,S,A<:AbstractArray}
+function marginals(d::ProductMeasure{<:Returns,S,A}) where {F,S,A<:AbstractArray}
     Fill(d.f.f.value, size(d.pars))
     # mappedarray(d.f.f, d.pars)
 end
@@ -108,7 +108,7 @@ end
 
 function Pretty.tile(d::ProductMeasure{F,S,A}) where {F,S,A}
     result = Pretty.literal("For(")
-    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.pars); sep=", ")
+    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.pars); sep = ", ")
     result *= Pretty.literal(")")
 end
 
@@ -116,9 +116,9 @@ end
 ###############################################################################
 # I <: CartesianIndices
 
-function Pretty.tile(d::ProductMeasure{F,S,I}) where {F, S, I<:CartesianIndices}
+function Pretty.tile(d::ProductMeasure{F,S,I}) where {F,S,I<:CartesianIndices}
     result = Pretty.literal("For(")
-    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(size(d.pars)); sep=", ")
+    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(size(d.pars)); sep = ", ")
     result *= Pretty.literal(")")
 end
 
@@ -135,7 +135,7 @@ export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
 
-function logdensity(d::ProductMeasure{F,S,I}, x) where {F, S, I<:Base.Generator}
+function logdensity(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
     sum((logdensity(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 
@@ -143,10 +143,14 @@ end
 
 
 
-@propagate_inbounds function Random.rand!(rng::AbstractRNG, d::ProductMeasure, x::AbstractArray)
+@propagate_inbounds function Random.rand!(
+    rng::AbstractRNG,
+    d::ProductMeasure,
+    x::AbstractArray,
+)
     # TODO: Generalize this
     T = Float64
-    for(j,m) in zip(eachindex(x), marginals(d))
+    for (j, m) in zip(eachindex(x), marginals(d))
         @inbounds x[j] = rand(rng, T, m)
     end
     return x
@@ -160,7 +164,7 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
     elT = typeof(rand(rng, T, first(mar)))
 
     sz = size(mar)
-    x = Array{elT, length(sz)}(undef, sz)
+    x = Array{elT,length(sz)}(undef, sz)
     rand!(rng, d, x)
 end
 
@@ -178,12 +182,12 @@ end
 #     return rand(Random.GLOBAL_RNG, T, d)
 # end
 
-function sampletype(d::ProductMeasure{A}) where {T,N,A <: AbstractArray{T,N}}
+function sampletype(d::ProductMeasure{A}) where {T,N,A<:AbstractArray{T,N}}
     S = @inbounds sampletype(marginals(d)[1])
-    Array{S, N}
+    Array{S,N}
 end
 
-function sampletype(d::ProductMeasure{<: Tuple}) 
+function sampletype(d::ProductMeasure{<:Tuple})
     Tuple{sampletype.(marginals(d))...}
 end
 
@@ -192,7 +196,7 @@ end
 #     μ.data
 # end
 
-function ConstructionBase.constructorof(::Type{P}) where {F,S,I,P <: ProductMeasure{F,S,I}}
+function ConstructionBase.constructorof(::Type{P}) where {F,S,I,P<:ProductMeasure{F,S,I}}
     p -> productmeasure(d.f, p)
 end
 

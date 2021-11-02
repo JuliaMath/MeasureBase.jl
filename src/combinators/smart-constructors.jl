@@ -31,7 +31,10 @@ half(μ::AbstractMeasure) = Half(μ)
 
 pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
 
-function pointwiseproduct(μ::PointwiseProductMeasure{X}, ν::PointwiseProductMeasure{Y}) where {X,Y}
+function pointwiseproduct(
+    μ::PointwiseProductMeasure{X},
+    ν::PointwiseProductMeasure{Y},
+) where {X,Y}
     data = (μ.data..., ν.data...)
     pointwiseproduct(data...)
 end
@@ -41,7 +44,7 @@ function pointwiseproduct(μ::AbstractMeasure, ν::PointwiseProductMeasure)
     return pointwiseproduct(data...)
 end
 
-function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N <: AbstractMeasure}
+function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N<:AbstractMeasure}
     data = (μ.data..., ν)
     return pointwiseproduct(data...)
 end
@@ -67,8 +70,6 @@ function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
     return weightedmeasure(k, μ.base^dims)
 end
 
-
-
 ###############################################################################
 # ProductMeasure
 
@@ -91,11 +92,11 @@ function productmeasure(f::Returns{FB}, ops, pars) where {FB<:FactoredBase}
     inbounds(x) = all(fb.inbounds, x)
     constℓ = n * fb.constℓ
     varℓ() = n * fb.varℓ()
-    base = fb.base ^ dims
+    base = fb.base^dims
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W <: WeightedMeasure}
+function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
     ℓ = f.value.logweight
     base = f.value.base
     newbase = productmeasure(Returns(base), identity, pars)
@@ -127,11 +128,11 @@ end
 
 function weightedmeasure(ℓ::R, b::M) where {R,M}
     WeightedMeasure{R,M}(ℓ, b)
-end 
+end
 
 function weightedmeasure(ℓ, b::WeightedMeasure)
     weightedmeasure(ℓ + b.logweight, b.base)
-end 
+end
 
 ###############################################################################
 # Kernel
@@ -140,22 +141,22 @@ kernel(μ, ops...) = Kernel(μ, ops)
 kernel(μ, op) = Kernel(μ, op)
 
 # kernel(Normal(μ=2))
-function kernel(μ::P) where {P <: AbstractMeasure}
+function kernel(μ::P) where {P<:AbstractMeasure}
     (f, ops) = kernelfactor(μ)
-    kernel(f,ops)
+    kernel(f, ops)
 end
 
 # kernel(Normal{(:μ,), Tuple{Int64}})
-function kernel(::Type{P}) where {P <: AbstractMeasure}
+function kernel(::Type{P}) where {P<:AbstractMeasure}
     (f, ops) = kernelfactor(P)
-    kernel(f,ops)
+    kernel(f, ops)
 end
 
 # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
 function kernel(::Type{M}; ops...) where {M}
     nt = NamedTuple(ops)
-    kernel(M,nt)
+    kernel(M, nt)
 end
 
 kernel(f::Returns, op::typeof(identity)) = Kernel(f, op)
