@@ -20,8 +20,8 @@ end
 ###############################################################################
 
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
-    logweight :: R
-    base :: M
+    logweight::R
+    base::M
 end
 
 function Base.show(io::IO, μ::WeightedMeasure)
@@ -41,9 +41,9 @@ function Base.show_unquoted(io::IO, μ::WeightedMeasure, indent::Int, prec::Int)
     return nothing
 end
 
-function Base.:*(k::T, m::AbstractMeasure) where {T <: Number}
+function Base.:*(k::T, m::AbstractMeasure) where {T<:Number}
     logk = log(k)
-    return weightedmeasure(logk,m)
+    return weightedmeasure(logk, m)
 end
 
 Base.:*(m::AbstractMeasure, k::Real) = k * m
@@ -51,12 +51,12 @@ Base.:*(m::AbstractMeasure, k::Real) = k * m
 ≪(::M, ::WeightedMeasure{R,M}) where {R,M} = true
 ≪(::WeightedMeasure{R,M}, ::M) where {R,M} = true
 
-sampletype(μ:: WeightedMeasure) = sampletype(μ.base)
+sampletype(μ::WeightedMeasure) = sampletype(μ.base)
 
 ###############################################################################
 
 export ParamWeightedMeasure
-struct ParamWeightedMeasure{L,N,T,B} <: AbstractWeightedMeasure 
+struct ParamWeightedMeasure{L,N,T,B} <: AbstractWeightedMeasure
     ℓ::L
     par::NamedTuple{N,T}
     base::B
@@ -64,7 +64,7 @@ end
 
 function Base.show(io::IO, d::ParamWeightedMeasure)
     io = IOContext(io, :compact => true)
-    print(io, "ParamWeighted(",d.ℓ, ", ", d.par,", ", d.base, ")")
+    print(io, "ParamWeighted(", d.ℓ, ", ", d.par, ", ", d.base, ")")
 end
 
 basemeasure(d::ParamWeightedMeasure) = d.base

@@ -21,7 +21,7 @@ Superposition measures satisfy
 ```
 """
 struct SuperpositionMeasure{NT} <: AbstractMeasure
-    components :: NT   
+    components::NT
 end
 
 function Pretty.tile(d::SuperpositionMeasure)
@@ -58,7 +58,7 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(components)
 end
 
-logdensity(μ::SuperpositionMeasure, x) = logsumexp((logdensity(m,x) for m in μ.components))
+logdensity(μ::SuperpositionMeasure, x) = logsumexp((logdensity(m, x) for m in μ.components))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
