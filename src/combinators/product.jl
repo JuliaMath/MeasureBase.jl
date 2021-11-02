@@ -55,6 +55,14 @@ function Pretty.tile(μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
     result *= Pretty.literal(")")
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
+    _rand(rng, T, d, marginals(d))
+end
+
+function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar) where {T}
+    (rand(rng, T, m) for m in mar)
+end
+
 ###############################################################################
 # I <: Tuple
 
@@ -132,14 +140,7 @@ function logdensity(d::ProductMeasure{F,S,I}, x) where {F, S, I<:Base.Generator}
 end
 
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,S,I<:Base.Generator}
-    mar = marginals(d)
-    elT = typeof(rand(rng, T, first(mar)))
 
-    sz = size(mar)
-    r = ResettableRNG(rng, rand(rng, UInt))
-    Base.Generator(s -> rand(r, d.pars.f(s)), d.pars.iter)
-end
 
 
 @propagate_inbounds function Random.rand!(rng::AbstractRNG, d::ProductMeasure, x::AbstractArray)
@@ -154,13 +155,8 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
-    d1 = d.f(first(d.pars))
-    rand(rng, T, d, d1)
-end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, d1::AbstractMeasure) where {T}
-    mar = marginals(d)
+function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
     elT = typeof(rand(rng, T, first(mar)))
 
     sz = size(mar)

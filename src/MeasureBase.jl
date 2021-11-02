@@ -60,7 +60,6 @@ include("domains.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
 include("macros.jl")
-include("resettablerng.jl")
 
 include("primitive.jl")
 include("primitives/counting.jl")
