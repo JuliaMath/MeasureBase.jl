@@ -20,8 +20,6 @@ import PrettyPrinting
 
 const Pretty = PrettyPrinting
 
-
-
 sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
@@ -42,7 +40,6 @@ is understood to be `basemeasure(μ)`.
 Methods for computing density relative to other measures will be
 """
 function logdensity end
-
 
 if VERSION < v"1.7.0-beta1.0"
     @eval begin
