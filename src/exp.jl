@@ -29,8 +29,6 @@ Base.promote_rule(::Type{Exp}, T::Type{<:Real}) = T
 
 Base.convert(::Type{<:Real}, x::Exp) = exp(log(x))
 
-
-
 # Exp(3) / Exp(2)
 
 # Exp(3) * Exp(2)

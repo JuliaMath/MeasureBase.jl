@@ -30,12 +30,11 @@ log𝒹(μ, base) = Density(μ, base, Val{true}())
 Compute the Radom-Nikodym derivative (or its log, if `log=false`) of μ with
 respect to `base`.
 """
-function 𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=false)
+function 𝒹(μ::AbstractMeasure, base::AbstractMeasure; log = false)
     return Density(μ, base, Val(log))
 end
 
 (f::Density{M,B,Val{true}})(x) where {M,B} = logdensity(f.μ, f.base, x)
-
 
 (f::Density{M,B,Val{false}})(x) where {M,B} = density(f.μ, f.base, x)
 
@@ -49,17 +48,17 @@ A `DensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
 struct DensityMeasure{F,B,L} <: AbstractMeasure
-    f    :: F
-    base :: B
-    log  :: L
+    f::F
+    base::B
+    log::L
 end
 
-function Base.show(io::IO, μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
-    io = IOContext(io, :compact => true)
-    print(io, "DensityMeasure ")
-    print(io, "∫(", μ.f)
-    print(io, ", ", μ.base)
-    print(io, "; log = ", L, ")")
+function Pretty.tile(μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
+    result = Pretty.literal("DensityMeasure ∫(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
+    result *= Pretty.literal("; log = ")
+    result *= Pretty.tile(L)
+    result *= Pretty.literal(")")
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, d::DensityMeasure)
@@ -73,7 +72,7 @@ logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
 
 density(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = μ.f(x)
 
-logdensity(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = log(density(μ,x))
+logdensity(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = log(density(μ, x))
 
 export ∫
 
@@ -86,7 +85,6 @@ Define a new measure in terms of a density `f` over some measure `base`.
 
 ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫exp(log𝒹(μ, base), base)
 
-
 export ∫exp
 
 """
@@ -94,13 +92,13 @@ export ∫exp
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫exp(f,μ) = DensityMeasure(f,μ,Val{true}())
+∫exp(f, μ) = DensityMeasure(f, μ, Val{true}())
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
 @inline function logdensity(μ::T, ν::T, x) where {T<:AbstractMeasure}
-    μ==ν && return 0.0
-    invoke(logdensity, Tuple{AbstractMeasure, AbstractMeasure, typeof(x)}, μ, ν, x)
+    μ == ν && return 0.0
+    invoke(logdensity, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
 end
 
 @inline function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
@@ -109,7 +107,7 @@ end
 
     # If α===μ and β===ν, The recursive call would be exactly the same as the
     # original one. We need to break the recursion.
-    if α===μ && β===ν
+    if α === μ && β === ν
         @warn """
         No method found for logdensity(μ, ν, x) where
         typeof(μ) == $(typeof(μ))
@@ -139,7 +137,7 @@ function logpdf(d::AbstractMeasure, x)
     _logpdf(d, basemeasure(d), x)
 end
 
-@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ=zero(Float64))
+@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ = zero(Float64))
     # @show d
     # @show x
     Δℓ = logdensity(d, x)

@@ -5,9 +5,9 @@ end
 
 export ↦, mapsto
 
-mapsto(x,y) = x ↦ y
+mapsto(x, y) = x ↦ y
 
-↦(x::X,y::Y) where {X,Y} = MapsTo{X,Y}(x,y)
+↦(x::X, y::Y) where {X,Y} = MapsTo{X,Y}(x, y)
 
 Base.first(t::MapsTo) = t.x
 Base.last(t::MapsTo) = t.y
