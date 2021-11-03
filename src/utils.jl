@@ -59,6 +59,3 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 @inline instance_type(f::UnionAll) = Type{f}
 
 using MLStyle
-
-macro quoteof(ex) 
-end
