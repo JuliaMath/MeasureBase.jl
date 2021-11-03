@@ -1,5 +1,10 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
+function Base.show(io::IO, μ::AbstractMeasure)
+    io = IOContext(io, :compact => true)
+    Pretty.pprint(io, μ)
+end
+
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
@@ -7,7 +12,7 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
     y = f(x)
     # Workaround bug https://github.com/JuliaLang/julia/issues/42615
     while x !== y
-        (x,y) = (y, f(y))
+        (x, y) = (y, f(y))
     end
 
     return y
@@ -44,10 +49,16 @@ rootmeasure(μ::AbstractMeasure) = fix(basemeasure, μ)
 using Tricks
 struct Iterable end
 struct NonIterable end
-isiterable(::Type{T}) where T = static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+isiterable(::Type{T}) where {T} =
+    static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
 
 functioninstance(::Type{F}) where {F<:Function} = F.instance
 
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F<:Function} = F
 @inline instance_type(f::UnionAll) = Type{f}
+
+using MLStyle
+
+macro quoteof(ex) 
+end

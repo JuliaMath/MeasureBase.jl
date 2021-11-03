@@ -106,17 +106,16 @@ struct Likelihood{F,S,X}
     x::X
 end
 
-Likelihood(μ::AbstractMeasure, x) = Likelihood(kernel(μ),x)
+Likelihood(μ::AbstractMeasure, x) = Likelihood(kernel(μ), x)
 
-Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kernel(M),x)
+Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kernel(M), x)
 
-function Base.show(io::IO, ℓ::Likelihood) 
+function Base.show(io::IO, ℓ::Likelihood)
     io = IOContext(io, :compact => true)
     k, x = ℓ.k, ℓ.x
-    print(io, "Likelihood(",k,", ", x, ")")
+    print(io, "Likelihood(", k, ", ", x, ")")
 end
 
-
-function logdensity(ℓ::Likelihood, p) 
+function logdensity(ℓ::Likelihood, p)
     return logdensity(ℓ.k(p), ℓ.x)
 end

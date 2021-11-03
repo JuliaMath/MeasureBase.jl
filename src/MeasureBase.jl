@@ -16,6 +16,10 @@ export AbstractMeasure
 
 abstract type AbstractMeasure end
 
+import PrettyPrinting
+
+const Pretty = PrettyPrinting
+
 sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
@@ -37,7 +41,6 @@ Methods for computing density relative to other measures will be
 """
 function logdensity end
 
-
 if VERSION < v"1.7.0-beta1.0"
     @eval begin
         struct Returns{T}
@@ -57,7 +60,6 @@ include("domains.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
 include("macros.jl")
-include("resettablerng.jl")
 
 include("primitive.jl")
 include("primitives/counting.jl")

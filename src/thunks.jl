@@ -14,7 +14,7 @@
 # end
 
 # function reduce_step(thunk :: LogdensityThunk, callback=Returns(nothing))
-    
+
 
 
 # reduce_step(LogdensityThunk{M,B,X,L}, callback=Returns(nothing)) -> Union{LogdensityThunk, L}

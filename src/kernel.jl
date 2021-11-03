@@ -7,8 +7,14 @@ struct Kernel{F,S} <: AbstractKernel
     f::F
     ops::S
 
-    Kernel(::Type{T}, ops::S) where {T,S} = new{Type{T}, S}(T,ops)
-    Kernel(f::F, ops::S) where {F,S} = new{F, S}(f,ops)
+    Kernel(::Type{T}, ops::S) where {T,S} = new{Type{T},S}(T, ops)
+    Kernel(f::F, ops::S) where {F,S} = new{F,S}(f, ops)
+end
+
+function Pretty.quoteof(k::Kernel)
+    qf = Pretty.quoteof(k.f)
+    qops = Pretty.quoteof(k.ops)
+    :(Kernel($qf, $qops))
 end
 
 """
@@ -31,7 +37,6 @@ function kernel end
 
 export kernel
 
-
 # kernel(Normal) do x
 #     (μ=x,σ=x^2)
 # end
@@ -43,15 +48,15 @@ mapcall(t, x) = map(func -> func(x), t)
 
 # (k::Kernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.ops, x)...)
 
-(k::Kernel{M,<:NamedTuple})(x) where {M} = k.f(;mapcall(k.ops, x)...)
+(k::Kernel{M,<:NamedTuple})(x) where {M} = k.f(; mapcall(k.ops, x)...)
 
-(k::Kernel{F,S})(x...) where {F, N, S<:NTuple{N,Symbol}} = k(x)
+(k::Kernel{F,S})(x...) where {F,N,S<:NTuple{N,Symbol}} = k(x)
 
-function (k::Kernel{F,S})(x::Tuple) where {F, N, S<:NTuple{N,Symbol}}
+function (k::Kernel{F,S})(x::Tuple) where {F,N,S<:NTuple{N,Symbol}}
     k.f(NamedTuple{k.ops}(x))
 end
 
-(k::Kernel)(x) = k.f(k.ops(x)) 
+(k::Kernel)(x) = k.f(k.ops(x))
 
 """
 For any `k::Kernel`, `basekernel` is expected to satisfy
@@ -66,13 +71,11 @@ basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 """
 function basekernel end
 
-
 # TODO: Find a way to do better than this
 basekernel(f) = basemeasure ∘ f
 
 basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
 basekernel(f::Returns) = Returns(basemeasure(f.value))
-
 
 # export kernelize
 

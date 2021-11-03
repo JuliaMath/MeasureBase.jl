@@ -1,10 +1,10 @@
 export FactoredBase
 
 struct FactoredBase{R,C,V,B} <: AbstractMeasure
-    inbounds :: R
-    constℓ :: C
-    varℓ :: V
-    base :: B
+    inbounds::R
+    constℓ::C
+    varℓ::V
+    base::B
 end
 
 @inline function logdensity(d::FactoredBase, x)
