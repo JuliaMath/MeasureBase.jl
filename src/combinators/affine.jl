@@ -217,14 +217,13 @@ function Random.rand!(
     rng::Random.AbstractRNG,
     d::Affine,
     x::AbstractVector{T},
-    z = Vector{T}(undef, size(getfield(d, :f), 2)),
+    z = Vector{T}(undef, size(getfield(d, :f), 2))
 ) where {T}
     rand!(rng, parent(d), z)
     f = getfield(d, :f)
     apply!(x, f, z)
     return x
 end
-
 
 # function Base.rand(rng::Random.AbstractRNG, ::Type{T}, d::Affine) where {T}
 #     f = getfield(d, :f)

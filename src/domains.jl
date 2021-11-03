@@ -20,7 +20,7 @@ For example, `@domain ℝ RealNumbers` is equivalent to
 """
 macro domain(name, T)
     sname = String(name)
-    
+
     name = esc(name)
     quote
         struct $T <: AbstractDomain end
@@ -38,30 +38,28 @@ end
 
 @domain ℤ Integers
 
-
 ###########################################################
 # Integer ranges
 
-struct IntegerRange{lo, hi} <: AbstractDomain end
+struct IntegerRange{lo,hi} <: AbstractDomain end
 
-Base.minimum(::IntegerRange{lo, hi}) where {lo, hi} = lo
-Base.maximum(::IntegerRange{lo, hi}) where {lo, hi} = hi
+Base.minimum(::IntegerRange{lo,hi}) where {lo,hi} = lo
+Base.maximum(::IntegerRange{lo,hi}) where {lo,hi} = hi
 
-Base.iterate(r::IntegerRange{lo, hi}) where {lo, hi} = iterate(lo:hi)
+Base.iterate(r::IntegerRange{lo,hi}) where {lo,hi} = iterate(lo:hi)
 
 function Base.getindex(::Integers, r::AbstractUnitRange)
-    IntegerRange{minimum(r), maximum(r)}()
+    IntegerRange{minimum(r),maximum(r)}()
 end
 
-function Base.show(io::IO, r::IntegerRange{lo, hi}) where {lo, hi}
+function Base.show(io::IO, r::IntegerRange{lo,hi}) where {lo,hi}
     io = IOContext(io, :compact => true)
     print(io, "ℤ[", lo, ":", hi, "]")
 end
 
-testvalue(::IntegerRange{lo, hi}) where {lo, hi} = lo
+testvalue(::IntegerRange{lo,hi}) where {lo,hi} = lo
 
 ###########################################################
 # Real intervals
 
-
-struct RealInterval{lo, hi} <: AbstractDomain end
+struct RealInterval{lo,hi} <: AbstractDomain end

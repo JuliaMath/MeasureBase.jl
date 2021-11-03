@@ -18,7 +18,7 @@ function foldast(leaf, branch; kwargs...)
 end
 
 function replace(p, f, expr)
-    leaf(s) = p(s) ? f(s) : s 
+    leaf(s) = p(s) ? f(s) : s
     branch(head, newargs) = Expr(head, newargs...)
     foldast(leaf, branch)(expr)
 end
@@ -27,19 +27,17 @@ end
 function capture(template, ex, action)
     let template = Expr(:quote, template)
         quote
-            @match $ex begin 
+            @match $ex begin
                 $template => $action
                 _         => nothing
             end
-        end 
+        end
     end
 end
 
 macro capture(template, ex, action)
     capture(template, ex, action) |> esc
 end
-
-
 
 function _parameterized(__module__, expr)
     @capture ($op($μ($(p...)), $base)) expr begin
@@ -52,19 +50,19 @@ function _parameterized(__module__, expr)
         # @gensym basename
         q = quote
             struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
-                par :: NamedTuple{N,T}
+                par::NamedTuple{N,T}
             end
-            
+
             const $μbase = $base
             MeasureBase.basemeasure(::$μ) = $μbase
-        end   
-        
+        end
+
         if !isempty(p)
             # e.g. Normal(μ,σ) = Normal((μ=μ, σ=σ))
             pnames = QuoteNode.(p)
             push!(q.args, :($μ($(p...)) = $μ(NamedTuple{($(pnames...),)}(($(p...),)))))
         end
-        
+
         return q
     end
 
@@ -73,16 +71,16 @@ function _parameterized(__module__, expr)
 
         q = quote
             struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
-                par :: NamedTuple{N,T}
+                par::NamedTuple{N,T}
             end
-        end   
-        
+        end
+
         if !isempty(p)
             # e.g. Normal(μ,σ) = Normal((μ=μ, σ=σ))
             pnames = QuoteNode.(p)
             push!(q.args, :($μ($(p...)) = $μ(NamedTuple{($(pnames...),)}(($(p...),)))))
         end
-        
+
         return q
     end
 
@@ -91,16 +89,16 @@ function _parameterized(__module__, expr)
 
         q = quote
             struct $μ{N,T} <: MeasureBase.ParameterizedMeasure{N}
-                par :: NamedTuple{N,T}
+                par::NamedTuple{N,T}
             end
-        end   
-        
+        end
+
         if !isempty(p)
             # e.g. Normal(μ,σ) = Normal((μ=μ, σ=σ))
             pnames = QuoteNode.(p)
             push!(q.args, :($μ($(p...)) = $μ(NamedTuple{($(pnames...),)}(($(p...),)))))
         end
-        
+
         return q
     end
 end
@@ -130,7 +128,6 @@ macro parameterized(expr)
     _parameterized(__module__, expr)
 end
 
-
 """
     @half dist([paramnames])
 
@@ -156,7 +153,7 @@ function _half(__module__, ex)
             dist = esc(dist)
             quote
                 $halfdist(args...) = half($dist(args...))
-                $halfdist(;kwargs...) = half($dist(;kwargs...))
+                $halfdist(; kwargs...) = half($dist(; kwargs...))
             end
         end
     end

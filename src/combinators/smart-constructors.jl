@@ -20,7 +20,6 @@ function affine(f::AffineTransform, parent::FactoredBase)
     FactoredBase(Returns(true), constℓ, varℓ, base)
 end
 
-
 ###############################################################################
 # Half
 
@@ -33,7 +32,7 @@ pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
 
 function pointwiseproduct(
     μ::PointwiseProductMeasure{X},
-    ν::PointwiseProductMeasure{Y},
+    ν::PointwiseProductMeasure{Y}
 ) where {X,Y}
     data = (μ.data..., ν.data...)
     pointwiseproduct(data...)
@@ -102,8 +101,6 @@ function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:Weigh
     newbase = productmeasure(Returns(base), identity, pars)
     weightedmeasure(length(pars) * ℓ, newbase)
 end
-
-
 
 ###############################################################################
 # RestrictedMeasure

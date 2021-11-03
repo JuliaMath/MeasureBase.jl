@@ -7,7 +7,6 @@ export WeightedMeasure, AbstractWeightedMeasure
     end
 """
 
-
 abstract type AbstractWeightedMeasure <: AbstractMeasure end
 
 logweight(μ::AbstractWeightedMeasure) = μ.logweight

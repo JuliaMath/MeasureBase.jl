@@ -3,7 +3,6 @@ export For
 using Random
 import Base
 
-
 """
     For(f, base...)
 
@@ -81,7 +80,6 @@ For(f, inds::AbstractArray) = productmeasure(f, inds)
 
 For(f, n::Int) = productmeasure(f, Base.OneTo(n))
 For(f, dims::Int...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
-
 
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
     return eltype(d.f(first(d.pars)))

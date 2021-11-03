@@ -34,7 +34,7 @@ const PowerMeasure{F,S,T,N,A} = ProductMeasure{F,S,Fill{T,N,A}}
 Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 
 function Base.:^(μ::AbstractMeasure, dims::Integer...)
-    return μ ^ dims
+    return μ^dims
 end
 
 function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
@@ -43,16 +43,14 @@ end
 
 # Same as PowerMeasure
 function Pretty.tile(d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.pars)); sep=" ^ ")
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.pars)); sep = " ^ ")
 end
 
 function Pretty.tile(d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.pars)); sep=" ^ ")
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.pars)); sep = " ^ ")
 end
 
 # sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}
-
-
 
 params(d::ProductMeasure{F,S,<:Fill}) where {F,S} = params(first(marginals(d)))
 
@@ -67,7 +65,7 @@ end
 
 # Same as PowerMeasure
 @inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b) where {F,S}
-    b ^ size(d.pars)
+    b^size(d.pars)
 end
 
 # Same as PowerMeasure
@@ -76,7 +74,7 @@ end
     inbounds(x) = all(b.inbounds, x)
     constℓ = n * b.constℓ
     varℓ() = n * b.varℓ()
-    base = b.base ^ size(d.pars)
+    base = b.base^size(d.pars)
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 

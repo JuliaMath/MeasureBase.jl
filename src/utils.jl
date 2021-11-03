@@ -12,7 +12,7 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
     y = f(x)
     # Workaround bug https://github.com/JuliaLang/julia/issues/42615
     while x !== y
-        (x,y) = (y, f(y))
+        (x, y) = (y, f(y))
     end
 
     return y
@@ -49,7 +49,8 @@ rootmeasure(μ::AbstractMeasure) = fix(basemeasure, μ)
 using Tricks
 struct Iterable end
 struct NonIterable end
-isiterable(::Type{T}) where T = static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+isiterable(::Type{T}) where {T} =
+    static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
 
 functioninstance(::Type{F}) where {F<:Function} = F.instance
 
@@ -59,6 +60,5 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 
 using MLStyle
 
-macro quoteof(ex)
-
+macro quoteof(ex) 
 end

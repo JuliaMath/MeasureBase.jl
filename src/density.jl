@@ -36,7 +36,6 @@ end
 
 (f::Density{M,B,Val{true}})(x) where {M,B} = logdensity(f.μ, f.base, x)
 
-
 (f::Density{M,B,Val{false}})(x) where {M,B} = density(f.μ, f.base, x)
 
 """
@@ -85,7 +84,6 @@ Define a new measure in terms of a density `f` over some measure `base`.
 ∫(f, base::AbstractMeasure) = DensityMeasure(f, base, Val(false))
 
 ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫exp(log𝒹(μ, base), base)
-
 
 export ∫exp
 

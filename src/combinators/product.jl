@@ -7,12 +7,10 @@ using FillArrays
 
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
-
 struct ProductMeasure{F,S,I} <: AbstractProductMeasure
     f::Kernel{F,S}
     pars::I
 end
-
 
 # TODO: Test for equality without traversal, probably by first converting to a
 # canonical form
@@ -112,7 +110,6 @@ function Pretty.tile(d::ProductMeasure{F,S,A}) where {F,S,A}
     result *= Pretty.literal(")")
 end
 
-
 ###############################################################################
 # I <: CartesianIndices
 
@@ -122,7 +119,6 @@ function Pretty.tile(d::ProductMeasure{F,S,I}) where {F,S,I<:CartesianIndices}
     result *= Pretty.literal(")")
 end
 
-
 # function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,I<:CartesianIndices}
 
 # end
@@ -130,23 +126,17 @@ end
 ###############################################################################
 # I <: Base.Generator
 
-
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
-
 
 function logdensity(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
     sum((logdensity(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 
-
-
-
-
 @propagate_inbounds function Random.rand!(
     rng::AbstractRNG,
     d::ProductMeasure,
-    x::AbstractArray,
+    x::AbstractArray
 )
     # TODO: Generalize this
     T = Float64
@@ -158,7 +148,6 @@ end
 
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
-
 
 function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
     elT = typeof(rand(rng, T, first(mar)))
@@ -191,7 +180,6 @@ function sampletype(d::ProductMeasure{<:Tuple})
     Tuple{sampletype.(marginals(d))...}
 end
 
-
 # function logdensity(μ::ProductMeasure{Aμ}, x::Ax) where {Aμ <: MappedArray, Ax <: AbstractArray}
 #     μ.data
 # end
@@ -203,7 +191,6 @@ end
 # function Accessors.set(d::ProductMeasure{N}, ::typeof(params), p) where {N}
 #     setproperties(d, NamedTuple{N}(p...))
 # end
-
 
 # function Accessors.set(d::ProductMeasure{F,T}, ::typeof(params), p::Tuple) where {F, T<:Tuple}
 #     set.(marginals(d), params, p)

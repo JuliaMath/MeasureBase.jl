@@ -21,16 +21,14 @@ density(μ::Dirac, x) = x == μ.x
 
 logdensity(μ::Dirac, x) = (x == μ.x) ? 0.0 : -Inf
 
-
 Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
-
 
 export dirac
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
-function logdensity(μ::Dirac{M}, ν::Dirac{M}, x) where {M} 
-    logdensity(μ,x) - logdensity(ν,x)
+function logdensity(μ::Dirac{M}, ν::Dirac{M}, x) where {M}
+    logdensity(μ, x) - logdensity(ν, x)
 end
 
 testvalue(d::Dirac) = d.x
