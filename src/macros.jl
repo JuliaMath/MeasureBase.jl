@@ -1,10 +1,3 @@
-
-using MLStyle
-using Random: AbstractRNG
-using KeywordCalls
-using ConstructionBase
-export @parameterized, @half
-
 # A fold over ASTs. Example usage in `replace`
 function foldast(leaf, branch; kwargs...)
     function go(ast)
@@ -105,16 +98,21 @@ end
 
 """
     @parameterized <declaration>
-    
-The <declaration> gives a measure and its default parameters, and specifies
-its relation to its base measure. For example,
 
-    @parameterized Normal(μ,σ)
+Create a parametrized measure type from a reader-friendly declaration.
 
-declares the `Normal` is a measure with default parameters `μ and σ`. The result is equivalent to
+Here `<declaration>`` gives a measure and its default parameters, and specifies
+its relation to its base measure.
+
+# Examples
+Say we want to implement the standard parametrization of the Gaussian distribution. Then,
+```julia
+@parameterized Normal(μ,σ)
 ```
+declares tha `Normal` is a measure with default parameters `μ and σ`. The result is equivalent to
+```julia
 struct Normal{N,T} <: ParameterizedMeasure{N}
-    par :: NamedTuple{N,T}
+    par::NamedTuple{N,T}
 end
 
 KeywordCalls.@kwstruct Normal(μ,σ)
@@ -128,24 +126,6 @@ macro parameterized(expr)
     _parameterized(__module__, expr)
 end
 
-"""
-    @half dist([paramnames])
-
-Starting from a symmetric univariate measure `dist ≪ Lebesgue(ℝ)`, create a new
-measure `Halfdist ≪ Lebesgue(ℝ₊)`. For example,
-
-    @half Normal()
-
-creates `HalfNormal()`, and 
-
-    @half StudentT(ν)
-
-creates `HalfStudentT(ν)`.
-"""
-macro half(ex)
-    _half(__module__, ex)
-end
-
 function _half(__module__, ex)
     @match ex begin
         :($dist) => begin
@@ -157,4 +137,18 @@ function _half(__module__, ex)
             end
         end
     end
+end
+
+"""
+    @half dist([paramnames])
+
+Starting from a symmetric univariate measure `Dist ≪ Lebesgue(ℝ)`, create a new
+measure `HalfDist ≪ Lebesgue(ℝ₊)`.
+
+# Examples
+
+`@half Normal()` creates `HalfNormal()`, and `@half StudentT(ν)` creates `HalfStudentT(ν)`.
+"""
+macro half(ex)
+    _half(__module__, ex)
 end

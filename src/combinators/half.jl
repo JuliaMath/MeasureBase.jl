@@ -1,5 +1,8 @@
-export Half
+"""
+    Half{M}
 
+Store the restriction to `(0, +∞)` of a measure with type `M`.
+"""
 struct Half{M} <: AbstractMeasure
     parent::M
 end
@@ -9,6 +12,11 @@ function Base.show(io::IO, μ::Half)
     show(io, μ.parent)
 end
 
+"""
+    unhalf(μ::Half)
+
+Recover the original measure from its positive half.
+"""
 unhalf(μ::Half) = μ.parent
 
 function basemeasure(μ::Half)

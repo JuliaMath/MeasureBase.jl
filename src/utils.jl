@@ -1,3 +1,4 @@
+"""A `NamedTuple` with no element."""
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
 function Base.show(io::IO, μ::AbstractMeasure)
@@ -8,6 +9,11 @@ end
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
+"""
+    fix(f, x)
+
+Find a fixed point of `f` starting from point `x` by iterative application.
+"""
 @inline function fix(f, x)
     y = f(x)
     # Workaround bug https://github.com/JuliaLang/julia/issues/42615
@@ -18,7 +24,7 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
     return y
 end
 
-# function constructorof(::Type{T}) where {T} 
+# function constructorof(::Type{T}) where {T}
 #     C = T
 #     while C isa UnionAll
 #         C = C.body
@@ -31,31 +37,37 @@ constructor(::T) where {T} = constructor(T)
 
 constructor(::Type{T}) where {T} = constructorof(T)
 
-export testvalue
-testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
+"""
+    testvalue(μ::AbstractMeasure)
 
-export rootmeasure
+Return a typical value from the domain of `μ`.
+"""
+testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
 
 """
     rootmeasure(μ::AbstractMeasure)
 
-It's sometimes important to be able to find the fix point of a measure under
-`basemeasure`. That is, to start with some measure and apply `basemeasure`
-repeatedly until there's no change. That's what this does.
+Find the fixed point of `basemeasure` starting from measure `μ`.
 """
 rootmeasure(μ::AbstractMeasure) = fix(basemeasure, μ)
 
 # Base on the Tricks.jl README
-using Tricks
+
 struct Iterable end
+
 struct NonIterable end
-isiterable(::Type{T}) where {T} =
-    static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+
+"""
+    isiterable(::Type{T})
+
+Determine whether type `T` is an iterable by checking for an `iterate` method.
+"""
+function isiterable(::Type{T}) where {T}
+    return static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+end
 
 functioninstance(::Type{F}) where {F<:Function} = F.instance
 
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F<:Function} = F
 @inline instance_type(f::UnionAll) = Type{f}
-
-using MLStyle

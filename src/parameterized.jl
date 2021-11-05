@@ -1,14 +1,11 @@
-import ConstructionBase
-
-export ParameterizedMeasure
-
+"""Abstract supertype for measures defined by a parameter `par::NamedTuple{N}`."""
 abstract type ParameterizedMeasure{N} <: AbstractMeasure end
 
 function Base.getproperty(μ::ParameterizedMeasure{N}, prop::Symbol) where {N}
     return getproperty(getfield(μ, :par), prop)
 end
 
-function Base.propertynames(μ::ParameterizedMeasure{N}) where {N}
+function Base.propertynames(::ParameterizedMeasure{N}) where {N}
     return N
 end
 
@@ -45,31 +42,34 @@ end
 ###############################################################################
 # params
 
-export params
+"""
+    params(μ::AbstractMeasure)
 
+Get the parameters of measure `μ` as a `NamedTuple`.
+"""
+params(::AbstractMeasure) = NamedTuple()
 params(μ::ParameterizedMeasure) = getfield(μ, :par)
+params(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
 
 function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C}
     NamedTuple{paramnames(μ, constraints)}(params(μ))
 end
 
-params(μ::AbstractMeasure) = NamedTuple()
-
 ###############################################################################
 # paramnames
 
-export paramnames
-
 paramnames(μ) = paramnames(typeof(μ))
-
 paramnames(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
 
+"""
+    paramnames(μ::AbstractMeasure)
+
+Get the names of the parameters for measure `μ`.
+"""
 paramnames(μ::AbstractMeasure) = propertynames(μ)
 
-params(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
-
 function paramnames(μ, constraints::NamedTuple{N}) where {N}
-    tuple((k for k in paramnames(μ) if k ∉ N)...)
+    tuple((k for k in paramnames(μ) if !(k in N))...)
 end
 
 ###############################################################################

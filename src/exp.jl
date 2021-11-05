@@ -1,3 +1,22 @@
+"""
+    Exp{X}
+
+Store the exponential of a number in a lazy way.
+
+# Fields
+- `log::X`: number whose exponential we want to store.
+
+# Examples
+```@repl
+Exp(3) / Exp(2)
+Exp(3) * Exp(2)
+3 + Exp(2)
+3 / Exp(4)
+Exp(2) ^ 3
+1 / Exp(2)
+2 + Exp(3) ^ 0
+```
+"""
 struct Exp{X} <: AbstractFloat
     log::X
 end
@@ -28,17 +47,3 @@ Base.promote_rule(T::Type{<:Real}, ::Type{Exp}) = T
 Base.promote_rule(::Type{Exp}, T::Type{<:Real}) = T
 
 Base.convert(::Type{<:Real}, x::Exp) = exp(log(x))
-
-# Exp(3) / Exp(2)
-
-# Exp(3) * Exp(2)
-
-# 3 + Exp(2)
-
-# 3 / Exp(4)
-
-# Exp(2) ^ 3
-
-# 1 / Exp(2)
-
-# 2 + Exp(3) ^ 0

@@ -1,43 +1,81 @@
 module MeasureBase
 
-const logtwo = log(2.0)
+## Imports
 
-using Random
-import Random: rand!
-
-using FillArrays
 using ConcreteStructs
+using ConstructionBase: ConstructionBase
+using FillArrays
+using KeywordCalls
+using LogExpFunctions: logsumexp
 using MLStyle
+using PrettyPrinting: PrettyPrinting
+using Random: Random, AbstractRNG, rand!
+using Tricks
 
-export ≪
-export sampletype
+## Exports
 
 export AbstractMeasure
+export Kernel
 
-abstract type AbstractMeasure end
+export ≪
+export basemeasure
+export sampletype
+export logdensity
 
-import PrettyPrinting
+export basekernel
+export kernel
+export kernelfactor
+# export kernelize
+
+export ParameterizedMeasure
+export params
+export paramnames
+
+export ℝ
+export ℝ₊
+export 𝕀
+export ℤ
+export IntegerRange
+
+export testvalue
+export rootmeasure
+
+export @parameterized, @half
+
+export ↦, mapsto
+
+export FactoredBase
+
+export Half
+
+## Constants
+
+const logtwo = log(2.0)
 
 const Pretty = PrettyPrinting
 
+## Basic types and functions
+
+"""The abstract supertype of all measures."""
+abstract type AbstractMeasure end
+
+"""
+    sampletype(μ::AbstractMeasure)
+
+Return the type of a sample drawn from measure `μ`.
+"""
 sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
 
-export logdensity
-export basemeasure
-export basekernel
-
-using LogExpFunctions: logsumexp
-
 """
     logdensity(μ::AbstractMeasure{X}, x::X)
+    logdensity(μ, ν, x)
 
-Compute the logdensity of the measure μ at the point x. This is the standard way
-to define `logdensity` for a new measure. the base measure is implicit here, and
-is understood to be `basemeasure(μ)`.
+Compute the logdensity of the measure `μ` at the point `x`.
 
-Methods for computing density relative to other measures will be
+If `ν` is specified, the density is computed wrt `ν`. Otherwise, it is computed wrt the (local) base measure `basemeasure(μ, x)`.
+This is the standard way to define `logdensity` for a new measure.
 """
 function logdensity end
 
@@ -51,14 +89,15 @@ if VERSION < v"1.7.0-beta1.0"
     end
 end
 
+## Includes
+
 include("kernel.jl")
 include("parameterized.jl")
-include("combinators/mapsto.jl")
-include("combinators/half.jl")
+
 include("exp.jl")
 include("domains.jl")
 include("utils.jl")
-include("absolutecontinuity.jl")
+# include("absolutecontinuity.jl")
 include("macros.jl")
 
 include("primitive.jl")
@@ -67,7 +106,9 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/mapsto.jl")
 include("combinators/factoredbase.jl")
+include("combinators/half.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")

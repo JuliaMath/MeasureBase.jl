@@ -1,5 +1,4 @@
-export IntegerRange
-
+"""Abstract supertype for all measure domains."""
 abstract type AbstractDomain end
 
 """
@@ -8,15 +7,14 @@ abstract type AbstractDomain end
 Defines a new singleton struct `T`, and a value `name` for building values of
 that type.
 
-For example, `@domain ℝ RealNumbers` is equivalent to
+# Examples
 
-    struct RealNumbers <: AbstractDomain end
-
-    export ℝ
-
-    ℝ = RealNumbers()
-
-    Base.show(io::IO, ::RealNumbers) = print(io, "ℝ")
+For instance, `@domain ℝ RealNumbers` is equivalent to
+```julia
+struct RealNumbers <: AbstractDomain end
+ℝ = RealNumbers()
+Base.show(io::IO, ::RealNumbers) = print(io, "ℝ")
+```
 """
 macro domain(name, T)
     sname = String(name)
@@ -24,7 +22,6 @@ macro domain(name, T)
     name = esc(name)
     quote
         struct $T <: AbstractDomain end
-        export $name
         const $name = $T()
         Pretty.tile(::$T) = Pretty.literal($sname)
     end
@@ -41,12 +38,17 @@ end
 ###########################################################
 # Integer ranges
 
+"""
+    IntegerRange{lo,hi}
+
+Domain containing all the integers between `lo` and `hi` (inclusive).
+"""
 struct IntegerRange{lo,hi} <: AbstractDomain end
 
 Base.minimum(::IntegerRange{lo,hi}) where {lo,hi} = lo
 Base.maximum(::IntegerRange{lo,hi}) where {lo,hi} = hi
 
-Base.iterate(r::IntegerRange{lo,hi}) where {lo,hi} = iterate(lo:hi)
+Base.iterate(::IntegerRange{lo,hi}) where {lo,hi} = iterate(lo:hi)
 
 function Base.getindex(::Integers, r::AbstractUnitRange)
     IntegerRange{minimum(r),maximum(r)}()
@@ -62,4 +64,12 @@ testvalue(::IntegerRange{lo,hi}) where {lo,hi} = lo
 ###########################################################
 # Real intervals
 
+"""
+    RealInterval{lo,hi}
+
+Domain containing all the real numbers between `lo` and `hi` (inclusive).
+
+!!! warning "Missing methods"
+    Methods for this domain are not yet implemented. See [this issue](https://github.com/cscherrer/MeasureBase.jl/issues/16) for the discussion.
+"""
 struct RealInterval{lo,hi} <: AbstractDomain end

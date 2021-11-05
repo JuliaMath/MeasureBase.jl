@@ -7,7 +7,7 @@
 For measures μ and ν with μ≪ν, the density of μ with respect to ν (also called
 the Radon-Nikodym derivative dμ/dν) is a function f defined on the support of ν
 with the property that for any measurable a ⊂ supp(ν), μ(a) = ∫ₐ f dν.
-    
+
 Because this function is often difficult to express in closed form, there are
 many different ways of computing it. We therefore provide a formal
 representation to allow comptuational flexibilty.
@@ -45,7 +45,7 @@ end
     end
 
 A `DensityMeasure` is a measure defined by a density with respect to some other
-"base" measure 
+"base" measure
 """
 struct DensityMeasure{F,B,L} <: AbstractMeasure
     f::F
@@ -113,13 +113,13 @@ end
         typeof(μ) == $(typeof(μ))
         typeof(ν) == $(typeof(ν))
 
-        Returning NaN. If this is incorrect, please add a method        
+        Returning NaN. If this is incorrect, please add a method
         logdensity(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
         """
         return NaN
     end
 
-    # Infinite or NaN results occur when outside the support of α or β, 
+    # Infinite or NaN results occur when outside the support of α or β,
     # and also when one measure is singular wrt the other. Computing the base
     # measures first is often much cheaper, and allows the numerically-intensive
     # computation to "fall through" in these cases.
