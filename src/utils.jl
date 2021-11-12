@@ -43,7 +43,12 @@ It's sometimes important to be able to find the fix point of a measure under
 `basemeasure`. That is, to start with some measure and apply `basemeasure`
 repeatedly until there's no change. That's what this does.
 """
-rootmeasure(μ::AbstractMeasure) = fix(basemeasure, μ)
+@inline function rootmeasure(μ)
+    α = basemeasure(μ)
+    μ === α && return α
+    return rootmeasure(α)
+end
+
 
 # Base on the Tricks.jl README
 using Tricks
