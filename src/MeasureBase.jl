@@ -67,6 +67,8 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("densityinterface.jl")
+
 include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
