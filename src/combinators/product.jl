@@ -96,11 +96,11 @@ function marginals(d::ProductMeasure{<:Returns,S,A}) where {F,S,A<:AbstractArray
     # mappedarray(d.f.f, d.pars)
 end
 
-function logdensity(d::ProductMeasure, x)
+@inline function logdensity(d::ProductMeasure, x)
     mapreduce(logdensity, +, marginals(d), x)
 end
 
-function logdensity(d::ProductMeasure{<:Returns}, x)
+@inline function logdensity(d::ProductMeasure{<:Returns}, x)
     sum(x -> logdensity(d.f.f.value, x), x)
 end
 
@@ -129,7 +129,7 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-function logdensity(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
+@inline function logdensity(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
     sum((logdensity(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 

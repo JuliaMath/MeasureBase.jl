@@ -27,7 +27,7 @@ export dirac
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
-function logdensity(μ::Dirac{M}, ν::Dirac{M}, x) where {M}
+@inline function logdensity(μ::Dirac{M}, ν::Dirac{M}, x) where {M}
     logdensity(μ, x) - logdensity(ν, x)
 end
 

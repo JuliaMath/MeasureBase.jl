@@ -116,6 +116,6 @@ function Base.show(io::IO, ℓ::Likelihood)
     print(io, "Likelihood(", k, ", ", x, ")")
 end
 
-function logdensity(ℓ::Likelihood, p)
+@inline function logdensity(ℓ::Likelihood, p)
     return logdensity(ℓ.k(p), ℓ.x)
 end

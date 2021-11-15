@@ -6,8 +6,8 @@ using Random
 import Random: rand!
 
 using FillArrays
-using ConcreteStructs
 using MLStyle
+using Static
 
 export ≪
 export sampletype
@@ -57,11 +57,11 @@ include("combinators/mapsto.jl")
 include("combinators/half.jl")
 include("exp.jl")
 include("domains.jl")
+include("primitive.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
 include("macros.jl")
 
-include("primitive.jl")
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")

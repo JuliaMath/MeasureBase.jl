@@ -68,6 +68,8 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
+basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} = static(1) + basemeasure_depth(B)
+
 logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
 
 density(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = μ.f(x)
@@ -125,7 +127,7 @@ end
     # computation to "fall through" in these cases.
     # TODO: Add tests to check that NaN cases work properly
     ℓ = logdensity(α, β, x)
-    isfinite(ℓ) || return ℓ
+    isnan(ℓ) && return ℓ
 
     ℓ += logdensity(μ, x)
     ℓ -= logdensity(ν, x)
@@ -133,18 +135,29 @@ end
     return ℓ
 end
 
-function logpdf(d::AbstractMeasure, x)
-    _logpdf(d, basemeasure(d), x)
+@inline function logpdf(μ, x)
+    n = basemeasure_depth(μ)
+    (ℓ, β, y) = logdensity_tuple(μ, x)
+    return _logpdf(β, y, ℓ, static(n))
 end
 
-@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ = zero(Float64))
-    # @show d
-    # @show x
-    Δℓ = logdensity(d, x)
-    newℓ = ℓ + Δℓ
-    d == β && return newℓ
-    # @show Δℓ, d
-    _logpdf(β, basemeasure(β), x, newℓ)
+
+
+@generated function _logpdf(μ, x, ℓ, ::StaticInt{n}) where {n}
+    quote
+        # $(Expr(:meta,:inline))
+        Base.Cartesian.@nexprs $n i -> begin
+            (Δℓ, μ, x) = logdensity_tuple(μ, x)
+            ℓ += Δℓ
+        end
+        return ℓ
+    end 
+    # # @show μ
+    # (Δℓ, β, y) = logdensity_tuple(μ, x)
+    # β === μ && return ℓ
+    # # @show Δℓ
+    # ℓ += Δℓ
+    # return _logpdf(β, y, ℓ)
 end
 
 logdensity(::Lebesgue, ::Lebesgue, x) = 0.0

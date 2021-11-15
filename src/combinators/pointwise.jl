@@ -1,6 +1,6 @@
 export ⊙
 
-@concrete terse struct PointwiseProductMeasure{T} <: AbstractMeasure
+struct PointwiseProductMeasure{T} <: AbstractMeasure
     data::T
 end
 

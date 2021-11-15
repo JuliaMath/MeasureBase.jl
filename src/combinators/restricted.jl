@@ -14,3 +14,5 @@ function density(d::RestrictedMeasure, x)
 end
 
 basemeasure(μ::RestrictedMeasure) = μ.base
+
+basemeasure_depth(::Type{RestrictedMeasure{F,M}}) where {F,M} = static(1) + basemeasure_depth(M)
