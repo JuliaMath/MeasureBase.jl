@@ -140,26 +140,20 @@ end
 @inline function logpdf(μ, x)
     n = basemeasure_depth(μ)
     (ℓ, β, y) = logdensity_tuple(μ, x)
-    return _logpdf(β, y, ℓ, static(n))
+    return _logpdf(β, y, ℓ, n)
 end
 
 
 
 @generated function _logpdf(μ, x, ℓ, ::StaticInt{n}) where {n}
     quote
-        # $(Expr(:meta,:inline))
+        $(Expr(:meta,:inline))
         Base.Cartesian.@nexprs $n i -> begin
             (Δℓ, μ, x) = logdensity_tuple(μ, x)
             ℓ += Δℓ
         end
         return ℓ
     end 
-    # # @show μ
-    # (Δℓ, β, y) = logdensity_tuple(μ, x)
-    # β === μ && return ℓ
-    # # @show Δℓ
-    # ℓ += Δℓ
-    # return _logpdf(β, y, ℓ)
 end
 
 # logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
