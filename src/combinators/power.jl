@@ -78,6 +78,15 @@ end
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
+
+function basemeasure_depth(d::P) where {M, P<:ProductMeasure{Returns{M}}}
+    return static(1) + basemeasure_depth(M)
+end
+
+function basemeasure_depth(::Type{P}) where {M, P<:ProductMeasure{Returns{M}}}
+    return static(1) + basemeasure_depth(M)
+end
+
 # Same as PowerMeasure
 @inline function logdensity(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
     d1 = d.f(first(d.pars))

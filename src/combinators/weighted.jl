@@ -23,6 +23,8 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     base::M
 end
 
+
+basemeasure_depth(::WeightedMeasure{R,M}) where {R, M} = static(1) + basemeasure_depth(M)
 basemeasure_depth(::Type{WeightedMeasure{R,M}}) where {R, M} = static(1) + basemeasure_depth(M)
 
 function Base.show(io::IO, μ::WeightedMeasure)

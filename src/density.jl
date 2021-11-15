@@ -68,6 +68,8 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
+basemeasure_depth(::DensityMeasure{F,B,L}) where {F,B,L} = static(1) + basemeasure_depth(B)
+
 basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} = static(1) + basemeasure_depth(B)
 
 logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
@@ -159,8 +161,6 @@ end
     # ℓ += Δℓ
     # return _logpdf(β, y, ℓ)
 end
-
-logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
 
 # logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
 

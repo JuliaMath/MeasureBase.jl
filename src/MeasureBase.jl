@@ -51,6 +51,7 @@ if VERSION < v"1.7.0-beta1.0"
     end
 end
 
+include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
 include("combinators/mapsto.jl")

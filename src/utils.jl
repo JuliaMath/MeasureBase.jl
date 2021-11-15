@@ -1,17 +1,5 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
-"""
-    function proxy end
-
-It's often useful to delegate methods like `logdensity` and `basemeasure` to
-those of a different measure. For example, a `Normal{(:μ,:σ)}` is equivalent to
-an affine transformation of a `Normal{()}`.
-
-We _could_ just have calls like `Normal(μ=2,σ=4)` directly construct a
-transformed measure, but this would make dispatch awkward.
-"""
-proxy(μ) = μ
-
 function Base.show(io::IO, μ::AbstractMeasure)
     io = IOContext(io, :compact => true)
     Pretty.pprint(io, μ)
@@ -81,19 +69,26 @@ using MLStyle
 
 export basemeasure_depth
 
-basemeasure_depth(μ::M) where {M<:AbstractMeasure} = basemeasure_depth(M)
-
-@inline function basemeasure_depth(μ::M) where {M}
+@inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
+    @info """
+    Add a method for better performance:
+    
+    basemeasure_depth(::$M)
+        
+    """
     static(1) + basemeasure_depth(basemeasure(μ))
 end
 
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
 
+@inline basemeasure_depth(::Type{M}) where {M<:PrimitiveMeasure} = static(0)
+
 export logdensity_tuple
 
-logdensity_tuple(d, x) = logdensity_tuple(MeasureBase.proxy(d), x)
+function logdensity_tuple(d, x)
+    return (logdensity(d, x), basemeasure(d, x), x)
+end
 
 function logdensity_tuple(d, (z,x)::MapsTo)
-    prox = MeasureBase.proxy(d)
-    return (logdensity(prox, x), basemeasure(prox, x), z ↦ x)
+    return (logdensity(d, x), basemeasure(d, x), z ↦ x)
 end
