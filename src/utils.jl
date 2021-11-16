@@ -51,7 +51,6 @@ repeatedly until there's no change. That's what this does.
     return rootmeasure(α)
 end
 
-
 # Base on the Tricks.jl README
 using Tricks
 struct Iterable end
@@ -71,10 +70,10 @@ export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
     @info """
-    Add a method for better performance:
-    
-    basemeasure_depth(::$M)
-        
+    Add methods for better performance:
+
+        basemeasure_depth(::$M)
+        basemeasure_depth(::Type{$M})
     """
     static(1) + basemeasure_depth(basemeasure(μ))
 end
@@ -89,6 +88,6 @@ function logdensity_tuple(d, x)
     return (logdensity(d, x), basemeasure(d, x), x)
 end
 
-function logdensity_tuple(d, (z,x)::MapsTo)
+function logdensity_tuple(d, (z, x)::MapsTo)
     return (logdensity(d, x), basemeasure(d, x), z ↦ x)
 end

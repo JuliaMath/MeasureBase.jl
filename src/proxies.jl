@@ -14,4 +14,3 @@ function proxy end
 proxy(μ) = μ
 
 proxy(f, μ) = proxy(μ)
-

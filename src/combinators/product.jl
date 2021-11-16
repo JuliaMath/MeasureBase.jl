@@ -136,7 +136,7 @@ end
 @propagate_inbounds function Random.rand!(
     rng::AbstractRNG,
     d::ProductMeasure,
-    x::AbstractArray
+    x::AbstractArray,
 )
     # TODO: Generalize this
     T = Float64

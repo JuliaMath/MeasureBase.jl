@@ -32,7 +32,7 @@ pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
 
 function pointwiseproduct(
     μ::PointwiseProductMeasure{X},
-    ν::PointwiseProductMeasure{Y}
+    ν::PointwiseProductMeasure{Y},
 ) where {X,Y}
     data = (μ.data..., ν.data...)
     pointwiseproduct(data...)

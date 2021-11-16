@@ -1,10 +1,9 @@
 export Affine, AffineTransform
 using LinearAlgebra
 
-
 const AFFINEPARS = [
-    (:μ,:σ)
-    (:μ,:ω)
+    (:μ, :σ)
+    (:μ, :ω)
     (:σ,)
     (:ω,)
     (:μ,)
@@ -130,7 +129,8 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
-Pretty.quoteof(μ::Affine) = :(Affine($(Pretty.quoteof(params(μ.f))), $(Pretty.quoteof(μ.parent))))
+Pretty.quoteof(μ::Affine) =
+    :(Affine($(Pretty.quoteof(params(μ.f))), $(Pretty.quoteof(μ.parent))))
 
 function testvalue(d::Affine)
     f = getfield(d, :f)
@@ -199,11 +199,6 @@ end
     logdensity(d.parent, z)
 end
 
-
-
-
-
-
 @inline function logdensity_tuple(d::Affine{(:σ,)}, x)
     z = d.σ \ x
     # @show z
@@ -231,16 +226,13 @@ end
     (logdensity(d.parent, z), basemeasure(d), z ↦ x)
 end
 
-
-
 for p in AFFINEPARS
     @eval begin
-        @inline function logdensity_tuple(d::Affine{$p}, (z,x)::MapsTo)
+        @inline function logdensity_tuple(d::Affine{$p}, (z, x)::MapsTo)
             (logdensity(d.parent, z), basemeasure(d), z ↦ x)
         end
     end
 end
-
 
 # # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
 # @inline function logdensity(d::Affine{(:μ,:σ), P, Tuple{V,M}}, x) where {P, V<:AbstractVector, M<:AbstractMatrix}
@@ -267,12 +259,14 @@ basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))
 # example it wouldn't make sense to apply a log-Jacobian to a point measure
 basemeasure(d::Affine{N,L}) where {N,L<:Lebesgue} = weightedmeasure(-logjac(d), d.parent)
 
-@inline function basemeasure(d::Affine{N,M}) where {N,L<:Lebesgue,M<:ProductMeasure{Returns{L}}}
+@inline function basemeasure(
+    d::Affine{N,M},
+) where {N,L<:Lebesgue,M<:ProductMeasure{Returns{L}}}
     weightedmeasure(-logjac(d), d.parent)
 end
 
-basemeasure_depth(::Affine{N,M,T}) where {N, M, T} = static(1) + basemeasure_depth(M)
-basemeasure_depth(::Type{Affine{N,M,T}}) where {N, M, T} = static(1) + basemeasure_depth(M)
+basemeasure_depth(::Affine{N,M,T}) where {N,M,T} = static(1) + basemeasure_depth(M)
+basemeasure_depth(::Type{Affine{N,M,T}}) where {N,M,T} = static(1) + basemeasure_depth(M)
 
 logjac(d::Affine) = logjac(getfield(d, :f))
 
@@ -280,7 +274,7 @@ function Random.rand!(
     rng::Random.AbstractRNG,
     d::Affine,
     x::AbstractVector{T},
-    z = Vector{T}(undef, size(getfield(d, :f), 2))
+    z = Vector{T}(undef, size(getfield(d, :f), 2)),
 ) where {T}
     rand!(rng, parent(d), z)
     f = getfield(d, :f)

@@ -70,7 +70,8 @@ basemeasure(μ::DensityMeasure) = μ.base
 
 basemeasure_depth(::DensityMeasure{F,B,L}) where {F,B,L} = static(1) + basemeasure_depth(B)
 
-basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} = static(1) + basemeasure_depth(B)
+basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} =
+    static(1) + basemeasure_depth(B)
 
 logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
 
@@ -143,17 +144,15 @@ end
     return _logpdf(β, y, ℓ, n)
 end
 
-
-
 @generated function _logpdf(μ, x, ℓ, ::StaticInt{n}) where {n}
     quote
-        $(Expr(:meta,:inline))
+        $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $n i -> begin
             (Δℓ, μ, x) = logdensity_tuple(μ, x)
             ℓ += Δℓ
         end
         return ℓ
-    end 
+    end
 end
 
 # logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
