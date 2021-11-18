@@ -14,12 +14,12 @@ d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 # if VERSION ≥ v"1.6"
 #     @eval using JETTest
 
-#     @eval begin     
+#     @eval begin
 #         @test_nodispatch density(Lebesgue(ℝ), 0.3)
 
 #         @test_nodispatch density(Dirac(0), 0.3)
 #         @test_nodispatch density(Dirac(0), 0)
-        
+
 #         @test_nodispatch density(d, 3)
 
 #         @test_nodispatch basemeasure(d)
@@ -74,7 +74,7 @@ testbroken_measures = [
         @info "testing $μ"
         @test_broken test_testvalue(μ)
     end
-    
+
 end
 
 
@@ -104,7 +104,7 @@ end
     f = AffineTransform((μ=3,σ=2))
     @test f(inv(f)(1)) == 1
     @test inv(f)(f(1)) == 1
-    
+
     f = AffineTransform((μ=3,ω=2))
     @test f(inv(f)(1)) == 1
     @test inv(f)(f(1)) == 1
@@ -156,7 +156,7 @@ end
     @test logpdf(a, x) ≈ logpdf(d, inv(a.f)(x)[1])
     @test logpdf(a, a.f(y)) ≈ logpdf(d^1, y)
 
-    b = Affine((ω=[1 0]'',), d^1)
+    b = Affine((ω=([1 0]')',), d^1)
     @test logpdf(b, x) ≈ logpdf(d, inv(b.f)(x)[1])
     @test logpdf(b, b.f(y)) ≈ logpdf(d^1, y)
 end
@@ -186,7 +186,7 @@ end
 
 
 # import MeasureBase.:⋅
-# function ⋅(μ::Normal, kernel) 
+# function ⋅(μ::Normal, kernel)
 #     m = kernel(μ)
 #     Normal(μ = m.μ.μ, σ = sqrt(m.μ.σ^2 + m.σ^2))
 # end
@@ -248,7 +248,7 @@ end
 # @testset "Density measures and Radon-Nikodym" begin
 #     x = randn()
 #     let d = ∫(𝒹(Cauchy(), Normal()), Normal())
-#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x)
 #     end
 
 #     let f = 𝒹(∫(x -> x^2, Normal()), Normal())
@@ -256,7 +256,7 @@ end
 #     end
 
 #     let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
-#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x)
 #     end
 
 #     let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
