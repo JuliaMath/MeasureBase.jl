@@ -2,41 +2,42 @@ export IntegerRange
 
 abstract type AbstractDomain end
 
-"""
-    @domain(name, T)
-
-Defines a new singleton struct `T`, and a value `name` for building values of
-that type.
-
-For example, `@domain ℝ RealNumbers` is equivalent to
-
-    struct RealNumbers <: AbstractDomain end
-
-    export ℝ
-
-    ℝ = RealNumbers()
-
-    Base.show(io::IO, ::RealNumbers) = print(io, "ℝ")
-"""
-macro domain(name, T)
-    sname = String(name)
-
-    name = esc(name)
-    quote
-        struct $T <: AbstractDomain end
-        export $name
-        const $name = $T()
-        Base.show(io::IO, ::$T) = Pretty.literal($sname)
-    end
+struct RealBounds{L,U} <: AbstractDomain
+    lower :: L
+    upper :: U
 end
 
-@domain ℝ RealNumbers
+Base.in(x, b::RealBounds) = b.lower ≤ x ≤ b.upper
 
-@domain ℝ₊ PositiveReals
 
-@domain 𝕀 UnitInterval
+const ℝ = RealBounds(static(-Inf), static(Inf))
 
-@domain ℤ Integers
+const ℝ₊ = RealBounds(static(0.0), static(Inf))
+
+const 𝕀 = RealBounds(static(0.0), static(1.0))
+
+Base.minimum(b::RealBounds) = b.lower
+Base.maximum(b::RealBounds) = b.upper
+
+Base.show(io::IO, ::typeof(ℝ)) = print(io, "ℝ")
+Base.show(io::IO, ::typeof(ℝ₊)) = print(io, "ℝ₊")
+Base.show(io::IO, ::typeof(𝕀)) = print(io, "𝕀")
+
+testvalue(::typeof(ℝ)) = 0.0
+testvalue(::typeof(ℝ₊)) = 1.0
+testvalue(::typeof(𝕀)) = 0.5
+
+struct IntegerBounds{L,U} <: AbstractDomain
+    lower :: L
+    upper :: U
+end
+
+Base.in(x, b::IntegerBounds) = b.lower ≤ x ≤ b.upper
+
+const ℤ = IntegerBounds(static(-Inf), static(Inf))
+
+Base.show(io::IO, ::typeof(ℤ)) = print(io, "ℤ")
+
 
 ###########################################################
 # Integer ranges
