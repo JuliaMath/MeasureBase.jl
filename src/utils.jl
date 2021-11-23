@@ -1,10 +1,5 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
-function Base.show(io::IO, μ::AbstractMeasure)
-    io = IOContext(io, :compact => true)
-    Pretty.pprint(io, μ)
-end
-
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
@@ -64,8 +59,6 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 @inline instance_type(f::F) where {F<:Function} = F
 @inline instance_type(f::UnionAll) = Type{f}
 
-using MLStyle
-
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
@@ -85,9 +78,9 @@ end
 export logdensity_tuple
 
 function logdensity_tuple(d, x)
-    return (logdensity(d, x), basemeasure(d, x), x)
+    return (logdensity_def(d, x), basemeasure(d, x), x)
 end
 
 function logdensity_tuple(d, (z, x)::MapsTo)
-    return (logdensity(d, x), basemeasure(d, x), z ↦ x)
+    return (logdensity_def(d, x), basemeasure(d, x), z ↦ x)
 end

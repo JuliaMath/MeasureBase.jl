@@ -4,7 +4,7 @@ using Random
 using LinearAlgebra
 
 using MeasureBase
-using MeasureBase: logpdf
+using MeasureBase: logdensityof
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
@@ -15,16 +15,16 @@ d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 #     @eval using JETTest
 
 #     @eval begin     
-#         @test_nodispatch density(Lebesgue(ℝ), 0.3)
+#         @test_nodispatch density_def(Lebesgue(ℝ), 0.3)
 
-#         @test_nodispatch density(Dirac(0), 0.3)
-#         @test_nodispatch density(Dirac(0), 0)
+#         @test_nodispatch density_def(Dirac(0), 0.3)
+#         @test_nodispatch density_def(Dirac(0), 0)
 
-#         @test_nodispatch density(d, 3)
+#         @test_nodispatch density_def(d, 3)
 
 #         @test_nodispatch basemeasure(d)
 
-#         @test_nodispatch logdensity(For(3) do j Dirac(j) end, [1,2,3])
+#         @test_nodispatch logdensity_def(For(3) do j Dirac(j) end, [1,2,3])
 #     end
 # end
 
@@ -38,7 +38,7 @@ d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 # end
 
 function test_testvalue(μ)
-    logdensity(μ, testvalue(μ)) isa AbstractFloat
+    logdensity_def(μ, testvalue(μ)) isa AbstractFloat
 end
 
 test_measures = [
@@ -91,14 +91,14 @@ end
     m = SpikeMixture(d, w)
     bm = basemeasure(m)
     @test (bm.s * bm.w) * bm.m == 1.0 * basemeasure(d)
-    @test density(m, 1.0) * (bm.s * bm.w) ≈ w * density(d, 1.0)
-    @test density(m, 0) * (bm.s * (1 - bm.w)) ≈ (1 - w)
+    @test density_def(m, 1.0) * (bm.s * bm.w) ≈ w * density_def(d, 1.0)
+    @test density_def(m, 0) * (bm.s * (1 - bm.w)) ≈ (1 - w)
 end
 
 @testset "Dirac" begin
     @test rand(Dirac(0.2)) == 0.2
-    @test logdensity(Dirac(0.3), 0.3) == 0.0
-    @test logdensity(Dirac(0.3), 0.4) == -Inf
+    @test logdensity_def(Dirac(0.3), 0.3) == 0.0
+    @test logdensity_def(Dirac(0.3), 0.4) == -Inf
 end
 
 @testset "AffineTransform" begin
@@ -134,7 +134,7 @@ end
     for f in [f1, f2, f3, f4, f5]
         par = getfield(f, :par)
         @test Affine(par)(unif) == Affine(f, unif)
-        @test density(Affine(f, Affine(inv(f), unif)), 0.5) == 1
+        @test density_def(Affine(f, Affine(inv(f), unif)), 0.5) == 1
     end
 
     d = ∫exp(x -> -x^2, Lebesgue(ℝ))
@@ -145,21 +145,21 @@ end
 
     x = randn(3)
 
-    @test logdensity(Affine((μ = μ, σ = σ), d^3), x) ≈
-          logdensity(Affine((μ = μ, ω = ω), d^3), x)
-    @test logdensity(Affine((σ = σ,), d^3), x) ≈ logdensity(Affine((ω = ω,), d^3), x)
-    @test logdensity(Affine((μ = μ,), d^3), x) ≈ logdensity(d^3, x - μ)
+    @test logdensity_def(Affine((μ = μ, σ = σ), d^3), x) ≈
+          logdensity_def(Affine((μ = μ, ω = ω), d^3), x)
+    @test logdensity_def(Affine((σ = σ,), d^3), x) ≈ logdensity_def(Affine((ω = ω,), d^3), x)
+    @test logdensity_def(Affine((μ = μ,), d^3), x) ≈ logdensity_def(d^3, x - μ)
 
     d = ∫exp(x -> -x^2, Lebesgue(ℝ))
     a = Affine((σ = [1 0]',), d^1)
     x = randn(2)
     y = randn(1)
-    @test logpdf(a, x) ≈ logpdf(d, inv(a.f)(x)[1])
-    @test logpdf(a, a.f(y)) ≈ logpdf(d^1, y)
+    @test logdensityof(a, x) ≈ logdensityof(d, inv(a.f)(x)[1])
+    @test logdensityof(a, a.f(y)) ≈ logdensityof(d^1, y)
 
     b = Affine((ω = [1 0]'',), d^1)
-    @test logpdf(b, x) ≈ logpdf(d, inv(b.f)(x)[1])
-    @test logpdf(b, b.f(y)) ≈ logpdf(d^1, y)
+    @test logdensityof(b, x) ≈ logdensityof(d, inv(b.f)(x)[1])
+    @test logdensityof(b, b.f(y)) ≈ logdensityof(d^1, y)
 end
 
 @testset "For" begin
@@ -183,16 +183,16 @@ end
 
     for d in FORDISTS
         @info "testing $d"
-        @test logdensity(d, rand(d)) isa Float64
+        @test logdensity_def(d, rand(d)) isa Float64
     end
 end
 
 @testset "Half" begin
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     @half Normal
-    @test logdensity(HalfNormal(), Lebesgue(ℝ), -0.2) == -Inf
-    @test logdensity(HalfNormal(), 0.2) == logdensity(Normal(), 0.2)
-    @test density(HalfNormal(), Lebesgue(ℝ), 0.2) ≈ 2 * density(Normal(), Lebesgue(ℝ), 0.2)
+    @test logdensity_def(HalfNormal(), Lebesgue(ℝ), -0.2) == -Inf
+    @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
+    @test density_def(HalfNormal(), Lebesgue(ℝ), 0.2) ≈ 2 * density_def(Normal(), Lebesgue(ℝ), 0.2)
 end
 
 # import MeasureBase.:⋅
@@ -220,7 +220,7 @@ end
 
 #     for (d,p) in dps
 #         for ℓ in ℓs
-#             @test logdensity(d ⊙ ℓ, p) == logdensity(d, p) + logdensity(ℓ, p)
+#             @test logdensity_def(d ⊙ ℓ, p) == logdensity_def(d, p) + logdensity_def(ℓ, p)
 #         end
 #     end
 # end
@@ -256,7 +256,7 @@ end
 # @testset "Density measures and Radon-Nikodym" begin
 #     x = randn()
 #     let d = ∫(𝒹(Cauchy(), Normal()), Normal())
-#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+#         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
 #     end
 
 #     let f = 𝒹(∫(x -> x^2, Normal()), Normal())
@@ -264,7 +264,7 @@ end
 #     end
 
 #     let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
-#         @test logdensity(d, x) ≈ logdensity(Cauchy(), x) 
+#         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
 #     end
 
 #     let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())

@@ -17,18 +17,18 @@ end
 @inline function basemeasure(μ::SpikeMixture)
     # Compare formula (1.4) in Joris Bierkens, Sebastiano Grazzi, Frank van der Meulen, Moritz Schauer:
     # Sticky PDMP samplers for sparse and local inference problems. 2020. [https://arxiv.org/abs/2103.08478].
-    ki = (1 / μ.w - 1) / density(μ.m, 0)
+    ki = (1 / μ.w - 1) / density_def(μ.m, 0)
     SpikeMixture(basemeasure(μ.m), 1 / (1 + ki), μ.s * (1 + ki))
 end
 
 basemeasure_depth(::Type{SpikeMixture{T,S}}) where {T,S} = static(1) + basemeasure_depth(T)
 
-@inline function logdensity(μ::SpikeMixture, x)
-    return log(μ.w) + logdensity(μ.m, x)
+@inline function logdensity_def(μ::SpikeMixture, x)
+    return log(μ.w) + logdensity_def(μ.m, x)
 end
 
-function sampletype(μ::SpikeMixture)
-    sampletype(μ.m)
+function gentype(μ::SpikeMixture)
+    gentype(μ.m)
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::SpikeMixture)

@@ -4,25 +4,28 @@ const logtwo = log(2.0)
 
 using Random
 import Random: rand!
+import Random: gentype
+import DensityInterface: logdensityof
+import DensityInterface: densityof
+import DensityInterface: DensityKind
+using DensityInterface: HasDensity, IsDensity
 
 using FillArrays
-using MLStyle
 using Static
 
 export ≪
-export sampletype
+export gentype
 
 export AbstractMeasure
 
 abstract type AbstractMeasure end
 
-import PrettyPrinting
+@inline DensityKind(::AbstractMeasure) = HasDensity()
 
-const Pretty = PrettyPrinting
+gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
-sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
-# sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
+# gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
 export logdensity
 export basemeasure
@@ -31,7 +34,7 @@ export basekernel
 using LogExpFunctions: logsumexp
 
 """
-    logdensity(μ::AbstractMeasure{X}, x::X)
+    logdensity_def(μ::AbstractMeasure{X}, x::X)
 
 Compute the logdensity of the measure μ at the point x. This is the standard way
 to define `logdensity` for a new measure. the base measure is implicit here, and
@@ -61,7 +64,6 @@ include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
-include("macros.jl")
 
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")

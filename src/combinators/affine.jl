@@ -13,13 +13,6 @@ struct AffineTransform{N,T}
     par::NamedTuple{N,T}
 end
 
-function Base.show(io::IO, f::AffineTransform)
-    io = IOContext(io, :compact => true)
-    Pretty.pprint(io, f)
-end
-
-Pretty.quoteof(f::AffineTransform) = :(AffineTransform($(Pretty.quoteof(params(f)))))
-
 params(f::AffineTransform) = getfield(f, :par)
 
 @inline Base.getproperty(d::AffineTransform, s::Symbol) = getfield(getfield(d, :par), s)
@@ -129,9 +122,6 @@ struct Affine{N,M,T} <: AbstractMeasure
     parent::M
 end
 
-Pretty.quoteof(μ::Affine) =
-    :(Affine($(Pretty.quoteof(params(μ.f))), $(Pretty.quoteof(μ.parent))))
-
 function testvalue(d::Affine)
     f = getfield(d, :f)
     z = testvalue(parent(d))
@@ -170,72 +160,72 @@ Base.size(d::Affine) = size(d.μ)
 Base.size(d::Affine{(:σ,)}) = (size(d.σ, 1),)
 Base.size(d::Affine{(:ω,)}) = (size(d.ω, 2),)
 
-logdensity(d::Affine, x::MapsTo) = logdensity(d.parent, x.x)
+logdensity_def(d::Affine, x::MapsTo) = logdensity_def(d.parent, x.x)
 
-@inline function logdensity(d::Affine{(:σ,)}, x)
+@inline function logdensity_def(d::Affine{(:σ,)}, x)
     z = d.σ \ x
     # @show z
     # println()
-    logdensity(d.parent, z)
+    logdensity_def(d.parent, z)
 end
 
-@inline function logdensity(d::Affine{(:ω,)}, x)
+@inline function logdensity_def(d::Affine{(:ω,)}, x)
     z = d.ω * x
-    logdensity(d.parent, z)
+    logdensity_def(d.parent, z)
 end
 
-@inline function logdensity(d::Affine{(:μ,)}, x)
+@inline function logdensity_def(d::Affine{(:μ,)}, x)
     z = x - d.μ
-    logdensity(d.parent, z)
+    logdensity_def(d.parent, z)
 end
 
-@inline function logdensity(d::Affine{(:μ, :σ)}, x)
+@inline function logdensity_def(d::Affine{(:μ, :σ)}, x)
     z = d.σ \ (x - d.μ)
-    logdensity(d.parent, z)
+    logdensity_def(d.parent, z)
 end
 
-@inline function logdensity(d::Affine{(:μ, :ω)}, x)
+@inline function logdensity_def(d::Affine{(:μ, :ω)}, x)
     z = d.ω * (x - d.μ)
-    logdensity(d.parent, z)
+    logdensity_def(d.parent, z)
 end
 
 @inline function logdensity_tuple(d::Affine{(:σ,)}, x)
     z = d.σ \ x
     # @show z
     # println()
-    (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+    (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
 end
 
 @inline function logdensity_tuple(d::Affine{(:ω,)}, x)
     z = d.ω * x
-    (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+    (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
 end
 
 @inline function logdensity_tuple(d::Affine{(:μ,)}, x)
     z = x - d.μ
-    (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+    (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
 end
 
 @inline function logdensity_tuple(d::Affine{(:μ, :σ)}, x)
     z = d.σ \ (x - d.μ)
-    (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+    (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
 end
 
 @inline function logdensity_tuple(d::Affine{(:μ, :ω)}, x)
     z = d.ω * (x - d.μ)
-    (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+    (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
 end
 
 for p in AFFINEPARS
     @eval begin
         @inline function logdensity_tuple(d::Affine{$p}, (z, x)::MapsTo)
-            (logdensity(d.parent, z), basemeasure(d), z ↦ x)
+            (logdensity_def(d.parent, z), basemeasure(d), z ↦ x)
         end
     end
 end
 
-# # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.σ \ (x - d.μ))
-# @inline function logdensity(d::Affine{(:μ,:σ), P, Tuple{V,M}}, x) where {P, V<:AbstractVector, M<:AbstractMatrix}
+# # logdensity_def(d::Affine{(:μ,:ω)}, x) = logdensity_def(d.parent, d.σ \ (x - d.μ))
+# @inline function logdensity_def(d::Affine{(:μ,:σ), P, Tuple{V,M}}, x) where {P, V<:AbstractVector, M<:AbstractMatrix}
 #     z = x - d.μ
 #     σ = d.σ
 #     if σ isa Factorization
@@ -243,14 +233,14 @@ end
 #     else
 #         ldiv!(factorize(σ), z)
 #     end
-#     sum(zⱼ -> logdensity(d.parent, zⱼ), z)
+#     sum(zⱼ -> logdensity_def(d.parent, zⱼ), z)
 # end
 
-# # logdensity(d::Affine{(:μ,:ω)}, x) = logdensity(d.parent, d.ω * (x - d.μ))
-# @inline function logdensity(d::Affine{(:μ,:ω), P,Tuple{V,M}}, x) where {P,V<:AbstractVector, M<:AbstractMatrix}
+# # logdensity_def(d::Affine{(:μ,:ω)}, x) = logdensity_def(d.parent, d.ω * (x - d.μ))
+# @inline function logdensity_def(d::Affine{(:μ,:ω), P,Tuple{V,M}}, x) where {P,V<:AbstractVector, M<:AbstractMatrix}
 #     z = x - d.μ
 #     lmul!(d.ω, z)
-#     logdensity(d.parent, z)
+#     logdensity_def(d.parent, z)
 # end
 
 basemeasure(d::Affine) = affine(getfield(d, :f), basemeasure(d.parent))

@@ -23,19 +23,19 @@ For example,
     julia> ℓ = Likelihood(Normal{(:μ,)}, 2.0)
     Likelihood(Normal{(:μ,), T} where T, 2.0)
 
-    julia> density(ℓ, (μ=2.0,))
+    julia> density_def(ℓ, (μ=2.0,))
     1.0
 
-    julia> logdensity(ℓ, (μ=2.0,))
+    julia> logdensity_def(ℓ, (μ=2.0,))
     -0.0
 
 If, as above, the measure includes the parameter information, we can optionally
 leave it out of the second argument in the call to `density` or `logdensity`. 
 
-    julia> density(ℓ, 2.0)
+    julia> density_def(ℓ, 2.0)
     1.0
 
-    julia> logdensity(ℓ, 2.0)
+    julia> logdensity_def(ℓ, 2.0)
     -0.0
 
 With several parameters, things work as expected:
@@ -43,13 +43,13 @@ With several parameters, things work as expected:
     julia> ℓ = Likelihood(Normal{(:μ,:σ)}, 2.0)
     Likelihood(Normal{(:μ, :σ), T} where T, 2.0)
     
-    julia> logdensity(ℓ, (μ=2, σ=3))
+    julia> logdensity_def(ℓ, (μ=2, σ=3))
     -1.0986122886681098
     
-    julia> logdensity(ℓ, (2,3))
+    julia> logdensity_def(ℓ, (2,3))
     -1.0986122886681098
     
-    julia> logdensity(ℓ, [2, 3])
+    julia> logdensity_def(ℓ, [2, 3])
     -1.0986122886681098
 
 ---------
@@ -65,16 +65,16 @@ the three-argument form, where the second argument is a constraint. For example,
 
 Similarly to the above, we have
 
-    julia> density(ℓ, (μ=2.0,))
+    julia> density_def(ℓ, (μ=2.0,))
     0.3333333333333333
 
-    julia> logdensity(ℓ, (μ=2.0,))
+    julia> logdensity_def(ℓ, (μ=2.0,))
     -1.0986122886681098
 
-    julia> density(ℓ, 2.0)
+    julia> density_def(ℓ, 2.0)
     0.3333333333333333
 
-    julia> logdensity(ℓ, 2.0)
+    julia> logdensity_def(ℓ, 2.0)
     -1.0986122886681098
 
 -----------------------
@@ -98,7 +98,7 @@ and we observe `x=3`. We can compute the posterior measure on `μ` as
     julia> post = Normal() ⊙ Likelihood(Normal{(:μ, :σ)}, (σ=1,), 3)
     Normal() ⊙ Likelihood(Normal{(:μ, :σ), T} where T, (σ = 1,), 3)
 
-    julia> logdensity(post, 2)
+    julia> logdensity_def(post, 2)
     -2.5
 """
 struct Likelihood{F,S,X}
@@ -116,6 +116,6 @@ function Base.show(io::IO, ℓ::Likelihood)
     print(io, "Likelihood(", k, ", ", x, ")")
 end
 
-@inline function logdensity(ℓ::Likelihood, p)
-    return logdensity(ℓ.k(p), ℓ.x)
+@inline function logdensity_def(ℓ::Likelihood, p)
+    return logdensity_def(ℓ.k(p), ℓ.x)
 end
