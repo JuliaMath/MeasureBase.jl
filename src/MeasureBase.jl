@@ -64,6 +64,7 @@ include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
+include("density.jl")
 
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
@@ -85,6 +86,5 @@ include("combinators/smart-constructors.jl")
 
 include("rand.jl")
 
-include("density.jl")
 
 end

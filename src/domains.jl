@@ -94,19 +94,4 @@ function zeroset(::Sphere)
     ZeroSet(f, ∇f)
 end
 
-struct LebesgueCodimOne{D,T,O} <: AbstractMeasure
-    ndims ::D
-    ortho ::O
-end
 
-function logdensityof(d::Density{L1, L2}, x) where {L1<:LebesgueCodimOne, L2<:LebesgueCodimOne}
-    μ = d.μ
-    ν = d.base
-    μ.ndims == ν.ndims || return NaN
-    rank([μ.ortho ν.ortho]) == 1 || return NaN
-    return 0.0
-end
-
-struct LebesgueSimplex <: AbstractMeasure end
-
-basemeasure(::LebesgueSimplex, x)
