@@ -56,11 +56,6 @@ function _densitymeasure(f, base, _)
     """
 end
 
-function Base.rand(rng::AbstractRNG, T::Type, d::DensityMeasure)
-    x = rand(rng, T, d.base)
-    WeightedMeasure(d.f(x), Dirac(x))
-end
-
 basemeasure(μ::DensityMeasure) = μ.base
 
 basemeasure_depth(::DensityMeasure{F,B,L}) where {F,B,L} = static(1) + basemeasure_depth(B)
@@ -68,11 +63,9 @@ basemeasure_depth(::DensityMeasure{F,B,L}) where {F,B,L} = static(1) + basemeasu
 basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} =
     static(1) + basemeasure_depth(B)
 
-logdensity_def(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
+logdensity_def(μ::DensityMeasure, x)  = logdensityof(μ.f, x)
 
-density_def(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = μ.f(x)
-
-logdensity_def(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = log(density_def(μ, x))
+density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
 export ∫
 
@@ -81,18 +74,18 @@ export ∫
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f, base::AbstractMeasure) = DensityMeasure(f, base, Val(false))
+∫(f, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
 
-∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫exp(log𝒹(μ, base), base)
+# ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
 
 export ∫exp
 
 """
-    ∫exp(f, base::AbstractMeasure; log=false)
+    ∫exp(f, base::AbstractMeasure)
 
-Define a new measure in terms of a density `f` over some measure `base`.
+Define a new measure in terms of a log-density `f` over some measure `base`.
 """
-∫exp(f, μ) = DensityMeasure(f, μ, Val{true}())
+∫exp(f, μ) = ∫(logfuncdensity(f), μ)
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
