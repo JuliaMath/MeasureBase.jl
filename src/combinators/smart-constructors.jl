@@ -30,24 +30,6 @@ half(μ::AbstractMeasure) = Half(μ)
 
 pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
 
-function pointwiseproduct(
-    μ::PointwiseProductMeasure{X},
-    ν::PointwiseProductMeasure{Y}
-) where {X,Y}
-    data = (μ.data..., ν.data...)
-    pointwiseproduct(data...)
-end
-
-function pointwiseproduct(μ::AbstractMeasure, ν::PointwiseProductMeasure)
-    data = (μ, ν.data...)
-    return pointwiseproduct(data...)
-end
-
-function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N<:AbstractMeasure}
-    data = (μ.data..., ν)
-    return pointwiseproduct(data...)
-end
-
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
     data = (μ, ℓ)
     return PointwiseProductMeasure(data)

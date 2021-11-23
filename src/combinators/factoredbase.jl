@@ -7,7 +7,7 @@ struct FactoredBase{R,C,V,B} <: AbstractMeasure
     base::B
 end
 
-@inline function logdensity(d::FactoredBase, x)
+@inline function logdensity_def(d::FactoredBase, x)
     d.inbounds(x) || return -Inf
     d.constℓ + d.varℓ()
 end

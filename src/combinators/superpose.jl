@@ -24,12 +24,6 @@ struct SuperpositionMeasure{NT} <: AbstractMeasure
     components::NT
 end
 
-function Pretty.tile(d::SuperpositionMeasure)
-    result = Pretty.literal("SuperpositionMeasure(")
-    result *= Pretty.list_layout([Pretty.tile.(d.components)...])
-    result *= Pretty.literal(")")
-end
-
 testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 
 # SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
@@ -58,7 +52,7 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(components)
 end
 
-logdensity(μ::SuperpositionMeasure, x) = logsumexp((logdensity(m, x) for m in μ.components))
+logdensity_def(μ::SuperpositionMeasure, x) = logsumexp((logdensity_def(m, x) for m in μ.components))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 

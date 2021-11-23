@@ -47,12 +47,6 @@ end
 
 testvalue(d::ProductMeasure) = map(testvalue, marginals(d))
 
-function Pretty.tile(μ::ProductMeasure{F,S,NamedTuple{N,T}}) where {F,S,N,T}
-    result = Pretty.literal("Product(")
-    result *= Pretty.pair_layout(μ.f, μ.pars; sep = ", ")
-    result *= Pretty.literal(")")
-end
-
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
     _rand(rng, T, d, marginals(d))
 end
@@ -73,12 +67,7 @@ export ⊗
 
 marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.pars
 
-function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T<:Tuple}
-    mar = marginals(μ)
-    Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep = " ⊗ ")
-end
-
-@inline function logdensity(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
+@inline function logdensity_def(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
     mapreduce(logdensity, +, d.pars, x)
 end
 
@@ -96,27 +85,12 @@ function marginals(d::ProductMeasure{<:Returns,S,A}) where {F,S,A<:AbstractArray
     # mappedarray(d.f.f, d.pars)
 end
 
-function logdensity(d::ProductMeasure, x)
+@inline function logdensity_def(d::ProductMeasure, x)
     mapreduce(logdensity, +, marginals(d), x)
 end
 
-function logdensity(d::ProductMeasure{<:Returns}, x)
-    sum(x -> logdensity(d.f.f.value, x), x)
-end
-
-function Pretty.tile(d::ProductMeasure{F,S,A}) where {F,S,A}
-    result = Pretty.literal("For(")
-    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.pars); sep = ", ")
-    result *= Pretty.literal(")")
-end
-
-###############################################################################
-# I <: CartesianIndices
-
-function Pretty.tile(d::ProductMeasure{F,S,I}) where {F,S,I<:CartesianIndices}
-    result = Pretty.literal("For(")
-    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(size(d.pars)); sep = ", ")
-    result *= Pretty.literal(")")
+@inline function logdensity_def(d::ProductMeasure{<:Returns}, x)
+    sum(x -> logdensity_def(d.f.f.value, x), x)
 end
 
 # function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,I<:CartesianIndices}
@@ -129,14 +103,14 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-function logdensity(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
-    sum((logdensity(dj, xj) for (dj, xj) in zip(marginals(d), x)))
+@inline function logdensity_def(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
+    sum((logdensity_def(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 
 @propagate_inbounds function Random.rand!(
     rng::AbstractRNG,
     d::ProductMeasure,
-    x::AbstractArray
+    x::AbstractArray,
 )
     # TODO: Generalize this
     T = Float64
@@ -159,7 +133,7 @@ end
 
 # TODO: 
 # function Base.rand(rng::AbstractRNG, d::ProductMeasure)
-#     return rand(rng, sampletype(d), d)
+#     return rand(rng, gentype(d), d)
 # end
 
 # function Base.rand(T::Type, d::ProductMeasure)
@@ -167,20 +141,20 @@ end
 # end
 
 # function Base.rand(d::ProductMeasure)
-#     T = sampletype(d)
+#     T = gentype(d)
 #     return rand(Random.GLOBAL_RNG, T, d)
 # end
 
-function sampletype(d::ProductMeasure{A}) where {T,N,A<:AbstractArray{T,N}}
-    S = @inbounds sampletype(marginals(d)[1])
+function gentype(d::ProductMeasure{A}) where {T,N,A<:AbstractArray{T,N}}
+    S = @inbounds gentype(marginals(d)[1])
     Array{S,N}
 end
 
-function sampletype(d::ProductMeasure{<:Tuple})
-    Tuple{sampletype.(marginals(d))...}
+function gentype(d::ProductMeasure{<:Tuple})
+    Tuple{gentype.(marginals(d))...}
 end
 
-# function logdensity(μ::ProductMeasure{Aμ}, x::Ax) where {Aμ <: MappedArray, Ax <: AbstractArray}
+# function logdensity_def(μ::ProductMeasure{Aμ}, x::Ax) where {Aμ <: MappedArray, Ax <: AbstractArray}
 #     μ.data
 # end
 
@@ -196,9 +170,9 @@ end
 #     set.(marginals(d), params, p)
 # end
 
-# function logdensity(μ::ProductMeasure, ν::ProductMeasure, x)
+# function logdensity_def(μ::ProductMeasure, ν::ProductMeasure, x)
 #     sum(zip(marginals(μ), marginals(ν), x)) do μ_ν_x
-#         logdensity(μ_ν_x...)
+#         logdensity_def(μ_ν_x...)
 #     end
 # end
 

@@ -41,16 +41,8 @@ function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Intege
     powermeasure(μ, dims)
 end
 
-# Same as PowerMeasure
-function Pretty.tile(d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.pars)); sep = " ^ ")
-end
 
-function Pretty.tile(d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.pars)); sep = " ^ ")
-end
-
-# sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}
+# gentype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{gentype(first(marginals(d))), N}
 
 params(d::ProductMeasure{F,S,<:Fill}) where {F,S} = params(first(marginals(d)))
 
@@ -78,8 +70,16 @@ end
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
+function basemeasure_depth(d::P) where {M,P<:ProductMeasure{Returns{M}}}
+    return static(1) + basemeasure_depth(M)
+end
+
+function basemeasure_depth(::Type{P}) where {M,P<:ProductMeasure{Returns{M}}}
+    return static(1) + basemeasure_depth(M)
+end
+
 # Same as PowerMeasure
-@inline function logdensity(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
+@inline function logdensity_def(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
     d1 = d.f(first(d.pars))
-    sum(xj -> logdensity(d1, xj), x)
+    sum(xj -> logdensity_def(d1, xj), x)
 end
