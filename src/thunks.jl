@@ -19,7 +19,7 @@
 
 # reduce_step(LogdensityThunk{M,B,X,L}, callback=Returns(nothing)) -> Union{LogdensityThunk, L}
 
-# function logdensity(μ, b, x; cb=Returns(nothing))
+# function logdensity_def(μ, b, x; cb=Returns(nothing))
 #     f(thunk) = reduce_step(thunk, cb)
 #     fix(f, LogdensityThunk(μ, b, x, zero(Float64)))
 # end

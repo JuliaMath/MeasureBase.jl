@@ -26,7 +26,7 @@ macro domain(name, T)
         struct $T <: AbstractDomain end
         export $name
         const $name = $T()
-        Pretty.tile(::$T) = Pretty.literal($sname)
+        Base.show(io::IO, ::$T) = Pretty.literal($sname)
     end
 end
 
@@ -63,3 +63,50 @@ testvalue(::IntegerRange{lo,hi}) where {lo,hi} = lo
 # Real intervals
 
 struct RealInterval{lo,hi} <: AbstractDomain end
+
+
+struct Simplex{D} <: AbstractDomain
+    dim::D # dimensionality as a manifold
+end
+
+projectto!(x, ::Simplex) = normalize!(x, 1)
+
+struct Sphere{D} <: AbstractDomain
+    dim::D # dimensionality as a manifold
+end
+
+
+projectto!(x, ::Sphere) = normalize!(x, 2)
+struct ZeroSet{F, G} <: AbstractDomain
+    f::F
+    ∇f::G
+end
+
+function zeroset(::Simplex)
+    f(x::AbstractVector{T}) where {T} = sum(x) - one(T)
+    ∇f(x::AbstractVector{T}) where {T} = Fill(one(T), axes(x))
+    ZeroSet(f, ∇f)
+end
+
+function zeroset(::Sphere)
+    f(x::AbstractVector{T}) where {T} = (sum(xⱼ -> xⱼ^2, x) - one(T)) / 2
+    ∇f(x::AbstractVector{T}) where {T} = x
+    ZeroSet(f, ∇f)
+end
+
+struct LebesgueCodimOne{D,T,O} <: AbstractMeasure
+    ndims ::D
+    ortho ::O
+end
+
+function logdensityof(d::Density{L1, L2}, x) where {L1<:LebesgueCodimOne, L2<:LebesgueCodimOne}
+    μ = d.μ
+    ν = d.base
+    μ.ndims == ν.ndims || return NaN
+    rank([μ.ortho ν.ortho]) == 1 || return NaN
+    return 0.0
+end
+
+struct LebesgueSimplex <: AbstractMeasure end
+
+basemeasure(::LebesgueSimplex, x)

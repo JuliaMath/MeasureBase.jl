@@ -11,7 +11,7 @@ end
 
 unhalf(μ::Half) = μ.parent
 
-function basemeasure(μ::Half)
+@inline function basemeasure(μ::Half)
     inbounds(x) = x > 0
     constℓ = logtwo
     varℓ() = 0.0
@@ -23,4 +23,4 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
     return abs(rand(rng, T, unhalf(μ)))
 end
 
-logdensity(μ::Half, x) = logdensity(unhalf(μ), x)
+logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)

@@ -105,13 +105,13 @@ end
 #     rand!(rng, x, μ)
 # end
 
-# function logdensity(μ::ForArray{D,N,T,F}, x)
-#     getℓ(θⱼ, xⱼ) = logdensity(μ.f(θⱼ), xⱼ)
+# function logdensity_def(μ::ForArray{D,N,T,F}, x)
+#     getℓ(θⱼ, xⱼ) = logdensity_def(μ.f(θⱼ), xⱼ)
 #     ℓ = mappedarray(getℓ, μ.θ, x)
-#     _logdensity(μ, x, indexstyle(μ.θ, x), result_type)
+#     _logdensity_def(μ, x, indexstyle(μ.θ, x), result_type)
 # end
 
-# function _logdensity(μ::ForArray{D,N,T,F}, x, ::IndexLinear, ::Type{R}) where {R<:AbstractFloat}
+# function _logdensity_def(μ::ForArray{D,N,T,F}, x, ::IndexLinear, ::Type{R}) where {R<:AbstractFloat}
 #     ℓ = zero(R)
 #     μ.f(μ.θ)
 # end

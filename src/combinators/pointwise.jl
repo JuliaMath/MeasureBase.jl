@@ -1,6 +1,6 @@
 export ⊙
 
-@concrete terse struct PointwiseProductMeasure{T} <: AbstractMeasure
+struct PointwiseProductMeasure{T} <: AbstractMeasure
     data::T
 end
 
@@ -27,12 +27,12 @@ Base.length(m::PointwiseProductMeasure{T}) where {T} = length(m.data)
 
 ⊙(args...) = pointwiseproduct(args...)
 
-@inline function logdensity(d::PointwiseProductMeasure, x)
-    sum((logdensity(dⱼ, x) for dⱼ in d.data))
+@inline function logdensity_def(d::PointwiseProductMeasure, x)
+    sum((logdensity_def(dⱼ, x) for dⱼ in d.data))
 end
 
-function sampletype(d::PointwiseProductMeasure)
-    @inbounds sampletype(first(d.data))
+function gentype(d::PointwiseProductMeasure)
+    @inbounds gentype(first(d.data))
 end
 
 basemeasure(d::PointwiseProductMeasure) = @inbounds basemeasure(first(d.data))

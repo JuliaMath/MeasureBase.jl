@@ -9,14 +9,14 @@ end
 
 CountingMeasure(X) = CountingMeasure{X}()
 
-# sampletype(::CountingMeasure{ℝ}) = Float64
-# sampletype(::CountingMeasure{ℝ₊}) = Float64
-# sampletype(::CountingMeasure{𝕀}) = Float64
+# gentype(::CountingMeasure{ℝ}) = Float64
+# gentype(::CountingMeasure{ℝ₊}) = Float64
+# gentype(::CountingMeasure{𝕀}) = Float64
 
-sampletype(::CountingMeasure) = Int
+gentype(::CountingMeasure) = Int
 
 testvalue(μ::CountingMeasure{X}) where {X} = testvalue(X)
 
-logdensity(::CountingMeasure, x) = zero(float(x))
+logdensity_def(::CountingMeasure, x) = zero(float(x))
 
 # (::CountingMeaure)(s) = length(Set(s))

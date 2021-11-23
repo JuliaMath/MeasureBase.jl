@@ -11,12 +11,6 @@ struct Kernel{F,S} <: AbstractKernel
     Kernel(f::F, ops::S) where {F,S} = new{F,S}(f, ops)
 end
 
-function Pretty.quoteof(k::Kernel)
-    qf = Pretty.quoteof(k.f)
-    qops = Pretty.quoteof(k.ops)
-    :(Kernel($qf, $qops))
-end
-
 """
     kernel(f, M)
     kernel((f1, f2, ...), M)

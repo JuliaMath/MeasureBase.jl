@@ -36,6 +36,8 @@ testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
 
 export rootmeasure
 
+basemeasure(μ, x) = basemeasure(μ)
+
 """
     rootmeasure(μ::AbstractMeasure)
 
@@ -43,7 +45,11 @@ It's sometimes important to be able to find the fix point of a measure under
 `basemeasure`. That is, to start with some measure and apply `basemeasure`
 repeatedly until there's no change. That's what this does.
 """
-rootmeasure(μ::AbstractMeasure) = fix(basemeasure, μ)
+@inline function rootmeasure(μ)
+    α = basemeasure(μ)
+    μ === α && return α
+    return rootmeasure(α)
+end
 
 # Base on the Tricks.jl README
 using Tricks
@@ -58,7 +64,28 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 @inline instance_type(f::F) where {F<:Function} = F
 @inline instance_type(f::UnionAll) = Type{f}
 
-using MLStyle
+export basemeasure_depth
 
-macro quoteof(ex) 
+@inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
+    @info """
+    Add methods for better performance:
+
+        basemeasure_depth(::$M)
+        basemeasure_depth(::Type{$M})
+    """
+    static(1) + basemeasure_depth(basemeasure(μ))
+end
+
+@inline basemeasure_depth(::PrimitiveMeasure) = static(0)
+
+@inline basemeasure_depth(::Type{M}) where {M<:PrimitiveMeasure} = static(0)
+
+export logdensity_tuple
+
+function logdensity_tuple(d, x)
+    return (logdensity_def(d, x), basemeasure(d, x), x)
+end
+
+function logdensity_tuple(d, (z, x)::MapsTo)
+    return (logdensity_def(d, x), basemeasure(d, x), z ↦ x)
 end

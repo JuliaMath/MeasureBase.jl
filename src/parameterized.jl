@@ -37,7 +37,7 @@ end
 
 function ConstructionBase.setproperties(
     d::P,
-    nt::NamedTuple
+    nt::NamedTuple,
 ) where {P<:ParameterizedMeasure}
     return constructorof(P)(merge(params(d), nt))
 end
