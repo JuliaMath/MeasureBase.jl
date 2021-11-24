@@ -68,7 +68,7 @@ export ⊗
 marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.pars
 
 @inline function logdensity_def(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
-    mapreduce(logdensity, +, d.pars, x)
+    mapreduce(logdensity_def, +, d.pars, x)
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::TupleProductMeasure) where {T}
@@ -86,7 +86,7 @@ function marginals(d::ProductMeasure{<:Returns,S,A}) where {F,S,A<:AbstractArray
 end
 
 @inline function logdensity_def(d::ProductMeasure, x)
-    mapreduce(logdensity, +, marginals(d), x)
+    mapreduce(logdensity_def, +, marginals(d), x)
 end
 
 @inline function logdensity_def(d::ProductMeasure{<:Returns}, x)

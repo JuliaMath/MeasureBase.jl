@@ -39,7 +39,7 @@ end
 A `DensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
-struct DensityMeasure{F,B,L} <: AbstractMeasure
+struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
     base::B
 end
@@ -58,9 +58,9 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-basemeasure_depth(::DensityMeasure{F,B,L}) where {F,B,L} = static(1) + basemeasure_depth(B)
+basemeasure_depth(::DensityMeasure{F,B}) where {F,B} = static(1) + basemeasure_depth(B)
 
-basemeasure_depth(::Type{DensityMeasure{F,B,L}}) where {F,B,L} =
+basemeasure_depth(::Type{DensityMeasure{F,B}}) where {F,B} =
     static(1) + basemeasure_depth(B)
 
 logdensity_def(μ::DensityMeasure, x)  = logdensityof(μ.f, x)
@@ -74,7 +74,13 @@ export ∫
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
+∫(f::Function, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
+
+∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
+
+_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
+
+_densitymeasure(f, base, _) = @error "DensityInterface.DensityKind($f) ≠ DensityInterface.IsDensity()"
 
 # ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
 
@@ -85,7 +91,7 @@ export ∫exp
 
 Define a new measure in terms of a log-density `f` over some measure `base`.
 """
-∫exp(f, μ) = ∫(logfuncdensity(f), μ)
+∫exp(f::Function, μ) = ∫(logfuncdensity(f), μ)
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 

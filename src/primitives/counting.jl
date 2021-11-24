@@ -1,13 +1,8 @@
 export CountingMeasure
 
-struct CountingMeasure{X} <: PrimitiveMeasure end
+struct CountingMeasure <: PrimitiveMeasure end
 
-function Base.show(io::IO, μ::CountingMeasure{X}) where {X}
-    io = IOContext(io, :compact => true)
-    print(io, "CountingMeasure(", X, ")")
-end
 
-CountingMeasure(X) = CountingMeasure{X}()
 
 # gentype(::CountingMeasure{ℝ}) = Float64
 # gentype(::CountingMeasure{ℝ₊}) = Float64
@@ -15,7 +10,6 @@ CountingMeasure(X) = CountingMeasure{X}()
 
 gentype(::CountingMeasure) = Int
 
-testvalue(μ::CountingMeasure{X}) where {X} = testvalue(X)
 
 logdensity_def(::CountingMeasure, x) = zero(float(x))
 

@@ -4,7 +4,7 @@ using Random
 using LinearAlgebra
 
 using MeasureBase
-using MeasureBase: logdensityof
+using MeasureBase: logdensityof, logdensity_def
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
@@ -56,13 +56,13 @@ test_measures = [
     Lebesgue(ℝ)
     Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 2)
-    d ⊙ d
+    # d ⊙ d
 ]
 
 testbroken_measures = [
     # InverseGamma(2) # Not defined yet
     # MvNormal(I(3)) # Entirely broken for now
-    CountingMeasure(Float64)
+    CountingMeasure()
     Likelihood
     TrivialMeasure()
 ]
