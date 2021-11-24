@@ -145,7 +145,8 @@ end
 
 # logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
 
-export density
+export densityof
+export logdensityof
 
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 

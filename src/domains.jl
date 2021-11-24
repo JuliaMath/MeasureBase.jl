@@ -1,5 +1,3 @@
-export IntegerRange
-
 abstract type AbstractDomain end
 
 abstract type RealDomain <: AbstractDomain end
@@ -23,7 +21,7 @@ end
 Base.in(x, b::BoundedReals) = b.lower ≤ x ≤ b.upper
 
 
-export ℝ, ℝ₊, 𝕀
+export ℝ, ℝ₊, 𝕀, ℤ
 
 
 const ℝ₊ = BoundedReals(static(0.0), static(Inf))
