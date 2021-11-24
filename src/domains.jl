@@ -32,39 +32,34 @@ struct IntegerBounds{L,U} <: AbstractDomain
     upper :: U
 end
 
-Base.in(x, b::IntegerBounds) = b.lower ≤ x ≤ b.upper
+Base.in(x, b::IntegerBounds) = isinteger(x) && b.lower ≤ x ≤ b.upper
 
 const ℤ = IntegerBounds(static(-Inf), static(Inf))
 
 Base.show(io::IO, ::typeof(ℤ)) = print(io, "ℤ")
 
+Base.minimum(::IntegerBounds{lo,hi}) where {lo,hi} = lo
+Base.maximum(::IntegerBounds{lo,hi}) where {lo,hi} = hi
 
-###########################################################
-# Integer ranges
+function Base.show(io::IO, b::IntegerBounds)
+    io = IOContext(io, :compact => true)
+    print(io, "ℤ[", b.lower, ":", b.upper, "]")
+end
 
-struct IntegerRange{lo,hi} <: AbstractDomain end
-
-Base.minimum(::IntegerRange{lo,hi}) where {lo,hi} = lo
-Base.maximum(::IntegerRange{lo,hi}) where {lo,hi} = hi
+testvalue(::IntegerBounds) = min(b.lower, 0)
 
 Base.iterate(r::IntegerRange{lo,hi}) where {lo,hi} = iterate(lo:hi)
 
-function Base.getindex(::Integers, r::AbstractUnitRange)
-    IntegerRange{minimum(r),maximum(r)}()
+function Base.getindex(::typeof(ℤ), r::AbstractUnitRange)
+    IntegerBounds(extrema(r)...)
 end
 
-function Base.show(io::IO, r::IntegerRange{lo,hi}) where {lo,hi}
-    io = IOContext(io, :compact => true)
-    print(io, "ℤ[", lo, ":", hi, "]")
-end
 
-testvalue(::IntegerRange{lo,hi}) where {lo,hi} = lo
+
+
 
 ###########################################################
-# Real intervals
-
-struct RealInterval{lo,hi} <: AbstractDomain end
-
+# Simplex
 
 struct Simplex{D} <: AbstractDomain
     dim::D # dimensionality as a manifold
