@@ -8,7 +8,7 @@ import Random: gentype
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
-using DensityInterface: HasDensity, IsDensity
+using DensityInterface
 
 using FillArrays
 using Static
