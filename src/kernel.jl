@@ -3,6 +3,11 @@ export Kernel
 
 abstract type AbstractKernel <: AbstractMeasure end
 
+struct KernelReturns{M} <: AbstractKernel
+    value::M
+end
+
+(k::KernelReturns)(_) = k.value
 struct Kernel{F,S} <: AbstractKernel
     f::F
     ops::S

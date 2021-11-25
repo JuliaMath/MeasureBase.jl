@@ -29,7 +29,7 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-const PowerMeasure{F,S,T,N,A} = ProductMeasure{F,S,Fill{T,N,A}}
+const PowerMeasure{M,N,R} = ProductMeasure{KernelReturns{M}, CartesianIndices{N, R}} 
 
 Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 
@@ -37,31 +37,29 @@ function Base.:^(μ::AbstractMeasure, dims::Integer...)
     return μ^dims
 end
 
-function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
-    powermeasure(μ, dims)
-end
-
+Base.show(io::IO, d::PowerMeasure) = print(io, d.f.value, " ^ ", size(d.pars))
+Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.f.value, " ^ ", length(d.pars))
 
 # gentype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{gentype(first(marginals(d))), N}
 
-params(d::ProductMeasure{F,S,<:Fill}) where {F,S} = params(first(marginals(d)))
+params(d::PowerMeasure) = params(first(marginals(d)))
 
-params(::Type{P}) where {F,S,P<:ProductMeasure{F,S,<:Fill}} = params(D)
+params(::Type{P}) where {K,P<:PowerMeasure} = params(D)
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 # Same as PowerMeasure
-@inline function basemeasure(d::ProductMeasure{F,S,<:Fill}) where {F,S}
+@inline function basemeasure(d::PowerMeasure)
     _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
 end
 
 # Same as PowerMeasure
-@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b) where {F,S}
-    b^size(d.pars)
+@inline function _basemeasure(d::PowerMeasure, b)
+    b ^ size(d.pars)
 end
 
 # Same as PowerMeasure
-@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b::FactoredBase) where {F,S}
+@inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
     n = length(d.pars)
     inbounds(x) = all(b.inbounds, x)
     constℓ = n * b.constℓ
@@ -70,16 +68,16 @@ end
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function basemeasure_depth(d::P) where {M,P<:ProductMeasure{Returns{M}}}
+function basemeasure_depth(d::PowerMeasure) 
     return static(1) + basemeasure_depth(M)
 end
 
-function basemeasure_depth(::Type{P}) where {M,P<:ProductMeasure{Returns{M}}}
+function basemeasure_depth(::Type{P}) where {P<:PowerMeasure}
     return static(1) + basemeasure_depth(M)
 end
 
 # Same as PowerMeasure
-@inline function logdensity_def(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
+@inline function logdensity_def(d::PowerMeasure, x)
     d1 = d.f(first(d.pars))
     sum(xj -> logdensity_def(d1, xj), x)
 end

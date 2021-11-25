@@ -7,8 +7,8 @@ using FillArrays
 
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
-struct ProductMeasure{F,S,I} <: AbstractProductMeasure
-    f::Kernel{F,S}
+struct ProductMeasure{K,I} <: AbstractProductMeasure
+    f::K
     pars::I
 end
 
@@ -22,7 +22,7 @@ end
 
 Base.size(μ::ProductMeasure) = size(marginals(μ))
 
-Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
+Base.length(m::ProductMeasure) = length(marginals(μ))
 
 basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 
@@ -33,7 +33,7 @@ basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 
 export marginals
 
-function marginals(d::ProductMeasure{F,S,I}) where {F,S,I}
+function marginals(d::ProductMeasure{K,I}) where {K,I}
     _marginals(d, isiterable(I))
 end
 
@@ -41,7 +41,7 @@ function _marginals(d::ProductMeasure, ::Iterable)
     return (d.f(i) for i in d.pars)
 end
 
-function _marginals(d::ProductMeasure{F,S,I}, ::NonIterable) where {F,S,I}
+function _marginals(d::ProductMeasure{K,I}, ::NonIterable) where {K,I}
     error("Type $I is not iterable. Add an `iterate` or `marginals` method to fix.")
 end
 
@@ -78,12 +78,7 @@ end
 ###############################################################################
 # I <: AbstractArray
 
-marginals(d::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray} = mappedarray(d.f, d.pars)
-
-function marginals(d::ProductMeasure{<:Returns,S,A}) where {F,S,A<:AbstractArray}
-    Fill(d.f.f.value, size(d.pars))
-    # mappedarray(d.f.f, d.pars)
-end
+marginals(d::ProductMeasure{K,A}) where {K,A<:AbstractArray} = mappedarray(d.f, d.pars)
 
 @inline function logdensity_def(d::ProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
@@ -93,7 +88,7 @@ end
     sum(x -> logdensity_def(d.f.f.value, x), x)
 end
 
-# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{F,S,I}) where {T,F,I<:CartesianIndices}
+# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{K,I}) where {T,F,I<:CartesianIndices}
 
 # end
 
@@ -103,7 +98,7 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-@inline function logdensity_def(d::ProductMeasure{F,S,I}, x) where {F,S,I<:Base.Generator}
+@inline function logdensity_def(d::ProductMeasure{K,I}, x) where {K,I<:Base.Generator}
     sum((logdensity_def(dj, xj) for (dj, xj) in zip(marginals(d), x)))
 end
 
@@ -158,7 +153,7 @@ end
 #     μ.data
 # end
 
-function ConstructionBase.constructorof(::Type{P}) where {F,S,I,P<:ProductMeasure{F,S,I}}
+function ConstructionBase.constructorof(::Type{P}) where {K,I,P<:ProductMeasure{K,I}}
     p -> productmeasure(d.f, p)
 end
 
@@ -176,11 +171,11 @@ end
 #     end
 # end
 
-function kernelfactor(μ::ProductMeasure{F,S,<:Fill}) where {F,S}
+function kernelfactor(μ::ProductMeasure{K,<:Fill}) where {K}
     k = kernel(first(marginals(μ)))
     (p -> k.f(p)^size(μ), k.ops)
 end
 
-function kernelfactor(μ::ProductMeasure{F,S,A}) where {F,S,A<:AbstractArray}
+function kernelfactor(μ::ProductMeasure{K,A}) where {K,A<:AbstractArray}
     (p -> set.(marginals(μ), params, p), μ.pars)
 end

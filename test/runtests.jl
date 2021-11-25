@@ -4,7 +4,7 @@ using Random
 using LinearAlgebra
 
 using MeasureBase
-using MeasureBase: logdensityof, logdensity_def
+using MeasureBase: logdensityof, logdensity_def, density_def, densityof
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
@@ -189,7 +189,7 @@ end
 
 @testset "Half" begin
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
-    @half Normal
+    HalfNormal() = Half(Normal())
     @test logdensity_def(HalfNormal(), Lebesgue(ℝ), -0.2) == -Inf
     @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
     @test density_def(HalfNormal(), Lebesgue(ℝ), 0.2) ≈ 2 * density_def(Normal(), Lebesgue(ℝ), 0.2)

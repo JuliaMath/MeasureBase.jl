@@ -38,15 +38,15 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Returns(μ), identity, CartesianIndices(dims))
+function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
+    productmeasure(KernelReturns(μ), CartesianIndices(dims))
 end
 
-function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Returns(μ), identity, Base.OneTo(first(dims)))
-end
+# function Base.:^(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
+#     productmeasure(KernelReturns(μ), Base.OneTo(first(dims)))
+# end
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function Base.:^(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -54,13 +54,14 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
 
-productmeasure(f, pars) = productmeasure(f, identity, pars)
+productmeasure(f::AbstractKernel, pars) = ProductMeasure(f, pars)
+
+productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
 
 productmeasure(μs::Tuple) = TupleProductMeasure(μs)
 
-productmeasure(f::Returns, ops, pars) = ProductMeasure(kernel(f, identity), pars)
+productmeasure(f::Returns, ops, pars) = ProductMeasure(KernelReturns(f.value), pars)
 
 productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
 
@@ -138,5 +139,8 @@ function kernel(::Type{M}; ops...) where {M}
     kernel(M, nt)
 end
 
-kernel(f::Returns, op::typeof(identity)) = Kernel(f, op)
-kernel(f::Returns, op) = kernel(f, identity)
+kernel(f::Returns, op) = KernelReturns(f.value)
+kernel(f, op::Returns) = KernelReturns(f(op.value))
+
+# Just to avoid dispatch ambiguity
+kernel(f::Returns, op::Returns) = KernelReturns(f.value)

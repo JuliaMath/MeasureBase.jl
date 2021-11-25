@@ -78,9 +78,6 @@ Define a new measure in terms of a density `f` over some measure `base`.
 
 ∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
 
-_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-
-_densitymeasure(f, base, _) = @error "DensityInterface.DensityKind($f) ≠ DensityInterface.IsDensity()"
 
 # ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
 
