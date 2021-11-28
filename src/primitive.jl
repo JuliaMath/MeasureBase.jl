@@ -17,6 +17,6 @@ abstract type PrimitiveMeasure <: AbstractMeasure end
 
 basemeasure(μ::PrimitiveMeasure) = μ
 
-logdensity_def(μ::PrimitiveMeasure, x) = 0.0
+logdensity_def(μ::PrimitiveMeasure, x) = static(0.0)
 
 logdensity_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0

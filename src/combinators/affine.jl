@@ -255,8 +255,7 @@ basemeasure(d::Affine{N,L}) where {N,L<:Lebesgue} = weightedmeasure(-logjac(d), 
     weightedmeasure(-logjac(d), d.parent)
 end
 
-basemeasure_depth(::Affine{N,M,T}) where {N,M,T} = static(1) + basemeasure_depth(M)
-basemeasure_depth(::Type{Affine{N,M,T}}) where {N,M,T} = static(1) + basemeasure_depth(M)
+basemeasure_type(::Type{Affine{N,M,T}}) where {N,M,T} = M
 
 logjac(d::Affine) = logjac(getfield(d, :f))
 

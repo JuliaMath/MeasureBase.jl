@@ -27,7 +27,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
-export logdensity
+export logdensity_def
 export basemeasure
 export basekernel
 
@@ -42,7 +42,7 @@ is understood to be `basemeasure(μ)`.
 
 Methods for computing density relative to other measures will be
 """
-function logdensity end
+function logdensity_def end
 
 if VERSION < v"1.7.0-beta1.0"
     @eval begin

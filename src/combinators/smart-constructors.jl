@@ -39,7 +39,7 @@ end
 # PowerMeaure
 
 function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(KernelReturns(μ), CartesianIndices(dims))
+    productmeasure(Kernel(Returns(μ), identity), CartesianIndices(dims))
 end
 
 # function Base.:^(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
@@ -57,17 +57,15 @@ end
 
 productmeasure(f::AbstractKernel, pars) = ProductMeasure(f, pars)
 
-productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
+productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
 
 productmeasure(μs::Tuple) = TupleProductMeasure(μs)
 
-productmeasure(f::Returns, ops, pars) = ProductMeasure(KernelReturns(f.value), pars)
-
-productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
+productmeasure(k::ParameterizedKernel, pars) = productmeasure(k.f, k.param_maps, pars)
 
 productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 
-function productmeasure(f::Returns{FB}, ops, pars) where {FB<:FactoredBase}
+function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
     fb = f.value
     dims = size(pars)
     n = prod(dims)
@@ -117,30 +115,32 @@ end
 ###############################################################################
 # Kernel
 
-kernel(μ, ops...) = Kernel(μ, ops)
+kernel(f) = kernel(f, identity)
+
+kernel(μ, op1, op2, param_maps...) = Kernel(μ, op1, op2, param_maps...)
 kernel(μ, op) = Kernel(μ, op)
 
 # kernel(Normal(μ=2))
 function kernel(μ::P) where {P<:AbstractMeasure}
-    (f, ops) = kernelfactor(μ)
-    kernel(f, ops)
+    (f, param_maps) = kernelfactor(μ)
+    kernel(f, param_maps)
 end
 
 # kernel(Normal{(:μ,), Tuple{Int64}})
 function kernel(::Type{P}) where {P<:AbstractMeasure}
-    (f, ops) = kernelfactor(P)
-    kernel(f, ops)
+    (f, param_maps) = kernelfactor(P)
+    kernel(f, param_maps)
 end
 
 # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
-function kernel(::Type{M}; ops...) where {M}
-    nt = NamedTuple(ops)
+function kernel(::Type{M}; param_maps...) where {M}
+    nt = NamedTuple(param_maps)
     kernel(M, nt)
 end
 
-kernel(f::Returns, op) = KernelReturns(f.value)
-kernel(f, op::Returns) = KernelReturns(f(op.value))
+kernel(f::Returns, op) = Kernel(f, identity)
+kernel(f, op::Returns) = Kernel(Returns(f(op.value)), identity)
 
 # Just to avoid dispatch ambiguity
-kernel(f::Returns, op::Returns) = KernelReturns(f.value)
+kernel(f::Returns, op::Returns) = Kernel(Returns(f.value), identity)

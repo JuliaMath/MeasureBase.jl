@@ -14,10 +14,7 @@ end
 
 basemeasure(d::Dirac) = CountingMeasure()
 
-basemeasure_depth(::Dirac) = static(1)
-basemeasure_depth(::Type{D}) where {D<:Dirac} = static(1)
-
-
+basemeasure_type(::Type{Dirac}) = CountingMeasure
 
 density_def(μ::Dirac, x) = x == μ.x
 
@@ -30,3 +27,5 @@ export dirac
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
 testvalue(d::Dirac) = d.x
+
+insupport(d::Dirac, x) = x == d.x

@@ -3,15 +3,15 @@ const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
-@inline function fix(f, x)
-    y = f(x)
-    # Workaround bug https://github.com/JuliaLang/julia/issues/42615
-    while x !== y
-        (x, y) = (y, f(y))
-    end
+# @inline function fix(f, x)
+#     y = f(x)
+#     # Workaround bug https://github.com/JuliaLang/julia/issues/42615
+#     while x !== y
+#         (x, y) = (y, f(y))
+#     end
 
-    return y
-end
+#     return y
+# end
 
 # function constructorof(::Type{T}) where {T} 
 #     C = T
@@ -70,6 +70,8 @@ export basemeasure_depth
     """
     static(1) + basemeasure_depth(basemeasure(μ))
 end
+
+@inline basemeasure_depth(::Type{M}) where {M} = static(1) + basemeasure_depth(basemeasure_type(M)) 
 
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
 

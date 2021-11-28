@@ -3,17 +3,21 @@ export Kernel
 
 abstract type AbstractKernel <: AbstractMeasure end
 
-struct KernelReturns{M} <: AbstractKernel
-    value::M
+struct Kernel{F,G} <: AbstractKernel
+    f::F
+    g::G
+
+    Kernel(::Type{T}, g::G) where {T,G} = new{Type{T},G}(T, g)
+    Kernel(f::F, g::G) where {F,G} = new{F,G}(f, g)
 end
 
-(k::KernelReturns)(_) = k.value
-struct Kernel{F,S} <: AbstractKernel
-    f::F
-    ops::S
 
-    Kernel(::Type{T}, ops::S) where {T,S} = new{Type{T},S}(T, ops)
-    Kernel(f::F, ops::S) where {F,S} = new{F,S}(f, ops)
+struct ParameterizedKernel{F,N,T} <: AbstractKernel
+    f::F
+    param_maps::NamedTuple{N,T}
+
+    ParameterizedKernel(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} = new{Type{F},N,T}(F, param_maps)
+    ParameterizedKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} = new{F,N,T}(f, param_maps)
 end
 
 """
@@ -45,17 +49,17 @@ kernel(f, ::Type{M}) where {M} = kernel(M, f)
 # TODO: Would this benefit from https://github.com/tisztamo/FunctionWranglers.jl?
 mapcall(t, x) = map(func -> func(x), t)
 
-# (k::Kernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.ops, x)...)
+# (k::Kernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
 
-(k::Kernel{M,<:NamedTuple})(x) where {M} = k.f(; mapcall(k.ops, x)...)
+(k::ParameterizedKernel)(x) where {M} = k.f(; mapcall(k.param_maps, x)...)
 
-(k::Kernel{F,S})(x...) where {F,N,S<:NTuple{N,Symbol}} = k(x)
+(k::ParameterizedKernel)(x...) = k(x)
 
-function (k::Kernel{F,S})(x::Tuple) where {F,N,S<:NTuple{N,Symbol}}
-    k.f(NamedTuple{k.ops}(x))
+function (k::ParameterizedKernel)(x::Tuple) 
+    k.f(NamedTuple{k.param_maps}(x))
 end
 
-(k::Kernel)(x) = k.f(k.ops(x))
+(k::Kernel)(x) = (k.f ∘ k.g)(x)
 
 """
 For any `k::Kernel`, `basekernel` is expected to satisfy
@@ -65,7 +69,7 @@ basemeasure(k(p)) == basekernel(k)(p)
 
 The main purpose of `basekernel` is to make it efficient to compute
 ```
-basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
 ```
 """
 function basekernel end
@@ -73,7 +77,10 @@ function basekernel end
 # TODO: Find a way to do better than this
 basekernel(f) = basemeasure ∘ f
 
-basekernel(k::Kernel) = kernel(basekernel(k.f), k.ops)
+basekernel(k::ParameterizedKernel) = kernel(basekernel(k.f), k.param_maps)
+
+basekernel(k::Kernel) = kernel(basekernel(k.f), k.g)
+
 basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 # export kernelize

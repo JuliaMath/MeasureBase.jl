@@ -15,5 +15,6 @@ end
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
-basemeasure_depth(::Type{RestrictedMeasure{F,M}}) where {F,M} =
-    static(1) + basemeasure_depth(M)
+basemeasure_type(::Type{RestrictedMeasure{F,M}}) where {F,M} = M
+
+insupport(μ::RestrictedMeasure, x) = μ.f(x) && insupport(μ.base, x) 

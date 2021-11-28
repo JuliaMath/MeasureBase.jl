@@ -65,7 +65,7 @@ function Base.show(io::IO, b::BoundedInts)
     print(io, "ℤ[", b.lower, ":", b.upper, "]")
 end
 
-testvalue(::BoundedInts) = min(b.lower, 0)
+testvalue(b::BoundedInts) = min(b.lower, 0)
 
 function Base.getindex(::typeof(ℤ), r::AbstractUnitRange)
     BoundedInts(extrema(r)...)

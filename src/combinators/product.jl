@@ -9,27 +9,27 @@ abstract type AbstractProductMeasure <: AbstractMeasure end
 
 struct ProductMeasure{K,I} <: AbstractProductMeasure
     f::K
-    pars::I
+    xs::I
 end
 
 # TODO: Test for equality without traversal, probably by first converting to a
 # canonical form
 function Base.:(==)(a::ProductMeasure, b::ProductMeasure)
-    all(zip(a.pars, b.pars)) do (aᵢ, bᵢ)
+    all(zip(a.xs, b.xs)) do (aᵢ, bᵢ)
         a.f(aᵢ) == b.f(bᵢ)
     end
 end
 
 Base.size(μ::ProductMeasure) = size(marginals(μ))
 
-Base.length(m::ProductMeasure) = length(marginals(μ))
+Base.length(μ::ProductMeasure) = length(marginals(μ))
 
-basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
 
 # TODO: Do we need these methods?
-# basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.pars)
-# basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.pars))
-# basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.pars))
+# basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.xs)
+# basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.xs))
+# basemeasure(d::ProductMeasure{typeof(identity), <:FillArrays.Fill}) = ProductMeasure(identity, map(basemeasure, d.xs))
 
 export marginals
 
@@ -38,7 +38,7 @@ function marginals(d::ProductMeasure{K,I}) where {K,I}
 end
 
 function _marginals(d::ProductMeasure, ::Iterable)
-    return (d.f(i) for i in d.pars)
+    return (d.f(i) for i in d.xs)
 end
 
 function _marginals(d::ProductMeasure{K,I}, ::NonIterable) where {K,I}
@@ -59,26 +59,26 @@ end
 # I <: Tuple
 
 struct TupleProductMeasure{T} <: AbstractProductMeasure
-    pars::T
+    components::T
 end
 
 export ⊗
 ⊗(μs::AbstractMeasure...) = productmeasure(μs)
 
-marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.pars
+marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.components
 
 @inline function logdensity_def(d::TupleProductMeasure, x::Tuple) where {T<:Tuple}
-    mapreduce(logdensity_def, +, d.pars, x)
+    mapreduce(logdensity_def, +, d.components, x)
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::TupleProductMeasure) where {T}
-    rand.(d.pars)
+    rand.(d.components)
 end
 
 ###############################################################################
 # I <: AbstractArray
 
-marginals(d::ProductMeasure{K,A}) where {K,A<:AbstractArray} = mappedarray(d.f, d.pars)
+marginals(d::ProductMeasure{K,A}) where {K,A<:AbstractArray} = mappedarray(d.f, d.xs)
 
 @inline function logdensity_def(d::ProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
@@ -98,8 +98,11 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-@inline function logdensity_def(d::ProductMeasure{K,I}, x) where {K,I<:Base.Generator}
-    sum((logdensity_def(dj, xj) for (dj, xj) in zip(marginals(d), x)))
+
+function logdensity_def(μ::AbstractProductMeasure, x)
+    mapreduce(+, μ.xs, x) do (j,x)
+        logdensity_def(μ.f(j), x)
+    end
 end
 
 @propagate_inbounds function Random.rand!(
@@ -153,9 +156,10 @@ end
 #     μ.data
 # end
 
-function ConstructionBase.constructorof(::Type{P}) where {K,I,P<:ProductMeasure{K,I}}
-    p -> productmeasure(d.f, p)
-end
+# # FIXME
+# function ConstructionBase.constructorof(::Type{P}) where {K,I,P<:ProductMeasure{K,I}}
+#     p -> productmeasure(d.f, p)
+# end
 
 # function Accessors.set(d::ProductMeasure{N}, ::typeof(params), p) where {N}
 #     setproperties(d, NamedTuple{N}(p...))
@@ -173,9 +177,9 @@ end
 
 function kernelfactor(μ::ProductMeasure{K,<:Fill}) where {K}
     k = kernel(first(marginals(μ)))
-    (p -> k.f(p)^size(μ), k.ops)
+    (p -> k.f(p)^size(μ), k.param_maps)
 end
 
-function kernelfactor(μ::ProductMeasure{K,A}) where {K,A<:AbstractArray}
-    (p -> set.(marginals(μ), params, p), μ.pars)
-end
+# function kernelfactor(μ::ProductMeasure{K,A}) where {K,A<:AbstractArray}
+#     (p -> set.(marginals(μ), params, p), μ.xs)
+# end

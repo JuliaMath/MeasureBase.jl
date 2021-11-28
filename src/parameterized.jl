@@ -29,7 +29,7 @@ end
 # Normal(μ = 2,)
 #
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
-    C = constructorof(P)
+    C = constructor(P)
     return C(NamedTuple{N}(args...))
 end
 
@@ -39,7 +39,7 @@ function ConstructionBase.setproperties(
     d::P,
     nt::NamedTuple,
 ) where {P<:ParameterizedMeasure}
-    return constructorof(P)(merge(params(d), nt))
+    return constructor(P)(merge(params(d), nt))
 end
 
 ###############################################################################
@@ -76,9 +76,9 @@ end
 # kernelfactor
 
 function kernelfactor(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    (constructorof(P), N)
+    (constructor(P), N)
 end
 
 function kernelfactor(::P) where {N,P<:ParameterizedMeasure{N}}
-    (constructorof(P), N)
+    (constructor(P), N)
 end

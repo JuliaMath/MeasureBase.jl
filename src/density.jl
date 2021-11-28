@@ -58,10 +58,7 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-basemeasure_depth(::DensityMeasure{F,B}) where {F,B} = static(1) + basemeasure_depth(B)
-
-basemeasure_depth(::Type{DensityMeasure{F,B}}) where {F,B} =
-    static(1) + basemeasure_depth(B)
+basemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
 
 logdensity_def(μ::DensityMeasure, x)  = logdensityof(μ.f, x)
 
@@ -94,7 +91,7 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 @inline function logdensity_def(μ::T, ν::T, x) where {T<:AbstractMeasure}
     μ == ν && return 0.0
-    invoke(logdensity, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
+    invoke(logdensity_def, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
 end
 
 @inline function logdensity_def(μ::AbstractMeasure, ν::AbstractMeasure, x)

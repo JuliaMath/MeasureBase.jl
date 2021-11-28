@@ -78,11 +78,11 @@ For(f, dims...) = productmeasure(i -> f(i...), zip(dims...))
 
 For(f, inds::AbstractArray) = productmeasure(f, inds)
 
-For(f, n::Int) = productmeasure(f, Base.OneTo(n))
-For(f, dims::Int...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
+For(f, n::Integer) = productmeasure(f, Base.OneTo(n))
+For(f, dims::Integer...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
 
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
-    return eltype(d.f(first(d.pars)))
+    return eltype(d.f(first(d.xs)))
 end
 
 # """
