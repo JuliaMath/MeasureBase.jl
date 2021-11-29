@@ -90,4 +90,22 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 #     (Kernel{C,}(NamedTuple{N}, ), values(getfield(μ, :par)))
 # end
 
+function Base.show(io::IO, μ::AbstractKernel)
+    io = IOContext(io, :compact => true)
+    Pretty.pprint(io, μ)
+end
+
+
+function Pretty.quoteof(k::Kernel)
+    qf = Pretty.quoteof(k.f)
+    qg = Pretty.quoteof(k.g)
+    :(Kernel($qf, $qg))
+end
+
+function Pretty.quoteof(k::ParameterizedKernel)
+    qf = Pretty.quoteof(k.f)
+    qg = Pretty.quoteof(k.param_maps)
+    :(Kernel($qf, $qg))
+end
+
 export kernelfactor

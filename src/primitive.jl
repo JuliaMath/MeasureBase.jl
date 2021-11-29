@@ -25,3 +25,7 @@ basemeasure_type(::Type{M}) where {M<:PrimitiveMeasure} = M
 logdensity_def(μ::PrimitiveMeasure, x) = static(0.0)
 
 logdensity_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
+
+function Pretty.quoteof(μ::M) where {M<:PrimitiveMeasure}
+    :($M())
+end

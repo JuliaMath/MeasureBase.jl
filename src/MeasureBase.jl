@@ -10,6 +10,9 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+using PrettyPrinting
+const Pretty = PrettyPrinting
+
 using FillArrays
 using Static
 

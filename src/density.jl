@@ -44,6 +44,12 @@ struct DensityMeasure{F,B} <: AbstractMeasure
     base::B
 end
 
+function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
+    result = Pretty.literal("DensityMeasure ∫(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
+    result *= Pretty.literal(")")
+end
+
 densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
 
 _densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)

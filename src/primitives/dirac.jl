@@ -5,6 +5,11 @@ struct Dirac{X} <: AbstractMeasure
     x::X
 end
 
+function Pretty.quoteof(d::Dirac)
+    q = Pretty.quoteof(d.x)
+    :(Dirac($q))
+end
+
 gentype(μ::Dirac{X}) where {X} = X
 
 function (μ::Dirac{X})(s) where {X}

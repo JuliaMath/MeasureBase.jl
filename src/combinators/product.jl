@@ -18,6 +18,13 @@ struct ProductMeasure{M,K<:AbstractKernel,I} <: AbstractProductMeasure
     end
 end
 
+
+function Pretty.tile(μ::ProductMeasure)
+    result = Pretty.literal("For(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.xs); sep = ", ")
+    result *= Pretty.literal(")")
+end
+
 # TODO: Test for equality without traversal, probably by first converting to a
 # canonical form
 function Base.:(==)(a::ProductMeasure, b::ProductMeasure)
@@ -64,6 +71,12 @@ end
 
 struct TupleProductMeasure{T} <: AbstractProductMeasure
     components::T
+end
+
+
+function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T<:Tuple}
+    mar = marginals(μ)
+    Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep = " ⊗ ")
 end
 
 export ⊗
@@ -187,3 +200,4 @@ end
 # function kernelfactor(μ::ProductMeasure{K,A}) where {K,A<:AbstractArray}
 #     (p -> set.(marginals(μ), params, p), μ.xs)
 # end
+

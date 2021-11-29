@@ -8,16 +8,6 @@ end
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
-# @inline function fix(f, x)
-#     y = f(x)
-#     # Workaround bug https://github.com/JuliaLang/julia/issues/42615
-#     while x !== y
-#         (x, y) = (y, f(y))
-#     end
-
-#     return y
-# end
-
 # function constructorof(::Type{T}) where {T} 
 #     C = T
 #     while C isa UnionAll

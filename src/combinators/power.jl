@@ -37,8 +37,16 @@ function Base.:^(μ::AbstractMeasure, dims::Integer...)
     return μ^dims
 end
 
-Base.show(io::IO, d::PowerMeasure) = print(io, d.f.f.value, " ^ ", size(d.xs))
-Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.f.f.value, " ^ ", length(d.xs))
+function Pretty.tile(d::PowerMeasure{M,1}) where {M}
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.xs)); sep = " ^ ")
+end
+
+function Pretty.tile(d::PowerMeasure)
+    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.xs)); sep = " ^ ")
+end
+
+# Base.show(io::IO, d::PowerMeasure) = print(io, d.f.f.value, " ^ ", size(d.xs))
+# Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.f.f.value, " ^ ", length(d.xs))
 
 # gentype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{gentype(first(marginals(d))), N}
 
