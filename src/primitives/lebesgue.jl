@@ -6,6 +6,9 @@ struct LebesgueMeasure <: PrimitiveMeasure end
 
 testvalue(::LebesgueMeasure) = 0.0
 
+gentype(::Lebesgue) = Float64
+gentype(::Lebesgue) = Float64
+gentype(::Lebesgue) = Float64
 
 struct Lebesgue{T} <: AbstractMeasure
     support::T

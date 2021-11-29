@@ -1,5 +1,10 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
+function Base.show(io::IO, μ::AbstractMeasure)
+    io = IOContext(io, :compact => true)
+    Pretty.pprint(io, μ)
+end
+
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
