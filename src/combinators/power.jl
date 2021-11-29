@@ -74,6 +74,10 @@ function basemeasure_type(::Type{P}) where {M,N,R,P<:PowerMeasure{M,N,R}}
     return PowerMeasure{basemeasure_type(M), N, R}
 end
 
+function basemeasure_depth(::Type{P}) where {M<:PrimitiveMeasure,N,R,P<:PowerMeasure{M,N,R}}
+    return static(0)
+end
+
 # Same as PowerMeasure
 @inline function logdensity_def(d::PowerMeasure, x)
     d1 = d.f(first(d.xs))

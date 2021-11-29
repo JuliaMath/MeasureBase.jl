@@ -14,3 +14,10 @@ function proxy end
 proxy(μ) = μ
 
 proxy(f, μ) = proxy(μ)
+
+logdensity_def(μ, x) = logdensity_def(proxy(μ), x)
+
+
+basemeasure(μ, x) = basemeasure(proxy(μ), x)
+
+basemeasure(μ) = basemeasure(proxy(μ))
