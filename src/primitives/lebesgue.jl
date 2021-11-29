@@ -23,7 +23,7 @@ proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())
 
 Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueMeasure()
 
-Base.show(io::IO, d::Lebesgue) = print("Lebesgue(",d.support,")")
+Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(",d.support,")")
 
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
