@@ -39,7 +39,7 @@ end
 # PowerMeaure
 
 function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Kernel(Returns(μ), identity), CartesianIndices(dims))
+    productmeasure(Kernel(Returns(μ), identity), LinearIndices(dims))
 end
 
 # function Base.:^(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}

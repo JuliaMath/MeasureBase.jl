@@ -29,7 +29,7 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-const PowerMeasure{M,N,R} = ProductMeasure{Kernel{Returns{M}, typeof(identity)}, CartesianIndices{N, R}} 
+const PowerMeasure{M,N,R} = ProductMeasure{M,Kernel{Returns{M}, typeof(identity)}, LinearIndices{N, R}} 
 
 Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 
@@ -46,17 +46,14 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
-# Same as PowerMeasure
 @inline function basemeasure(d::PowerMeasure)
-    _basemeasure(d, (basemeasure(d.f(first(d.xs)))))
+    _basemeasure(d, basemeasure(d.f.f.value))
 end
 
-# Same as PowerMeasure
 @inline function _basemeasure(d::PowerMeasure, b)
     b ^ size(d.xs)
 end
 
-# Same as PowerMeasure
 @inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
     n = length(d.xs)
     inbounds(x) = all(b.inbounds, x)
@@ -78,7 +75,6 @@ function basemeasure_depth(::Type{P}) where {M<:PrimitiveMeasure,N,R,P<:PowerMea
     return static(0)
 end
 
-# Same as PowerMeasure
 @inline function logdensity_def(d::PowerMeasure, x)
     d1 = d.f(first(d.xs))
     sum(xj -> logdensity_def(d1, xj), x)

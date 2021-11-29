@@ -67,8 +67,6 @@ end
 
 @inline basemeasure_depth(::Type{M}) where {M} = static(1) + basemeasure_depth(basemeasure_type(M)) 
 
-@inline basemeasure_depth(::Type{M}) where {M<:PrimitiveMeasure} = static(0)
-
 export logdensity_tuple
 
 function logdensity_tuple(d, x)

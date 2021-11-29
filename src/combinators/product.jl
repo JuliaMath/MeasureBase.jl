@@ -7,9 +7,15 @@ using FillArrays
 
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
-struct ProductMeasure{K,I} <: AbstractProductMeasure
+struct ProductMeasure{M,K<:AbstractKernel,I} <: AbstractProductMeasure
     f::K
     xs::I
+
+    function ProductMeasure(f::K, xs::I) where {K,I}
+        μ₁ = f(first(xs))
+        M = typeof(μ₁)
+        new{M,K,I}(f, xs)
+    end
 end
 
 # TODO: Test for equality without traversal, probably by first converting to a
@@ -26,6 +32,8 @@ Base.length(μ::ProductMeasure) = length(marginals(μ))
 
 basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
 
+basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
+
 # TODO: Do we need these methods?
 # basemeasure(d::ProductMeasure) = ProductMeasure(basemeasure ∘ d.f, d.xs)
 # basemeasure(d::ProductMeasure{typeof(identity)}) = ProductMeasure(identity, map(basemeasure, d.xs))
@@ -33,7 +41,7 @@ basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
 
 export marginals
 
-function marginals(d::ProductMeasure{K,I}) where {K,I}
+function marginals(d::ProductMeasure{M,K,I}) where {M,K,I}
     _marginals(d, isiterable(I))
 end
 
@@ -41,11 +49,7 @@ function _marginals(d::ProductMeasure, ::Iterable)
     return (d.f(i) for i in d.xs)
 end
 
-function _marginals(d::ProductMeasure{K,I}, ::NonIterable) where {K,I}
-    error("Type $I is not iterable. Add an `iterate` or `marginals` method to fix.")
-end
-
-testvalue(d::ProductMeasure) = map(testvalue, marginals(d))
+testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
     _rand(rng, T, d, marginals(d))
@@ -78,7 +82,7 @@ end
 ###############################################################################
 # I <: AbstractArray
 
-marginals(d::ProductMeasure{K,A}) where {K,A<:AbstractArray} = mappedarray(d.f, d.xs)
+marginals(d::ProductMeasure{M,K,A}) where {M,K,A<:AbstractArray} = mappedarray(d.f, d.xs)
 
 @inline function logdensity_def(d::ProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
@@ -88,7 +92,7 @@ end
     sum(x -> logdensity_def(d.f.f.value, x), x)
 end
 
-# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{K,I}) where {T,F,I<:CartesianIndices}
+# function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure{M,K,I}) where {T,F,I<:CartesianIndices}
 
 # end
 
@@ -157,7 +161,7 @@ end
 # end
 
 # # FIXME
-# function ConstructionBase.constructorof(::Type{P}) where {K,I,P<:ProductMeasure{K,I}}
+# function ConstructionBase.constructorof(::Type{P}) where {K,I,P<:ProductMeasure{M,K,I}}
 #     p -> productmeasure(d.f, p)
 # end
 
@@ -175,7 +179,7 @@ end
 #     end
 # end
 
-function kernelfactor(μ::ProductMeasure{K,<:Fill}) where {K}
+function kernelfactor(μ::ProductMeasure{M,K,<:Fill}) where {M,K}
     k = kernel(first(marginals(μ)))
     (p -> k.f(p)^size(μ), k.param_maps)
 end
