@@ -28,7 +28,9 @@ Base.length(m::PointwiseProductMeasure{T}) where {T} = length(m.data)
 ⊙(args...) = pointwiseproduct(args...)
 
 @inline function logdensity_def(d::PointwiseProductMeasure, x)
-    sum((logdensity_def(dⱼ, x) for dⱼ in d.data))
+    sum(d.data) do dⱼ
+        logdensity_def(dⱼ, x)
+    end
 end
 
 function gentype(d::PointwiseProductMeasure)
