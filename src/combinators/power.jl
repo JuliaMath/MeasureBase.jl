@@ -29,7 +29,7 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-const PowerMeasure{M,N,R} = ProductMeasure{M,Kernel{Returns{M}, typeof(identity)}, LinearIndices{N, R}} 
+const PowerMeasure{M,N,R} = ProductMeasure{M, Kernel{Returns{M}, typeof(identity)}, LinearIndices{N, R}} 
 
 Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 

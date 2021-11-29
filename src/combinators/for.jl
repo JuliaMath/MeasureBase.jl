@@ -74,7 +74,7 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f::Function, args...) = productmeasure(kernel(f), zip(args...))
+For(f::Function, args...) = productmeasure(kernel(i -> f(Tuple(i)...)), zip(args...))
 
 For(f::Function, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))
 
