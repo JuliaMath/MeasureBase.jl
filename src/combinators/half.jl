@@ -11,12 +11,19 @@ end
 
 unhalf(μ::Half) = μ.parent
 
+isnonnegative(x) = x ≥ 0.0
+
 @inline function basemeasure(μ::Half)
-    inbounds(x) = x > 0
-    constℓ = logtwo
-    varℓ() = 0.0
+    inbounds = isnonnegative
+    constℓ = static(logtwo)
+    varℓ = Returns(0.0)
     base = basemeasure(unhalf(μ))
     FactoredBase(inbounds, constℓ, varℓ, base)
+end
+
+function basemeasure_type(::Type{Half{M}}) where {M}
+    B = basemeasure_type(M)
+    FactoredBase{typeof(isnonnegative), StaticFloat64{logtwo}, Returns{Float64}, B}
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
