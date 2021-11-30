@@ -55,20 +55,7 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 @inline function basemeasure(d::PowerMeasure)
-    _basemeasure(d, basemeasure(d.f.f.value))
-end
-
-@inline function _basemeasure(d::PowerMeasure, b)
-    b ^ size(d.xs)
-end
-
-@inline function _basemeasure(d::PowerMeasure, b::FactoredBase)
-    n = length(d.xs)
-    inbounds(x) = all(b.inbounds, x)
-    constℓ = n * b.constℓ
-    varℓ() = n * b.varℓ()
-    base = b.base^size(d.xs)
-    FactoredBase(inbounds, constℓ, varℓ, base)
+    basemeasure(d.f.f.value) ^ size(d.xs)
 end
 
 function basemeasure_depth(d::PowerMeasure{M,N,R}) where {M,N,R}
