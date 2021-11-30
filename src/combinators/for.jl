@@ -89,38 +89,3 @@ For(k::AbstractKernel, dims::Integer...) = productmeasure(kernel(i -> k(Tuple(i)
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
     return eltype(d.f(first(d.xs)))
 end
-
-# """
-#     indexstyle(a::AbstractArray, b::AbstractArray)
-
-# Find the best IndexStyle that works for both `a` and `b`. This will return
-# `IndexLinear` if both `a` and `b` support it; otherwise it will fall back on `IndexCartesian`.
-# """
-# function indexstyle(::A,::B)
-#     if IndexStyle(A) == IndexStyle(B) == IndexLinear()
-#         return IndexLinear()
-#     end
-
-#     return IndexCartesian()
-# end
-
-# function Base.rand(rng::AbstractRNG, μ::ForArray{D,N,T,F}) where {F,T<:AbstractArray,D,X}
-#     s = size(μ.θ)
-#     x = Array{X,length(s)}(undef, s...)
-#     rand!(rng, x, μ)
-# end
-
-# function logdensity_def(μ::ForArray{D,N,T,F}, x)
-#     getℓ(θⱼ, xⱼ) = logdensity_def(μ.f(θⱼ), xⱼ)
-#     ℓ = mappedarray(getℓ, μ.θ, x)
-#     _logdensity_def(μ, x, indexstyle(μ.θ, x), result_type)
-# end
-
-# function _logdensity_def(μ::ForArray{D,N,T,F}, x, ::IndexLinear, ::Type{R}) where {R<:AbstractFloat}
-#     ℓ = zero(R)
-#     μ.f(μ.θ)
-# end
-
-# function basemeasure(μ::ForArray{D,N,T,F}) where {F,T<:AbstractArray,D,X}
-
-# ForGenerator
