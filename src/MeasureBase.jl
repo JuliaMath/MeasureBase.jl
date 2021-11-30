@@ -53,7 +53,7 @@ if VERSION < v"1.7.0-beta1.0"
             value::T
         end
 
-        (f::Returns)(x) = f.value
+        (f::Returns)(args...) = f.value
     end
 end
 
