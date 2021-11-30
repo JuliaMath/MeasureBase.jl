@@ -1,16 +1,24 @@
-export CountingMeasure
+# Counting measure
+
+export Counting, CountingMeasure
 
 struct CountingMeasure <: PrimitiveMeasure end
 
+struct Counting{T} <: AbstractMeasure
+    support::T
+end
 
+Counting() = Counting(ℤ)
 
-# gentype(::CountingMeasure{ℝ}) = Float64
-# gentype(::CountingMeasure{ℝ₊}) = Float64
-# gentype(::CountingMeasure{𝕀}) = Float64
+basemeasure_type(::Type{C}) where {C<:Counting}= CountingMeasure
 
-gentype(::CountingMeasure) = Int
+testvalue(d::Counting) = testvalue(d.support)
 
+proxy(d::Counting) = restrict(in(d.support), CountingMeasure())
 
-logdensity_def(::CountingMeasure, x) = zero(float(x))
+Base.:∘(::typeof(basemeasure), ::Type{Counting}) = CountingMeasure()
 
-# (::CountingMeaure)(s) = length(Set(s))
+Base.show(io::IO, d::Counting) = print(io, "Counting(",d.support,")")
+
+insupport(μ::Counting, x) = x ∈ μ.support
+
