@@ -36,10 +36,18 @@ It's sometimes important to be able to find the fix point of a measure under
 repeatedly until there's no change. That's what this does.
 """
 @inline function rootmeasure(μ)
-    α = basemeasure(μ)
-    μ === α && return α
-    return rootmeasure(α)
+    n = basemeasure_depth(μ)
+    _rootmeasure(μ, static(n))
 end
+
+@generated function _rootmeasure(μ, ::StaticInt{n}) where {n}
+    q = quote end
+    foreach(1:n) do _
+        push!(q.args, :(μ = basemeasure(μ)))
+    end
+    return q
+end
+
 
 # Base on the Tricks.jl README
 using Tricks
