@@ -1,3 +1,8 @@
+abstract type AbstractDensity end
+
+@inline DensityKind(::AbstractDensity) = IsDensity()
+
+
 """
     struct Density{M,B}
         μ::M
@@ -12,12 +17,11 @@ Because this function is often difficult to express in closed form, there are
 many different ways of computing it. We therefore provide a formal
 representation to allow comptuational flexibilty.
 """
-struct Density{M,B,L}
+struct Density{M,B,L} <: AbstractDensity
     μ::M
     base::B
 end
 
-@inline DensityKind(::Density) = IsDensity()
 
 export 𝒹
 
