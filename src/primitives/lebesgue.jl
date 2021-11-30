@@ -18,8 +18,6 @@ Lebesgue() = Lebesgue(ℝ)
 
 basemeasure_type(::Type{L}) where {L<:Lebesgue}= LebesgueMeasure
 
-gentype(::Lebesgue) = Float64
-
 testvalue(d::Lebesgue) = testvalue(d.support)
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())
