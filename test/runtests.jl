@@ -101,67 +101,6 @@ end
     @test logdensity_def(Dirac(0.3), 0.4) == -Inf
 end
 
-@testset "AffineTransform" begin
-    f = AffineTransform((μ = 3, σ = 2))
-    @test f(inv(f)(1)) == 1
-    @test inv(f)(f(1)) == 1
-
-    f = AffineTransform((μ = 3, ω = 2))
-    @test f(inv(f)(1)) == 1
-    @test inv(f)(f(1)) == 1
-
-    f = AffineTransform((σ = 2,))
-    @test f(inv(f)(1)) == 1
-    @test inv(f)(f(1)) == 1
-
-    f = AffineTransform((ω = 2,))
-    @test f(inv(f)(1)) == 1
-    @test inv(f)(f(1)) == 1
-
-    f = AffineTransform((μ = 3,))
-    @test f(inv(f)(1)) == 1
-    @test inv(f)(f(1)) == 1
-end
-
-@testset "Affine" begin
-    unif = ∫(x -> 0 < x < 1, Lebesgue(ℝ))
-    f1 = AffineTransform((μ = 3.0, σ = 2.0))
-    f2 = AffineTransform((μ = 3.0, ω = 2.0))
-    f3 = AffineTransform((μ = 3.0,))
-    f4 = AffineTransform((σ = 2.0,))
-    f5 = AffineTransform((ω = 2.0,))
-
-    for f in [f1, f2, f3, f4, f5]
-        par = getfield(f, :par)
-        @test Affine(par)(unif) == Affine(f, unif)
-        @test density_def(Affine(f, Affine(inv(f), unif)), 0.5) == 1
-    end
-
-    d = ∫exp(x -> -x^2, Lebesgue(ℝ))
-
-    μ = randn(3)
-    σ = LowerTriangular(randn(3, 3))
-    ω = inv(σ)
-
-    x = randn(3)
-
-    @test logdensity_def(Affine((μ = μ, σ = σ), d^3), x) ≈
-          logdensity_def(Affine((μ = μ, ω = ω), d^3), x)
-    @test logdensity_def(Affine((σ = σ,), d^3), x) ≈ logdensity_def(Affine((ω = ω,), d^3), x)
-    @test logdensity_def(Affine((μ = μ,), d^3), x) ≈ logdensity_def(d^3, x - μ)
-
-    d = ∫exp(x -> -x^2, Lebesgue(ℝ))
-    a = Affine((σ = [1 0]',), d^1)
-    x = randn(2)
-    y = randn(1)
-    @test logdensityof(a, x) ≈ logdensityof(d, inv(a.f)(x)[1])
-    @test logdensityof(a, a.f(y)) ≈ logdensityof(d^1, y)
-
-    b = Affine((ω = [1 0]'',), d^1)
-    @test logdensityof(b, x) ≈ logdensityof(d, inv(b.f)(x)[1])
-    @test logdensityof(b, b.f(y)) ≈ logdensityof(d^1, y)
-end
-
 @testset "For" begin
     FORDISTS = [
         For(1:10) do j
@@ -194,18 +133,6 @@ end
     @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
     @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(Normal(), 0.2)
 end
-
-# import MeasureBase.:⋅
-# function ⋅(μ::Normal, kernel) 
-#     m = kernel(μ)
-#     Normal(μ = m.μ.μ, σ = sqrt(m.μ.σ^2 + m.σ^2))
-# end
-# struct AffineMap{S,T}
-#     B::S
-#     β::T
-# end
-# (a::AffineMap)(x) = a.B*x + a.β
-# (a::AffineMap)(p::Normal) = Normal(μ = a.B*mean(p) + a.β, σ = sqrt(a.B*p.σ^2*a.B'))
 
 # @testset "Likelihood" begin
 #     dps = [
