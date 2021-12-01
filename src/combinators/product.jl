@@ -18,7 +18,6 @@ struct ProductMeasure{M,K<:AbstractKernel,I} <: AbstractProductMeasure
     end
 end
 
-
 function Pretty.tile(μ::ProductMeasure)
     result = Pretty.literal("For(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.xs); sep = ", ")
@@ -73,7 +72,6 @@ struct TupleProductMeasure{T} <: AbstractProductMeasure
     components::T
 end
 
-
 function Pretty.tile(μ::TupleProductMeasure{T}) where {F,T<:Tuple}
     mar = marginals(μ)
     Pretty.list_layout(Pretty.Layout[Pretty.tile.(mar)...]; sep = " ⊗ ")
@@ -115,9 +113,8 @@ end
 export rand!
 using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-
 function logdensity_def(μ::AbstractProductMeasure, x)
-    mapreduce(+, μ.xs, x) do (j,x)
+    mapreduce(+, μ.xs, x) do (j, x)
         logdensity_def(μ.f(j), x)
     end
 end
@@ -200,4 +197,3 @@ end
 # function kernelfactor(μ::ProductMeasure{K,A}) where {K,A<:AbstractArray}
 #     (p -> set.(marginals(μ), params, p), μ.xs)
 # end
-

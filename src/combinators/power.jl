@@ -29,7 +29,8 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-const PowerMeasure{M,N,R} = ProductMeasure{M, Kernel{Returns{M}, typeof(identity)}, LinearIndices{N, R}} 
+const PowerMeasure{M,N,R} =
+    ProductMeasure{M,Kernel{Returns{M},typeof(identity)},LinearIndices{N,R}}
 
 Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
 
@@ -55,7 +56,7 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 @inline function basemeasure(d::PowerMeasure)
-    basemeasure(d.f.f.value) ^ size(d.xs)
+    basemeasure(d.f.f.value)^size(d.xs)
 end
 
 function basemeasure_depth(d::PowerMeasure{M,N,R}) where {M,N,R}
@@ -63,7 +64,7 @@ function basemeasure_depth(d::PowerMeasure{M,N,R}) where {M,N,R}
 end
 
 function basemeasure_type(::Type{P}) where {M,N,R,P<:PowerMeasure{M,N,R}}
-    return PowerMeasure{basemeasure_type(M), N, R}
+    return PowerMeasure{basemeasure_type(M),N,R}
 end
 
 function basemeasure_depth(::Type{P}) where {M<:PrimitiveMeasure,N,R,P<:PowerMeasure{M,N,R}}

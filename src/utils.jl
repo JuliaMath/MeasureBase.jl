@@ -49,7 +49,6 @@ end
     return q
 end
 
-
 # Base on the Tricks.jl README
 using Tricks
 struct Iterable end
@@ -69,7 +68,8 @@ export basemeasure_depth
     basemeasure_depth(M)
 end
 
-@inline basemeasure_depth(::Type{M}) where {M} = static(1) + basemeasure_depth(basemeasure_type(M)) 
+@inline basemeasure_depth(::Type{M}) where {M} =
+    static(1) + basemeasure_depth(basemeasure_type(M))
 
 export logdensity_tuple
 

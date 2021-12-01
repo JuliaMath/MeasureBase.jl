@@ -81,7 +81,8 @@ For(k::AbstractKernel, inds::AbstractArray) = productmeasure(k, inds)
 For(f, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))
 For(k::AbstractKernel, n::Integer) = productmeasure(k, Base.OneTo(n))
 
-For(f, dims::Integer...) = productmeasure(kernel(i -> f(Tuple(i)...)), CartesianIndices(dims))
+For(f, dims::Integer...) =
+    productmeasure(kernel(i -> f(Tuple(i)...)), CartesianIndices(dims))
 
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
     return eltype(d.f(first(d.xs)))

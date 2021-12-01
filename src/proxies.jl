@@ -17,6 +17,4 @@ proxy(f, μ) = proxy(μ)
 
 logdensity_def(μ, x) = logdensity_def(proxy(μ), x)
 
-
-
 basemeasure(μ) = basemeasure(proxy(μ))

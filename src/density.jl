@@ -2,7 +2,6 @@ abstract type AbstractDensity end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
-
 """
     struct Density{M,B}
         μ::M
@@ -21,7 +20,6 @@ struct Density{M,B,L} <: AbstractDensity
     μ::M
     base::B
 end
-
 
 export 𝒹
 
@@ -58,7 +56,7 @@ densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
 
 _densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
 
-function _densitymeasure(f, base, _) 
+function _densitymeasure(f, base, _)
     @error """
     The first argument of `DensityMeasure`" must be `::IsDensity`. To pass a
     function, first wrap it in `DensityInterface.funcdensity` or
@@ -70,7 +68,7 @@ basemeasure(μ::DensityMeasure) = μ.base
 
 basemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
 
-logdensity_def(μ::DensityMeasure, x)  = logdensityof(μ.f, x)
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
@@ -84,7 +82,6 @@ Define a new measure in terms of a density `f` over some measure `base`.
 ∫(f::Function, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
 
 ∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
-
 
 # ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
 

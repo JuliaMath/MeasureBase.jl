@@ -11,13 +11,14 @@ struct Kernel{F,G} <: AbstractKernel
     Kernel(f::F, g::G) where {F,G} = new{F,G}(f, g)
 end
 
-
 struct ParameterizedKernel{F,N,T} <: AbstractKernel
     f::F
     param_maps::NamedTuple{N,T}
 
-    ParameterizedKernel(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} = new{Type{F},N,T}(F, param_maps)
-    ParameterizedKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} = new{F,N,T}(f, param_maps)
+    ParameterizedKernel(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} =
+        new{Type{F},N,T}(F, param_maps)
+    ParameterizedKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} =
+        new{F,N,T}(f, param_maps)
 end
 
 """
@@ -55,7 +56,7 @@ mapcall(t, x) = map(func -> func(x), t)
 
 (k::ParameterizedKernel)(x...) = k(x)
 
-function (k::ParameterizedKernel)(x::Tuple) 
+function (k::ParameterizedKernel)(x::Tuple)
     k.f(NamedTuple{k.param_maps}(x))
 end
 
@@ -94,7 +95,6 @@ function Base.show(io::IO, μ::AbstractKernel)
     io = IOContext(io, :compact => true)
     Pretty.pprint(io, μ)
 end
-
 
 function Pretty.quoteof(k::Kernel)
     qf = Pretty.quoteof(k.f)

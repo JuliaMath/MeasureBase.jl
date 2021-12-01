@@ -30,7 +30,6 @@ abstract type AbstractMeasure end
 
 gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
-
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
 export logdensity_def

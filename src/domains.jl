@@ -14,22 +14,19 @@ Base.in(x, ::RealNumbers) = isreal(x)
 Base.show(io::IO, ::typeof(ℝ)) = print(io, "ℝ")
 
 struct BoundedReals{L,U} <: RealDomain
-    lower :: L
-    upper :: U
+    lower::L
+    upper::U
 end
 
 Base.in(x, b::BoundedReals) = b.lower ≤ x ≤ b.upper
 
-
 export ℝ, ℝ₊, 𝕀, ℤ
-
 
 const ℝ₊ = BoundedReals(static(0.0), static(Inf))
 const 𝕀 = BoundedReals(static(0.0), static(1.0))
 
 Base.minimum(b::BoundedReals) = b.lower
 Base.maximum(b::BoundedReals) = b.upper
-
 
 Base.show(io::IO, ::typeof(ℝ₊)) = print(io, "ℝ₊")
 Base.show(io::IO, ::typeof(𝕀)) = print(io, "𝕀")
@@ -51,8 +48,8 @@ Base.show(io::IO, ::typeof(ℤ)) = print(io, "ℤ")
 Base.minimum(::IntegerNumbers) = static(-Inf)
 Base.maximum(::IntegerNumbers) = static(Inf)
 struct BoundedInts{L,U} <: IntegerDomain
-    lower :: L
-    upper :: U
+    lower::L
+    upper::U
 end
 
 Base.in(x, b::BoundedInts) = x ∈ ℤ && b.lower ≤ x ≤ b.upper
@@ -71,10 +68,6 @@ function Base.getindex(::typeof(ℤ), r::AbstractUnitRange)
     BoundedInts(extrema(r)...)
 end
 
-
-
-
-
 ###########################################################
 # Simplex
 
@@ -87,7 +80,6 @@ end
 # struct Sphere{D} <: AbstractDomain
 #     dim::D # dimensionality as a manifold
 # end
-
 
 # projectto!(x, ::Sphere) = normalize!(x, 2)
 # struct ZeroSet{F, G} <: AbstractDomain

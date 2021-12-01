@@ -23,7 +23,7 @@ end
 
 function basemeasure_type(::Type{Half{M}}) where {M}
     B = basemeasure_type(M)
-    FactoredBase{typeof(isnonnegative), StaticFloat64{logtwo}, Returns{Float64}, B}
+    FactoredBase{typeof(isnonnegative),StaticFloat64{logtwo},Returns{Float64},B}
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
