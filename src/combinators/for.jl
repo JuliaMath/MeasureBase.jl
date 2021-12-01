@@ -74,17 +74,14 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f::Function, args...) = productmeasure(kernel(i -> f(Tuple(i)...)), zip(args...))
-
-For(f::Function, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))
-
-For(f::Function, dims::Integer...) = productmeasure(kernel(i -> f(Tuple(i)...)), CartesianIndices(dims))
+For(f, args...) = productmeasure(kernel(i -> f(Tuple(i)...)), zip(args...))
 
 For(k::AbstractKernel, inds::AbstractArray) = productmeasure(k, inds)
 
+For(f, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))
 For(k::AbstractKernel, n::Integer) = productmeasure(k, Base.OneTo(n))
 
-For(k::AbstractKernel, dims::Integer...) = productmeasure(kernel(i -> k(Tuple(i)...)), CartesianIndices(dims))
+For(f, dims::Integer...) = productmeasure(kernel(i -> f(Tuple(i)...)), CartesianIndices(dims))
 
 function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
     return eltype(d.f(first(d.xs)))
