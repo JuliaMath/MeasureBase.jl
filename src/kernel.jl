@@ -102,6 +102,11 @@ function Pretty.quoteof(k::Kernel)
     :(Kernel($qf, $qg))
 end
 
+function Pretty.quoteof(k::Kernel{F,typeof(identity)}) where {F}
+    qf = Pretty.quoteof(k.f)
+    :(Kernel($qf))
+end
+
 function Pretty.quoteof(k::ParameterizedKernel)
     qf = Pretty.quoteof(k.f)
     qg = Pretty.quoteof(k.param_maps)
