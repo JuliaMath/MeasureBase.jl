@@ -23,6 +23,7 @@ constructor(::Type{T}) where {T} = constructorof(T)
 
 export testvalue
 testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
+testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
 
