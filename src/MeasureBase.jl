@@ -10,6 +10,9 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+import ConstructionBase
+using ConstructionBase: constructorof
+
 using PrettyPrinting
 const Pretty = PrettyPrinting
 

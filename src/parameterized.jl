@@ -1,5 +1,3 @@
-import ConstructionBase
-
 export ParameterizedMeasure
 
 abstract type ParameterizedMeasure{N} <: AbstractMeasure end
