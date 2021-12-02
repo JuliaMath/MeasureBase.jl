@@ -74,6 +74,7 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/transformedmeasure.jl")
 include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
