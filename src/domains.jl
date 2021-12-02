@@ -69,49 +69,68 @@ function Base.getindex(::typeof(ℤ), r::AbstractUnitRange)
 end
 
 ###########################################################
+# ZeroSet
+
+struct ZeroSet{F, G} <: AbstractDomain
+    f::F
+    ∇f::G
+end
+
+# Based on some quick tests, but may need some adjustment
+Base.in(x::AbstractArray{T}, z::ZeroSet) where {T} = abs(z.f(x)) < ldexp(eps(float(T)), 6)
+
+
+###########################################################
+# CodimOne
+
+abstract type CodimOne <: AbstractDomain end
+
+function tangentat(a::CodimOne, b::CodimOne, x::AbstractArray{T}; tol=ldexp(eps(float(T)), 6)) where {T}
+    # Sometimes you get lucky
+    a == b && return true
+
+    # Get the normal vectors
+    g1 = a.∇f(x)
+    g2 = b.∇f(x)
+    
+    # See if one is a multiple of the other
+    Statistics.corm(g1, zero(T), g2, zero(T)) > one(T) - tol
+end
+
+function zeroset(::CodimOne)::ZeroSet end
+
+###########################################################
 # Simplex
 
-# struct Simplex{D} <: AbstractDomain
-#     dim::D # dimensionality as a manifold
-# end
+struct Simplex <: CodimOne end
 
-# projectto!(x, ::Simplex) = normalize!(x, 1)
+function zeroset(::Simplex) 
+    f(x::AbstractArray{T}) where {T} = sum(x) - one(T)
+    ∇f(x::AbstractArray{T}) where {T} = Fill(one(T), size(x))
+    ZeroSet(f, ∇f)
+end
 
-# struct Sphere{D} <: AbstractDomain
-#     dim::D # dimensionality as a manifold
-# end
+function Base.in(x::AbstractArray{T}, ::Simplex) where {T} 
+    x .≥ zero(eltype(x)) || return false
+    return x ∈ zeroset(Simplex())
+end
 
-# projectto!(x, ::Sphere) = normalize!(x, 2)
-# struct ZeroSet{F, G} <: AbstractDomain
-#     f::F
-#     ∇f::G
-# end
+projectto!(x, ::Simplex) = normalize!(x, 1)
 
-# function zeroset(::Simplex)
-#     f(x::AbstractVector{T}) where {T} = sum(x) - one(T)
-#     ∇f(x::AbstractVector{T}) where {T} = Fill(one(T), axes(x))
-#     ZeroSet(f, ∇f)
-# end
+###########################################################
+# Sphere
 
-# function zeroset(::Sphere)
-#     f(x::AbstractVector{T}) where {T} = (sum(xⱼ -> xⱼ^2, x) - one(T)) / 2
-#     ∇f(x::AbstractVector{T}) where {T} = x
-#     ZeroSet(f, ∇f)
-# end
+struct Sphere <: CodimOne end
 
-# struct LebesgueCodimOne{D,T,O} <: AbstractMeasure
-#     ndims ::D
-#     ortho ::O
-# end
+function zeroset(::Sphere) 
+    f(x::AbstractArray{T}) where {T} = sum(xⱼ -> xⱼ^2, x) - one(T)
+    ∇f(x::AbstractArray{T}) where {T} = x
+    ZeroSet(f, ∇f)
+end
 
-# function logdensityof(d::Density{L1, L2}, x) where {L1<:LebesgueCodimOne, L2<:LebesgueCodimOne}
-#     μ = d.μ
-#     ν = d.base
-#     μ.ndims == ν.ndims || return NaN
-#     rank([μ.ortho ν.ortho]) == 1 || return NaN
-#     return 0.0
-# end
+function Base.in(x::AbstractArray{T}, ::Sphere) where {T} 
+    return x ∈ zeroset(Sphere())
+end
 
-# struct LebesgueSimplex <: AbstractMeasure end
+projectto!(x, ::Sphere) = normalize!(x, 2)
 
-# basemeasure(::LebesgueSimplex, x)
