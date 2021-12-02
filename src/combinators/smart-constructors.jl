@@ -106,8 +106,7 @@ end
 
 # kernel(Normal{(:μ,), Tuple{Int64}})
 function kernel(::Type{P}) where {P<:AbstractMeasure}
-    (f, param_maps) = kernelfactor(P)
-    kernel(f, param_maps)
+    kernel(P, identity)
 end
 
 # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)

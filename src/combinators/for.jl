@@ -76,6 +76,8 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 """
 For(f, args...) = productmeasure(kernel(i -> f(Tuple(i)...)), zip(args...))
 
+For(f, inds::AbstractArray) = productmeasure(kernel(f), inds)
+
 For(k::AbstractKernel, inds::AbstractArray) = productmeasure(k, inds)
 
 For(f, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))

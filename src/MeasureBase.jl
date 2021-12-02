@@ -29,6 +29,13 @@ export AbstractMeasure
 
 abstract type AbstractMeasure end
 
+function Pretty.tile(d::AbstractMeasure)
+    M = Symbol(constructor(d))
+    the_names = fieldnames(typeof(d))
+    isempty(the_names) && return Pretty.literal(M)
+    Pretty.list_layout(Pretty.tile.([getfield(d, n) for n in the_names]); prefix=M)
+end
+
 @inline DensityKind(::AbstractMeasure) = HasDensity()
 
 gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
