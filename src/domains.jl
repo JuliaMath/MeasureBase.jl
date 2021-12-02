@@ -94,7 +94,7 @@ function tangentat(a::CodimOne, b::CodimOne, x::AbstractArray{T}; tol=ldexp(eps(
     g2 = b.∇f(x)
     
     # See if one is a multiple of the other
-    Statistics.corm(g1, zero(T), g2, zero(T)) > one(T) - tol
+    one(T) - Statistics.corm(g1, zero(T), g2, zero(T)) < tol
 end
 
 function zeroset(::CodimOne)::ZeroSet end

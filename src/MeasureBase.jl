@@ -5,6 +5,9 @@ const logtwo = log(2.0)
 using Random
 import Random: rand!
 import Random: gentype
+using Statistics
+using LinearAlgebra
+
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
