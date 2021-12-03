@@ -99,5 +99,6 @@ include("combinators/smart-constructors.jl")
 include("rand.jl")
 
 include("density.jl")
+include("help.jl")
 
 end
