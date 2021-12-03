@@ -70,13 +70,3 @@ end
 
 @inline basemeasure_depth(::Type{M}) where {M} =
     static(1) + basemeasure_depth(basemeasure_type(M))
-
-export logdensity_tuple
-
-function logdensity_tuple(d, x)
-    return (logdensity_def(d, x), basemeasure(d, x), x)
-end
-
-function logdensity_tuple(d, (z, x)::MapsTo)
-    return (logdensity_def(d, x), basemeasure(d, x), z ↦ x)
-end

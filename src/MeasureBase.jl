@@ -32,7 +32,7 @@ abstract type AbstractMeasure end
 function Pretty.tile(d::AbstractMeasure)
     M = Symbol(constructor(d))
     the_names = fieldnames(typeof(d))
-    isempty(the_names) && return Pretty.literal(M)
+    isempty(the_names) && return Pretty.literal(M)*Pretty.literal("()")
     Pretty.list_layout(Pretty.tile.([getfield(d, n) for n in the_names]); prefix=M)
 end
 
@@ -72,7 +72,6 @@ end
 include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
-include("combinators/mapsto.jl")
 include("combinators/half.jl")
 include("domains.jl")
 include("primitive.jl")
