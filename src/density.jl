@@ -34,7 +34,7 @@ end
 
 logdensityof(d::Density, x) = logdensityof(d.μ, d.base, x)
 
-logdensityof(d::Density, x) = exp(logdensityof(d.μ, d.base, x))
+densityof(d::Density, x) = exp(logdensityof(d.μ, d.base, x))
 
 
 """
