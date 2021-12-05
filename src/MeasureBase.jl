@@ -100,5 +100,6 @@ include("rand.jl")
 
 include("density.jl")
 include("help.jl")
+include("interface.jl")
 
 end
