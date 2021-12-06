@@ -177,3 +177,14 @@ export density_def
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 
 density_def(μ, x) = exp(logdensity_def(μ, x))
+
+"""
+    rebase(μ, ν)
+
+Express `μ` in terms of a density over `ν`. Satisfies
+```
+basemeasure(rebase(μ, ν)) == ν
+density(rebase(μ, ν)) == 𝒹(μ,ν)
+``` 
+"""
+rebase(μ, ν) = ∫(𝒹(μ,ν), ν)
