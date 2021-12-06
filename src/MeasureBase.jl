@@ -24,6 +24,7 @@ using Static
 
 export ≪
 export gentype
+export rebase
 
 export AbstractMeasure
 
