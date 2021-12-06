@@ -47,7 +47,6 @@ export kernel
 
 kernel(f, ::Type{M}) where {M} = kernel(M, f)
 
-# TODO: Would this benefit from https://github.com/tisztamo/FunctionWranglers.jl?
 mapcall(t, x) = map(func -> func(x), t)
 
 # (k::Kernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
@@ -65,7 +64,7 @@ end
 """
 For any `k::Kernel`, `basekernel` is expected to satisfy
 ```
-basemeasure(k(p)) == basekernel(k)(p)
+basekernel(k)(p) == (basemeasure ∘ k)(p)
 ```
 
 The main purpose of `basekernel` is to make it efficient to compute
