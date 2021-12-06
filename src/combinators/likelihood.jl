@@ -1,7 +1,7 @@
 export Likelihood
 
 @doc raw"""
-    Likelihood(M<:ParameterizedMeasure, x)
+    Likelihood(k::AbstractKernel, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
 
@@ -101,8 +101,8 @@ and we observe `x=3`. We can compute the posterior measure on `μ` as
     julia> logdensity_def(post, 2)
     -2.5
 """
-struct Likelihood{F,S,X}
-    k::Kernel{F,S}
+struct Likelihood{K,X}
+    k::K
     x::X
 end
 
