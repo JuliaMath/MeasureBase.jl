@@ -45,20 +45,53 @@ end
 
 export params
 
+"""
+`params(μ)` returns the parameters of a measure `μ`, as a `NamedTuple`. The
+default method is
+```
+params(μ) = NamedTuple()
+```
+
+See also `paramnames`
+"""
+function params end
+
 params(μ::ParameterizedMeasure) = getfield(μ, :par)
 
 function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C}
     NamedTuple{paramnames(μ, constraints)}(params(μ))
 end
 
-params(μ::AbstractMeasure) = NamedTuple()
+params(μ) = NamedTuple()
 
 ###############################################################################
 # paramnames
 
 export paramnames
 
-paramnames(μ) = paramnames(typeof(μ))
+"""
+`paramnames(μ)` returns the names of the parameters of `μ`. This is equivalent to 
+```
+paramnames(μ) == (keys ∘ params)(μ)
+```
+but depends only on the type. In particular, the default implementation is
+```
+paramnames(μ::M) where {M} = paramnames(M)
+```
+
+New `ParameterizedMeasure`s will automatically have a `paramnames` method. For
+other measures, this method is optional, but can be added by defining
+```
+paramnames(::Type{M}) where {M} = ...
+```
+
+See also `params`
+"""
+function paramnames end
+
+
+
+paramnames(μ::M) where {M} = paramnames(M)
 
 paramnames(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
 
