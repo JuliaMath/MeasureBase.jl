@@ -113,10 +113,15 @@ Likelihood(μ::AbstractMeasure, x) = Likelihood(kernel(μ), x)
 
 Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kernel(M), x)
 
+function Pretty.quoteof(ℓ::Likelihood)
+    k = Pretty.quoteof(ℓ.k)
+    x = Pretty.quoteof(ℓ.x)
+    :(Likelihood($k, $x))
+end
+
 function Base.show(io::IO, ℓ::Likelihood)
     io = IOContext(io, :compact => true)
-    k, x = ℓ.k, ℓ.x
-    print(io, "Likelihood(", k, ", ", x, ")")
+    Pretty.pprint(io, ℓ)
 end
 
 @inline function logdensity_def(ℓ::Likelihood, p)
