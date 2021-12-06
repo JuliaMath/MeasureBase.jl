@@ -121,3 +121,7 @@ kernel(f, op::Returns) = Kernel(Returns(f(op.value)), identity)
 
 # Just to avoid dispatch ambiguity
 kernel(f::Returns, op::Returns) = Kernel(Returns(f.value), identity)
+
+kernel(k::Kernel) = kernel(k.f, k.g)
+
+kernel(k::ParameterizedKernel) = kernel(k.f, k.param_maps)
