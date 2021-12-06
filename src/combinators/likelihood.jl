@@ -109,6 +109,8 @@ end
 # Not really a density, but this makes the code work
 @inline DensityKind(::Likelihood) = IsDensity()
 
+Likelihood(k::K, x::X) where {K<:AbstractKernel,X} = Likelihood{K,X}(k,x)
+
 Likelihood(μ::AbstractMeasure, x) = Likelihood(kernel(μ), x)
 
 Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kernel(M), x)
