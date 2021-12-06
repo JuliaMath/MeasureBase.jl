@@ -87,7 +87,7 @@ marginals(d::TupleProductMeasure{T}) where {F,T<:Tuple} = d.components
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::TupleProductMeasure) where {T}
-    rand.(d.components)
+    tuple((rand(rng, T, comp) for comp in d.components)...)
 end
 
 ###############################################################################
