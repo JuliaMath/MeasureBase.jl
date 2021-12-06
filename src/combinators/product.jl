@@ -85,7 +85,7 @@ export ⊗
 `⊗` is a binary operator for building product measures. This satisfies the law
 
 ```
-basemeasure(μ + ν) == basemeasure(μ) + basemeasure(ν)
+basemeasure(μ ⊗ ν) == basemeasure(μ) ⊗ basemeasure(ν)
 ```
 """
 ⊗(μs::AbstractMeasure...) = productmeasure(μs)
