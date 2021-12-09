@@ -29,9 +29,9 @@ productmeasure(data::AbstractArray) = ProductMeasure(data)
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)
 
-productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
+productmeasure(f, param_maps, pars) = ProductMeasure(kleisli(f, param_maps), pars)
 
-productmeasure(k::ParameterizedKernel, pars) = productmeasure(k.f, k.param_maps, pars)
+productmeasure(k::ParameterizedKleisli, pars) = productmeasure(k.f, k.param_maps, pars)
 
 
 function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
@@ -82,27 +82,27 @@ function weightedmeasure(ℓ, b::WeightedMeasure)
 end
 
 ###############################################################################
-# Kernel
+# Kleisli
 
-kernel(μ, op1, op2, param_maps...) = ParameterizedKernel(μ, op1, op2, param_maps...)
+kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
 
-# kernel(Normal(μ=2))
-function kernel(μ::P) where {P<:AbstractMeasure}
-    (f, param_maps) = kernelfactor(μ)
-    kernel(f, param_maps)
+# kleisli(Normal(μ=2))
+function kleisli(μ::P) where {P<:AbstractMeasure}
+    (f, param_maps) = kleislifactor(μ)
+    kleisli(f, param_maps)
 end
 
-# kernel(Normal{(:μ,), Tuple{Int64}})
-function kernel(::Type{P}) where {P<:AbstractMeasure}
-    kernel(P, identity)
+# kleisli(Normal{(:μ,), Tuple{Int64}})
+function kleisli(::Type{P}) where {P<:AbstractMeasure}
+    kleisli(P, identity)
 end
 
-# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
+# kleisli(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kleisli{constructorof(P),O}(op)
 
-function kernel(::Type{M}; param_maps...) where {M}
+function kleisli(::Type{M}; param_maps...) where {M}
     nt = NamedTuple(param_maps)
-    kernel(M, nt)
+    kleisli(M, nt)
 end
 
 
-kernel(k::ParameterizedKernel) = k
+kleisli(k::ParameterizedKleisli) = k

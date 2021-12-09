@@ -45,7 +45,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 export logdensity_def
 export basemeasure
-export basekernel
+export basekleisli
 
 using LogExpFunctions: logsumexp
 
@@ -63,7 +63,7 @@ function logdensity_def end
 using Compat
 
 include("proxies.jl")
-include("kernel.jl")
+include("kleisli.jl")
 include("parameterized.jl")
 include("combinators/half.jl")
 include("domains.jl")
@@ -76,6 +76,7 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
@@ -88,6 +89,7 @@ include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
+include("combinators/conditional.jl")
 
 include("rand.jl")
 

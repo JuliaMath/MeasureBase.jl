@@ -26,6 +26,12 @@ end
 # julia> Normal{(:μ,)}(2)
 # Normal(μ = 2,)
 #
+export kleisli
+
+function kleisli(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
+    function(args...) P(args...) end
+end
+
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
     C = constructor(P)
     return C(NamedTuple{N}(args...))
@@ -104,12 +110,12 @@ function paramnames(μ, constraints::NamedTuple{N}) where {N}
 end
 
 ###############################################################################
-# kernelfactor
+# kleislifactor
 
-function kernelfactor(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
+function kleislifactor(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
     (constructor(P), N)
 end
 
-function kernelfactor(::P) where {N,P<:ParameterizedMeasure{N}}
+function kleislifactor(::P) where {N,P<:ParameterizedMeasure{N}}
     (constructor(P), N)
 end

@@ -1,7 +1,7 @@
 export Likelihood
 
 @doc raw"""
-    Likelihood(k::AbstractKernel, x)
+    Likelihood(k::AbstractKleisli, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
 
@@ -109,11 +109,11 @@ end
 # Not really a density, but this makes the code work
 @inline DensityKind(::Likelihood) = IsDensity()
 
-Likelihood(k::K, x::X) where {K<:AbstractKernel,X} = Likelihood{K,X}(k,x)
+Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = Likelihood{K,X}(k,x)
 
-Likelihood(μ::AbstractMeasure, x) = Likelihood(kernel(μ), x)
+Likelihood(μ::AbstractMeasure, x) = Likelihood(askleisli(μ), x)
 
-Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kernel(M), x)
+Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(askleisli(M), x)
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
