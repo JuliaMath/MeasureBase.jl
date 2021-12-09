@@ -60,15 +60,10 @@ Methods for computing density relative to other measures will be
 """
 function logdensity_def end
 
-if VERSION < v"1.7.0-beta1.0"
-    @eval begin
-        struct Returns{T}
-            value::T
-        end
+using Compat
 
-        (f::Returns)(args...) = f.value
-    end
-end
+const Returns = @compat Returns
+const only = @compat only
 
 include("proxies.jl")
 include("kernel.jl")
