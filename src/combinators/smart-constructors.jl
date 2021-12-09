@@ -17,15 +17,7 @@ end
 ###############################################################################
 # PowerMeaure
 
-function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Kernel(Returns(μ), identity), LinearIndices(dims))
-end
-
-# function Base.:^(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
-#     productmeasure(KernelReturns(μ), Base.OneTo(first(dims)))
-# end
-
-function Base.:^(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -33,15 +25,14 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(f::AbstractKernel, pars) = ProductMeasure(f, pars)
+productmeasure(data::AbstractArray) = ProductMeasure(data)
+productmeasure(nt::NamedTuple) = ProductMeasure(nt)
+productmeasure(tup::Tuple) = ProductMeasure(tup)
 
 productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
 
-productmeasure(μs::Tuple) = TupleProductMeasure(μs)
-
 productmeasure(k::ParameterizedKernel, pars) = productmeasure(k.f, k.param_maps, pars)
 
-productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 
 function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
     fb = f.value
@@ -93,10 +84,7 @@ end
 ###############################################################################
 # Kernel
 
-kernel(f) = kernel(f, identity)
-
-kernel(μ, op1, op2, param_maps...) = Kernel(μ, op1, op2, param_maps...)
-kernel(μ, op) = Kernel(μ, op)
+kernel(μ, op1, op2, param_maps...) = ParameterizedKernel(μ, op1, op2, param_maps...)
 
 # kernel(Normal(μ=2))
 function kernel(μ::P) where {P<:AbstractMeasure}
@@ -116,12 +104,5 @@ function kernel(::Type{M}; param_maps...) where {M}
     kernel(M, nt)
 end
 
-kernel(f::Returns, op) = Kernel(f, identity)
-kernel(f, op::Returns) = Kernel(Returns(f(op.value)), identity)
 
-# Just to avoid dispatch ambiguity
-kernel(f::Returns, op::Returns) = Kernel(Returns(f.value), identity)
-
-kernel(k::Kernel) = kernel(k.f, k.g)
-
-kernel(k::ParameterizedKernel) = kernel(k.f, k.param_maps)
+kernel(k::ParameterizedKernel) = k

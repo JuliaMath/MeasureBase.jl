@@ -3,6 +3,11 @@ export For
 using Random
 import Base
 
+struct For{F, I} <: AbstractProductMeasure
+    f::F
+    inds::I
+end
+
 """
     For(f, base...)
 
@@ -74,18 +79,7 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, args...) = productmeasure(kernel(i -> f(Tuple(i)...)), zip(args...))
-
-For(f, inds::AbstractArray) = productmeasure(kernel(f), inds)
-
-For(k::AbstractKernel, inds::AbstractArray) = productmeasure(k, inds)
-
-For(f, n::Integer) = productmeasure(kernel(f), Base.OneTo(n))
-For(k::AbstractKernel, n::Integer) = productmeasure(k, Base.OneTo(n))
-
-For(f, dims::Integer...) =
-    productmeasure(kernel(i -> f(Tuple(i)...)), CartesianIndices(dims))
-
-function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
-    return eltype(d.f(first(d.xs)))
-end
+For(f, inds::AbstractArray...) = productmeasure(mappedarray(f, inds...))
+For(f, n::Integer) = For(f, Base.OneTo(n))
+For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))

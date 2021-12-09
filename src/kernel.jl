@@ -1,15 +1,5 @@
-
-export Kernel
-
+# TODO: Dangerous to export this - let's not
 abstract type AbstractKernel <: AbstractMeasure end
-
-struct Kernel{F,G} <: AbstractKernel
-    f::F
-    g::G
-
-    Kernel(::Type{T}, g::G) where {T,G} = new{Type{T},G}(T, g)
-    Kernel(f::F, g::G) where {F,G} = new{F,G}(f, g)
-end
 
 struct ParameterizedKernel{F,N,T} <: AbstractKernel
     f::F
@@ -39,7 +29,6 @@ If the argument is a named tuple `(;a=f1, b=f1)`, `κ(x)` is defined as
 """
 function kernel end
 
-export kernel
 
 # kernel(Normal) do x
 #     (μ=x,σ=x^2)
@@ -59,7 +48,6 @@ function (k::ParameterizedKernel)(x::Tuple)
     k.f(NamedTuple{k.param_maps}(x))
 end
 
-(k::Kernel)(x) = (k.f ∘ k.g)(x)
 
 """
 For any `k::Kernel`, `basekernel` is expected to satisfy
@@ -79,8 +67,6 @@ basekernel(f) = basemeasure ∘ f
 
 basekernel(k::ParameterizedKernel) = kernel(basekernel(k.f), k.param_maps)
 
-basekernel(k::Kernel) = kernel(basekernel(k.f), k.g)
-
 basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 # export kernelize
@@ -95,21 +81,11 @@ function Base.show(io::IO, μ::AbstractKernel)
     Pretty.pprint(io, μ)
 end
 
-function Pretty.quoteof(k::Kernel)
-    qf = Pretty.quoteof(k.f)
-    qg = Pretty.quoteof(k.g)
-    :(Kernel($qf, $qg))
-end
-
-function Pretty.quoteof(k::Kernel{F,typeof(identity)}) where {F}
-    qf = Pretty.quoteof(k.f)
-    :(Kernel($qf))
-end
-
 function Pretty.quoteof(k::ParameterizedKernel)
     qf = Pretty.quoteof(k.f)
     qg = Pretty.quoteof(k.param_maps)
-    :(Kernel($qf, $qg))
+    :(ParameterizedKernel($qf, $qg))
 end
 
 export kernelfactor
+

@@ -1,3 +1,5 @@
+# TODO: Compare with ChangesOfVariables.jl
+
 abstract type AbstractTransformedMeasure <: AbstractMeasure end
 
 abstract type AbstractPushforward <: AbstractTransformedMeasure end

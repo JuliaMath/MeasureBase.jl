@@ -2,6 +2,7 @@ abstract type AbstractDomain end
 
 abstract type RealDomain <: AbstractDomain end
 
+# TODO: Use IntervalSets
 struct RealNumbers <: RealDomain end
 
 const ℝ = RealNumbers()
