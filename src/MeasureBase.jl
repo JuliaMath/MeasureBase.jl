@@ -62,9 +62,6 @@ function logdensity_def end
 
 using Compat
 
-const Returns = @compat Returns
-const only = @compat only
-
 include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
