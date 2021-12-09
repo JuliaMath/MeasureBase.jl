@@ -18,7 +18,7 @@ end
 # PowerMeaure
 
 function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
-    k = prod(dims) * μ.logweight
+    k = mapreduce(length, *, dims...) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
@@ -87,14 +87,13 @@ end
 kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
 
 # kleisli(Normal(μ=2))
-function kleisli(μ::P) where {P<:AbstractMeasure}
-    (f, param_maps) = kleislifactor(μ)
-    kleisli(f, param_maps)
+function kleisli(μ::AbstractMeasure)
+    constructor(μ)
 end
 
 # kleisli(Normal{(:μ,), Tuple{Int64}})
-function kleisli(::Type{P}) where {P<:AbstractMeasure}
-    kleisli(P, identity)
+function kleisli(::Type{M}) where {M<:AbstractMeasure}
+    constructor(M)
 end
 
 # kleisli(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kleisli{constructorof(P),O}(op)

@@ -22,6 +22,12 @@ Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 basemeasure(d::AbstractProductMeasure) = map(basemeasure, marginals(d))
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
+    map(marginals(d)) do dⱼ
+        rand(rng, T, dⱼ)
+    end
+end
+
 @inline function logdensity_def(d::AbstractProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
 end
@@ -39,11 +45,7 @@ basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
 
 testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
-    map(marginals(d)) do dⱼ
-        rand(rng, T, dⱼ)
-    end
-end
+
 
 export ⊗
 

@@ -24,6 +24,12 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+    map(CartesianIndices(d.axes)) do _
+        rand(rng, T, d.parent)
+    end
+end
+
 @inline function powermeasure(x::T, sz::Vararg{<:Integer,N}) where {T, N}
     a = axes(Fill{T, N}(x, sz))
     A = typeof(a)

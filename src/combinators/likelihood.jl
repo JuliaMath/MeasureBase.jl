@@ -111,9 +111,9 @@ end
 
 Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = Likelihood{K,X}(k,x)
 
-Likelihood(μ::AbstractMeasure, x) = Likelihood(askleisli(μ), x)
+Likelihood(μ::AbstractMeasure, x) = Likelihood(kleisli(μ), x)
 
-Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(askleisli(M), x)
+Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kleisli(M), x)
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
