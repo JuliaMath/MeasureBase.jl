@@ -30,11 +30,6 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     end
 end
 
-@inline function powermeasure(x::T, sz::Vararg{<:Integer,N}) where {T, N}
-    a = axes(Fill{T, N}(x, sz))
-    A = typeof(a)
-    PowerMeasure{T,A}(x,a)
-end
 
 @inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}
     a = axes(Fill{T, N}(x, sz))
@@ -44,7 +39,12 @@ end
 
 marginals(d::PowerMeasure) = Fill(d.parent, d.axes)
 
-Base.:^(μ::AbstractMeasure, dims) = powermeasure(μ, dims)
+function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{<:AbstractArray,N}}) where {N}
+    powermeasure(μ, dims)
+end
+
+Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, Base.OneTo.(dims))
+Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
 # Base.show(io::IO, d::PowerMeasure) = print(io, d.parent, " ^ ", size(d.xs))
 # Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.parent, " ^ ", length(d.xs))
