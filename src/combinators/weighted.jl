@@ -23,7 +23,7 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     base::M
 end
 
-basemeasure_type(::Type{WeightedMeasure{R,M}}) where {R,M} = M
+tbasemeasure_type(::Type{WeightedMeasure{R,M}}) where {R,M} = M
 
 function Base.show(io::IO, μ::WeightedMeasure)
     io = IOContext(io, :compact => true)

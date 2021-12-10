@@ -10,7 +10,7 @@ end
 
 Counting() = Counting(ℤ)
 
-basemeasure_type(::Type{C}) where {C<:Counting} = CountingMeasure
+tbasemeasure_type(::Type{C}) where {C<:Counting} = CountingMeasure
 
 testvalue(d::Counting) = testvalue(d.support)
 

@@ -21,8 +21,8 @@ isnonnegative(x) = x ≥ 0.0
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function basemeasure_type(::Type{Half{M}}) where {M}
-    B = basemeasure_type(M)
+function tbasemeasure_type(::Type{Half{M}}) where {M}
+    B = tbasemeasure_type(M)
     FactoredBase{typeof(isnonnegative),StaticFloat64{logtwo},Returns{Float64},B}
 end
 

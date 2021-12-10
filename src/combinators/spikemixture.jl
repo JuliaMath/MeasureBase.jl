@@ -22,7 +22,7 @@ end
     SpikeMixture(basemeasure(μ.m), 1 / (1 + ki), μ.s * (1 + ki))
 end
 
-basemeasure_depth(::Type{SpikeMixture{T,S}}) where {T,S} = static(1) + basemeasure_depth(T)
+tbasemeasure_depth(::Type{SpikeMixture{T,S}}) where {T,S} = static(1) + tbasemeasure_depth(T)
 
 # basemeasure_type(::Type{SpikeMixture{T,S}}) where {T,S} = SpikeMixture{}
 

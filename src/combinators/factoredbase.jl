@@ -20,4 +20,4 @@ end
 
 basemeasure(d::FactoredBase) = d.base
 
-basemeasure_type(::Type{FactoredBase{R,C,V,B}}) where {R,C,V,B} = B
+tbasemeasure_type(::Type{FactoredBase{R,C,V,B}}) where {R,C,V,B} = B

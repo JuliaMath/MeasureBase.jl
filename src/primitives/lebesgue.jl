@@ -18,11 +18,14 @@ gentype(::Lebesgue) = Float64
 
 Lebesgue() = Lebesgue(ℝ)
 
-basemeasure_type(::Type{L}) where {L<:Lebesgue} = LebesgueMeasure
+# basemeasure(::Lebesgue) = LebesgueMeasure()
+
+tbasemeasure_type(::Type{<:Lebesgue}) = LebesgueMeasure
 
 testvalue(d::Lebesgue) = testvalue(d.support)
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())
+@useproxy Lebesgue
 
 Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueMeasure()
 

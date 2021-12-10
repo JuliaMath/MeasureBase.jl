@@ -17,10 +17,10 @@ abstract type PrimitiveMeasure <: AbstractMeasure end
 
 basemeasure(μ::PrimitiveMeasure) = μ
 
-basemeasure_type(::Type{M}) where {M<:PrimitiveMeasure} = M
+tbasemeasure_type(::Type{M}) where {M<:PrimitiveMeasure} = M
 
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
-@inline basemeasure_depth(::Type{M}) where {M<:PrimitiveMeasure} = static(0)
+@inline tbasemeasure_depth(::Type{M}) where {M<:PrimitiveMeasure} = static(0)
 
 logdensity_def(μ::PrimitiveMeasure, x) = static(0.0)
 

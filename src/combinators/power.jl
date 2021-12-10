@@ -63,11 +63,11 @@ function basemeasure_depth(::PowerMeasure{M}) where {M}
     return basemeasure_depth(M)
 end
 
-function basemeasure_type(::Type{PowerMeasure{M,D}}) where {M,D}
-    return PowerMeasure{basemeasure_type(M),D}
+function tbasemeasure_type(::Type{PowerMeasure{M,D}}) where {M,D}
+    return PowerMeasure{tbasemeasure_type(M),D}
 end
 
-function basemeasure_depth(::Type{PowerMeasure{M,D}}) where {M<:PrimitiveMeasure,D}
+function tbasemeasure_depth(::Type{PowerMeasure{M,D}}) where {M<:PrimitiveMeasure,D}
     return static(0)
 end
 

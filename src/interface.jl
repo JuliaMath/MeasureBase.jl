@@ -25,5 +25,5 @@ function test_interface(μ)
     ###########################################################################
     # basemeasure_type
 
-    @test (basemeasure_type ∘ typeof)(μ) == (typeof ∘ basemeasure)(μ)
+    @test (tbasemeasure_type ∘ typeof)(μ) == (typeof ∘ basemeasure)(μ)
 end
