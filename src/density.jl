@@ -150,9 +150,9 @@ end
     
     β = basemeasure(μ, x)
     ℓ = logdensity_def(μ, x)
-    @show μ
-    @show ℓ
-    println()
+    # @show μ
+    # @show ℓ
+    # println()
     return _logdensityof(β, x, ℓ, n)
 end
 
@@ -162,9 +162,9 @@ end
         $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $nsteps i -> begin
             Δℓ = logdensity_def(μ, x)
-            @show μ
-            @show Δℓ
-            println()
+            # @show μ
+            # @show Δℓ
+            # println()
             μ = basemeasure(μ, x)
             ℓ += Δℓ
         end
