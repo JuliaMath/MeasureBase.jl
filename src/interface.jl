@@ -10,11 +10,14 @@ function dynamic_basemeasure_depth(μ)
     return depth
 end
 
-function test_interface(μ)
+function test_interface(μ::M) where {M}
     ###########################################################################
     # basemeasure_depth
+    @testset "$μ" begin
 
     static_depth = @inferred basemeasure_depth(μ) 
+
+    @test static_depth == tbasemeasure_depth(M)
     dynamic_depth = dynamic_basemeasure_depth(μ)
 
     if static_depth > dynamic_depth
@@ -23,7 +26,19 @@ function test_interface(μ)
     @test static_depth ≥ dynamic_depth
 
     ###########################################################################
+    # testvalue, logdensityof
+
+    x = @inferred testvalue(μ)
+    β = @inferred basemeasure(μ)
+
+    ℓμ = @inferred logdensityof(μ, x)
+    ℓβ = @inferred logdensityof(β, x)
+    @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
+
+    ###########################################################################
     # basemeasure_type
 
-    @test (tbasemeasure_type ∘ typeof)(μ) == (typeof ∘ basemeasure)(μ)
+    @test @inferred tbasemeasure_type(M) == @inferred basemeasure_type(μ)
+    @test basemeasure_type(μ) == (typeof ∘ basemeasure)(μ)
+    end
 end
