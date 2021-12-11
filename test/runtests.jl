@@ -4,7 +4,7 @@ using Random
 using LinearAlgebra
 
 using MeasureBase
-using MeasureBase: logdensityof, logdensity_def, density_def, densityof
+using MeasureBase: test_interface
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
@@ -37,9 +37,6 @@ d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 #     return (x,y)
 # end
 
-function test_testvalue(μ)
-    logdensity_def(μ, testvalue(μ)) isa AbstractFloat
-end
 
 test_measures = [
     # Chain(x -> Normal(μ=x), Normal(μ=0.0))
@@ -70,7 +67,7 @@ testbroken_measures = [
 @testset "testvalue" begin
     for μ in test_measures
         @info "testing $μ"
-        @test test_testvalue(μ)
+        @test test_interface(μ)
     end
 
     for μ in testbroken_measures
