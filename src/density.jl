@@ -69,9 +69,11 @@ function _densitymeasure(f, base, _)
     """
 end
 
+
+
 basemeasure(μ::DensityMeasure) = μ.base
 
-basemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
+tbasemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
 
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
@@ -146,7 +148,7 @@ end
 # • ℓ is the log-density
 # • r is the rootmeasure of μ
 @inline function _logdensityof(μ, x)
-    n = basemeasure_depth(proxy(μ)) - static(1)
+    n = basemeasure_depth(μ) - static(1)
     
     β = basemeasure(μ, x)
     ℓ = logdensity_def(μ, x)
