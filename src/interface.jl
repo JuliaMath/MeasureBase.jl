@@ -14,7 +14,7 @@ function test_interface(μ)
     ###########################################################################
     # basemeasure_depth
 
-    static_depth = basemeasure_depth(μ) 
+    static_depth = @inferred basemeasure_depth(μ) 
     dynamic_depth = dynamic_basemeasure_depth(μ)
 
     if static_depth > dynamic_depth
