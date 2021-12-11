@@ -87,13 +87,13 @@ end
 kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
 
 # kleisli(Normal(μ=2))
-function kleisli(μ::AbstractMeasure)
-    constructor(μ)
+function kleisli(μ::M) where {M<:AbstractMeasure}
+    constructorof(M)
 end
 
 # kleisli(Normal{(:μ,), Tuple{Int64}})
 function kleisli(::Type{M}) where {M<:AbstractMeasure}
-    constructor(M)
+    constructorof(M)
 end
 
 # kleisli(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kleisli{constructorof(P),O}(op)
