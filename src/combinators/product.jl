@@ -20,7 +20,7 @@ function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
 end
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
-basemeasure(d::AbstractProductMeasure) = map(basemeasure, marginals(d))
+basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     map(marginals(d)) do dⱼ
@@ -36,11 +36,20 @@ struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
 
+@inline function logdensityof(μ::ProductMeasure, x)
+    mapreduce(logdensityof, +, marginals(μ), x)
+end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
-function tbasemeasure_type(::Type{ProductMeasure{T}}) where {T<:Tuple}
+@generated function tbasemeasure_type(::Type{ProductMeasure{T}}) where {T<:Tuple}
     ProductMeasure{Tuple{map(tbasemeasure_type, T.types)...}}
+end
+
+function tbasemeasure_type(::Type{ProductMeasure{A}}) where {M,A<:AbstractArray{M}}
+    C = constructorof(A)
+    p = Tuple(A.parameters)
+    ProductMeasure{C{(tbasemeasure_type(first(p)), Base.tail(p)...)...}}
 end
 
 # basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
