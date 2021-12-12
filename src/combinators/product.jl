@@ -31,17 +31,24 @@ end
 @inline function logdensity_def(d::AbstractProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
 end
+
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
 
 
-
 marginals(μ::ProductMeasure) = μ.marginals
 
+function tbasemeasure_type(::Type{ProductMeasure{T}}) where {T<:Tuple}
+    ProductMeasure{Tuple{map(tbasemeasure_type, T.types)...}}
+end
 
+# basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
 
-basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
+@inline function tbasemeasure_depth(::Type{ProductMeasure{T}}) where {T<:Tuple}
+    mapreduce(tbasemeasure_depth, max, Tuple(T.types))
+end
+
 
 testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
 
