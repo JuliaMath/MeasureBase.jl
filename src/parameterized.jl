@@ -33,7 +33,7 @@ function kleisli(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
-    C = constructor(P)
+    C = constructorof(P)
     return C(NamedTuple{N}(args...))
 end
 
@@ -43,7 +43,7 @@ function ConstructionBase.setproperties(
     d::P,
     nt::NamedTuple,
 ) where {P<:ParameterizedMeasure}
-    return constructor(P)(merge(params(d), nt))
+    return constructorof(P)(merge(params(d), nt))
 end
 
 ###############################################################################
@@ -113,9 +113,9 @@ end
 # kleislifactor
 
 function kleislifactor(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    (constructor(P), N)
+    (constructorof(P), N)
 end
 
 function kleislifactor(::P) where {N,P<:ParameterizedMeasure{N}}
-    (constructor(P), N)
+    (constructorof(P), N)
 end

@@ -69,6 +69,8 @@ function _densitymeasure(f, base, _)
     """
 end
 
+
+
 basemeasure(μ::DensityMeasure) = μ.base
 
 tbasemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B

@@ -16,14 +16,14 @@ isnonnegative(x) = x ≥ 0.0
 @inline function basemeasure(μ::Half)
     inbounds = isnonnegative
     constℓ = static(logtwo)
-    varℓ = Returns(0.0)
+    varℓ = Returns(static(0.0))
     base = basemeasure(unhalf(μ))
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
 function tbasemeasure_type(::Type{Half{M}}) where {M}
     B = tbasemeasure_type(M)
-    FactoredBase{typeof(isnonnegative),StaticFloat64{logtwo},Returns{Float64},B}
+    FactoredBase{typeof(isnonnegative),StaticFloat64{logtwo},Returns{StaticFloat64{0.0}},B}
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)

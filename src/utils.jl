@@ -17,10 +17,6 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
 #     return C.name.wrapper
 # end
 
-constructor(::T) where {T} = constructor(T)
-
-constructor(::Type{T}) where {T} = constructorof(T)
-
 export testvalue
 testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
 testvalue(::Type{T}) where {T} = zero(T)
