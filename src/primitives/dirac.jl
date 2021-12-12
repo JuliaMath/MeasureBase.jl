@@ -19,7 +19,7 @@ end
 
 basemeasure(d::Dirac) = CountingMeasure()
 
-tbasemeasure_type(::Type{Dirac}) = CountingMeasure
+tbasemeasure_type(::Type{Dirac{X}}) where {X} = CountingMeasure
 
 density_def(μ::Dirac, x) = x == μ.x
 
