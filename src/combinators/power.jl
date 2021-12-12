@@ -60,7 +60,7 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 end
 
 function basemeasure_depth(::PowerMeasure{M}) where {M}
-    return basemeasure_depth(M)
+    return tbasemeasure_depth(M)
 end
 
 function tbasemeasure_type(::Type{PowerMeasure{M,D}}) where {M,D}
