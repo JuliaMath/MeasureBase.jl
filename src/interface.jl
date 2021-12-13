@@ -17,7 +17,7 @@ function test_interface(μ::M) where {M}
         
         @test @inferred tbasemeasure_type(M) == @inferred basemeasure_type(μ)
 
-        @info typejoin(basemeasure_type(μ), (typeof ∘ basemeasure)(μ))
+        @test !isabstracttype(typejoin(basemeasure_type(μ), (typeof ∘ basemeasure)(μ)))
 
         ###########################################################################
         # basemeasure_depth
