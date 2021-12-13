@@ -35,7 +35,11 @@ end
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
-    
+
+function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
+    Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep=" ⊗ ")
+end
+
 # For tuples, `mapreduce` has trouble with type inference
 @inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
     ℓs = map(logdensity_def, marginals(d),x)
