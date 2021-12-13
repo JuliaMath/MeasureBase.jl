@@ -96,6 +96,7 @@ include("combinators/conditional.jl")
 include("rand.jl")
 
 include("density.jl")
+include("tmap.jl")
 module Interface
 
 using MeasureBase

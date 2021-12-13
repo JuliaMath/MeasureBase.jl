@@ -70,7 +70,7 @@ end
 
 @inline @constprop :aggressive tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
 
-@inline @constprop :aggressive function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt) where {M,B}
-    M === B && return S
-    return tbasemeasure_depth(B, tbasemeasure_type(B), S + static(1))
+@generated function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt{N}) where {M,B,N}
+    M === B && return static(N)
+    return tbasemeasure_depth(B, tbasemeasure_type(B), static(N+1))
 end

@@ -142,7 +142,7 @@ end
     return ℓ
 end
 
-@inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ), x, logdensity_def(μ, x))
+@inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x, logdensity_def(μ, x))
 
 # Because it's sometimes useful, this returns a pair (ℓ,r) where
 # • ℓ is the log-density
@@ -153,7 +153,7 @@ end
     # @show μ
     # @show ℓ
     # println()
-    return _logdensityof(β, basemeasure(β), x, ℓ, n)
+    return _logdensityof(β, basemeasure(β,x), x, ℓ, n)
 end
 
 @generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}

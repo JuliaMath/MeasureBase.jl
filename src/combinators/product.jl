@@ -36,7 +36,6 @@ struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
     
-    
 # For tuples, `mapreduce` has trouble with type inference
 @inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
     ℓs = map(logdensity_def, marginals(d),x)
@@ -50,23 +49,11 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
-@generated function tbasemeasure_type(::Type{ProductMeasure{T}}) where {T<:Tuple}
-    ProductMeasure{Tuple{map(tbasemeasure_type, T.types)...}}
-end
-
-@inline @constprop :aggressive function tbasemeasure_type(::Type{ProductMeasure{A}}) where {M,A<:AbstractArray{M}}
-    p = Tuple(A.parameters)
-    C = constructorof(A)
-    if isconcretetype(M)
-        return ProductMeasure{C{(tbasemeasure_type(M), Base.tail(p)...)...}}
-    else
-        return ProductMeasure{C{(Any, Base.tail(p)...)...}}
-    end
+@inline function tbasemeasure_type(::Type{P}) where {P<:ProductMeasure}
+    tmap(tbasemeasure_type, P)
 end
 
 testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
-
-
 
 export ⊗
 

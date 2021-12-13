@@ -7,8 +7,7 @@ function help_tbasemeasure_type(μ::M) where M
     function tbasemeasure_type(::Type{$M}) 
         $B
     end
-
     """
     )
-    return B
+    return nothing
 end
