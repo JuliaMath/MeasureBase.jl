@@ -5,9 +5,8 @@ struct Dirac{X} <: AbstractMeasure
     x::X
 end
 
-function Pretty.quoteof(d::Dirac)
-    q = Pretty.quoteof(d.x)
-    :(Dirac($q))
+function Pretty.tile(d::Dirac)
+    Pretty.literal("Dirac(") * Pretty.tile(d.x) * Pretty.literal(")")
 end
 
 gentype(μ::Dirac{X}) where {X} = X
