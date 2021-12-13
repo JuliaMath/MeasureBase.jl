@@ -60,15 +60,17 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 
 export basemeasure_depth
 
-@inline function basemeasure_type(μ::M) where {M<:AbstractMeasure}
+@inline @constprop :aggressive function basemeasure_type(μ::M) where {M<:AbstractMeasure}
     return tbasemeasure_type(M)
 end
 
-@inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
+@inline @constprop :aggressive function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
     return tbasemeasure_depth(M)
 end
 
-@inline function tbasemeasure_depth(::Type{M}) where {M}
-    static(1) + tbasemeasure_depth(tbasemeasure_type(M))
-end
+@inline @constprop :aggressive tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
 
+@inline @constprop :aggressive function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt) where {M,B}
+    M === B && return S
+    return tbasemeasure_depth(B, tbasemeasure_type(B), S + static(1))
+end

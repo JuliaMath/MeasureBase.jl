@@ -30,6 +30,8 @@ export AbstractMeasure
 
 abstract type AbstractMeasure end
 
+using Static: @constprop
+
 function Pretty.tile(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
     result = Pretty.literal(repr(M))
@@ -94,7 +96,23 @@ include("combinators/conditional.jl")
 include("rand.jl")
 
 include("density.jl")
+module Interface
+
+using MeasureBase
+using MeasureBase:basemeasure_depth, tbasemeasure_depth, basemeasure_type, tbasemeasure_type
+using Test
+
+export test_interface
+export tbasemeasure_depth
+export tbasemeasure_type
+export help_tbasemeasure_type
+export basemeasure_depth
+export basemeasure_type
+
 include("help.jl")
 include("interface.jl")
+end # module Interface
 
-end
+using .Interface
+
+end # module MeasureBase

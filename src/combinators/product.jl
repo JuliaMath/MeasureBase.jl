@@ -35,9 +35,17 @@ end
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
+    
+    
+# For tuples, `mapreduce` has trouble with type inference
+@inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
+    ℓs = map(logdensity_def, marginals(d),x)
+    sum(ℓs)
+end
 
-@inline function logdensityof(μ::ProductMeasure, x)
-    mapreduce(logdensityof, +, marginals(μ), x)
+function basemeasure(μ::ProductMeasure{A}) where {T,A<:ReadonlyMappedArray{T}}
+    mar = marginals(μ)
+    productmeasure(mappedarray(basekleisli(mar.f), mar.data))
 end
 
 marginals(μ::ProductMeasure) = μ.marginals
@@ -46,18 +54,15 @@ marginals(μ::ProductMeasure) = μ.marginals
     ProductMeasure{Tuple{map(tbasemeasure_type, T.types)...}}
 end
 
-function tbasemeasure_type(::Type{ProductMeasure{A}}) where {M,A<:AbstractArray{M}}
-    C = constructorof(A)
+@inline @constprop :aggressive function tbasemeasure_type(::Type{ProductMeasure{A}}) where {M,A<:AbstractArray{M}}
     p = Tuple(A.parameters)
-    ProductMeasure{C{(tbasemeasure_type(first(p)), Base.tail(p)...)...}}
+    C = constructorof(A)
+    if isconcretetype(M)
+        return ProductMeasure{C{(tbasemeasure_type(M), Base.tail(p)...)...}}
+    else
+        return ProductMeasure{C{(Any, Base.tail(p)...)...}}
+    end
 end
-
-# basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
-
-@inline function tbasemeasure_depth(::Type{ProductMeasure{T}}) where {T<:Tuple}
-    mapreduce(tbasemeasure_depth, max, Tuple(T.types))
-end
-
 
 testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
 
