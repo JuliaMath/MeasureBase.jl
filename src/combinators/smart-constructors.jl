@@ -25,7 +25,13 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(data::AbstractArray) = ProductMeasure(data)
+productmeasure(mar::Fill) = powermeasure(mar.value, mar.axes)
+
+function productmeasure(mar::ReadonlyMappedArray{T, N, A, Returns{M}}) where {T,N,A,M}
+    return powermeasure(mar.f.value, axes(mar.data))
+end
+
+productmeasure(mar::AbstractArray) = ProductMeasure(mar)
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)
 
