@@ -6,7 +6,6 @@ struct SpikeMixture{T,S} <: AbstractMeasure
     m::T # parent
     w::S # relative weight of parent
 end
-SpikeMixture(m, w) = SpikeMixture(m, w)
 
 function Pretty.tile(μ::SpikeMixture)
     result = Pretty.tile(μ.w)
