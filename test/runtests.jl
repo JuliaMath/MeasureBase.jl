@@ -68,6 +68,10 @@ testbroken_measures = [
     for μ in test_measures
         @info "testing $μ"
         test_interface(μ)
+        test_interface(μ ^ 3)
+        test_interface(μ ^ (3,2))
+        test_interface(5 * μ)
+        # test_interface(SpikeMixture(μ, 0.2))
     end
 
     for μ in testbroken_measures
