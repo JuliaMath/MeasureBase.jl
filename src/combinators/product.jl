@@ -22,7 +22,7 @@ end
 
 Base.size(μ::ProductMeasure) = size(marginals(μ))
 
-Base.length(m::ProductMeasure{T}) where {T} = length(marginals(μ))
+Base.length(μ::ProductMeasure{T}) where {T} = length(marginals(μ))
 
 basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.pars)
 
