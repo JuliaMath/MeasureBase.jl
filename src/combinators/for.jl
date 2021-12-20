@@ -3,16 +3,29 @@ export For
 using Random
 import Base
 
-struct For{F, I} <: AbstractProductMeasure
+struct For{T, F, I} <: AbstractProductMeasure
     f::F
     inds::I
+
+    function For(f::F, inds::I) where {F,I<:Tuple}
+        T = Core.Compiler.return_type(f, Tuple{eltype.(inds)...})
+        new{T,F,I}(f, inds)
+    end
 end
 
-function Pretty.tile(d::For)
-    result = Pretty.literal("For(")
-    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.inds); sep = ", ")
+function Pretty.tile(d::For{T}) where {T}
+    result = Pretty.literal("For{")
+    result *= Pretty.tile(T)
+    result *= Pretty.literal("}(")
+    result *= Pretty.literal(func_string(d.f, Tuple{eltype.(d.inds)...}))
+    for ind in d.inds
+        result *= Pretty.literal(", ")
+        result *= Pretty.tile(ind)
+    end
     result *= Pretty.literal(")")
 end
+
+marginals(d::For) = mappedarray(d.f, d.inds...)
 
 """
     For(f, base...)
@@ -85,7 +98,7 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, inds::AbstractArray...) = productmeasure(mappedarray(f, inds...))
+For(f, inds::AbstractArray...) = For(f, inds)
 For(f, n::Integer) = For(f, Base.OneTo(n))
 For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
-For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
+# For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))

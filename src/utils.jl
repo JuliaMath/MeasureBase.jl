@@ -66,3 +66,41 @@ end
     M === B && return static(N)
     return tbasemeasure_depth(B, tbasemeasure_type(B), static(N+1))
 end
+
+# Adapted from https://github.com/JuliaArrays/MappedArrays.jl/blob/46bf47f3388d011419fe43404214c1b7a44a49cc/src/MappedArrays.jl#L229
+function func_string(f, types)
+    ft = typeof(f)
+    mt = ft.name.mt
+    name = string(mt.name)
+    if startswith(name, '#')
+        # This is an anonymous function. See if it can be printed nicely
+        lwrds = code_lowered(f, types)
+        if length(lwrds) != 1
+            return string(f)
+        end
+        lwrd = lwrds[1]
+        c = lwrd.code
+        if length(c) == 2 && ((isa(c[2], Expr) && c[2].head === :return) || (isdefined(Core, :ReturnNode) && isa(c[2], Core.ReturnNode)))
+            # This is a single-line anonymous function, we should handle it
+            s = lwrd.slotnames[2:end]
+            result = ""
+            if length(s) == 1
+                result *= string(s[1])
+                result *= "->"
+            else
+                result *= string(tuple(s...))
+                result *= "->"
+            end
+            c1 = string(c[1])
+            for i = 1:length(s)
+                c1 = replace(c1, "_"*string(i+1)=>string(s[i]))
+            end
+            result *= c1
+            return result
+        else
+            return string(f)
+        end
+    else
+        return string(f)
+    end
+end
