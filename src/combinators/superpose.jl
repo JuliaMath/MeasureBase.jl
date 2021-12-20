@@ -20,8 +20,8 @@ Superposition measures satisfy
     \end{aligned}
 ```
 """
-struct SuperpositionMeasure{NT} <: AbstractMeasure
-    components::NT
+struct SuperpositionMeasure{C} <: AbstractMeasure
+    components::C
 end
 
 function Pretty.tile(d::SuperpositionMeasure)
@@ -62,6 +62,10 @@ logdensity_def(μ::SuperpositionMeasure, x) =
     logsumexp((logdensity_def(m, x) for m in μ.components))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
+
+function basemeasure_depth(μ::SuperpositionMeasure{C}) where C
+    mapreduce(basemeasure_depth, maximum, μ.components)
+end
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
