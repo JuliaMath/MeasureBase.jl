@@ -32,10 +32,7 @@ function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
     return Density(μ, base)
 end
 
-logdensityof(d::Density, x) = logdensityof(d.μ, d.base, x)
-
 densityof(d::Density, x) = exp(logdensityof(d.μ, d.base, x))
-
 
 """
     struct DensityMeasure{F,B} <: AbstractMeasure
@@ -142,35 +139,32 @@ end
     return ℓ
 end
 
-@inline logdensityof(μ, x) = first(_logdensityof(μ, x))
+@inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x, logdensity_def(μ, x))
 
 # Because it's sometimes useful, this returns a pair (ℓ,r) where
 # • ℓ is the log-density
 # • r is the rootmeasure of μ
-@inline function _logdensityof(μ, x)
+@inline function _logdensityof(μ, β, x, ℓ)
     n = basemeasure_depth(μ) - static(1)
-    
-    β = basemeasure(μ, x)
-    ℓ = logdensity_def(μ, x)
+    iszero(n) && return ℓ
     # @show μ
     # @show ℓ
     # println()
-    return _logdensityof(β, x, ℓ, n)
+    return _logdensityof(β, basemeasure(β,x), x, ℓ, n)
 end
 
-@generated function _logdensityof(μ, x, ℓ, ::StaticInt{n}) where {n}
+@generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}
     nsteps = max(n, 0)
     quote
         $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $nsteps i -> begin
-            Δℓ = logdensity_def(μ, x)
-            # @show μ
+            Δℓ = oftype(ℓ, logdensity_def(μ, x))
             # @show Δℓ
             # println()
-            μ = basemeasure(μ, x)
+            μ,β = β, basemeasure(μ, x)
             ℓ += Δℓ
         end
-        return (ℓ,μ)
+        return ℓ
     end
 end
 

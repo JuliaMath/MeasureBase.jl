@@ -5,9 +5,8 @@ struct Dirac{X} <: AbstractMeasure
     x::X
 end
 
-function Pretty.quoteof(d::Dirac)
-    q = Pretty.quoteof(d.x)
-    :(Dirac($q))
+function Pretty.tile(d::Dirac)
+    Pretty.literal("Dirac(") * Pretty.tile(d.x) * Pretty.literal(")")
 end
 
 gentype(μ::Dirac{X}) where {X} = X
@@ -19,7 +18,7 @@ end
 
 basemeasure(d::Dirac) = CountingMeasure()
 
-tbasemeasure_type(::Type{Dirac}) = CountingMeasure
+tbasemeasure_type(::Type{Dirac{X}}) where {X} = CountingMeasure
 
 density_def(μ::Dirac, x) = x == μ.x
 

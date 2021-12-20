@@ -8,14 +8,6 @@ end
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
-# function constructorof(::Type{T}) where {T} 
-#     C = T
-#     while C isa UnionAll
-#         C = C.body
-#     end
-
-#     return C.name.wrapper
-# end
 
 export testvalue
 testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
@@ -68,7 +60,9 @@ end
     return tbasemeasure_depth(M)
 end
 
-@inline function tbasemeasure_depth(::Type{M}) where {M}
-    static(1) + tbasemeasure_depth(tbasemeasure_type(M))
-end
+@inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
 
+@generated function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt{N}) where {M,B,N}
+    M === B && return static(N)
+    return tbasemeasure_depth(B, tbasemeasure_type(B), static(N+1))
+end

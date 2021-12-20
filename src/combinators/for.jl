@@ -8,6 +8,12 @@ struct For{F, I} <: AbstractProductMeasure
     inds::I
 end
 
+function Pretty.tile(d::For)
+    result = Pretty.literal("For(")
+    result *= Pretty.pair_layout(Pretty.tile(d.f), Pretty.tile(d.inds); sep = ", ")
+    result *= Pretty.literal(")")
+end
+
 """
     For(f, base...)
 

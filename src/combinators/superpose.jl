@@ -58,13 +58,14 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(components)
 end
 
-logdensity_def(μ::SuperpositionMeasure, x) =
+function logdensity_def(μ::SuperpositionMeasure, x)
     logsumexp((logdensity_def(m, x) for m in μ.components))
+end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-function basemeasure_depth(μ::SuperpositionMeasure{C}) where C
-    mapreduce(basemeasure_depth, maximum, μ.components)
+function tbasemeasure_type(::Type{S}) where {C,S<:SuperpositionMeasure{C}}
+    SuperpositionMeasure{tmap(tbasemeasure_type, C)}
 end
 
 # TODO: Fix `rand` method (this one is wrong)

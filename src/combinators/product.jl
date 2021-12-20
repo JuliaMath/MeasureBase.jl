@@ -20,7 +20,7 @@ function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
 end
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
-basemeasure(d::AbstractProductMeasure) = map(basemeasure, marginals(d))
+basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     map(marginals(d)) do dⱼ
@@ -31,21 +31,33 @@ end
 @inline function logdensity_def(d::AbstractProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
 end
+
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
 
+function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
+    Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep=" ⊗ ")
+end
 
+# For tuples, `mapreduce` has trouble with type inference
+@inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
+    ℓs = map(logdensity_def, marginals(d),x)
+    sum(ℓs)
+end
+
+function basemeasure(μ::ProductMeasure{A}) where {T,A<:ReadonlyMappedArray{T}}
+    mar = marginals(μ)
+    productmeasure(mappedarray(basekleisli(mar.f), mar.data))
+end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
-
-
-basemeasure_depth(μ::ProductMeasure) = basemeasure_depth(first(marginals(μ)))
+@inline function tbasemeasure_type(::Type{P}) where {P<:ProductMeasure}
+    tmap(tbasemeasure_type, P)
+end
 
 testvalue(d::AbstractProductMeasure) = map(testvalue, marginals(d))
-
-
 
 export ⊗
 
