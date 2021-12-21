@@ -69,12 +69,6 @@ basekleisli(k::ParameterizedKleisli) = kleisli(basekleisli(k.f), k.param_maps)
 
 basekleisli(f::Returns) = Returns(basemeasure(f.value))
 
-# export kleisliize
-
-# function kleisliize(μ::M) where {N, M <: ParameterizedMeasure{N}}
-#     C = constructorof(M)
-#     (Kleisli{C,}(NamedTuple{N}, ), values(getfield(μ, :par)))
-# end
 
 function Base.show(io::IO, μ::AbstractKleisli)
     io = IOContext(io, :compact => true)

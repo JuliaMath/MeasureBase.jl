@@ -13,6 +13,36 @@ struct For{T, F, I} <: AbstractProductMeasure
     end
 end
 
+@useproxy For
+
+# For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
+
+function proxy(d::For{T,F,I}) where {T,F,I}
+    productmeasure(mappedarray(d.f, d.inds...))
+end
+
+function proxy(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    productmeasure(Base.Generator(d.f, zip(d.inds...)))
+end
+
+function tproxy(::Type{For{T,F,I}}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    ProductMeasure{Base.Generator{F, Iterators.Zip{I}}}
+end
+
+function tproxy(::Type{For{T,F,Tuple{I}}}) where {Ta,N,I<:AbstractArray{Ta,N},T,F}
+    ProductMeasure{MappedArrays.ReadonlyMappedArray{T, N, I, F}}
+end
+
+function tproxy(::Type{For{T,F,I}}) where {M,Ta,N,T,F,I<:NTuple{M,<:AbstractArray{Ta,N}}}
+    ProductMeasure{MappedArrays.ReadonlyMultiMappedArray{T, N, I, F}}
+end
+
+# function tproxy(::Type{For{ProductMeasure{T}, F, I}}) where {N,T<:NTuple{N,<:AbstractMeasure},F,I}
+
+# end
+
+tbasemeasure_type(::Type{For{T,F,I}}) where {T,F,I} = tbasemeasure_type(tproxy(For{T,F,I}))
+
 function Pretty.tile(d::For{T}) where {T}
     result = Pretty.literal("For{")
     result *= Pretty.tile(T)
@@ -25,7 +55,7 @@ function Pretty.tile(d::For{T}) where {T}
     result *= Pretty.literal(")")
 end
 
-marginals(d::For) = mappedarray(d.f, d.inds...)
+marginals(d::For) = marginals(proxy(d))
 
 """
     For(f, base...)
@@ -98,7 +128,6 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, inds::AbstractArray...) = For(f, inds)
+For(f, inds...) = For(f, inds)
 For(f, n::Integer) = For(f, Base.OneTo(n))
 For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
-# For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))

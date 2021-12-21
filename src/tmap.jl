@@ -12,6 +12,10 @@ function tmap(f::F, ::Type{A}) where {F,T,A<:AbstractArray{T}}
     C{(f(T), Base.tail(p)...)...}
 end
 
+function tmap(f::F, ::Type{Base.Generator{G,I}}) where {F,G,I}
+    Base.Generator{ComposedFunction{F,G}, I}
+end
+
 function tmap(f::F, ::Type{ProductMeasure{T}}) where {F,T}
     f = functioninstance(F)
     ProductMeasure{tmap(f, T)}

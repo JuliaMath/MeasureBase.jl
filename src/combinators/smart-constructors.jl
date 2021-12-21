@@ -31,6 +31,7 @@ function productmeasure(mar::ReadonlyMappedArray{T, N, A, Returns{M}}) where {T,
     return powermeasure(mar.f.value, axes(mar.data))
 end
 
+productmeasure(mar::Base.Generator) = ProductMeasure(mar)
 productmeasure(mar::AbstractArray) = ProductMeasure(mar)
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)

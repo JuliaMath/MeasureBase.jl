@@ -1,6 +1,7 @@
 export ProductMeasure
 
 using MappedArrays
+using MappedArrays: ReadonlyMultiMappedArray
 using Base: @propagate_inbounds
 import Base
 using FillArrays
@@ -46,12 +47,39 @@ end
     sum(ℓs)
 end
 
-function basemeasure(μ::ProductMeasure{A}) where {T,A<:ReadonlyMappedArray{T}}
+function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
     mar = marginals(μ)
-    productmeasure(mappedarray(basekleisli(mar.f), mar.data))
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B)
+            return B.instance ^ size(mar)
+        end
+    end
+
+    return productmeasure(mappedarray(basekleisli(mar.f), mar.data))
 end
 
 marginals(μ::ProductMeasure) = μ.marginals
+
+@inline function tbasemeasure_type(::Type{P}) where {T,N,A,F,M<:ReadonlyMultiMappedArray{T,N,A,F},P<:ProductMeasure{M}}
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B)
+            return PowerMeasure{B, A}
+        end
+    end
+    tmap(tbasemeasure_type, P)
+end
+
+@inline function tbasemeasure_type(::Type{P}) where {T,N,A,F,M<:ReadonlyMappedArray{T,N,A,F},P<:ProductMeasure{M}}
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B)
+            return PowerMeasure{B, Tuple{A}}
+        end
+    end
+    tmap(tbasemeasure_type, P)
+end
 
 @inline function tbasemeasure_type(::Type{P}) where {P<:ProductMeasure}
     tmap(tbasemeasure_type, P)
