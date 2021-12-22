@@ -52,10 +52,4 @@ struct NonIterable end
 isiterable(::Type{T}) where {T} =
     static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
 
-functioninstance(::Type{F}) where {F<:Function} = F.instance
-
-# See https://github.com/cscherrer/KeywordCalls.jl/issues/22
-@inline instance_type(f::F) where {F<:Function} = F
-@inline instance_type(f::UnionAll) = Type{f}
-
 using MLStyle
