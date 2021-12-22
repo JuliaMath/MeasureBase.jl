@@ -44,7 +44,10 @@ struct NonIterable end
 isiterable(::Type{T}) where {T} =
     static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
 
-functioninstance(::Type{F}) where {F<:Function} = F.instance
+@inline function instance(@nospecialize(T))
+    Base.@_pure_meta
+    return getfield(T, :instance)::T
+end
 
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F<:Function} = F
@@ -52,20 +55,18 @@ functioninstance(::Type{F}) where {F<:Function} = F.instance
 
 export basemeasure_depth
 
-@inline function basemeasure_type(μ::M) where {M<:AbstractMeasure}
-    return tbasemeasure_type(M)
-end
-
-@inline function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
+@generated function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
     return tbasemeasure_depth(M)
 end
 
 @inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
 
-@generated function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt{N}) where {M,B,N}
+function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt{N}) where {M,B,N}
     M === B && return static(N)
     return tbasemeasure_depth(B, tbasemeasure_type(B), static(N+1))
 end
+
+@generated basemeasure_type(μ::M) where M = tbasemeasure_type(M)
 
 # Adapted from https://github.com/JuliaArrays/MappedArrays.jl/blob/46bf47f3388d011419fe43404214c1b7a44a49cc/src/MappedArrays.jl#L229
 function func_string(f, types)
@@ -104,3 +105,26 @@ function func_string(f, types)
         return string(f)
     end
 end
+
+_eltype(T) = eltype(T)
+
+function _eltype(g::Base.Generator{I}) where {I}
+    Core.Compiler.return_type(g.f, Tuple{_eltype(I)})
+end
+
+function _eltype(::Type{Base.Generator{I,ComposedFunction{Outer,Inner}}}) where {Outer,Inner,I}
+    _eltype(Base.Generator{_eltype(Base.Generator{I,Inner}), Outer})
+end
+
+function _eltype(::Type{Base.Generator{I,F}}) where {F<:Function,I}
+    f = instance(F)
+    Core.Compiler.return_type(f, Tuple{_eltype(I)})
+end
+
+function _eltype(::Type{Z}) where {Z<:Iterators.Zip}
+    map(_eltype, Z.types[1].types)
+end
+
+mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
+mymap(f, inds...) = Iterators.map(f, inds...)
+

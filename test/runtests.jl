@@ -98,8 +98,7 @@ end
         end
     ]
 
-    for (n,d) in enumerate(FORDISTS)
-        # @show n,d
+    for d in FORDISTS
         test_interface(d)
     end
 end

@@ -1,12 +1,10 @@
 # A type-level map
 
-@generated function tmap(f::F, ::Type{T}) where {F,T<:Tuple}
-    f = functioninstance(F)
+function tmap(f::F, ::Type{T}) where {F,T<:Tuple}
     Tuple{map(f, T.types)...}
 end
 
 function tmap(f::F, ::Type{A}) where {F,T,A<:AbstractArray{T}}
-    f = functioninstance(F)
     p = Tuple(A.parameters)
     C = constructorof(A)
     C{(f(T), Base.tail(p)...)...}
@@ -16,7 +14,6 @@ function tmap(f::F, ::Type{Base.Generator{G,I}}) where {F,G,I}
     Base.Generator{ComposedFunction{F,G}, I}
 end
 
-function tmap(f::F, ::Type{ProductMeasure{T}}) where {F,T}
-    f = functioninstance(F)
+function tmap(f, ::Type{ProductMeasure{T}}) where {T}
     ProductMeasure{tmap(f, T)}
 end

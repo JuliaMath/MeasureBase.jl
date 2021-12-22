@@ -8,7 +8,7 @@ struct For{T, F, I} <: AbstractProductMeasure
     inds::I
 
     function For(f::F, inds::I) where {F,I<:Tuple}
-        T = Core.Compiler.return_type(f, Tuple{eltype.(inds)...})
+        T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
         new{T,F,I}(f, inds)
     end
 end
@@ -21,33 +21,51 @@ function proxy(d::For{T,F,I}) where {T,F,I}
     productmeasure(mappedarray(d.f, d.inds...))
 end
 
-function proxy(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    productmeasure(Base.Generator(d.f, zip(d.inds...)))
+function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    MeasureBase.logdensity_def(proxy(d), x)
 end
 
-function tproxy(::Type{For{T,F,I}}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    ProductMeasure{Base.Generator{F, Iterators.Zip{I}}}
+function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    Iterators.map(d.f, d.inds...)
 end
 
-function tproxy(::Type{For{T,F,Tuple{I}}}) where {Ta,N,I<:AbstractArray{Ta,N},T,F}
-    ProductMeasure{MappedArrays.ReadonlyMappedArray{T, N, I, F}}
-end
-
-function tproxy(::Type{For{T,F,I}}) where {M,Ta,N,T,F,I<:NTuple{M,<:AbstractArray{Ta,N}}}
-    ProductMeasure{MappedArrays.ReadonlyMultiMappedArray{T, N, I, F}}
-end
-
-# function tproxy(::Type{For{ProductMeasure{T}, F, I}}) where {N,T<:NTuple{N,<:AbstractMeasure},F,I}
-
+# TODO: Make this pass @code_warntype
+# e..g
+#
+# d = For(eachrow(rand(4, 2))) do x
+#     Dirac(x[1]) ⊗ Dirac(x[2])
 # end
+@inline function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    B = tbasemeasure_type(T)
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}}) && Base.issingletontype(B) 
+        return instance(B) ^ minimum(length, d.inds)
+    end
 
-tbasemeasure_type(::Type{For{T,F,I}}) where {T,F,I} = tbasemeasure_type(tproxy(For{T,F,I}))
+    return For(basekleisli(d.f), d.inds)
+end
+
+function tbasemeasure_type(::Type{For{T, F, I}})  where {T,F,I}
+    B = tbasemeasure_type(T)
+    return tbasemeasure_type(For{T, F, I}, B)
+end
+
+function tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B})  where {B,T,F,I}
+    if Base.issingletontype(B) 
+        return PowerMeasure{B, I}
+    end
+
+    return For{B, typeof(basekleisli(instance(F))), I}
+end
+
+@inline function basemeasure_depth(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    MeasureBase.basemeasure_depth(proxy(d))
+end
 
 function Pretty.tile(d::For{T}) where {T}
     result = Pretty.literal("For{")
     result *= Pretty.tile(T)
     result *= Pretty.literal("}(")
-    result *= Pretty.literal(func_string(d.f, Tuple{eltype.(d.inds)...}))
+    result *= Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...}))
     for ind in d.inds
         result *= Pretty.literal(", ")
         result *= Pretty.tile(ind)
@@ -131,3 +149,5 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 For(f, inds...) = For(f, inds)
 For(f, n::Integer) = For(f, Base.OneTo(n))
 For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+# For(f, inds::Base.Generator) = productmeasure(mymap(f, inds))
+

@@ -47,12 +47,27 @@ end
     sum(ℓs)
 end
 
+
+function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
+    mar = marginals(μ)
+    T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B)
+            b = instance(B)::B
+            return b ^ size(mar)
+        end
+    end
+
+    return productmeasure(Base.Generator(basekleisli(mar.f), mar.iter))
+end
+
 function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
     mar = marginals(μ)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
-            return B.instance ^ size(mar)
+            return instance(B) ^ size(mar)
         end
     end
 
@@ -61,14 +76,14 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
-@inline function tbasemeasure_type(::Type{P}) where {T,N,A,F,M<:ReadonlyMultiMappedArray{T,N,A,F},P<:ProductMeasure{M}}
+@inline function tbasemeasure_type(::Type{ProductMeasure{M}}) where {T,N,A,F,M<:ReadonlyMultiMappedArray{T,N,A,F}}
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
             return PowerMeasure{B, A}
         end
     end
-    tmap(tbasemeasure_type, P)
+    tmap(tbasemeasure_type, ProductMeasure{M})
 end
 
 @inline function tbasemeasure_type(::Type{P}) where {T,N,A,F,M<:ReadonlyMappedArray{T,N,A,F},P<:ProductMeasure{M}}
