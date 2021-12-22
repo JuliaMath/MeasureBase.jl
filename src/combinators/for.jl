@@ -35,13 +35,18 @@ end
 # d = For(eachrow(rand(4, 2))) do x
 #     Dirac(x[1]) ⊗ Dirac(x[2])
 # end
-@inline function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+@generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     B = tbasemeasure_type(T)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}}) && Base.issingletontype(B) 
-        return instance(B) ^ minimum(length, d.inds)
-    end
-
-    return For(basekleisli(d.f), d.inds)
+        b = instance(B)
+        return quote
+            $b ^ minimum(length, d.inds)
+        end
+    else
+        return quote
+            For(basekleisli(d.f), d.inds)
+        end
+    end   
 end
 
 function tbasemeasure_type(::Type{For{T, F, I}})  where {T,F,I}
@@ -58,7 +63,7 @@ function tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B})  where {B,T,F,I}
 end
 
 @inline function basemeasure_depth(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    MeasureBase.basemeasure_depth(proxy(d))
+    invoke(basemeasure_depth, Tuple{AbstractMeasure}, d)
 end
 
 function Pretty.tile(d::For{T}) where {T}
