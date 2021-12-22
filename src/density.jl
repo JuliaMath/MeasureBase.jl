@@ -141,9 +141,13 @@ end
 
 @inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x, logdensity_def(μ, x))
 
-# Because it's sometimes useful, this returns a pair (ℓ,r) where
-# • ℓ is the log-density
-# • r is the rootmeasure of μ
+@inline function _logdensityof(μ::M, β::M, x, ℓ::T) where {M,T}
+    if μ === β
+        return ℓ
+    end
+    invoke(_logdensity, Tuple{Any, Any, Any, T}, μ, β, x, ℓ)::T
+end
+
 @inline function _logdensityof(μ, β, x, ℓ)
     n = basemeasure_depth(μ) - static(1)
     iszero(n) && return ℓ
