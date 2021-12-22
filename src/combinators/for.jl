@@ -22,19 +22,15 @@ function proxy(d::For{T,F,I}) where {T,F,I}
 end
 
 function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    MeasureBase.logdensity_def(proxy(d), x)
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
+    end
 end
 
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     Iterators.map(d.f, d.inds...)
 end
 
-# TODO: Make this pass @code_warntype
-# e..g
-#
-# d = For(eachrow(rand(4, 2))) do x
-#     Dirac(x[1]) ⊗ Dirac(x[2])
-# end
 @generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     B = tbasemeasure_type(T)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}}) && Base.issingletontype(B) 
