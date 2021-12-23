@@ -37,6 +37,18 @@ end
     return q
 end
 
+function trootmeasure_type(::Type{M}) where {M}
+    trootmeasure_type(M, tbasemeasure_type(M), static(0))
+end
+
+function trootmeasure_type(::Type{M}, ::Type{M}, s::StaticInt{N}) where {M,N}
+    return M
+end
+
+function trootmeasure_type(::Type{M}, ::Type{B}, s::StaticInt{N}) where {M,B,N}
+    return trootmeasure_type(B, tbasemeasure_type(B), static(1) + s)
+end
+
 # Base on the Tricks.jl README
 using Tricks
 struct Iterable end
@@ -55,18 +67,33 @@ end
 
 export basemeasure_depth
 
-@generated function basemeasure_depth(μ::M) where {M<:AbstractMeasure}
-    return tbasemeasure_depth(M)
+@inline function basemeasure_depth(μ::M) where {M}
+    return basemeasure_depth(μ, basemeasure(μ), static(0))
+end
+
+function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
+    return s
+end
+
+function basemeasure_depth(μ::M, β::B, s::StaticInt{N}) where {M,B,N}
+    return tbasemeasure_depth(M,B,s)
 end
 
 @inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
 
-function tbasemeasure_depth(::Type{M}, ::Type{B}, S::StaticInt{N}) where {M,B,N}
-    M === B && return static(N)
-    return tbasemeasure_depth(B, tbasemeasure_type(B), static(N+1))
+@inline function tbasemeasure_depth(::Type{M}, ::Type{M}, s::StaticInt{N}) where {M,N}
+    return s
 end
 
-@generated basemeasure_type(μ::M) where M = tbasemeasure_type(M)
+@inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{N}) where {M,B,N}
+    return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
+end
+
+@inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{500}) where {M,B}
+    @error "Stack overflow?"
+end
+
+@inline basemeasure_type(μ::M) where M = tbasemeasure_type(M)
 
 # Adapted from https://github.com/JuliaArrays/MappedArrays.jl/blob/46bf47f3388d011419fe43404214c1b7a44a49cc/src/MappedArrays.jl#L229
 function func_string(f, types)

@@ -45,16 +45,20 @@ end
     end   
 end
 
-function tbasemeasure_type(::Type{For{T, F, I}})  where {T,F,I}
+@inline function tbasemeasure_type(::Type{For{T, F, I}}) where {T,F,I}
     B = tbasemeasure_type(T)
     return tbasemeasure_type(For{T, F, I}, B)
 end
 
-function tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B})  where {B,T,F,I}
-    if Base.issingletontype(B) 
-        return PowerMeasure{B, I}
-    end
+@inline function tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}) where {B,T,F,I}
+    _tbasemeasure_type(For{T, F, I}, B, static(Base.issingletontype(B)))
+end
 
+@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}, ::True) where {B,T,F,I}
+    return PowerMeasure{B, I}
+end
+
+@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}, ::False) where {B,T,F,I}
     return For{B, typeof(basekleisli(instance(F))), I}
 end
 

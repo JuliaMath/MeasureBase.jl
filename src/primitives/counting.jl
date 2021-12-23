@@ -8,6 +8,12 @@ struct Counting{T} <: AbstractMeasure
     support::T
 end
 
+function logdensity_def(μ::Counting, x)
+    insupport(μ, x) ? 0.0 : -Inf
+end
+
+basemeasure(::Counting) = CountingMeasure()
+
 Counting() = Counting(ℤ)
 
 tbasemeasure_type(::Type{C}) where {C<:Counting} = CountingMeasure
