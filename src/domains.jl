@@ -72,6 +72,8 @@ end
 ###########################################################
 # ZeroSet
 
+export ZeroSet
+
 struct ZeroSet{F, G} <: AbstractDomain
     f::F
     ∇f::G
@@ -83,6 +85,8 @@ Base.in(x::AbstractArray{T}, z::ZeroSet) where {T} = abs(z.f(x)) < ldexp(eps(flo
 
 ###########################################################
 # CodimOne
+
+export CodimOne
 
 abstract type CodimOne <: AbstractDomain end
 
@@ -102,6 +106,7 @@ function zeroset(::CodimOne)::ZeroSet end
 
 ###########################################################
 # Simplex
+export Simplex
 
 struct Simplex <: CodimOne end
 
@@ -112,7 +117,7 @@ function zeroset(::Simplex)
 end
 
 function Base.in(x::AbstractArray{T}, ::Simplex) where {T} 
-    x .≥ zero(eltype(x)) || return false
+    all(≥(zero(eltype(x))), x) || return false
     return x ∈ zeroset(Simplex())
 end
 
