@@ -9,17 +9,13 @@ struct For{T, F, I} <: AbstractProductMeasure
 
     function For(f::F, inds::I) where {F,I<:Tuple}
         T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
-        new{T,F,I}(f, inds)
+        new{T,instance_type(f),I}(f, inds)
     end
-end
 
-@useproxy For
+    For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
+end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
-
-function proxy(d::For{T,F,I}) where {T,F,I}
-    productmeasure(mappedarray(d.f, d.inds...))
-end
 
 function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
@@ -31,7 +27,24 @@ function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     Iterators.map(d.f, d.inds...)
 end
 
-@generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+
+function basemeasure(μ::For{T,F,I}) where {T,F,I}
+    mar = marginals(μ)
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B)
+            b = instance(B)::B
+            return b ^ axes(mar)
+        else
+            new_f = basemeasure ∘ μ.f
+            For{B,typeof(new_f),I}(new_f, μ.inds)
+        end
+    else
+        return productmeasure(basemeasure.(mar))
+    end
+end
+
+function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     B = tbasemeasure_type(T)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}}) && Base.issingletontype(B) 
         b = instance(B)
@@ -78,7 +91,9 @@ function Pretty.tile(d::For{T}) where {T}
     result *= Pretty.literal(")")
 end
 
-marginals(d::For) = marginals(proxy(d))
+marginals(d::For) = mappedarray(d.f, d.inds...)
+
+
 
 """
     For(f, base...)
@@ -155,4 +170,12 @@ For(f, inds...) = For(f, inds)
 For(f, n::Integer) = For(f, Base.OneTo(n))
 For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
 # For(f, inds::Base.Generator) = productmeasure(mymap(f, inds))
+
+function Random.rand!(rng::AbstractRNG, d::For, x) 
+    mar = marginals(d)
+    @inbounds for (dⱼ, j) in zip(marginals(d), eachindex(x))
+        x[j] = rand(rng,dⱼ)
+    end
+    return x
+end
 

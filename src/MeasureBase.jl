@@ -99,9 +99,10 @@ include("density.jl")
 include("tmap.jl")
 module Interface
 
+using Reexport
 using MeasureBase
-using MeasureBase:basemeasure_depth, tbasemeasure_depth, basemeasure_type, tbasemeasure_type
-using Test
+using MeasureBase:basemeasure_depth, tbasemeasure_depth, basemeasure_type, tbasemeasure_type, proxy
+@reexport using Test
 
 export test_interface
 export tbasemeasure_depth
@@ -109,6 +110,7 @@ export tbasemeasure_type
 export help_tbasemeasure_type
 export basemeasure_depth
 export basemeasure_type
+export proxy
 
 include("help.jl")
 include("interface.jl")

@@ -55,28 +55,24 @@ function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
             b = instance(B)::B
-            return b ^ size(mar)
+            return b ^ axes(mar)
         end
     end
 
     return productmeasure(Base.Generator(basekleisli(mar.f), mar.iter))
 end
 
-@generated function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
+function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
+    mar = marginals(μ)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
             b = instance(B)
-            return quote
-                mar = marginals(μ)
-                $b ^ size(mar)
-            end
+            mar = marginals(μ)
+            return b ^ axes(marginals(μ))
         end
     end
-    return quote
-        mar = marginals(μ)
-        productmeasure(mappedarray(basekleisli(mar.f), mar.data))
-    end
+    return productmeasure(mappedarray(basemeasure, mar))
 end
 
 marginals(μ::ProductMeasure) = μ.marginals
@@ -96,9 +92,12 @@ end
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
             return PowerMeasure{B, Tuple{A}}
+        else
+            tmap(tbasemeasure_type, P)
         end
+    else
+        @error "tbasemeasure_type(::Type{$P})"
     end
-    tmap(tbasemeasure_type, P)
 end
 
 @inline function tbasemeasure_type(::Type{P}) where {P<:ProductMeasure}

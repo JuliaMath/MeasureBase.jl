@@ -12,8 +12,8 @@ abstract type AbstractWeightedMeasure <: AbstractMeasure end
 logweight(μ::AbstractWeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
-@inline function logdensity_def(sm::AbstractWeightedMeasure, x)
-    logdensity_def(sm.base, x) + sm.logweight
+@inline function logdensity_def(d::AbstractWeightedMeasure, x)
+    d.logweight
 end
 
 ###############################################################################
@@ -69,5 +69,7 @@ function Base.show(io::IO, d::ParamWeightedMeasure)
 end
 
 basemeasure(d::ParamWeightedMeasure) = d.base
+
+tbasemeasure_type(::Type{ParamWeightedMeasure{L,N,T,B}}) where {L,N,T,B} = B
 
 logdensity_def(d::ParamWeightedMeasure, x) = d.ℓ(d.par)

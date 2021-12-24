@@ -163,9 +163,10 @@ end
         $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $nsteps i -> begin
             Δℓ = oftype(ℓ, logdensity_def(μ, x))
+            # @show μ
             # @show Δℓ
             # println()
-            μ,β = β, basemeasure(μ, x)
+            μ,β = β, basemeasure(β, x)
             ℓ += Δℓ
         end
         return ℓ

@@ -15,7 +15,14 @@ macro useproxy(M)
     M = esc(M)
     quote
         @inline $__module__.logdensity_def(μ::$M, x) = logdensity_def(proxy(μ), x)
-        @inline $__module__.basemeasure(μ::$M) = basemeasure(proxy(μ))
+
+        @inline function $__module__.basemeasure(μ::$M)
+            p = proxy(μ)
+            # B = basemeasure_type(p)
+            b = basemeasure(p)
+            return b
+        end
+
         @inline $__module__.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
     end
 end
