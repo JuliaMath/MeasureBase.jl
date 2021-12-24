@@ -44,18 +44,16 @@ function basemeasure(μ::For{T,F,I}) where {T,F,I}
     end
 end
 
-function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    B = tbasemeasure_type(T)
-    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}}) && Base.issingletontype(B) 
-        b = instance(B)
-        return quote
-            $b ^ minimum(length, d.inds)
+@generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+        B = tbasemeasure_type(T)
+        if Base.issingletontype(B) 
+            b = instance(B)
+            return :($b ^ minimum(length, d.inds))
         end
-    else
-        return quote
-            For(basekleisli(d.f), d.inds)
-        end
-    end   
+    end
+    
+    return :(For(basekleisli(d.f), d.inds))
 end
 
 @inline function tbasemeasure_type(::Type{For{T, F, I}}) where {T,F,I}

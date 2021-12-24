@@ -32,7 +32,9 @@ function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
     return Density(μ, base)
 end
 
-densityof(d::Density, x) = exp(logdensityof(d.μ, d.base, x))
+logdensityof(d::Density, x) = logdensityof(d.μ, x) - logdensityof(d.base, x)
+
+logdensity_def(d::Density, x) = logdensityof(d, x)
 
 """
     struct DensityMeasure{F,B} <: AbstractMeasure
@@ -76,7 +78,6 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-densityof(μ::AbstractMeasure, ν::AbstractMeasure, x) = exp(logdensityof(μ, ν, x))
 
 export ∫
 
