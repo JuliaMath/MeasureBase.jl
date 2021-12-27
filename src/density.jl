@@ -103,50 +103,15 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline function logdensityof(μ::T, ν::T, x) where {T<:AbstractMeasure}
-    μ == ν && return 0.0
-    invoke(logdensityof, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
-end
+@inline logdensityof(μ, x) = first(_logdensityof(μ, basemeasure(μ, x), x))
 
-@inline function logdensityof(μ::AbstractMeasure, ν::AbstractMeasure, x)
-    α = basemeasure(μ)
-    β = basemeasure(ν)
-
-    # If α===μ and β===ν, The recursive call would be exactly the same as the
-    # original one. We need to break the recursion.
-    if α === μ && β === ν
-        @warn """
-        No method found for logdensity_def(μ, ν, x) where
-        typeof(μ) == $(typeof(μ))
-        typeof(ν) == $(typeof(ν))
-
-        Returning NaN. If this is incorrect, please add a method        
-        logdensity_def(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
-        """
-        return NaN
-    end
-
-    # Infinite or NaN results occur when outside the support of α or β, 
-    # and also when one measure is singular wrt the other. Computing the base
-    # measures first is often much cheaper, and allows the numerically-intensive
-    # computation to "fall through" in these cases.
-    # TODO: Add tests to check that NaN cases work properly
-    ℓ = logdensityof(α, β, x)
-    isnan(ℓ) && return ℓ
-
-    ℓ += logdensity_def(μ, x)
-    ℓ -= logdensity_def(ν, x)
-
-    return ℓ
-end
-
-@inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x, logdensity_def(μ, x))
+@inline _logdensityof(μ, α, x) = _logdensityof(μ, α, x, logdensity_def(μ, x))
 
 @inline function _logdensityof(μ::M, β::M, x, ℓ::T) where {M,T}
     if μ === β
         return ℓ
     end
-    invoke(_logdensity, Tuple{Any, Any, Any, T}, μ, β, x, ℓ)::T
+    invoke(_logdensityof, Tuple{Any, Any, Any, T}, μ, β, x, ℓ)::T
 end
 
 @inline function _logdensityof(μ, β, x, ℓ)
@@ -170,7 +135,27 @@ end
             μ,β = β, basemeasure(β, x)
             ℓ += Δℓ
         end
-        return ℓ
+        return (ℓ, β)
+    end
+end
+
+function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
+    (ℓ₊, β) = _logdensityof(ν, basemeasure(ν), x)
+    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₊)
+end
+
+function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
+    if static_hasmethod(logdensity_def, Tuple{A,B,X})
+        return ℓ + logdensity_def(α, β, x)
+    elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
+        return ℓ + logdensity_def(β, α, x)
+    else
+        @warn """
+        No method 
+        logdensity(::$A, ::$B, ::$X)
+        """
+        return oftype(ℓ, NaN)
     end
 end
 
@@ -180,7 +165,6 @@ export densityof
 export logdensityof
 
 export density_def
-
 
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 
