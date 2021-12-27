@@ -139,13 +139,13 @@ end
     end
 end
 
-function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+@inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
     (ℓ₊, β) = _logdensityof(ν, basemeasure(ν), x)
     return _logdensity_rel(α, β, x, ℓ₊ - ℓ₊)
 end
 
-function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
+@inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
     if static_hasmethod(logdensity_def, Tuple{A,B,X})
         return ℓ + logdensity_def(α, β, x)
     elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
