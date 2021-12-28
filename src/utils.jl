@@ -71,12 +71,12 @@ export basemeasure_depth
     return basemeasure_depth(μ, basemeasure(μ), static(0))
 end
 
-function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
+@inline function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
     return s
 end
 
-function basemeasure_depth(μ::M, β::B, s::StaticInt{N}) where {M,B,N}
-    return tbasemeasure_depth(M,B,s)
+@inline function basemeasure_depth(μ::M, β::B, s::StaticInt{N}) where {M,B,N}
+    return basemeasure_depth(β, basemeasure(β), static(1) + s)
 end
 
 @inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
@@ -86,7 +86,11 @@ end
 end
 
 @inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{N}) where {M,B,N}
-    return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
+    if @generated
+        return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
+    else
+        return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
+    end
 end
 
 @inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{500}) where {M,B}
