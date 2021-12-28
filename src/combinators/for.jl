@@ -52,6 +52,20 @@ end
     return productmeasure(basemeasure.(marginals(μ)))
 end
 
+@generated function basemeasure(d::For{T,F,I}) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator}}
+    B = tbasemeasure_type(T)
+    if Base.issingletontype(B) 
+        b = instance(B)
+        return :($b ^ minimum(length, d.inds))
+    end
+
+    return quote
+        f = basekleisli(d.f)
+        newF = typeof(f)
+        For{B,newF,I}(f, d.inds)
+    end
+end
+
 @generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     if static_hasmethod(tbasemeasure_type, Tuple{T})
         B = tbasemeasure_type(T)
