@@ -80,13 +80,13 @@ end
 function Pretty.tile(d::For{T}) where {T}
     result = Pretty.literal("For{")
     result *= Pretty.tile(T)
-    result *= Pretty.literal("}(")
-    result *= Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...}))
-    for ind in d.inds
-        result *= Pretty.literal(", ")
-        result *= Pretty.tile(ind)
-    end
-    result *= Pretty.literal(")")
+    result *= Pretty.literal("}")
+    result *= Pretty.list_layout(
+        [
+            Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...})),
+            Pretty.tile.(d.inds)...
+        ]
+    )
 end
 
 marginals(d::For) = mappedarray(d.f, d.inds...)
