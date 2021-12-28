@@ -105,18 +105,20 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 @inline logdensityof(μ, x) = first(_logdensityof(μ, basemeasure(μ, x), x))
 
-@inline _logdensityof(μ, α, x) = _logdensityof(μ, α, x, logdensity_def(μ, x))
+@inline function  _logdensityof(μ, α, x)
+    ℓ = dynamic(logdensity_def(μ, x))
+    L = typeof(ℓ)
+    (ℓ,r) = _logdensityof(μ, α, x, ℓ)::Tuple{L,Any}
 
-@inline function _logdensityof(μ::M, β::M, x, ℓ::T) where {M,T}
-    if μ === β
-        return ℓ
-    end
-    invoke(_logdensityof, Tuple{Any, Any, Any, T}, μ, β, x, ℓ)::T
+    return (ℓ, r)
 end
 
-@inline function _logdensityof(μ, β, x, ℓ)
+@inline function _logdensityof(μ::M, β::M, x, ℓ::T) where {M,T}
+    return (ℓ, μ)
+end
+
+@inline function _logdensityof(μ::M, β, x, ℓ) where {M}
     n = basemeasure_depth(μ) - static(1)
-    iszero(n) && return ℓ
     # @show μ
     # @show ℓ
     # println()
@@ -141,8 +143,8 @@ end
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
-    (ℓ₊, β) = _logdensityof(ν, basemeasure(ν), x)
-    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₊)
+    (ℓ₋, β) = _logdensityof(ν, basemeasure(ν), x)
+    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
 end
 
 @inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}

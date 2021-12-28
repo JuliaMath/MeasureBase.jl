@@ -75,8 +75,12 @@ end
     return s
 end
 
-@inline function basemeasure_depth(μ::M, β::B, s::StaticInt{N}) where {M,B,N}
-    return basemeasure_depth(β, basemeasure(β), static(1) + s)
+@inline function basemeasure_depth(μ::M, β::B, s) where {M,B,N}
+    if @generated
+        return tbasemeasure_depth(M, B, s)
+    else
+        return basemeasure_depth(β, basemeasure(β) , s + static(1))
+    end
 end
 
 @inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
@@ -93,9 +97,6 @@ end
     end
 end
 
-@inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{500}) where {M,B}
-    @error "Stack overflow?"
-end
 
 @inline basemeasure_type(μ::M) where M = tbasemeasure_type(M)
 

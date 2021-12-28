@@ -21,7 +21,7 @@ function test_interface(μ::M) where {M}
 
             # @test @inferred tbasemeasure_type(M) == @inferred basemeasure_type(μ)
 
-            @test !isabstracttype(typejoin(tbasemeasure_type(M), (typeof ∘ basemeasure)(μ)))
+            # @test !isabstracttype(typejoin(basemeasure_type(μ ), (typeof ∘ basemeasure)(μ)))
 
             ###########################################################################
             # basemeasure_depth
@@ -38,10 +38,10 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = testvalue(μ)
-            β = @inferred basemeasure(μ)
+            β = @inferred basemeasure(μ, x)
 
-            ℓμ = logdensityof(μ, x)
-            ℓβ = logdensityof(β, x)
+            ℓμ = @inferred logdensityof(μ, x)
+            ℓβ = @inferred logdensityof(β, x)
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 

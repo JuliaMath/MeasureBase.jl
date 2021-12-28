@@ -21,10 +21,6 @@ end
     SpikeMixture(basemeasure(μ.m), static(1.0), static(1.0))
 end
 
-# tbasemeasure_depth(::Type{SpikeMixture{M,W}}) where {M,W} = static(1) + tbasemeasure_depth(M)
-
-# basemeasure_type(::Type{SpikeMixture{T,S}}) where {T,S} = SpikeMixture{}
-
 function tbasemeasure_type(::Type{SpikeMixture{M,W,S}}) where {M,W,S}
     B = tbasemeasure_type(M)
     SpikeMixture{B,StaticFloat64{1.0},StaticFloat64{1.0}}

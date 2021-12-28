@@ -9,6 +9,11 @@ struct For{T, F, I} <: AbstractProductMeasure
 
     @inline function For(f::F, inds::I) where {F,I<:Tuple}
         T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
+        if T==Any
+            println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+            @show (f, inds)
+            println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        end
         new{T,instance_type(f),I}(f, inds)
     end
 
@@ -24,27 +29,31 @@ function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Genera
 end
 
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    Iterators.map(d.f, d.inds...)
+    f(x...) = d.f(x...)::T
+    Iterators.map(f, d.inds...)
 end
 
 
-@inline function basemeasure(μ::For{T,F,I}) where {T,F,I}
+@inline function basemeasure(μ::For{T,F,I}) where {T<:AbstractMeasure,F,I}
     mar = marginals(μ)
-    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
-        B = tbasemeasure_type(T)
-        if Base.issingletontype(B)
-            return basemeasure(first(mar)) ^ axes(mar)
-        else
-            new_f = basemeasure ∘ μ.f
-            For(new_f, μ.inds)
-        end
+    B = tbasemeasure_type(T)
+    if Base.issingletontype(B)
+        return basemeasure(first(mar)) ^ axes(mar)
+    elseif B <: AbstractMeasure
+        new_f = basekleisli(μ.f)
+        new_F = typeof(new_f)
+        return For{B,new_F, I}(new_f, μ.inds)
     else
-        return productmeasure(basemeasure.(mar))
+        return productmeasure(basemeasure.(marginals(μ)))
     end
 end
 
+@inline function basemeasure(μ::For{T,F,I}) where {T,F,I}
+    return productmeasure(basemeasure.(marginals(μ)))
+end
+
 @generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
+    if static_hasmethod(tbasemeasure_type, Tuple{T})
         B = tbasemeasure_type(T)
         if Base.issingletontype(B) 
             b = instance(B)
@@ -60,9 +69,6 @@ end
         B = tbasemeasure_type(T)
         return _tbasemeasure_type(For{T, F, I}, B)
     else
-        if T == Any
-            println.(stacktrace())
-        end
         B = tbasemeasure_type(T)
         return _tbasemeasure_type(For{T, F, I}, B)
     end
@@ -92,7 +98,10 @@ function Pretty.tile(d::For{T}) where {T}
     )
 end
 
-marginals(d::For) = mappedarray(d.f, d.inds...)
+function marginals(d::For{T,F,I}) where {T,F,I}
+    f(x...) = d.f(x...)::T
+    mappedarray(f, d.inds...)
+end
 
 """
     For(f, base...)
