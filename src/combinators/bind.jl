@@ -28,3 +28,9 @@ See also `bind` and `Bind`
 ↣(μ, k) = bind(μ, k)
 
 bind(μ, k) = Bind(μ, k)
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
+    x = rand(rng, T, d.μ)
+    y = rand(rng, T, d.k(x))
+    return y
+end

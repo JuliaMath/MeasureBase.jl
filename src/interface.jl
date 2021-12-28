@@ -25,7 +25,7 @@ function test_interface(μ::M) where {M}
 
             ###########################################################################
             # basemeasure_depth
-            static_depth = tbasemeasure_depth(M) 
+            static_depth = basemeasure_depth(μ) 
 
             dynamic_depth = dynamic_basemeasure_depth(μ)
 
@@ -38,7 +38,7 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = testvalue(μ)
-            β = basemeasure(μ)
+            β = @inferred basemeasure(μ)
 
             ℓμ = logdensityof(μ, x)
             ℓβ = logdensityof(β, x)

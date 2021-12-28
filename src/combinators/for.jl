@@ -7,7 +7,7 @@ struct For{T, F, I} <: AbstractProductMeasure
     f::F
     inds::I
 
-    function For(f::F, inds::I) where {F,I<:Tuple}
+    @inline function For(f::F, inds::I) where {F,I<:Tuple}
         T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
         new{T,instance_type(f),I}(f, inds)
     end
@@ -28,16 +28,15 @@ function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
 end
 
 
-function basemeasure(μ::For{T,F,I}) where {T,F,I}
+@inline function basemeasure(μ::For{T,F,I}) where {T,F,I}
     mar = marginals(μ)
     if static_hasmethod(tbasemeasure_type, Tuple{Type{T}})
         B = tbasemeasure_type(T)
         if Base.issingletontype(B)
-            b = instance(B)::B
-            return b ^ axes(mar)
+            return basemeasure(first(mar)) ^ axes(mar)
         else
             new_f = basemeasure ∘ μ.f
-            For{B,typeof(new_f),I}(new_f, μ.inds)
+            For(new_f, μ.inds)
         end
     else
         return productmeasure(basemeasure.(mar))
@@ -57,11 +56,19 @@ end
 end
 
 @inline function tbasemeasure_type(::Type{For{T, F, I}}) where {T,F,I}
-    B = tbasemeasure_type(T)
-    return tbasemeasure_type(For{T, F, I}, B)
+    if @generated 
+        B = tbasemeasure_type(T)
+        return _tbasemeasure_type(For{T, F, I}, B)
+    else
+        if T == Any
+            println.(stacktrace())
+        end
+        B = tbasemeasure_type(T)
+        return _tbasemeasure_type(For{T, F, I}, B)
+    end
 end
 
-@inline function tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}) where {B,T,F,I}
+@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}) where {B,T,F,I}
     _tbasemeasure_type(For{T, F, I}, B, static(Base.issingletontype(B)))
 end
 
@@ -71,10 +78,6 @@ end
 
 @inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}, ::False) where {B,T,F,I}
     return For{B, typeof(basekleisli(instance(F))), I}
-end
-
-@inline function basemeasure_depth(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    invoke(basemeasure_depth, Tuple{AbstractMeasure}, d)
 end
 
 function Pretty.tile(d::For{T}) where {T}
@@ -90,8 +93,6 @@ function Pretty.tile(d::For{T}) where {T}
 end
 
 marginals(d::For) = mappedarray(d.f, d.inds...)
-
-
 
 """
     For(f, base...)
