@@ -110,6 +110,7 @@ end
 @inline DensityKind(::Likelihood) = IsDensity()
 
 Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = Likelihood{K,X}(k,x)
+Likelihood(k::K, x::X) where {K<:Function,X} = Likelihood{K,X}(k,x)
 
 Likelihood(μ::AbstractMeasure, x) = Likelihood(kleisli(μ), x)
 
@@ -128,4 +129,8 @@ end
 
 @inline function logdensity_def(ℓ::Likelihood, p)
     return logdensity_def(ℓ.k(p), ℓ.x)
+end
+
+@inline function logdensityof(ℓ::Likelihood, p)
+    return logdensityof(ℓ.k(p), ℓ.x)
 end

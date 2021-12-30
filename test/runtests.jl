@@ -111,6 +111,16 @@ end
     @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(Normal(), 0.2)
 end
 
+@testset "Likelihood" begin
+    ℓ = Likelihood(3) do μ
+        ∫exp(Lebesgue(ℝ)) do x
+            -(x - μ)^2
+        end
+    end
+
+    @inferred logdensityof(ℓ, 2.0)
+end
+
 # @testset "Likelihood" begin
 #     dps = [
 #         (Normal()                             ,    2.0  )
