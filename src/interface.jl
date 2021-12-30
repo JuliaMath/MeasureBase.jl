@@ -25,7 +25,7 @@ function test_interface(μ::M) where {M}
 
             ###########################################################################
             # basemeasure_depth
-            static_depth = @inferred basemeasure_depth(μ) 
+            static_depth = basemeasure_depth(μ) 
 
             dynamic_depth = dynamic_basemeasure_depth(μ)
 
