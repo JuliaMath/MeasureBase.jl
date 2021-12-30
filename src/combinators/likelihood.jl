@@ -104,17 +104,14 @@ and we observe `x=3`. We can compute the posterior measure on `μ` as
 struct Likelihood{K,X}
     k::K
     x::X
+
+    Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = new{K,X}(k,x)
+    Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k,x)
+    Likelihood(μ, x) = Likelihood(kleisli(μ), x)
 end
 
 # Not really a density, but this makes the code work
 @inline DensityKind(::Likelihood) = IsDensity()
-
-Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = Likelihood{K,X}(k,x)
-Likelihood(k::K, x::X) where {K<:Function,X} = Likelihood{K,X}(k,x)
-
-Likelihood(μ::AbstractMeasure, x) = Likelihood(kleisli(μ), x)
-
-Likelihood(::Type{M}, x) where {M<:AbstractMeasure} = Likelihood(kleisli(M), x)
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)

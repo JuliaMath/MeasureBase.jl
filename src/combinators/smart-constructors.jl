@@ -95,7 +95,7 @@ kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_
 
 # kleisli(Normal(μ=2))
 function kleisli(μ::M) where {M<:AbstractMeasure}
-    constructorof(M)
+    kleisli(M)
 end
 
 # kleisli(Normal{(:μ,), Tuple{Int64}})
