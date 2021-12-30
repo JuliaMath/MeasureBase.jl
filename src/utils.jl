@@ -67,34 +67,28 @@ end
 
 export basemeasure_depth
 
-@inline function basemeasure_depth(μ::M) where {M}
-    return basemeasure_depth(μ, basemeasure(μ), static(0))
+@constprop :aggressive function basemeasure_depth(μ::M) where {M}
+    return static(tbasemeasure_depth(M, typeof(basemeasure(μ)), 0))
 end
 
-@inline function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
-    return s
+@inline function basemeasure_depth(μ::M, β::M, n) where {M}
+    return n
 end
 
-@inline function basemeasure_depth(μ::M, β::B, s) where {M,B,N}
-    if @generated
-        return tbasemeasure_depth(M, B, s)
-    else
-        return basemeasure_depth(β, basemeasure(β) , s + static(1))
-    end
+@inline function basemeasure_depth(μ::M, β::B, n) where {M,B}
+    return tbasemeasure_depth(M, B, n)
 end
 
-@inline tbasemeasure_depth(::Type{M}) where M = tbasemeasure_depth(M, tbasemeasure_type(M), static(0))
-
-@inline function tbasemeasure_depth(::Type{M}, ::Type{M}, s::StaticInt{N}) where {M,N}
-    return s
+@constprop :aggressive function tbasemeasure_depth(::Type{M}) where {M}
+    static(tbasemeasure_depth(M, tbasemeasure_type(M), 0))
 end
 
-@inline function tbasemeasure_depth(::Type{M}, ::Type{B}, s::StaticInt{N}) where {M,B,N}
-    if @generated
-        return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
-    else
-        return tbasemeasure_depth(B, tbasemeasure_type(B), s + static(1))
-    end
+@inline function tbasemeasure_depth(::Type{M}, ::Type{M}, n) where {M}
+    return n
+end
+
+@inline function tbasemeasure_depth(::Type{M}, ::Type{B}, n) where {M,B}
+    return tbasemeasure_depth(B, tbasemeasure_type(B), n + 1)
 end
 
 
