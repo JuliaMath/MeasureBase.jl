@@ -9,11 +9,6 @@ struct For{T, F, I} <: AbstractProductMeasure
 
     @inline function For(f::F, inds::I) where {F,I<:Tuple}
         T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
-        if T==Any
-            println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-            @show (f, inds)
-            println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        end
         new{T,instance_type(f),I}(f, inds)
     end
 
