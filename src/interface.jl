@@ -16,13 +16,7 @@ function test_interface(μ::M) where {M}
         @testset "$μ" begin
             μ = $μ
             M = $M
-            ###########################################################################
-            # basemeasure_type
-
-            # @test @inferred tbasemeasure_type(M) == @inferred basemeasure_type(μ)
-
-            # @test !isabstracttype(typejoin(basemeasure_type(μ ), (typeof ∘ basemeasure)(μ)))
-
+           
             ###########################################################################
             # basemeasure_depth
             static_depth = @inferred basemeasure_depth(μ) 

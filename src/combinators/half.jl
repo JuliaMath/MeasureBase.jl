@@ -21,11 +21,6 @@ isnonnegative(x) = x ≥ 0.0
     FactoredBase(inbounds, constℓ, varℓ, base)
 end
 
-function tbasemeasure_type(::Type{Half{M}}) where {M}
-    B = tbasemeasure_type(M)
-    FactoredBase{typeof(isnonnegative),StaticFloat64{logtwo},Returns{StaticFloat64{0.0}},B}
-end
-
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
     return abs(rand(rng, T, unhalf(μ)))
 end

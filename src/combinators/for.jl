@@ -23,13 +23,18 @@ function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Genera
     end
 end
 
+function marginals(d::For{T,F,I}) where {T,F,I}
+    f(x...) = d.f(x...)::T
+    mappedarray(f, d.inds...)
+end
+
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     f(x...) = d.f(x...)::T
     Iterators.map(f, d.inds...)
 end
 
 @inline function basemeasure(d::For{T,F,I}) where {T,F,I}
-    B = tbasemeasure_type(T)
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
     _basemeasure(d, B, static(Base.issingletontype(B)))
 end
 
@@ -57,28 +62,6 @@ function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMea
     For{B,newF,I}(f, d.inds)
 end
 
-@inline function tbasemeasure_type(::Type{For{T, F, I}}) where {T,F,I}
-    if @generated 
-        B = tbasemeasure_type(T)
-        return _tbasemeasure_type(For{T, F, I}, B)
-    else
-        B = tbasemeasure_type(T)
-        return _tbasemeasure_type(For{T, F, I}, B)
-    end
-end
-
-@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}) where {B,T,F,I}
-    _tbasemeasure_type(For{T, F, I}, B, static(Base.issingletontype(B)))
-end
-
-@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}, ::True) where {B,T,F,I}
-    return PowerMeasure{B, I}
-end
-
-@inline function _tbasemeasure_type(::Type{For{T, F, I}}, ::Type{B}, ::False) where {B,T,F,I}
-    return For{B, typeof(basekleisli(instance(F))), I}
-end
-
 function Pretty.tile(d::For{T}) where {T}
     result = Pretty.literal("For{")
     result *= Pretty.tile(T)
@@ -91,10 +74,6 @@ function Pretty.tile(d::For{T}) where {T}
     )
 end
 
-function marginals(d::For{T,F,I}) where {T,F,I}
-    f(x...) = d.f(x...)::T
-    mappedarray(f, d.inds...)
-end
 
 """
     For(f, base...)

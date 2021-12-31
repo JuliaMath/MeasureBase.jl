@@ -37,18 +37,6 @@ end
     return q
 end
 
-function trootmeasure_type(::Type{M}) where {M}
-    trootmeasure_type(M, tbasemeasure_type(M), static(0))
-end
-
-function trootmeasure_type(::Type{M}, ::Type{M}, s::StaticInt{N}) where {M,N}
-    return M
-end
-
-function trootmeasure_type(::Type{M}, ::Type{B}, s::StaticInt{N}) where {M,B,N}
-    return trootmeasure_type(B, tbasemeasure_type(B), static(1) + s)
-end
-
 # Base on the Tricks.jl README
 using Tricks
 struct Iterable end
@@ -78,21 +66,6 @@ end
 @inline function basemeasure_depth(μ::M, β::B) where {M,B}
     return 1 + basemeasure_depth(β, basemeasure(β))
 end
-
-@inline function tbasemeasure_depth(::Type{M}) where {M}
-    static(tbasemeasure_depth(M, tbasemeasure_type(M)))
-end
-
-@inline function tbasemeasure_depth(::Type{M}, ::Type{M}) where {M}
-    return 0
-end
-
-@inline function tbasemeasure_depth(::Type{M}, ::Type{B}) where {M,B}
-    return 1 + tbasemeasure_depth(B, tbasemeasure_type(B))
-end
-
-
-@inline basemeasure_type(μ::M) where M = tbasemeasure_type(M)
 
 # Adapted from https://github.com/JuliaArrays/MappedArrays.jl/blob/46bf47f3388d011419fe43404214c1b7a44a49cc/src/MappedArrays.jl#L229
 function func_string(f, types)

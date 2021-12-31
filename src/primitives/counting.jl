@@ -16,8 +16,6 @@ basemeasure(::Counting) = CountingMeasure()
 
 Counting() = Counting(ℤ)
 
-tbasemeasure_type(::Type{C}) where {C<:Counting} = CountingMeasure
-
 testvalue(d::Counting) = testvalue(d.support)
 
 proxy(d::Counting) = restrict(in(d.support), CountingMeasure())

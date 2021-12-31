@@ -21,10 +21,6 @@ end
     SpikeMixture(basemeasure(μ.m), static(1.0), static(1.0))
 end
 
-function tbasemeasure_type(::Type{SpikeMixture{M,W,S}}) where {M,W,S}
-    B = tbasemeasure_type(M)
-    SpikeMixture{B,StaticFloat64{1.0},StaticFloat64{1.0}}
-end
 
 @inline function logdensity_def(μ::SpikeMixture, x)
     if iszero(x)

@@ -23,5 +23,3 @@ function Pretty.tile(fb::FactoredBase)
 end
 
 basemeasure(d::FactoredBase) = d.base
-
-tbasemeasure_type(::Type{FactoredBase{R,C,V,B}}) where {R,C,V,B} = B

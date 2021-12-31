@@ -72,8 +72,6 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-tbasemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
-
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)

@@ -23,8 +23,6 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     base::M
 end
 
-tbasemeasure_type(::Type{WeightedMeasure{R,M}}) where {R,M} = M
-
 function Base.show(io::IO, μ::WeightedMeasure)
     io = IOContext(io, :compact => true)
     print(io, exp(μ.logweight), " * ", μ.base)
@@ -69,7 +67,5 @@ function Base.show(io::IO, d::ParamWeightedMeasure)
 end
 
 basemeasure(d::ParamWeightedMeasure) = d.base
-
-tbasemeasure_type(::Type{ParamWeightedMeasure{L,N,T,B}}) where {L,N,T,B} = B
 
 logdensity_def(d::ParamWeightedMeasure, x) = d.ℓ(d.par)
