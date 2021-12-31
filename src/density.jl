@@ -103,26 +103,23 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline logdensityof(μ, x) = first(_logdensityof(μ, basemeasure(μ, x), x))
+@inline logdensityof(μ, x) = _logdensityof(μ, x)
+
+@inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 
 @inline function  _logdensityof(μ, α, x)
     ℓ = dynamic(logdensity_def(μ, x))
     L = typeof(ℓ)
-    (ℓ,r) = _logdensityof(μ, α, x, ℓ)::Tuple{L,Any}
-
-    return (ℓ, r)
+    _logdensityof(μ, α, x, ℓ)::L
 end
 
-@inline function _logdensityof(μ::M, β::M, x, ℓ::T) where {M,T}
-    return (ℓ, μ)
+@inline function _logdensityof(μ::M, β::M, x, ℓ) where {M}
+    return ℓ
 end
 
 @inline function _logdensityof(μ::M, β, x, ℓ) where {M}
     n = basemeasure_depth(μ) - static(1)
-    # @show μ
-    # @show ℓ
-    # println()
-    return _logdensityof(β, basemeasure(β,x), x, ℓ, n)
+    _logdensityof(β, basemeasure(β,x), x, ℓ, n)
 end
 
 @generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}
@@ -137,7 +134,7 @@ end
             μ,β = β, basemeasure(β, x)
             ℓ += Δℓ
         end
-        return (ℓ, β)
+        return ℓ
     end
 end
 

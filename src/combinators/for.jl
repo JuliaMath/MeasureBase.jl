@@ -28,49 +28,33 @@ function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     Iterators.map(f, d.inds...)
 end
 
-
-@inline function basemeasure(μ::For{T,F,I}) where {T<:AbstractMeasure,F,I}
-    mar = marginals(μ)
+@inline function basemeasure(d::For{T,F,I}) where {T,F,I}
     B = tbasemeasure_type(T)
-    if Base.issingletontype(B)
-        return basemeasure(first(mar)) ^ axes(mar)
-    elseif B <: AbstractMeasure
-        new_f = basekleisli(μ.f)
-        new_F = typeof(new_f)
-        return For{B,new_F, I}(new_f, μ.inds)
-    else
-        return productmeasure(basemeasure.(marginals(μ)))
-    end
+    _basemeasure(d, B, static(Base.issingletontype(B)))
 end
 
-@inline function basemeasure(μ::For{T,F,I}) where {T,F,I}
-    return productmeasure(basemeasure.(marginals(μ)))
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {T,F,I,B}
+    instance(B) ^ axes(d.inds)
 end
 
-@generated function basemeasure(d::For{T,F,I}) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator}}
-    B = tbasemeasure_type(T)
-    if Base.issingletontype(B) 
-        b = instance(B)
-        return :($b ^ minimum(length, d.inds))
-    end
-
-    return quote
-        f = basekleisli(d.f)
-        newF = typeof(f)
-        For{B,newF,I}(f, d.inds)
-    end
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
+    new_f = basekleisli(d.f)
+    new_F = typeof(new_f)
+    For{B,new_F, I}(new_f, d.inds)
 end
 
-@generated function basemeasure(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    if static_hasmethod(tbasemeasure_type, Tuple{T})
-        B = tbasemeasure_type(T)
-        if Base.issingletontype(B) 
-            b = instance(B)
-            return :($b ^ minimum(length, d.inds))
-        end
-    end
-    
-    return :(For(basekleisli(d.f), d.inds))
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B}
+    productmeasure(basemeasure.(marginals(d)))
+end
+
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    return instance(B) ^ minimum(length, d.inds)
+end
+
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    f = basekleisli(d.f)
+    newF = typeof(f)
+    For{B,newF,I}(f, d.inds)
 end
 
 @inline function tbasemeasure_type(::Type{For{T, F, I}}) where {T,F,I}
