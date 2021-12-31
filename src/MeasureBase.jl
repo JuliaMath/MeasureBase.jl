@@ -107,7 +107,6 @@ export test_interface
 export basemeasure_depth
 export proxy
 
-include("help.jl")
 include("interface.jl")
 end # module Interface
 
