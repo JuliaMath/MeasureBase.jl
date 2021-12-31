@@ -68,7 +68,7 @@ end
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
-    return static(tbasemeasure_depth(M, typeof(basemeasure(μ))))
+    return static(basemeasure_depth(μ, basemeasure(μ)))
 end
 
 @inline function basemeasure_depth(μ::M, β::M) where {M}
@@ -76,7 +76,7 @@ end
 end
 
 @inline function basemeasure_depth(μ::M, β::B) where {M,B}
-    return tbasemeasure_depth(M, B)
+    return 1 + basemeasure_depth(β, basemeasure(β))
 end
 
 @inline function tbasemeasure_depth(::Type{M}) where {M}
