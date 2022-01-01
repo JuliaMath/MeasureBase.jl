@@ -12,8 +12,8 @@ abstract type AbstractWeightedMeasure <: AbstractMeasure end
 logweight(μ::AbstractWeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
-@inline function logdensity_def(sm::AbstractWeightedMeasure, x)
-    logdensity_def(sm.base, x) + sm.logweight
+@inline function logdensity_def(d::AbstractWeightedMeasure, x)
+    d.logweight
 end
 
 ###############################################################################
@@ -22,8 +22,6 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight::R
     base::M
 end
-
-tbasemeasure_type(::Type{WeightedMeasure{R,M}}) where {R,M} = M
 
 function Base.show(io::IO, μ::WeightedMeasure)
     io = IOContext(io, :compact => true)

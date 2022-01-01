@@ -98,8 +98,7 @@ end
         end
     ]
 
-    for (n,d) in enumerate(FORDISTS)
-        # @show n,d
+    for d in FORDISTS
         test_interface(d)
     end
 end
@@ -110,6 +109,16 @@ end
     @test logdensityof(HalfNormal(), -0.2) == -Inf
     @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
     @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(Normal(), 0.2)
+end
+
+@testset "Likelihood" begin
+    ℓ = Likelihood(3) do μ
+        ∫exp(Lebesgue(ℝ)) do x
+            -(x - μ)^2
+        end
+    end
+
+    @inferred logdensityof(ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin

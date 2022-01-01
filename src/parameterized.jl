@@ -29,7 +29,8 @@ end
 export kleisli
 
 function kleisli(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    function(args...) P(args...) end
+    C = constructorof(P)
+    function(args...) C(NamedTuple{N}(args...)) end
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}

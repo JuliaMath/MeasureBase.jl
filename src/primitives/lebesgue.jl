@@ -20,8 +20,6 @@ Lebesgue() = Lebesgue(ℝ)
 
 # basemeasure(::Lebesgue) = LebesgueMeasure()
 
-tbasemeasure_type(::Type{<:Lebesgue}) = LebesgueMeasure
-
 testvalue(d::Lebesgue) = testvalue(d.support)
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())

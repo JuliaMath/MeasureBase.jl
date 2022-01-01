@@ -7,13 +7,13 @@ struct For{T, F, I} <: AbstractProductMeasure
     f::F
     inds::I
 
-    function For(f::F, inds::I) where {F,I<:Tuple}
-        T = Core.Compiler.return_type(f, Tuple{eltype.(inds)...})
-        new{T,F,I}(f, inds)
+    @inline function For(f::F, inds::I) where {F,I<:Tuple}
+        T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
+        new{T,instance_type(f),I}(f, inds)
     end
-end
 
-@useproxy For
+    For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
+end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
 
@@ -46,16 +46,18 @@ function marginals(d::For{T,F,I}) where {T,F,I}
     mappedarray(f, d.inds...)
 end
 
-function tproxy(::Type{For{T,F,I}}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    ProductMeasure{Base.Generator{F, Iterators.Zip{I}}}
+function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    f(x...) = d.f(x...)::T
+    Iterators.map(f, d.inds...)
 end
 
-function tproxy(::Type{For{T,F,Tuple{I}}}) where {Ta,N,I<:AbstractArray{Ta,N},T,F}
-    ProductMeasure{MappedArrays.ReadonlyMappedArray{T, N, I, F}}
+@inline function basemeasure(d::For{T,F,I}) where {T,F,I}
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _basemeasure(d, B, static(Base.issingletontype(B)))
 end
 
-function tproxy(::Type{For{T,F,I}}) where {M,Ta,N,T,F,I<:NTuple{M,<:AbstractArray{Ta,N}}}
-    ProductMeasure{MappedArrays.ReadonlyMultiMappedArray{T, N, I, F}}
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {T,F,I,B}
+    instance(B) ^ axes(d.inds)
 end
 
 @inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
@@ -63,7 +65,9 @@ end
     _For(B, f, d.inds)
 end
 
-# end
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B}
+    productmeasure(basemeasure.(marginals(d)))
+end
 
 function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
     return instance(B) ^ minimum(length, d.inds)
@@ -72,18 +76,12 @@ end
 function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
     f = basekleisli(d.f)
     _For(B, f, d.inds)
-end
-
-function Pretty.tile(d::For{T}) where {T}
-    result = Pretty.literal("For{")
-    result *= Pretty.tile(T)
-    result *= Pretty.literal("}(")
-    result *= Pretty.literal(func_string(d.f, Tuple{eltype.(d.inds)...}))
-    for ind in d.inds
-        result *= Pretty.literal(", ")
-        result *= Pretty.tile(ind)
-    end
-    result *= Pretty.literal(")")
+    result *= Pretty.list_layout(
+        [
+            Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...})),
+            Pretty.tile.(d.inds)...
+        ]
+    )
 end
 
 function _For(::Type{T}, f::F, inds::I) where {T,F,I}
@@ -165,3 +163,13 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 For(f, inds...) = For(f, inds)
 For(f, n::Integer) = For(f, Base.OneTo(n))
 For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+# For(f, inds::Base.Generator) = productmeasure(mymap(f, inds))
+
+function Random.rand!(rng::AbstractRNG, d::For, x) 
+    mar = marginals(d)
+    @inbounds for (dⱼ, j) in zip(marginals(d), eachindex(x))
+        x[j] = rand(rng,dⱼ)
+    end
+    return x
+end
+

@@ -15,6 +15,4 @@ end
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
-tbasemeasure_type(::Type{RestrictedMeasure{F,M}}) where {F,M} = M
-
 insupport(μ::RestrictedMeasure, x) = μ.f(x) && insupport(μ.base, x)

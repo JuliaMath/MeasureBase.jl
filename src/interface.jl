@@ -24,14 +24,23 @@ function test_interface(μ::M) where {M}
             JET.@test_call basemeasure_depth(μ) 
             static_depth = @inferred basemeasure_depth(μ) 
 
-        @test !isabstracttype(typejoin(basemeasure_type(μ), (typeof ∘ basemeasure)(μ)))
+            dynamic_depth = dynamic_basemeasure_depth(μ)
 
-        ###########################################################################
-        # basemeasure_depth
-        static_depth = @inferred basemeasure_depth(μ) 
+            if static_depth > dynamic_depth
+                @warn "basemeasure_depth($μ) greater than requirement, could add some overhead"
+            end
+            @test static_depth ≥ dynamic_depth
 
-        @test static_depth == tbasemeasure_depth(M)
-        dynamic_depth = dynamic_basemeasure_depth(μ)
+            ###########################################################################
+            # testvalue, logdensityof
+
+            x = testvalue(μ)
+            β = @inferred basemeasure(μ, x)
+
+            ℓμ = @inferred logdensityof(μ, x)
+            ℓβ = @inferred logdensityof(β, x)
+
+            @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
             x = testvalue(μ)
             JET.@test_opt basemeasure(μ, x)

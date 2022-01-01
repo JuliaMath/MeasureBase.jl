@@ -32,7 +32,9 @@ function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
     return Density(μ, base)
 end
 
-densityof(d::Density, x) = exp(logdensityof(d.μ, d.base, x))
+logdensityof(d::Density, x) = logdensityof(d.μ, x) - logdensityof(d.base, x)
+
+logdensity_def(d::Density, x) = logdensityof(d, x)
 
 """
     struct DensityMeasure{F,B} <: AbstractMeasure
@@ -70,13 +72,10 @@ end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-tbasemeasure_type(::Type{DensityMeasure{F,B}}) where {F,B} = B
-
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-densityof(μ::AbstractMeasure, ν::AbstractMeasure, x) = exp(logdensityof(μ, ν, x))
 
 export ∫
 
@@ -102,25 +101,23 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline function logdensityof(μ::T, ν::T, x) where {T<:AbstractMeasure}
-    μ == ν && return 0.0
-    invoke(logdensityof, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
-end
+@inline logdensityof(μ, x) = _logdensityof(μ, x)
 
-@inline function logdensityof(μ::AbstractMeasure, ν::AbstractMeasure, x)
-    α = basemeasure(μ)
-    β = basemeasure(ν)
+@inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 
 @inline function  _logdensityof(μ, α, x)
-    ℓ = partialstatic(logdensity_def(μ, x))
-    _logdensityof(μ, α, x, ℓ)
+    ℓ = dynamic(logdensity_def(μ, x))
+    L = typeof(ℓ)
+    _logdensityof(μ, α, x, ℓ)::L
 end
 
+@inline function _logdensityof(μ::M, β::M, x, ℓ) where {M}
     return ℓ
 end
 
 @inline function _logdensityof(μ::M, β, x, ℓ) where {M}
-    _logdensityof(β, basemeasure(β, x), x, ℓ, static(basemeasure_depth(β)))
+    n = basemeasure_depth(μ) - static(1)
+    _logdensityof(β, basemeasure(β,x), x, ℓ, n)
 end
 
 @generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}
@@ -128,16 +125,43 @@ end
     quote
         $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $nsteps i -> begin
-            Δℓ = logdensity_def(μ, x)
+            Δℓ = oftype(ℓ, logdensity_def(μ, x))
             # @show μ
+            # @show Δℓ
             # println()
             μ,β = β, basemeasure(β, x)
-            ℓ += partialstatic(Δℓ)
+            ℓ += Δℓ
         end
         return ℓ
+    end
+end
+
+@inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
+    (ℓ₋, β) = _logdensityof(ν, basemeasure(ν), x)
+    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
+end
+
+@inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
+    if static_hasmethod(logdensity_def, Tuple{A,B,X})
+        return ℓ + logdensity_def(α, β, x)
+    elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
+        return ℓ + logdensity_def(β, α, x)
+    else
+        @warn """
+        No method 
+        logdensity(::$A, ::$B, ::$X)
+        """
+        return oftype(ℓ, NaN)
+    end
+end
+
+# logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
+
+export densityof
+export logdensityof
 
 export density_def
-
 
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 density_def(μ, x) = exp(logdensity_def(μ, x))

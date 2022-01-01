@@ -64,10 +64,6 @@ end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-function tbasemeasure_type(::Type{S}) where {C,S<:SuperpositionMeasure{C}}
-    SuperpositionMeasure{tmap(tbasemeasure_type, C)}
-end
-
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
 #     return rand(rand(μ.components))

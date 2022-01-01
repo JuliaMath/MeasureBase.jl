@@ -59,30 +59,6 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent) ^ d.axes
 end
 
-function basemeasure_depth(::PowerMeasure{M}) where {M}
-    return tbasemeasure_depth(M)
-end
-
-function tbasemeasure_type(::Type{P}) where {M,P<:PowerMeasure{M}}
-    tbasemeasure_type(P, tbasemeasure_type(M))
-end
-
-# This form assumes
-# P == typeof(μ)
-# B == typeof(basemeasure(parent(μ)))
-function tbasemeasure_type(::Type{P},::Type{B}) where {M,D,B,P<:PowerMeasure{M,D}}
-    return PowerMeasure{B,D}
-end
-
-function tbasemeasure_type(::Type{P},::Type{B}) where {M,T,W,D,B<:WeightedMeasure{W,T},P<:PowerMeasure{M,D}}
-    return WeightedMeasure{W,PowerMeasure{T,D}}
-end
-
-
-function tbasemeasure_depth(::Type{PowerMeasure{M,D}}) where {M<:PrimitiveMeasure,D}
-    return static(0)
-end
-
 @inline function logdensity_def(d::PowerMeasure, x)
     sum(x) do xj
         logdensity_def(d.parent, xj)
