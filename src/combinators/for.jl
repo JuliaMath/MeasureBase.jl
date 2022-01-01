@@ -17,12 +17,33 @@ end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
 
-function proxy(d::For{T,F,I}) where {T,F,I}
-    productmeasure(mappedarray(d.f, d.inds...))
+function logdensity_def(d::For, x::AbstractVector) 
+    sum(eachindex(x)) do i
+        @inbounds logdensity_def(d.f(getindex.(d.inds,i)...), x[i])
+    end
 end
 
-function proxy(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    productmeasure(Base.Generator(d.f, zip(d.inds...)))
+function logdensity_def(d::For, x::AbstractArray) 
+    sum(CartesianIndices(x)) do i
+        @inbounds logdensity_def(d.f(i), x[i])
+    end
+end
+
+function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
+    end
+end
+
+function logdensity_def(d::For{T,F,I}, x::AbstractVector) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
+    end
+end
+
+function marginals(d::For{T,F,I}) where {T,F,I}
+    f(x...) = d.f(x...)::T
+    mappedarray(f, d.inds...)
 end
 
 function tproxy(::Type{For{T,F,I}}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
@@ -37,11 +58,21 @@ function tproxy(::Type{For{T,F,I}}) where {M,Ta,N,T,F,I<:NTuple{M,<:AbstractArra
     ProductMeasure{MappedArrays.ReadonlyMultiMappedArray{T, N, I, F}}
 end
 
-# function tproxy(::Type{For{ProductMeasure{T}, F, I}}) where {N,T<:NTuple{N,<:AbstractMeasure},F,I}
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
+    f = basekleisli(d.f)
+    _For(B, f, d.inds)
+end
 
 # end
 
-tbasemeasure_type(::Type{For{T,F,I}}) where {T,F,I} = tbasemeasure_type(tproxy(For{T,F,I}))
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    return instance(B) ^ minimum(length, d.inds)
+end
+
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    f = basekleisli(d.f)
+    _For(B, f, d.inds)
+end
 
 function Pretty.tile(d::For{T}) where {T}
     result = Pretty.literal("For{")
@@ -55,7 +86,10 @@ function Pretty.tile(d::For{T}) where {T}
     result *= Pretty.literal(")")
 end
 
-marginals(d::For) = marginals(proxy(d))
+function _For(::Type{T}, f::F, inds::I) where {T,F,I}
+    For{T,F,I}(f,inds)
+end
+
 
 """
     For(f, base...)

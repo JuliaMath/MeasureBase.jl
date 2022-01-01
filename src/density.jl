@@ -111,46 +111,16 @@ end
     α = basemeasure(μ)
     β = basemeasure(ν)
 
-    # If α===μ and β===ν, The recursive call would be exactly the same as the
-    # original one. We need to break the recursion.
-    if α === μ && β === ν
-        @warn """
-        No method found for logdensity_def(μ, ν, x) where
-        typeof(μ) == $(typeof(μ))
-        typeof(ν) == $(typeof(ν))
-
-        Returning NaN. If this is incorrect, please add a method        
-        logdensity_def(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
-        """
-        return NaN
-    end
-
-    # Infinite or NaN results occur when outside the support of α or β, 
-    # and also when one measure is singular wrt the other. Computing the base
-    # measures first is often much cheaper, and allows the numerically-intensive
-    # computation to "fall through" in these cases.
-    # TODO: Add tests to check that NaN cases work properly
-    ℓ = logdensityof(α, β, x)
-    isnan(ℓ) && return ℓ
-
-    ℓ += logdensity_def(μ, x)
-    ℓ -= logdensity_def(ν, x)
+@inline function  _logdensityof(μ, α, x)
+    ℓ = partialstatic(logdensity_def(μ, x))
+    _logdensityof(μ, α, x, ℓ)
+end
 
     return ℓ
 end
 
-@inline logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x, logdensity_def(μ, x))
-
-# Because it's sometimes useful, this returns a pair (ℓ,r) where
-# • ℓ is the log-density
-# • r is the rootmeasure of μ
-@inline function _logdensityof(μ, β, x, ℓ)
-    n = basemeasure_depth(μ) - static(1)
-    iszero(n) && return ℓ
-    # @show μ
-    # @show ℓ
-    # println()
-    return _logdensityof(β, basemeasure(β,x), x, ℓ, n)
+@inline function _logdensityof(μ::M, β, x, ℓ) where {M}
+    _logdensityof(β, basemeasure(β, x), x, ℓ, static(basemeasure_depth(β)))
 end
 
 @generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}
@@ -158,26 +128,18 @@ end
     quote
         $(Expr(:meta, :inline))
         Base.Cartesian.@nexprs $nsteps i -> begin
-            Δℓ = oftype(ℓ, logdensity_def(μ, x))
-            # @show Δℓ
+            Δℓ = logdensity_def(μ, x)
+            # @show μ
             # println()
-            μ,β = β, basemeasure(μ, x)
-            ℓ += Δℓ
+            μ,β = β, basemeasure(β, x)
+            ℓ += partialstatic(Δℓ)
         end
         return ℓ
-    end
-end
-
-# logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
-
-export densityof
-export logdensityof
 
 export density_def
 
 
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
-
 density_def(μ, x) = exp(logdensity_def(μ, x))
 
 """
