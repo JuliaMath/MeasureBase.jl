@@ -76,6 +76,11 @@ end
 function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
     f = basekleisli(d.f)
     _For(B, f, d.inds)
+
+function Pretty.tile(d::For{T}) where {T}
+    result = Pretty.literal("For{")
+    result *= Pretty.tile(T)
+    result *= Pretty.literal("}")
     result *= Pretty.list_layout(
         [
             Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...})),
