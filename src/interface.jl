@@ -34,33 +34,17 @@ function test_interface(μ::M) where {M}
             ###########################################################################
             # testvalue, logdensityof
 
-            x = testvalue(μ)
-            β = @inferred basemeasure(μ, x)
-
-            ℓμ = @inferred logdensityof(μ, x)
-            ℓβ = @inferred logdensityof(β, x)
-
-            @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
-
-            x = testvalue(μ)
+            x = @inferred testvalue(μ)
             JET.@test_opt basemeasure(μ, x)
-            β = @inferred basemeasure(μ, x)
+            β = basemeasure(μ, x)
 
             JET.@test_opt logdensityof(μ, x)
-            ℓμ = @inferred logdensityof(μ, x)
+            ℓμ = logdensityof(μ, x)
 
             JET.@test_opt logdensityof(β, x)
-            ℓβ = @inferred logdensityof(β, x)
+            ℓβ = logdensityof(β, x)
 
-        x = @inferred testvalue(μ)
-        β = @inferred basemeasure(μ)
-
-        @inferred logdensityof(μ, x)
-        @inferred logdensityof(β, x)
-        ℓμ = logdensityof(μ, x)
-        ℓβ = logdensityof(β, x)
-
-        @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
-
+            @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
+        end
     end
 end
