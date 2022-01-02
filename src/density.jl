@@ -122,6 +122,7 @@ end
     nsteps = max(n, 0)
     quote
         $(Expr(:meta, :inline))
+        # @show ℓ
         Base.Cartesian.@nexprs $nsteps i -> begin
             Δℓ = logdensity_def(μ, x)
             # @show μ

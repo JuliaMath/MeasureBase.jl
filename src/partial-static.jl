@@ -111,3 +111,7 @@ function add_partial_static(x, y)
 end
 
 Base.exp(x::PartialStatic) = exp(known(x.static) + x.dynamic)
+
+Base.isapprox(x::PartialStatic, y::PartialStatic; kwargs...) = isapprox(dynamic(x), dynamic(y); kwargs...)
+Base.isapprox(x::Number, y::PartialStatic; kwargs...) = isapprox(dynamic(x), dynamic(y); kwargs...)
+Base.isapprox(x::PartialStatic, y::Number; kwargs...) = isapprox(dynamic(x), dynamic(y); kwargs...)

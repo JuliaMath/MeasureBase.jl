@@ -10,8 +10,6 @@ function dynamic_basemeasure_depth(μ)
     return depth
 end
 
-using JET
-
 function test_interface(μ::M) where {M}
     @eval begin
         μ = $μ
@@ -21,7 +19,6 @@ function test_interface(μ::M) where {M}
            
             ###########################################################################
             # basemeasure_depth
-            JET.@test_call basemeasure_depth(μ) 
             static_depth = @inferred basemeasure_depth(μ) 
 
             dynamic_depth = dynamic_basemeasure_depth(μ)
@@ -35,14 +32,10 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = @inferred testvalue(μ)
-            JET.@test_opt basemeasure(μ, x)
-            β = basemeasure(μ, x)
+            β = @inferred basemeasure(μ, x)
 
-            JET.@test_opt logdensityof(μ, x)
-            ℓμ = logdensityof(μ, x)
-
-            JET.@test_opt logdensityof(β, x)
-            ℓβ = logdensityof(β, x)
+            ℓμ = @inferred logdensityof(μ, x)
+            ℓβ = @inferred logdensityof(β, x)
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
         end
