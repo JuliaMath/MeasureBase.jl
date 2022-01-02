@@ -13,8 +13,10 @@ struct PartialStatic{S,D} <: AbstractFloat
     end
 end
 
-function Static.dynamic(x::PartialStatic{S,D}) where {S,D}
-    (dynamic(x.static) + dynamic(x.dynamic))::D
+function Static.dynamic(x::PartialStatic)
+    dyn = dynamic(x.dynamic)
+    D = typeof(dyn)
+    (x.static + dyn)::D
 end
 
 function Base.show(io::IO, p::PartialStatic)
