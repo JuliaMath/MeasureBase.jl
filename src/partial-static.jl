@@ -7,11 +7,14 @@ struct PartialStatic{S,D} <: AbstractFloat
     static::S
     dynamic::D
 
-    function PartialStatic(x, y)
-        s = static(x)
-        d = dynamic(y)
-        new{typeof(s), typeof(d)}(s, d)
+    function PartialStatic(s::S, d::D) where {S,D}
+        @assert known(is_static(s))
+        new{S,D}(s, d)
     end
+end
+
+function Static.dynamic(x::PartialStatic{S,D}) where {S,D}
+    (dynamic(x.static) + dynamic(x.dynamic))::D
 end
 
 function Base.show(io::IO, p::PartialStatic)
@@ -51,17 +54,13 @@ function _promote(::Type{PartialStatic{S,D}}, ::Type{T}, ::False) where {S,D,T}
     PartialStatic{S,promote_rule(D,T)}
 end
 
-
 partialstatic(x) = _partialstatic(x, is_static(x))
 
 partialstatic(x::PartialStatic) = x
 
-_partialstatic(x, ::True) = PartialStatic(x, false)
+_partialstatic(x, ::True) = PartialStatic(x, static(0.0))
 
 _partialstatic(x, ::False) = PartialStatic(static(0.0), x)
-
-
-
 
 function Base.:+(x::PartialStatic{S1,D1}, y::PartialStatic{S2,D2}) where {S1,D1,S2,D2}
     PartialStatic(x.static + y.static, x.dynamic + y.dynamic)

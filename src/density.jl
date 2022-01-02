@@ -101,7 +101,7 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline logdensityof(μ, x) = _logdensityof(μ, x)
+@inline logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
 
 @inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 
