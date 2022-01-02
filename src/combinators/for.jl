@@ -17,16 +17,28 @@ end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
 
+@inline function logdensity_def(d::For{T,F,I}, x::AbstractVector{X}) where {X,T,F,I<:Tuple{<:AbstractVector}}
+    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+    @inbounds for j in eachindex(x)
+        ℓ += logdensity_def(d.f(j), x[j])
+    end
+    ℓ
+end
+
 function logdensity_def(d::For, x::AbstractVector) 
     sum(eachindex(x)) do i
         @inbounds logdensity_def(d.f(getindex.(d.inds,i)...), x[i])
     end
 end
 
-function logdensity_def(d::For, x::AbstractArray) 
-    sum(CartesianIndices(x)) do i
-        @inbounds logdensity_def(d.f(i), x[i])
+function logdensity_def(d::For{T,F,I}, x::AbstractArray{X}) where {T,F,I,X}
+    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+
+    @inbounds for j in CartesianIndices(x)
+        i = (getindex(ind, j) for ind in d.inds)
+        ℓ += logdensity_def(d.f(i...), x[j])
     end
+    ℓ
 end
 
 function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
