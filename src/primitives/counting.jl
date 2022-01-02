@@ -6,6 +6,8 @@ struct CountingMeasure <: PrimitiveMeasure end
 
 struct Counting{T} <: AbstractMeasure
     support::T
+
+    Counting(supp) = new{instance_type(supp)}(supp)
 end
 
 function logdensity_def(μ::Counting, x)
