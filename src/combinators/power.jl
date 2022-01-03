@@ -59,8 +59,12 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent) ^ d.axes
 end
 
-@inline function logdensity_def(d::PowerMeasure, x)
-    sum(x) do xj
-        logdensity_def(d.parent, xj)
+@inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
+    T = eltype(x)
+    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
+    parent = d.parent
+    @inbounds for xj in x
+        ℓ += logdensity_def(parent, xj)
     end
+    ℓ
 end
