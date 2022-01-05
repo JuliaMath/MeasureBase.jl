@@ -15,7 +15,6 @@ function test_interface(μ::M) where {M}
         μ = $μ
         @testset "$μ" begin
             μ = $μ
-            M = $M
            
             ###########################################################################
             # basemeasure_depth
