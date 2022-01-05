@@ -1,26 +1,5 @@
 
 ###############################################################################
-# Affine
-
-affine(f::AffineTransform, μ::AbstractMeasure) = Affine(f, μ)
-
-affine(nt::NamedTuple, μ::AbstractMeasure) = affine(AffineTransform(nt), μ)
-
-affine(f) = μ -> affine(f, μ)
-
-function affine(f::AffineTransform, parent::WeightedMeasure)
-    WeightedMeasure(parent.logweight, affine(f, parent.base))
-end
-
-function affine(f::AffineTransform, parent::FactoredBase)
-    constℓ = parent.constℓ
-    varℓ = parent.varℓ
-    # Avoid transforming `inbounds`, which is expensive
-    base = affine(f, restrict(parent.inbounds, parent.base))
-    FactoredBase(Returns(true), constℓ, varℓ, base)
-end
-
-###############################################################################
 # Half
 
 half(μ::AbstractMeasure) = Half(μ)
@@ -30,24 +9,6 @@ half(μ::AbstractMeasure) = Half(μ)
 
 pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
 
-function pointwiseproduct(
-    μ::PointwiseProductMeasure{X},
-    ν::PointwiseProductMeasure{Y}
-) where {X,Y}
-    data = (μ.data..., ν.data...)
-    pointwiseproduct(data...)
-end
-
-function pointwiseproduct(μ::AbstractMeasure, ν::PointwiseProductMeasure)
-    data = (μ, ν.data...)
-    return pointwiseproduct(data...)
-end
-
-function pointwiseproduct(μ::PointwiseProductMeasure, ν::N) where {N<:AbstractMeasure}
-    data = (μ.data..., ν)
-    return pointwiseproduct(data...)
-end
-
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
     data = (μ, ℓ)
     return PointwiseProductMeasure(data)
@@ -56,35 +17,31 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Returns(μ), identity, CartesianIndices(dims))
-end
-
-function powermeasure(μ::M, dims::Tuple{I}) where {M<:AbstractMeasure,N,I}
-    productmeasure(Returns(μ), identity, Base.OneTo(first(dims)))
-end
-
 function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
-    k = prod(dims) * μ.logweight
+    k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
 ###############################################################################
 # ProductMeasure
 
-productmeasure(f, ops, pars) = ProductMeasure(kernel(f, ops), pars)
+productmeasure(mar::Fill) = powermeasure(mar.value, mar.axes)
 
-productmeasure(f, pars) = productmeasure(f, identity, pars)
+function productmeasure(mar::ReadonlyMappedArray{T, N, A, Returns{M}}) where {T,N,A,M}
+    return powermeasure(mar.f.value, axes(mar.data))
+end
 
-productmeasure(μs::Tuple) = TupleProductMeasure(μs)
+productmeasure(mar::Base.Generator) = ProductMeasure(mar)
+productmeasure(mar::AbstractArray) = ProductMeasure(mar)
+productmeasure(nt::NamedTuple) = ProductMeasure(nt)
+productmeasure(tup::Tuple) = ProductMeasure(tup)
 
-productmeasure(f::Returns, ops, pars) = ProductMeasure(kernel(f, identity), pars)
+productmeasure(f, param_maps, pars) = ProductMeasure(kleisli(f, param_maps), pars)
 
-productmeasure(k::Kernel, pars) = productmeasure(k.f, k.ops, pars)
+productmeasure(k::ParameterizedKleisli, pars) = productmeasure(k.f, k.param_maps, pars)
 
-productmeasure(nt::NamedTuple) = productmeasure(identity, nt)
 
-function productmeasure(f::Returns{FB}, ops, pars) where {FB<:FactoredBase}
+function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
     fb = f.value
     dims = size(pars)
     n = prod(dims)
@@ -132,29 +89,26 @@ function weightedmeasure(ℓ, b::WeightedMeasure)
 end
 
 ###############################################################################
-# Kernel
+# Kleisli
 
-kernel(μ, ops...) = Kernel(μ, ops)
-kernel(μ, op) = Kernel(μ, op)
+kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
 
-# kernel(Normal(μ=2))
-function kernel(μ::P) where {P<:AbstractMeasure}
-    (f, ops) = kernelfactor(μ)
-    kernel(f, ops)
+# kleisli(Normal(μ=2))
+function kleisli(μ::M) where {M<:AbstractMeasure}
+    kleisli(M)
 end
 
-# kernel(Normal{(:μ,), Tuple{Int64}})
-function kernel(::Type{P}) where {P<:AbstractMeasure}
-    (f, ops) = kernelfactor(P)
-    kernel(f, ops)
+# kleisli(Normal{(:μ,), Tuple{Int64}})
+function kleisli(::Type{M}) where {M<:AbstractMeasure}
+    constructorof(M)
 end
 
-# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
+# kleisli(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kleisli{constructorof(P),O}(op)
 
-function kernel(::Type{M}; ops...) where {M}
-    nt = NamedTuple(ops)
-    kernel(M, nt)
+function kleisli(::Type{M}; param_maps...) where {M}
+    nt = NamedTuple(param_maps)
+    kleisli(M, nt)
 end
 
-kernel(f::Returns, op::typeof(identity)) = Kernel(f, op)
-kernel(f::Returns, op) = kernel(f, identity)
+
+kleisli(k::ParameterizedKleisli) = k

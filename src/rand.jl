@@ -8,12 +8,6 @@ Base.rand(rng::AbstractRNG, d::AbstractMeasure) = rand(rng, Float64, d)
 
 @inline Random.rand!(d::AbstractMeasure, args...) = rand!(GLOBAL_RNG, d, args...)
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, d::Affine) where {T}
-    z = rand(rng, T, parent(d))
-    f = getfield(d, :f)
-    return f(z)
-end
-
 # TODO: Make this work
 # function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractMeasure) where {T}
 #     x = testvalue(d)

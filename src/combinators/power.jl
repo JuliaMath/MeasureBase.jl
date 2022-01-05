@@ -10,76 +10,57 @@ using FillArrays: Fill
 # """
 # PowerMeasure{M,N,D} = ProductMeasure{Fill{M,N,D}}
 
-# function Base.show(io::IO, μ::PowerMeasure)
-#     io = IOContext(io, :compact => true)
-#     print(io, μ.data.value, " ^ ", size(μ.data))
-# end
-
-# function Base.show_unquoted(io::IO, μ::PowerMeasure{M,N,D}, indent::Int, prec::Int) where {M,N,D}
-#     io = IOContext(io, :compact => true)
-#     if Base.operator_precedence(:^) ≤ prec
-#         print(io, "(")
-#         show(io, μ.data.value)
-#         print(io, ")")
-#     else
-#         show(io, size(μ.data))
-#     end
-#     return nothing
-# end
-
 export PowerMeasure
 
-const PowerMeasure{F,S,T,N,A} = ProductMeasure{F,S,Fill{T,N,A}}
-
-Base.:^(μ::AbstractMeasure, ::Tuple{}) = μ
-
-function Base.:^(μ::AbstractMeasure, dims::Integer...)
-    return μ^dims
+struct PowerMeasure{M,A} <: AbstractProductMeasure
+    parent::M
+    axes::A
 end
 
-function Base.:^(μ::M, dims::NTuple{N,I}) where {M<:AbstractMeasure,N,I<:Integer}
+function Pretty.tile(μ::PowerMeasure)
+    sz = length.(μ.axes)
+    arg1 = Pretty.tile(μ.parent)
+    arg2 = Pretty.tile(length(sz) == 1 ? only(sz) : sz)
+    return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
+end
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+    map(CartesianIndices(d.axes)) do _
+        rand(rng, T, d.parent)
+    end
+end
+
+
+@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}
+    a = axes(Fill{T, N}(x, sz))
+    A = typeof(a)
+    PowerMeasure{T,A}(x,a)
+end
+
+marginals(d::PowerMeasure) = Fill(d.parent, d.axes)
+
+function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{<:AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
 end
 
-# Same as PowerMeasure
-function Pretty.tile(d::ProductMeasure{Returns{T},I,C}) where {T,I,C<:CartesianIndices}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(size(d.pars)); sep = " ^ ")
-end
+Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, Base.OneTo.(dims))
+Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
-function Pretty.tile(d::ProductMeasure{R,I,V}) where {R<:Returns,I,V<:AbstractVector}
-    Pretty.pair_layout(Pretty.tile(d.f.f.value), Pretty.tile(length(d.pars)); sep = " ^ ")
-end
+# Base.show(io::IO, d::PowerMeasure) = print(io, d.parent, " ^ ", size(d.xs))
+# Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.parent, " ^ ", length(d.xs))
 
-# sampletype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{sampletype(first(marginals(d))), N}
+# gentype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{gentype(first(marginals(d))), N}
 
-params(d::ProductMeasure{F,S,<:Fill}) where {F,S} = params(first(marginals(d)))
-
-params(::Type{P}) where {F,S,P<:ProductMeasure{F,S,<:Fill}} = params(D)
+params(d::PowerMeasure) = params(first(marginals(d)))
 
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
-# Same as PowerMeasure
-@inline function basemeasure(d::ProductMeasure{F,S,<:Fill}) where {F,S}
-    _basemeasure(d, (basemeasure(d.f(first(d.pars)))))
+@inline function basemeasure(d::PowerMeasure)
+    basemeasure(d.parent) ^ d.axes
 end
 
-# Same as PowerMeasure
-@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b) where {F,S}
-    b^size(d.pars)
-end
-
-# Same as PowerMeasure
-@inline function _basemeasure(d::ProductMeasure{F,S,<:Fill}, b::FactoredBase) where {F,S}
-    n = length(d.pars)
-    inbounds(x) = all(b.inbounds, x)
-    constℓ = n * b.constℓ
-    varℓ() = n * b.varℓ()
-    base = b.base^size(d.pars)
-    FactoredBase(inbounds, constℓ, varℓ, base)
-end
-
-# Same as PowerMeasure
-@inline function logdensity(d::ProductMeasure{F,S,<:Fill}, x) where {F,S}
-    d1 = d.f(first(d.pars))
-    sum(xj -> logdensity(d1, xj), x)
+@inline function logdensity_def(d::PowerMeasure, x)
+    sum(x) do xj
+        logdensity_def(d.parent, xj)
+    end
 end

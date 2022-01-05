@@ -1,3 +1,7 @@
+abstract type AbstractDensity end
+
+@inline DensityKind(::AbstractDensity) = IsDensity()
+
 """
     struct Density{M,B}
         μ::M
@@ -12,31 +16,25 @@ Because this function is often difficult to express in closed form, there are
 many different ways of computing it. We therefore provide a formal
 representation to allow comptuational flexibilty.
 """
-struct Density{M,B,L}
+struct Density{M,B} <: AbstractDensity
     μ::M
     base::B
-    log::L
 end
 
 export 𝒹
 
-export log𝒹
-
-log𝒹(μ, base) = Density(μ, base, Val{true}())
-
 """
-    𝒹(μ::AbstractMeasure, base::AbstractMeasure; log=false)
+    𝒹(μ::AbstractMeasure, base::AbstractMeasure)
 
-Compute the Radom-Nikodym derivative (or its log, if `log=false`) of μ with
-respect to `base`.
+Compute the Radom-Nikodym derivative of μ with respect to `base`.
 """
-function 𝒹(μ::AbstractMeasure, base::AbstractMeasure; log = false)
-    return Density(μ, base, Val(log))
+function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
+    return Density(μ, base)
 end
 
-(f::Density{M,B,Val{true}})(x) where {M,B} = logdensity(f.μ, f.base, x)
+logdensityof(d::Density, x) = logdensityof(d.μ, x) - logdensityof(d.base, x)
 
-(f::Density{M,B,Val{false}})(x) where {M,B} = density(f.μ, f.base, x)
+logdensity_def(d::Density, x) = logdensityof(d, x)
 
 """
     struct DensityMeasure{F,B} <: AbstractMeasure
@@ -47,32 +45,37 @@ end
 A `DensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
-struct DensityMeasure{F,B,L} <: AbstractMeasure
+struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
     base::B
-    log::L
 end
 
-function Pretty.tile(μ::DensityMeasure{F,B,Val{L}}) where {F,B,L}
+function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("DensityMeasure ∫(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
-    result *= Pretty.literal("; log = ")
-    result *= Pretty.tile(L)
     result *= Pretty.literal(")")
 end
 
-function Base.rand(rng::AbstractRNG, T::Type, d::DensityMeasure)
-    x = rand(rng, T, d.base)
-    WeightedMeasure(d.f(x), Dirac(x))
+densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
+
+_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
+
+function _densitymeasure(f, base, _)
+    @error """
+    The first argument of `DensityMeasure`" must be `::IsDensity`. To pass a
+    function, first wrap it in `DensityInterface.funcdensity` or
+    `DensityInterface.logfuncdensity`. 
+    """
 end
+
+
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-logdensity(μ::DensityMeasure{F,B,Val{true}}, x) where {F,B} = μ.f(x)
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
-density(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = μ.f(x)
+density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-logdensity(μ::DensityMeasure{F,B,Val{false}}, x) where {F,B} = log(density(μ, x))
 
 export ∫
 
@@ -81,78 +84,96 @@ export ∫
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f, base::AbstractMeasure) = DensityMeasure(f, base, Val(false))
+∫(f::Function, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
 
-∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫exp(log𝒹(μ, base), base)
+∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
+
+# ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
 
 export ∫exp
 
 """
-    ∫exp(f, base::AbstractMeasure; log=false)
+    ∫exp(f, base::AbstractMeasure)
 
-Define a new measure in terms of a density `f` over some measure `base`.
+Define a new measure in terms of a log-density `f` over some measure `base`.
 """
-∫exp(f, μ) = DensityMeasure(f, μ, Val{true}())
+∫exp(f::Function, μ) = ∫(logfuncdensity(f), μ)
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline function logdensity(μ::T, ν::T, x) where {T<:AbstractMeasure}
-    μ == ν && return 0.0
-    invoke(logdensity, Tuple{AbstractMeasure,AbstractMeasure,typeof(x)}, μ, ν, x)
+@inline logdensityof(μ, x) = _logdensityof(μ, x)
+
+@inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
+
+@inline function  _logdensityof(μ, α, x)
+    ℓ = dynamic(logdensity_def(μ, x))
+    L = typeof(ℓ)
+    _logdensityof(μ, α, x, ℓ)::L
 end
 
-@inline function logdensity(μ::AbstractMeasure, ν::AbstractMeasure, x)
-    α = basemeasure(μ)
-    β = basemeasure(ν)
-
-    # If α===μ and β===ν, The recursive call would be exactly the same as the
-    # original one. We need to break the recursion.
-    if α === μ && β === ν
-        @warn """
-        No method found for logdensity(μ, ν, x) where
-        typeof(μ) == $(typeof(μ))
-        typeof(ν) == $(typeof(ν))
-
-        Returning NaN. If this is incorrect, please add a method        
-        logdensity(μ::$(typeof(μ)), ν::$(typeof(ν)), x)
-        """
-        return NaN
-    end
-
-    # Infinite or NaN results occur when outside the support of α or β, 
-    # and also when one measure is singular wrt the other. Computing the base
-    # measures first is often much cheaper, and allows the numerically-intensive
-    # computation to "fall through" in these cases.
-    # TODO: Add tests to check that NaN cases work properly
-    ℓ = logdensity(α, β, x)
-    isfinite(ℓ) || return ℓ
-
-    ℓ += logdensity(μ, x)
-    ℓ -= logdensity(ν, x)
-
+@inline function _logdensityof(μ::M, β::M, x, ℓ) where {M}
     return ℓ
 end
 
-function logpdf(d::AbstractMeasure, x)
-    _logpdf(d, basemeasure(d), x)
+@inline function _logdensityof(μ::M, β, x, ℓ) where {M}
+    n = basemeasure_depth(μ) - static(1)
+    _logdensityof(β, basemeasure(β,x), x, ℓ, n)
 end
 
-@inline function _logpdf(d::AbstractMeasure, β::AbstractMeasure, x, ℓ = zero(Float64))
-    # @show d
-    # @show x
-    Δℓ = logdensity(d, x)
-    newℓ = ℓ + Δℓ
-    d == β && return newℓ
-    # @show Δℓ, d
-    _logpdf(β, basemeasure(β), x, newℓ)
+@generated function _logdensityof(μ, β, x, ℓ::T, ::StaticInt{n}) where {n,T}
+    nsteps = max(n, 0)
+    quote
+        $(Expr(:meta, :inline))
+        Base.Cartesian.@nexprs $nsteps i -> begin
+            Δℓ = oftype(ℓ, logdensity_def(μ, x))
+            # @show μ
+            # @show Δℓ
+            # println()
+            μ,β = β, basemeasure(β, x)
+            ℓ += Δℓ
+        end
+        return ℓ
+    end
 end
 
-logdensity(::Lebesgue, ::Lebesgue, x) = 0.0
+@inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
+    (ℓ₋, β) = _logdensityof(ν, basemeasure(ν), x)
+    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
+end
 
-# logdensity(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
+@inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
+    if static_hasmethod(logdensity_def, Tuple{A,B,X})
+        return ℓ + logdensity_def(α, β, x)
+    elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
+        return ℓ + logdensity_def(β, α, x)
+    else
+        @warn """
+        No method 
+        logdensity(::$A, ::$B, ::$X)
+        """
+        return oftype(ℓ, NaN)
+    end
+end
 
-export density
+# logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
 
-density(μ, ν::AbstractMeasure, x) = exp(logdensity(μ, ν, x))
+export densityof
+export logdensityof
 
-density(μ, x) = exp(logdensity(μ, x))
+export density_def
+
+density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
+
+density_def(μ, x) = exp(logdensity_def(μ, x))
+
+"""
+    rebase(μ, ν)
+
+Express `μ` in terms of a density over `ν`. Satisfies
+```
+basemeasure(rebase(μ, ν)) == ν
+density(rebase(μ, ν)) == 𝒹(μ,ν)
+``` 
+"""
+rebase(μ, ν) = ∫(𝒹(μ,ν), ν)

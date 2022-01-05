@@ -2,6 +2,6 @@ export TrivialMeasure
 
 struct TrivialMeasure <: PrimitiveMeasure end
 
-sampletype(::TrivialMeasure) = Nothing
+gentype(::TrivialMeasure) = Nothing
 
-Pretty.quoteof(::TrivialMeasure) = :(TrivialMeasure())
+insupport(::TrivialMeasure, x) = False

@@ -3,6 +3,78 @@ export For
 using Random
 import Base
 
+struct For{T, F, I} <: AbstractProductMeasure
+    f::F
+    inds::I
+
+    @inline function For(f::F, inds::I) where {F,I<:Tuple}
+        T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
+        new{T,instance_type(f),I}(f, inds)
+    end
+
+    For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
+end
+
+# For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
+
+function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
+    end
+end
+
+function marginals(d::For{T,F,I}) where {T,F,I}
+    f(x...) = d.f(x...)::T
+    mappedarray(f, d.inds...)
+end
+
+function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    f(x...) = d.f(x...)::T
+    Iterators.map(f, d.inds...)
+end
+
+@inline function basemeasure(d::For{T,F,I}) where {T,F,I}
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _basemeasure(d, B, static(Base.issingletontype(B)))
+end
+
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {T,F,I,B}
+    instance(B) ^ axes(d.inds)
+end
+
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
+    new_f = basekleisli(d.f)
+    new_F = typeof(new_f)
+    For{B,new_F, I}(new_f, d.inds)
+end
+
+@inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B}
+    productmeasure(basemeasure.(marginals(d)))
+end
+
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::True) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    return instance(B) ^ minimum(length, d.inds)
+end
+
+function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
+    f = basekleisli(d.f)
+    newF = typeof(f)
+    For{B,newF,I}(f, d.inds)
+end
+
+function Pretty.tile(d::For{T}) where {T}
+    result = Pretty.literal("For{")
+    result *= Pretty.tile(T)
+    result *= Pretty.literal("}")
+    result *= Pretty.list_layout(
+        [
+            Pretty.literal(func_string(d.f, Tuple{_eltype.(d.inds)...})),
+            Pretty.tile.(d.inds)...
+        ]
+    )
+end
+
+
 """
     For(f, base...)
 
@@ -74,48 +146,16 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, dims...) = productmeasure(i -> f(i...), zip(dims...))
+For(f, inds...) = For(f, inds)
+For(f, n::Integer) = For(f, Base.OneTo(n))
+For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+# For(f, inds::Base.Generator) = productmeasure(mymap(f, inds))
 
-For(f, inds::AbstractArray) = productmeasure(f, inds)
-
-For(f, n::Int) = productmeasure(f, Base.OneTo(n))
-For(f, dims::Int...) = productmeasure(i -> f(Tuple(i)...), CartesianIndices(dims))
-
-function Base.eltype(d::ProductMeasure{F,I}) where {F,I<:AbstractArray}
-    return eltype(d.f(first(d.pars)))
+function Random.rand!(rng::AbstractRNG, d::For, x) 
+    mar = marginals(d)
+    @inbounds for (dⱼ, j) in zip(marginals(d), eachindex(x))
+        x[j] = rand(rng,dⱼ)
+    end
+    return x
 end
 
-# """
-#     indexstyle(a::AbstractArray, b::AbstractArray)
-
-# Find the best IndexStyle that works for both `a` and `b`. This will return
-# `IndexLinear` if both `a` and `b` support it; otherwise it will fall back on `IndexCartesian`.
-# """
-# function indexstyle(::A,::B)
-#     if IndexStyle(A) == IndexStyle(B) == IndexLinear()
-#         return IndexLinear()
-#     end
-
-#     return IndexCartesian()
-# end
-
-# function Base.rand(rng::AbstractRNG, μ::ForArray{D,N,T,F}) where {F,T<:AbstractArray,D,X}
-#     s = size(μ.θ)
-#     x = Array{X,length(s)}(undef, s...)
-#     rand!(rng, x, μ)
-# end
-
-# function logdensity(μ::ForArray{D,N,T,F}, x)
-#     getℓ(θⱼ, xⱼ) = logdensity(μ.f(θⱼ), xⱼ)
-#     ℓ = mappedarray(getℓ, μ.θ, x)
-#     _logdensity(μ, x, indexstyle(μ.θ, x), result_type)
-# end
-
-# function _logdensity(μ::ForArray{D,N,T,F}, x, ::IndexLinear, ::Type{R}) where {R<:AbstractFloat}
-#     ℓ = zero(R)
-#     μ.f(μ.θ)
-# end
-
-# function basemeasure(μ::ForArray{D,N,T,F}) where {F,T<:AbstractArray,D,X}
-
-# ForGenerator

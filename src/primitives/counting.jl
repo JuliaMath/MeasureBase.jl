@@ -1,22 +1,29 @@
-export CountingMeasure
+# Counting measure
 
-struct CountingMeasure{X} <: PrimitiveMeasure end
+export Counting, CountingMeasure
 
-function Base.show(io::IO, μ::CountingMeasure{X}) where {X}
-    io = IOContext(io, :compact => true)
-    print(io, "CountingMeasure(", X, ")")
+struct CountingMeasure <: PrimitiveMeasure end
+
+struct Counting{T} <: AbstractMeasure
+    support::T
 end
 
-CountingMeasure(X) = CountingMeasure{X}()
+function logdensity_def(μ::Counting, x)
+    insupport(μ, x) ? 0.0 : -Inf
+end
 
-# sampletype(::CountingMeasure{ℝ}) = Float64
-# sampletype(::CountingMeasure{ℝ₊}) = Float64
-# sampletype(::CountingMeasure{𝕀}) = Float64
+basemeasure(::Counting) = CountingMeasure()
 
-sampletype(::CountingMeasure) = Int
+Counting() = Counting(ℤ)
 
-testvalue(μ::CountingMeasure{X}) where {X} = testvalue(X)
+testvalue(d::Counting) = testvalue(d.support)
 
-logdensity(::CountingMeasure, x) = zero(float(x))
+proxy(d::Counting) = restrict(in(d.support), CountingMeasure())
 
-# (::CountingMeaure)(s) = length(Set(s))
+Base.:∘(::typeof(basemeasure), ::Type{Counting}) = CountingMeasure()
+
+Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
+
+insupport(μ::Counting, x) = x ∈ μ.support
+
+insupport(μ::Counting{T}, x) where {T<:Type} = x isa T

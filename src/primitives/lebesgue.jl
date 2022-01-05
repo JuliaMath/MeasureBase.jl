@@ -2,25 +2,33 @@
 
 export Lebesgue
 
-struct Lebesgue{X} <: PrimitiveMeasure end
+struct LebesgueMeasure <: PrimitiveMeasure end
 
-function Pretty.tile(::Lebesgue{X}) where {X}
-    result = Pretty.literal("Lebesgue(")
-    result *= Pretty.tile(X)
-    result *= Pretty.literal(")")
+testvalue(::LebesgueMeasure) = 0.0
+
+struct Lebesgue{T} <: AbstractMeasure
+    support::T
 end
 
-Lebesgue(X) = Lebesgue{X}()
+function Pretty.tile(μ::Lebesgue)
+    Pretty.list_layout([Pretty.tile(μ.support)]; prefix=:Lebesgue)
+end
 
-sampletype(::Lebesgue{ℝ}) = Float64
-sampletype(::Lebesgue{ℝ₊}) = Float64
-sampletype(::Lebesgue{𝕀}) = Float64
+gentype(::Lebesgue) = Float64
 
-testvalue(::Lebesgue{ℝ}) = 0.0
-testvalue(::Lebesgue{𝕀}) = 0.5
-testvalue(::Lebesgue{ℝ₊}) = 1.0
-testvalue(::Lebesgue{<:Real}) = 0.0
+Lebesgue() = Lebesgue(ℝ)
 
-logdensity(::Lebesgue, x) = zero(x)
+# basemeasure(::Lebesgue) = LebesgueMeasure()
 
-Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = Lebesgue
+testvalue(d::Lebesgue) = testvalue(d.support)
+
+proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())
+@useproxy Lebesgue
+
+Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueMeasure()
+
+Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
+
+insupport(μ::Lebesgue, x) = x ∈ μ.support
+
+insupport(::Lebesgue{RealNumbers}, ::Real) = static(true)

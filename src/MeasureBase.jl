@@ -4,34 +4,55 @@ const logtwo = log(2.0)
 
 using Random
 import Random: rand!
+import Random: gentype
+using Statistics
+using LinearAlgebra
+
+import DensityInterface: logdensityof
+import DensityInterface: densityof
+import DensityInterface: DensityKind
+using DensityInterface
+
+import ConstructionBase
+using ConstructionBase: constructorof
+
+using PrettyPrinting
+const Pretty = PrettyPrinting
 
 using FillArrays
-using ConcreteStructs
-using MLStyle
+using Static
 
 export ≪
-export sampletype
+export gentype
+export rebase
 
 export AbstractMeasure
 
 abstract type AbstractMeasure end
 
-import PrettyPrinting
+using Static: @constprop
 
-const Pretty = PrettyPrinting
+function Pretty.tile(d::M) where {M<:AbstractMeasure}
+    the_names = fieldnames(typeof(d))
+    result = Pretty.literal(repr(M))
+    isempty(the_names) && return result * Pretty.literal("()")
+    Pretty.list_layout(Pretty.tile.([getfield(d, n) for n in the_names]); prefix=result)
+end
 
-sampletype(μ::AbstractMeasure) = typeof(testvalue(μ))
+@inline DensityKind(::AbstractMeasure) = HasDensity()
 
-# sampletype(μ::AbstractMeasure) = sampletype(basemeasure(μ))
+gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
-export logdensity
+# gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
+
+export logdensity_def
 export basemeasure
-export basekernel
+export basekleisli
 
 using LogExpFunctions: logsumexp
 
 """
-    logdensity(μ::AbstractMeasure{X}, x::X)
+    logdensity_def(μ::AbstractMeasure{X}, x::X)
 
 Compute the logdensity of the measure μ at the point x. This is the standard way
 to define `logdensity` for a new measure. the base measure is implicit here, and
@@ -39,49 +60,56 @@ is understood to be `basemeasure(μ)`.
 
 Methods for computing density relative to other measures will be
 """
-function logdensity end
+function logdensity_def end
 
-if VERSION < v"1.7.0-beta1.0"
-    @eval begin
-        struct Returns{T}
-            value::T
-        end
+using Compat
 
-        (f::Returns)(x) = f.value
-    end
-end
-
-include("kernel.jl")
+include("proxies.jl")
+include("kleisli.jl")
 include("parameterized.jl")
-include("combinators/mapsto.jl")
 include("combinators/half.jl")
-include("exp.jl")
 include("domains.jl")
+include("primitive.jl")
 include("utils.jl")
 include("absolutecontinuity.jl")
-include("macros.jl")
 
-include("primitive.jl")
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/bind.jl")
+include("combinators/transformedmeasure.jl")
 include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
 include("combinators/for.jl")
 include("combinators/power.jl")
-include("combinators/affine.jl")
 include("combinators/spikemixture.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
+include("combinators/conditional.jl")
 
 include("rand.jl")
 
 include("density.jl")
+module Interface
 
-end
+using Reexport
+using MeasureBase
+using MeasureBase:basemeasure_depth, proxy
+@reexport using Test
+
+export test_interface
+export basemeasure_depth
+export proxy
+
+include("interface.jl")
+end # module Interface
+
+using .Interface
+
+end # module MeasureBase
