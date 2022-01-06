@@ -127,16 +127,3 @@ end
 
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)
-
-function solve!(z::AbstractArray, σ::Union{AbstractMatrix, Factorization}, x::AbstractArray)
-    if static_hasmethod(ldiv!, Tuple{typeof.((σ, z))...})
-        ldiv!(z, σ, x)
-    else
-        m, n = size(σ)
-        if m == n
-            solve!(z, lu(σ), x)
-        else
-            solve!(z, qr(σ, ColumnNorm()), x)
-        end
-    end
-end
