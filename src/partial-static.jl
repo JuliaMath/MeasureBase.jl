@@ -35,10 +35,21 @@ function Base.convert(::Type{PartialStatic{S,D}}, x::T) where {S,D,T}
     partialstatic(x)
 end
 
+function Base.convert(::Type{PartialStatic{S, D}}, x::T) where {S, D, T<:(StaticFloat64)}
+    partialstatic(x)
+end
+
 function Base.promote_rule(::Type{PartialStatic{S1,D1}}, ::Type{PartialStatic{S2,D2}}) where {S1,D1,S2,D2}
     PartialStatic{promote_rule(S1, S2), promote_rule(D1, D2)}
 end
 
+function promote_rule(::Type{PartialStatic{S, D}}, ::Type{StaticFloat64{N}}) where {N, S, D}
+    PartialStatic{promote_rule(StaticFloat64{N}, S), D}
+end
+
+function promote_rule(::Type{StaticFloat64{N}}, ::Type{PartialStatic{S, D}}) where {N, S, D}
+    PartialStatic{promote_rule(StaticFloat64{N}, S), D}
+end
 
 function Base.promote_rule(::Type{T}, ::Type{PartialStatic{S,D}}) where {T,S,D}
     _promote(PartialStatic{S,D}, T, is_static(T))
@@ -49,12 +60,14 @@ function Base.promote_rule(::Type{PartialStatic{S,D}}, ::Type{T}) where {S,D,T}
 end
 
 function _promote(::Type{PartialStatic{S,D}}, ::Type{T}, ::True) where {S,D,T}
-    PartialStatic{promote_tule(S,T),D}
+    PartialStatic{promote_rule(S,T),D}
 end
 
 function _promote(::Type{PartialStatic{S,D}}, ::Type{T}, ::False) where {S,D,T}
     PartialStatic{S,promote_rule(D,T)}
 end
+
+partialstatic(s, d) = PartialStatic(s, d)
 
 partialstatic(x) = _partialstatic(x, is_static(x))
 
