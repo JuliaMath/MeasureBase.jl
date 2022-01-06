@@ -7,11 +7,8 @@ half(μ::AbstractMeasure) = Half(μ)
 ###############################################################################
 # PointwiseProductMeasure
 
-pointwiseproduct(μ::AbstractMeasure...) = PointwiseProductMeasure(μ)
-
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
-    data = (μ, ℓ)
-    return PointwiseProductMeasure(data)
+    return PointwiseProductMeasure(μ, ℓ)
 end
 
 ###############################################################################
