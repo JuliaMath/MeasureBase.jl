@@ -34,11 +34,9 @@ function kleisli(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
 end
 
 @inline function _kleisli(::Type{C}, ::Val{N}) where {C,N}
-    @inline function(args...)
-        T = typeof(args)
+    @inline function(args::T) where {T<:Tuple}
         C(NamedTuple{N,T}(args))::C{N,T}
     end
-
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}

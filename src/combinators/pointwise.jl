@@ -3,6 +3,11 @@ export ⊙
 struct PointwiseProductMeasure{M,L} <: AbstractMeasure
     measure::M
     likelihood::L
+
+    function PointwiseProductMeasure(μ::M, ℓ::L) where {M,L}
+        @assert static_hasmethod(logdensity_def, Tuple{L, gentype(μ)})
+        return new{M,L}(μ, ℓ)
+    end
 end
 
 Base.size(μ::PointwiseProductMeasure) = size(μ.data)
