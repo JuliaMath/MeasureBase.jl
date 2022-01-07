@@ -2,6 +2,8 @@ export AbstractLikelihood, Likelihood
 
 abstract type AbstractLikelihood end
 
+@inline logdensityof(ℓ::AbstractLikelihood, par) = logdensity_def(ℓ, par)
+
 @doc raw"""
     Likelihood(k::AbstractKleisli, x)
 
@@ -132,8 +134,4 @@ end
 
 @inline function logdensity_def(ℓ::Likelihood, p)
     return logdensity_def(ℓ.k((p,)), ℓ.x)
-end
-
-@inline function logdensityof(ℓ::Likelihood, p)
-    return logdensity_def(ℓ, p)
 end
