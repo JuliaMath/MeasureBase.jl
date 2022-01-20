@@ -21,6 +21,7 @@ function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
 end
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
+
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}

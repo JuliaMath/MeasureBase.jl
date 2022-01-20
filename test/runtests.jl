@@ -112,7 +112,7 @@ end
 end
 
 @testset "Likelihood" begin
-    ℓ = Likelihood(3) do μ
+    ℓ = Likelihood(3) do (μ,)
         ∫exp(Lebesgue(ℝ)) do x
             -(x - μ)^2
         end
