@@ -17,7 +17,37 @@ end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
 
+@inline function logdensity_def(d::For{T,F,I}, x::AbstractVector{X}) where {X,T,F,I<:Tuple{<:AbstractVector}}
+    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+    @inbounds for j in eachindex(x)
+        ℓ += logdensity_def(d.f(j), x[j])
+    end
+    ℓ
+end
+
+function logdensity_def(d::For, x::AbstractVector) 
+    sum(eachindex(x)) do i
+        @inbounds logdensity_def(d.f(getindex.(d.inds,i)...), x[i])
+    end
+end
+
+function logdensity_def(d::For{T,F,I}, x::AbstractArray{X}) where {T,F,I,X}
+    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+
+    @inbounds for j in CartesianIndices(x)
+        i = (getindex(ind, j) for ind in d.inds)
+        ℓ += logdensity_def(d.f(i...), x[j])
+    end
+    ℓ
+end
+
 function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
+    end
+end
+
+function logdensity_def(d::For{T,F,I}, x::AbstractVector) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
         logdensity_def(d.f(dⱼ...), xⱼ)
     end
@@ -43,9 +73,8 @@ end
 end
 
 @inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
-    new_f = basekleisli(d.f)
-    new_F = typeof(new_f)
-    For{B,new_F, I}(new_f, d.inds)
+    f = basekleisli(d.f)
+    _For(B, f, d.inds)
 end
 
 @inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B}
@@ -58,8 +87,7 @@ end
 
 function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
     f = basekleisli(d.f)
-    newF = typeof(f)
-    For{B,newF,I}(f, d.inds)
+    _For(B, f, d.inds)
 end
 
 function Pretty.tile(d::For{T}) where {T}
@@ -72,6 +100,10 @@ function Pretty.tile(d::For{T}) where {T}
             Pretty.tile.(d.inds)...
         ]
     )
+end
+
+function _For(::Type{T}, f::F, inds::I) where {T,F,I}
+    For{T,F,I}(f,inds)
 end
 
 

@@ -29,13 +29,19 @@ end
 export kleisli
 
 function kleisli(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    C = constructorof(P)
-    function(args...) C(NamedTuple{N}(args...)) end
+    C = constructorof(P) 
+    _kleisli(C, Val(N))
+end
+
+@inline function _kleisli(::Type{C}, ::Val{N}) where {C,N}
+    @inline function(args::T) where {T<:Tuple}
+        C(NamedTuple{N,T}(args))::C{N,T}
+    end
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
-    return C(NamedTuple{N}(args...))
+    return C(NamedTuple{N}(args))::C{N,typeof(args)}
 end
 
 (::Type{P})(; kwargs...) where {P<:ParameterizedMeasure} = P(NamedTuple(kwargs))

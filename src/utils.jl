@@ -51,12 +51,13 @@ end
 
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F} = F
-@inline instance_type(f::UnionAll) = Type{f}
+@inline instance_type(T::UnionAll) = Type{T}
+@inline instance_type(T::DataType) = Type{T}
 
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
-    return static(basemeasure_depth(μ, basemeasure(μ)))
+    return basemeasure_depth(μ, basemeasure(μ))
 end
 
 @inline function basemeasure_depth(μ::M, β::M) where {M}
@@ -126,4 +127,3 @@ end
 
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)
-
