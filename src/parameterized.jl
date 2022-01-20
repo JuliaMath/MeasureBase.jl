@@ -39,6 +39,12 @@ end
     end
 end
 
+function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
+    C = constructorof(P)
+    arg = NamedTuple{N}(nt)
+    return C(arg)
+end
+
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     return C(NamedTuple{N}(args))::C{N,typeof(args)}
