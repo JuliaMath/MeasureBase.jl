@@ -25,8 +25,19 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
-    map(marginals(d)) do dⱼ
+    mar = marginals(d)
+    _rand_product(rng, T, mar, eltype(mar))
+end
+
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M<:AbstractMeasure}
+    map(mar) do dⱼ
         rand(rng, T, dⱼ)
+    end
+end
+
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M}
+    map(mar) do dⱼ
+        rand(rng, dⱼ)
     end
 end
 
