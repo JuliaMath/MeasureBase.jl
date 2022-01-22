@@ -60,16 +60,17 @@ end
 end
 
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
+    mar = marginals(μ)
     T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingulartype(B)))
+    _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
 
 
 
 function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingulartype(B)))
+    _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
 
 function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {T,B}
@@ -77,6 +78,7 @@ function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {T,B}
 end
 
 function _basemeasure(μ::ProductMeasure{A}, ::Type{B}, ::False) where {T,A<:AbstractMappedArray{T},B}
+    mar = marginals(μ)
     productmeasure(mappedarray(basemeasure, mar))
 end
 

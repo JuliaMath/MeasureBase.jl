@@ -10,8 +10,6 @@ struct PointwiseProductMeasure{M,L} <: AbstractMeasure
     end
 end
 
-Base.size(μ::PointwiseProductMeasure) = size(μ.data)
-
 function Base.show(io::IO, μ::PointwiseProductMeasure)
     io = IOContext(io, :compact => true)
     print(io, μ.measure, " ⊙ ", μ.likelihood)
@@ -29,9 +27,7 @@ function Base.show_unquoted(io::IO, μ::PointwiseProductMeasure, indent::Int, pr
     return nothing
 end
 
-Base.length(m::PointwiseProductMeasure{T}) where {T} = length(m.data)
-
-⊙(args...) = pointwiseproduct(args...)
+⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)
 
 @inline function logdensity_def(d::PointwiseProductMeasure, x)
     logdensity_def(d.measure, x) + logdensity_def(d.likelihood, x)

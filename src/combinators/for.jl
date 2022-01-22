@@ -51,15 +51,18 @@ function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Genera
     end
 end
 
-function marginals(d::For{T,F,I}) where {T,F,I}
-    mappedarray(d.inds...) do x
-        d.f(x)::T
+function logdensity_def(d::For{T,F,I}, x::AbstractVector) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
+    sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
+        logdensity_def(d.f(dⱼ...), xⱼ)
     end
 end
 
+function marginals(d::For{T,F,I}) where {T,F,I}
+    mappedarray(d.f, d.inds...) 
+end
+
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
-    f(x...) = d.f(x...)::T
-    Iterators.map(f, d.inds...)
+    Iterators.map(d.f, d.inds...)
 end
 
 @inline function basemeasure(d::For{T,F,I}) where {T,F,I}

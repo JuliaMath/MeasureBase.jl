@@ -64,6 +64,7 @@ function logdensity_def end
 
 using Compat
 
+include("splat.jl")
 include("partial-static.jl")
 include("proxies.jl")
 include("kleisli.jl")
