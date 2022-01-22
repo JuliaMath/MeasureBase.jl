@@ -1,4 +1,8 @@
-export Likelihood
+export AbstractLikelihood, Likelihood
+
+abstract type AbstractLikelihood end
+
+@inline logdensityof(ℓ::AbstractLikelihood, par) = logdensity_def(ℓ, par)
 
 @doc raw"""
     Likelihood(k::AbstractKleisli, x)
@@ -101,7 +105,7 @@ and we observe `x=3`. We can compute the posterior measure on `μ` as
     julia> logdensity_def(post, 2)
     -2.5
 """
-struct Likelihood{K,X}
+struct Likelihood{K,X} <: AbstractLikelihood
     k::K
     x::X
 
@@ -124,10 +128,10 @@ function Base.show(io::IO, ℓ::Likelihood)
     Pretty.pprint(io, ℓ)
 end
 
-@inline function logdensity_def(ℓ::Likelihood, p)
+@inline function logdensity_def(ℓ::Likelihood, p::Tuple)
     return logdensity_def(ℓ.k(p), ℓ.x)
 end
 
-@inline function logdensityof(ℓ::Likelihood, p)
-    return logdensityof(ℓ.k(p), ℓ.x)
+@inline function logdensity_def(ℓ::Likelihood, p)
+    return logdensity_def(ℓ.k((p,)), ℓ.x)
 end

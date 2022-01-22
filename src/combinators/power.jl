@@ -24,12 +24,17 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M}) where {T, M<:AbstractMeasure}
     map(CartesianIndices(d.axes)) do _
         rand(rng, T, d.parent)
     end
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+    map(CartesianIndices(d.axes)) do _
+        rand(rng, d.parent)
+    end
+end
 
 @inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}
     a = axes(Fill{T, N}(x, sz))
@@ -66,4 +71,5 @@ end
     @inbounds for xj in x
         ℓ += logdensity_def(parent, xj)
     end
+    ℓ
 end

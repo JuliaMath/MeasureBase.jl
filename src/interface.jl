@@ -15,7 +15,6 @@ function test_interface(μ::M) where {M}
         μ = $μ
         @testset "$μ" begin
             μ = $μ
-            M = $M
            
             ###########################################################################
             # basemeasure_depth
@@ -31,14 +30,13 @@ function test_interface(μ::M) where {M}
             ###########################################################################
             # testvalue, logdensityof
 
-            x = testvalue(μ)
+            x = @inferred testvalue(μ)
             β = @inferred basemeasure(μ, x)
 
             ℓμ = @inferred logdensityof(μ, x)
             ℓβ = @inferred logdensityof(β, x)
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
-
         end
     end
 end

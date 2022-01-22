@@ -51,12 +51,13 @@ end
 
 # See https://github.com/cscherrer/KeywordCalls.jl/issues/22
 @inline instance_type(f::F) where {F} = F
-@inline instance_type(f::UnionAll) = Type{f}
+@inline instance_type(T::UnionAll) = Type{T}
+@inline instance_type(T::DataType) = Type{T}
 
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
-    return static(basemeasure_depth(μ, basemeasure(μ)))
+    return basemeasure_depth(μ, basemeasure(μ))
 end
 
 @inline function basemeasure_depth(μ::M, β::M) where {M}
@@ -115,7 +116,7 @@ function _eltype(::Type{Base.Generator{I,ComposedFunction{Outer,Inner}}}) where 
     _eltype(Base.Generator{_eltype(Base.Generator{I,Inner}), Outer})
 end
 
-function _eltype(::Type{Base.Generator{I,F}}) where {F,I}
+function _eltype(::Type{Base.Generator{I,F}}) where {F<:Function,I}
     f = instance(F)
     Core.Compiler.return_type(f, Tuple{_eltype(I)})
 end

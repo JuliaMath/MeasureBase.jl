@@ -18,7 +18,6 @@ macro useproxy(M)
 
         @inline function $__module__.basemeasure(μ::$M)
             p = proxy(μ)
-            # B = basemeasure_type(p)
             b = basemeasure(p)
             return b
         end
