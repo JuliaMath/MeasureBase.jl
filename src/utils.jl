@@ -115,7 +115,7 @@ function _eltype(::Type{Base.Generator{I,ComposedFunction{Outer,Inner}}}) where 
     _eltype(Base.Generator{_eltype(Base.Generator{I,Inner}), Outer})
 end
 
-function _eltype(::Type{Base.Generator{I,F}}) where {F<:Function,I}
+function _eltype(::Type{Base.Generator{I,F}}) where {F,I}
     f = instance(F)
     Core.Compiler.return_type(f, Tuple{_eltype(I)})
 end
@@ -127,3 +127,7 @@ end
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)
 
+function infer_zero(f, args...)
+    inferred_type = Core.Compiler.return_type(f, typeof.(args))
+    zero(typeintersect(AbstractFloat, inferred_type))
+end

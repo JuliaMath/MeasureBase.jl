@@ -9,13 +9,41 @@ struct For{T, F, I} <: AbstractProductMeasure
 
     @inline function For(f::F, inds::I) where {F,I<:Tuple}
         T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
+        new{T,F,I}(f, inds)
+    end
+
+    @inline function For{T}(f::F, inds::I) where {T,F,I<:Tuple}
         new{T,instance_type(f),I}(f, inds)
     end
 
-    For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
+    @inline For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
 end
 
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
+
+@inline function logdensity_def(d::For{T,F,I}, x::AbstractVector{X}) where {X,T,F,I<:Tuple{<:AbstractVector}}
+    ℓ = zero(typeintersect(AbstractFloat, Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+    @inbounds for j in eachindex(x)
+        ℓ += logdensity_def(d.f(j), x[j])
+    end
+    ℓ
+end
+
+function logdensity_def(d::For, x::AbstractVector) 
+    sum(eachindex(x)) do i
+        @inbounds logdensity_def(d.f(getindex.(d.inds,i)...), x[i])
+    end
+end
+
+function logdensity_def(d::For{T,F,I}, x::AbstractArray{X}) where {T,F,I,X}
+    ℓ = zero(typeintersect(AbstractFloat, Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+
+    @inbounds for j in CartesianIndices(x)
+        i = (getindex(ind, j) for ind in d.inds)
+        ℓ += logdensity_def(d.f(i...), x[j])
+    end
+    ℓ
+end
 
 function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
     sum(zip(x, d.inds...)) do (xⱼ, dⱼ...)
@@ -24,8 +52,9 @@ function logdensity_def(d::For{T,F,I}, x) where {N,T,F,I<:NTuple{N,<:Base.Genera
 end
 
 function marginals(d::For{T,F,I}) where {T,F,I}
-    f(x...) = d.f(x...)::T
-    mappedarray(f, d.inds...)
+    mappedarray(d.inds...) do x
+        d.f(x)::T
+    end
 end
 
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
@@ -43,9 +72,8 @@ end
 end
 
 @inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B<:AbstractMeasure}
-    new_f = basekleisli(d.f)
-    new_F = typeof(new_f)
-    For{B,new_F, I}(new_f, d.inds)
+    f = basekleisli(d.f)
+    For{B}(f, d.inds)
 end
 
 @inline function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {T,F,I,B}
@@ -58,8 +86,7 @@ end
 
 function _basemeasure(d::For{T,F,I}, ::Type{B}, ::False) where {N,T<:AbstractMeasure,F,I<:NTuple{N,<:Base.Generator},B}
     f = basekleisli(d.f)
-    newF = typeof(f)
-    For{B,newF,I}(f, d.inds)
+    For{B}(f, d.inds)
 end
 
 function Pretty.tile(d::For{T}) where {T}
@@ -146,14 +173,18 @@ julia> For(eachrow(rand(4,2))) do x Normal(x[1], x[2]) end |> marginals |> colle
 ```
 
 """
-For(f, inds...) = For(f, inds)
-For(f, n::Integer) = For(f, Base.OneTo(n))
-For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+@inline For{T}(f, inds...) where {T} = For{T}(f, inds)
+@inline For{T}(f, n::Integer) where {T} = For{T}(f, Base.OneTo(n))
+@inline For{T}(f, inds::Integer...) where {T} = For{T}(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
+
+@inline For(f, inds...) = For(f, inds)
+@inline For(f, n::Integer) = For(f, Base.OneTo(n))
+@inline For(f, inds::Integer...) = For(i -> f(Tuple(i)...), Base.CartesianIndices(inds))
 # For(f, inds::Base.Generator) = productmeasure(mymap(f, inds))
 
-function Random.rand!(rng::AbstractRNG, d::For, x) 
+function Random.rand!(rng::AbstractRNG, d::For{T,F,I}, x) where {T,F,I} 
     mar = marginals(d)
-    @inbounds for (dⱼ, j) in zip(marginals(d), eachindex(x))
+    @inbounds for (dⱼ, j) in zip(mar, eachindex(x))
         x[j] = rand(rng,dⱼ)
     end
     return x
