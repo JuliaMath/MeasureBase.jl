@@ -107,6 +107,8 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
     ifelse(insupport(μ, x), unsafe_logdensityof(μ, x), -Inf)    
 end
 
+export unsafe_logdensityof
+
 @inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
 
 @inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
