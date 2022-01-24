@@ -68,3 +68,9 @@ basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
 #     return rand(rand(μ.components))
 # end
+
+@inline function insupport(d::SuperpositionMeasure, x)
+    any(d.components) do c
+        dynamic(insupport(c, x))
+    end
+end
