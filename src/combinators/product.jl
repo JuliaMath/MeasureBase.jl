@@ -59,6 +59,21 @@ end
     sum(ℓs)
 end
 
+@generated function logdensity_def(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+    k1 = QuoteNode(first(N))
+    q = quote
+        m = marginals(d)
+        ℓ = logdensity_def(getproperty(m, $k1), getproperty(x, $k1))
+    end
+    for k in Base.tail(N)
+        k = QuoteNode(k)
+        qk = :(ℓ += logdensity_def(getproperty(m, $k), getproperty(x, $k)))
+        push!(q.args, qk)
+    end
+
+    return q
+end
+
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
     T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
