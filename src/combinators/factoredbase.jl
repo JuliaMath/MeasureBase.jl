@@ -17,3 +17,5 @@ function Pretty.tile(fb::FactoredBase)
 end
 
 basemeasure(d::FactoredBase) = d.base
+
+insupport(d::FactoredBase, x) = insupport(d.base, x)
