@@ -52,22 +52,4 @@ Base.:*(m::AbstractMeasure, k::Real) = k * m
 
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
-###############################################################################
-
-export ParamWeightedMeasure
-struct ParamWeightedMeasure{L,N,T,B} <: AbstractWeightedMeasure
-    ℓ::L
-    par::NamedTuple{N,T}
-    base::B
-end
-
-function Base.show(io::IO, d::ParamWeightedMeasure)
-    io = IOContext(io, :compact => true)
-    print(io, "ParamWeighted(", d.ℓ, ", ", d.par, ", ", d.base, ")")
-end
-
-basemeasure(d::ParamWeightedMeasure) = d.base
-
-logdensity_def(d::ParamWeightedMeasure, x) = d.ℓ(d.par)
-
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
