@@ -6,6 +6,10 @@ struct LebesgueMeasure <: PrimitiveMeasure end
 
 testvalue(::LebesgueMeasure) = 0.0
 
+insupport(::LebesgueMeasure, x) = true
+
+insupprot(::LebesgueMeasure) = Returns(true)
+
 struct Lebesgue{T} <: AbstractMeasure
     support::T
 end

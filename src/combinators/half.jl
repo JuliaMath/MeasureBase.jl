@@ -14,11 +14,10 @@ unhalf(μ::Half) = μ.parent
 isnonnegative(x) = x ≥ 0.0
 
 @inline function basemeasure(μ::Half)
-    inbounds = isnonnegative
     constℓ = static(logtwo)
     varℓ = Returns(static(0.0))
     base = basemeasure(unhalf(μ))
-    FactoredBase(inbounds, constℓ, varℓ, base)
+    FactoredBase(constℓ, varℓ, base)
 end
 
 function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
@@ -26,3 +25,7 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
 end
 
 logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
+
+@inline function insupport(d::Half, x)
+    ifelse(isnonnegative(x), insupport(unhalf(d), x), false)
+end

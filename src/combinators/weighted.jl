@@ -69,3 +69,5 @@ end
 basemeasure(d::ParamWeightedMeasure) = d.base
 
 logdensity_def(d::ParamWeightedMeasure, x) = d.ℓ(d.par)
+
+insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)

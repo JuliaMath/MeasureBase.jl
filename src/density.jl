@@ -68,7 +68,9 @@ function _densitymeasure(f, base, _)
     """
 end
 
-
+@inline function insupport(d::DensityMeasure, x)
+    ifelse(insupport(d.base, x), logdensityof(d.f, x) > -Inf, false)
+end
 
 basemeasure(μ::DensityMeasure) = μ.base
 
@@ -101,7 +103,11 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
+@inline function logdensityof(μ, x)
+    ifelse(insupport(μ, x), unsafe_logdensityof(μ, x), -Inf)    
+end
+
+@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
 
 @inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 

@@ -41,11 +41,14 @@ end
 using Tricks
 struct Iterable end
 struct NonIterable end
-isiterable(::Type{T}) where {T} =
+function isiterable(::Type{T}) where {T}
     static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+end
 
-@inline function instance(@nospecialize(T))
-    Base.@_pure_meta
+# issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
+
+
+@generated function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
 end
 

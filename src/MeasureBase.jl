@@ -45,6 +45,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
+import IfElse: ifelse
 export logdensity_def
 export basemeasure
 export basekleisli

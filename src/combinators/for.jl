@@ -7,11 +7,6 @@ struct For{T, F, I} <: AbstractProductMeasure
     f::F
     inds::I
 
-    @inline function For(f::F, inds::I) where {F,I<:Tuple}
-        T = Core.Compiler.return_type(f, Tuple{_eltype.(inds)...})
-        new{T,F,I}(f, inds)
-    end
-
     @inline function For{T}(f::F, inds::I) where {T,F,I<:Tuple}
         new{T,instance_type(f),I}(f, inds)
     end
@@ -19,10 +14,21 @@ struct For{T, F, I} <: AbstractProductMeasure
     @inline For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
 end
 
+
+@generated function For(f::F, inds::I) where {F,I<:Tuple}
+    eltypes = Tuple{eltype.(I.types)...}
+    quote
+        $(Expr(:meta, :inline))
+        T = Core.Compiler.return_type(f, $eltypes)
+        For{T,F,I}(f, inds)
+    end
+end
+
+
 # For(f, gen::Base.Generator) = ProductMeasure(Base.Generator(f ∘ gen.f, gen.iter))
 
 @inline function logdensity_def(d::For{T,F,I}, x::AbstractVector{X}) where {X,T,F,I<:Tuple{<:AbstractVector}}
-    ℓ = zero(typeintersect(AbstractFloat, Core.Compiler.return_type(logdensity_def, Tuple{T,X})))
+    ℓ = 0.0
     @inbounds for j in eachindex(x)
         ℓ += logdensity_def(d.f(j), x[j])
     end
@@ -57,8 +63,16 @@ function logdensity_def(d::For{T,F,I}, x::AbstractVector) where {N,T,F,I<:NTuple
     end
 end
 
+function marginals(d::For{T,F,Tuple{I}}) where {T,F,I}
+    f = d.f
+    data = first(d.inds)
+    MappedArrays.ReadonlyMappedArray{T,ndims(data),typeof(data),typeof(f)}(f, data)
+end
+
 function marginals(d::For{T,F,I}) where {T,F,I}
-    mappedarray(d.f, d.inds...) 
+    f = d.f
+    data = d.inds
+    MappedArrays.ReadonlyMultiMappedArray{T,ndims(first(data)),typeof(data),typeof(f)}(f, data)
 end
 
 function marginals(d::For{T,F,I}) where {N,T,F,I<:NTuple{N,<:Base.Generator}}
@@ -103,6 +117,7 @@ function Pretty.tile(d::For{T}) where {T}
         ]
     )
 end
+
 
 
 """
@@ -193,3 +208,6 @@ function Random.rand!(rng::AbstractRNG, d::For{T,F,I}, x) where {T,F,I}
     return x
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::For{M,F,I}) where {T,M,F,I}
+    _rand_product(rng, T, marginals(d), M)
+end

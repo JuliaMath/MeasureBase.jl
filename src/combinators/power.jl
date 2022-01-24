@@ -73,3 +73,11 @@ end
     end
     ℓ
 end
+
+
+@inline function insupport(μ::PowerMeasure, x)
+    all(x) do xj
+        # https://github.com/SciML/Static.jl/issues/36
+        dynamic(insupport(μ.parent, xj))
+    end
+end

@@ -134,3 +134,8 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
     x = Array{elT,length(sz)}(undef, sz)
     rand!(rng, d, x)
 end
+
+
+@inline function insupport(d::AbstractProductMeasure, x)
+    all(dynamic.(insupport.(marginals(d), x)))
+end
