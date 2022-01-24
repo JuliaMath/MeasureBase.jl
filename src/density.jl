@@ -109,7 +109,8 @@ end
 
 export unsafe_logdensityof
 
-@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
+# TODO: REmove the type annotation
+@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))::Float64
 
 @inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 
