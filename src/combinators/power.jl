@@ -66,7 +66,8 @@ end
 
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
     T = eltype(x)
-    ℓ = zero(typeintersect(AbstractFloat,Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
+    ℓ = 0.0
+    # ℓ = zero(typeintersect(AbstractFloat,Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
     parent = d.parent
     @inbounds for xj in x
         ℓ += logdensity_def(parent, xj)
@@ -76,8 +77,9 @@ end
 
 
 @inline function insupport(μ::PowerMeasure, x)
+    p = μ.parent
     all(x) do xj
         # https://github.com/SciML/Static.jl/issues/36
-        dynamic(insupport(μ.parent, xj))
+        dynamic(insupport(p, xj))
     end
 end

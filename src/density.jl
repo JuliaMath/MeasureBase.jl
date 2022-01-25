@@ -104,13 +104,14 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
 @inline function logdensityof(μ, x)
-    ifelse(insupport(μ, x), unsafe_logdensityof(μ, x), -Inf)    
+    dynamic(insupport(μ, x)) || return -Inf
+    return unsafe_logdensityof(μ, x)
 end
 
 export unsafe_logdensityof
 
 # TODO: REmove the type annotation
-@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))::Float64
+@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
 
 @inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
 
@@ -124,7 +125,7 @@ end
 
 @inline function _logdensityof(μ::M, β, x, ℓ) where {M}
     n = static(basemeasure_depth(β))
-    _logdensityof(β, basemeasure(β,x), x, ℓ, n)
+    _logdensityof(β, basemeasure(β), x, ℓ, n)
 end
 
 @generated function _logdensityof(μ, β, x, ℓ, ::StaticInt{n}) where {n}
@@ -134,9 +135,7 @@ end
         # @show ℓ
         Base.Cartesian.@nexprs $nsteps i -> begin
             Δℓ = logdensity_def(μ, x)
-            # @show μ
             # @show Δℓ
-            # println()
             μ,β = β, basemeasure(β, x)
             ℓ += partialstatic(Δℓ)
         end

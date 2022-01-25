@@ -20,7 +20,7 @@ isnonnegative(x) = x ≥ 0.0
     FactoredBase(constℓ, varℓ, base)
 end
 
-function Base.rand(rng::AbstractRNG, T::Type, μ::Half)
+function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
     return abs(rand(rng, T, unhalf(μ)))
 end
 
@@ -29,3 +29,5 @@ logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
 @inline function insupport(d::Half, x)
     ifelse(isnonnegative(x), insupport(unhalf(d), x), false)
 end
+
+testvalue(::Half) = 1.0

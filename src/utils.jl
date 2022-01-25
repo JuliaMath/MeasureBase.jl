@@ -135,3 +135,14 @@ function infer_zero(f, args...)
     inferred_type = Core.Compiler.return_type(f, typeof.(args))
     zero(typeintersect(AbstractFloat, inferred_type))
 end
+
+@inline function allequal(f, x::AbstractArray)
+    val = f(first(x))
+    @simd for xj in x
+        f(xj) == val || return false
+    end
+    return true
+end
+
+
+allequal(x::AbstractArray) = allequal(identity, x)

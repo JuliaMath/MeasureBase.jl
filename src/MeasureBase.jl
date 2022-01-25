@@ -94,7 +94,6 @@ include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
-include("combinators/conditional.jl")
 
 include("rand.jl")
 

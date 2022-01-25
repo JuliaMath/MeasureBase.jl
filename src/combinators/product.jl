@@ -74,6 +74,20 @@ end
     return q
 end
 
+@generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+    q = quote
+        m = marginals(d)
+    end
+    for k in N
+        qk = QuoteNode(k)
+        push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
+    end
+
+    vals = map(x -> Expr(:(=), x,x), N)
+    push!(q, Expr(:tuple, vals...))
+    return q
+end
+
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
     T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
@@ -152,5 +166,7 @@ end
 
 
 @inline function insupport(d::AbstractProductMeasure, x)
+    @show d
+    @show x
     all(dynamic.(insupport.(marginals(d), x)))
 end
