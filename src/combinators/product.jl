@@ -166,7 +166,5 @@ end
 
 
 @inline function insupport(d::AbstractProductMeasure, x)
-    @show d
-    @show x
     all(dynamic.(insupport.(marginals(d), x)))
 end
