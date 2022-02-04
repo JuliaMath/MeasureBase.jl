@@ -35,11 +35,25 @@ function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M<:
     end
 end
 
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M<:AbstractMeasure}
+    map(mar.data) do dⱼ
+        rand(rng, T, mar.f(dⱼ))
+    end
+end
+
 function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M}
     map(mar) do dⱼ
         rand(rng, dⱼ)
     end
 end
+
+
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M}
+    map(mar.data) do dⱼ
+        rand(rng, mar.f(dⱼ))
+    end
+end
+
 
 @inline function logdensity_def(d::AbstractProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
