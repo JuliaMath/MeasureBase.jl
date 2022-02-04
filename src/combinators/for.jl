@@ -12,6 +12,14 @@ struct For{T, F, I} <: AbstractProductMeasure
     end
 
     @inline For{T,F,I}(f::F, inds::I) where {T,F,I} = new{T,F,I}(f,inds)
+
+    function For{Union{},F,I}(f::F, inds::I) where {F,I}
+        println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        println.(stacktrace())
+        println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        @show f(first(zip(inds...))...)
+        @error "Empty `For` construction"
+    end
 end
 
 
