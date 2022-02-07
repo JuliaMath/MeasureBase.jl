@@ -110,38 +110,46 @@ end
 
 export unsafe_logdensityof
 
-# TODO: REmove the type annotation
-@inline unsafe_logdensityof(μ, x) = dynamic(_logdensityof(μ, x))
-
-@inline _logdensityof(μ, x) = _logdensityof(μ, basemeasure(μ, x), x)
-
-@inline function  _logdensityof(μ, α, x)
-    _logdensityof(μ, α, x, partialstatic(logdensity_def(μ, x)))
-end
-
-@inline function _logdensityof(μ::M, β::M, x, ℓ) where {M}
-    return ℓ
-end
-
-@inline function _logdensityof(μ::M, β, x, ℓ) where {M}
-    n = static(basemeasure_depth(β))
-    _logdensityof(β, basemeasure(β), x, ℓ, n)
-end
-
-@generated function _logdensityof(μ, β, x, ℓ, ::StaticInt{n}) where {n}
-    nsteps = max(n, 0)
-    quote
-        $(Expr(:meta, :inline))
-        # @show ℓ
-        Base.Cartesian.@nexprs $nsteps i -> begin
-            Δℓ = logdensity_def(μ, x)
-            # @show Δℓ
-            μ,β = β, basemeasure(β, x)
-            ℓ += partialstatic(Δℓ)
+# https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
+@inline function unsafe_logdensityof(μ::M, x) where {M}
+    ℓ_0 = (logdensity_def(μ, x))
+    b_0 = μ
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        b_{i} = basemeasure(b_{i-1})
+        b = b_{i}
+        # @show b
+        if b_{i} isa typeof(b_{i-1})
+            return ℓ_{i-1}
         end
-        return ℓ
+        ℓ_{i} = let Δt = @elapsed Δℓ = (logdensity_def(b_{i}, x))
+            # @show Δt
+            # @show Δℓ
+            ℓ_{i-1} + Δℓ
+        end
     end
+    return ℓ_10
 end
+
+# # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
+# @inline function unsafe_logdensityof(μ::M, x) where {M}
+#     unsafe_logdensityof(μ, x, basemeasure_depth(μ))
+# end
+
+# @generated function unsafe_logdensityof(μ, x, ::StaticInt{N}) where {N}
+#     q = quote
+#         ℓ = logdensity_def(μ, x)
+#     end
+
+#     for j in 1:N
+#         push!(q.args, quote
+#             μ = basemeasure(μ)
+#             Δℓ = logdensity_def(μ, x)
+#             ℓ = ℓ + Δℓ
+#         end)
+#     end
+#     return q
+# end
+   
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)

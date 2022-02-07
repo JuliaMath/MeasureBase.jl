@@ -87,7 +87,6 @@ include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
-include("combinators/for.jl")
 include("combinators/power.jl")
 include("combinators/spikemixture.jl")
 include("combinators/likelihood.jl")
@@ -108,6 +107,7 @@ using MeasureBase:basemeasure_depth, proxy
 export test_interface
 export basemeasure_depth
 export proxy
+export insupport
 
 include("interface.jl")
 end # module Interface

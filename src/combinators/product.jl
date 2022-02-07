@@ -6,6 +6,8 @@ using Base: @propagate_inbounds
 import Base
 using FillArrays
 
+export AbstractProductMeasure
+
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
 function Pretty.tile(μ::AbstractProductMeasure)
@@ -179,6 +181,17 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
 end
 
 
+@inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
+    mar = marginals(d)
+    for j in eachindex(x)
+        @inbounds dynamic(insupport(mar[j], x[j])) || return false
+    end
+    return true
+end
+
 @inline function insupport(d::AbstractProductMeasure, x)
-    all(dynamic.(insupport.(marginals(d), x)))
+    for (mj,xj) in zip(marginals(d), x)
+        dynamic(insupport(mj, xj)) || return false
+    end
+    return true
 end

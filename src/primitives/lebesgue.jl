@@ -8,7 +8,7 @@ testvalue(::LebesgueMeasure) = 0.0
 
 insupport(::LebesgueMeasure, x) = true
 
-insupprot(::LebesgueMeasure) = Returns(true)
+insupport(::LebesgueMeasure) = Returns(true)
 
 struct Lebesgue{T} <: AbstractMeasure
     support::T
