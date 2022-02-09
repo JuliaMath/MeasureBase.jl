@@ -71,6 +71,23 @@ export basemeasure_depth
     return static(10)
 end
 
+
+@inline function basemeasure_sequence(μ::M) where {M}  
+    depth = basemeasure_depth(μ)
+    basemeasure_sequence(μ, depth)
+end
+
+@generated function basemeasure_sequence(μ::M, ::StaticInt{N}) where {M,N}
+    quote
+        b_1 = μ
+        Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+            b_{i+1} = basemeasure(b_{i})
+        end
+        return Base.Cartesian.@ntuple $N b
+    end
+end
+
+
 # @inline function basemeasure_depth(μ::M) where {M}
 #     return basemeasure_depth(μ, basemeasure(μ), static(0))
 # end

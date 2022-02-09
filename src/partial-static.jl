@@ -27,7 +27,7 @@ end
     print(io, ")")
 end
 
-@inline Base.convert(::Type{F}, x::PartialStatic{StaticFloat64{N}, T}) where {F<:AbstractFloat, N,T} = Float64(N + x.dynamic)
+@inline Base.convert(::Type{F}, x::PartialStatic{StaticFloat64{N}, T}) where {F<:AbstractFloat, N,T} = convert(F, N) + convert(F, x.dynamic)
 
 @inline function Base.convert(::Type{PartialStatic{Static.StaticFloat64{N}, D}}, x::PartialStatic{Static.StaticFloat64{N}, D}) where {D, N}
     return x

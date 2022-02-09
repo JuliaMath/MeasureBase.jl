@@ -104,27 +104,28 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
 @inline function logdensityof(μ, x)
-    dynamic(insupport(μ, x)) || return -Inf
-    return unsafe_logdensityof(μ, x)
+    t() = dynamic(unsafe_logdensityof(μ, x))
+    f() = -Inf
+    ifelse(insupport(μ, x), t, f)()
 end
 
 export unsafe_logdensityof
 
 # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
 @inline function unsafe_logdensityof(μ::M, x) where {M}
-    ℓ_0 = (logdensity_def(μ, x))
+    ℓ_0 = partialstatic(logdensity_def(μ, x))
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         b_{i} = basemeasure(b_{i-1})
-        b = b_{i}
-        # @show b
+        # @show b_{i}
         if b_{i} isa typeof(b_{i-1})
             return ℓ_{i-1}
         end
-        ℓ_{i} = let Δt = @elapsed Δℓ = (logdensity_def(b_{i}, x))
+        ℓ_{i} = let Δℓ_{i} = partialstatic(logdensity_def(b_{i}, x))
             # @show Δt
-            # @show Δℓ
-            ℓ_{i-1} + Δℓ
+            # @show Δℓ_{i}
+            # println(repeat("-",100))
+            ℓ_{i-1} + Δℓ_{i}
         end
     end
     return ℓ_10
@@ -137,15 +138,19 @@ end
 
 # @generated function unsafe_logdensityof(μ, x, ::StaticInt{N}) where {N}
 #     q = quote
-#         ℓ = logdensity_def(μ, x)
+#         $(Expr(:meta, :inline))
+#         ℓ = partialstatic(logdensity_def(μ, x))
 #     end
 
+#     oldℓname = :ℓ
 #     for j in 1:N
+#         newℓname = Symbol(:ℓ_, j)
 #         push!(q.args, quote
 #             μ = basemeasure(μ)
-#             Δℓ = logdensity_def(μ, x)
-#             ℓ = ℓ + Δℓ
+#             Δℓ = partialstatic(logdensity_def(μ, x))
+#             $newℓname = $oldℓname + Δℓ
 #         end)
+#         oldℓname = newℓname
 #     end
 #     return q
 # end

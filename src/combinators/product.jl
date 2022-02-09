@@ -38,9 +38,9 @@ function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M<:
 end
 
 function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M<:AbstractMeasure}
-    map(mar.data) do dⱼ
+    mappedarray(mar.data) do dⱼ
         rand(rng, T, mar.f(dⱼ))
-    end
+    end |> collect
 end
 
 function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M}
@@ -51,9 +51,9 @@ end
 
 
 function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M}
-    map(mar.data) do dⱼ
+    mappedarray(mar.data) do dⱼ
         rand(rng, mar.f(dⱼ))
-    end
+    end |> collect
 end
 
 
