@@ -45,6 +45,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
+import IfElse: ifelse
 export logdensity_def
 export basemeasure
 export basekleisli
@@ -64,6 +65,7 @@ function logdensity_def end
 
 using Compat
 
+include("splat.jl")
 include("partial-static.jl")
 include("proxies.jl")
 include("kleisli.jl")
@@ -85,14 +87,12 @@ include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
-include("combinators/for.jl")
 include("combinators/power.jl")
 include("combinators/spikemixture.jl")
 include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
-include("combinators/conditional.jl")
 
 include("rand.jl")
 
@@ -102,11 +102,13 @@ module Interface
 using Reexport
 using MeasureBase
 using MeasureBase:basemeasure_depth, proxy
+using MeasureBase: insupport
 @reexport using Test
 
 export test_interface
 export basemeasure_depth
 export proxy
+export insupport
 
 include("interface.jl")
 end # module Interface

@@ -65,11 +65,41 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 end
 
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
-    T = eltype(x)
-    ℓ = zero(float(Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
+    ℓ = 0.0
+    # ℓ = zero(typeintersect(AbstractFloat,Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
     parent = d.parent
-    @inbounds for xj in x
-        ℓ += logdensity_def(parent, xj)
+    @simd for xj in x
+        Δℓ = logdensity_def(parent, xj)
+        ℓ += Δℓ
     end
     ℓ
+end
+
+@generated function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
+    quote
+        $(Expr(:meta, :inline))
+        ℓ = 0.0
+        parent = d.parent
+        @inbounds @simd for j in 1:$N
+            Δℓ = logdensity_def(parent, x[j])
+            ℓ += Δℓ
+        end
+        ℓ
+    end
+end
+
+@inline function insupport(μ::PowerMeasure, x)
+    p = μ.parent
+    all(x) do xj
+        # https://github.com/SciML/Static.jl/issues/36
+        dynamic(insupport(p, xj))
+    end
+end
+
+@inline function insupport(μ::PowerMeasure, x::AbstractArray)
+    p = μ.parent
+    all(x) do xj
+        # https://github.com/SciML/Static.jl/issues/36
+        dynamic(insupport(p, xj))
+    end
 end

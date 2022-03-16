@@ -41,11 +41,14 @@ end
 using Tricks
 struct Iterable end
 struct NonIterable end
-isiterable(::Type{T}) where {T} =
+function isiterable(::Type{T}) where {T}
     static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
+end
 
-@inline function instance(@nospecialize(T))
-    Base.@_pure_meta
+# issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
+
+
+@generated function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
 end
 
@@ -57,73 +60,65 @@ end
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
-    return basemeasure_depth(μ, basemeasure(μ))
-end
-
-@inline function basemeasure_depth(μ::M, β::M) where {M}
-    return 0
-end
-
-@inline function basemeasure_depth(μ::M, β::B) where {M,B}
-    return 1 + basemeasure_depth(β, basemeasure(β))
-end
-
-# Adapted from https://github.com/JuliaArrays/MappedArrays.jl/blob/46bf47f3388d011419fe43404214c1b7a44a49cc/src/MappedArrays.jl#L229
-function func_string(f, types)
-    ft = typeof(f)
-    mt = ft.name.mt
-    name = string(mt.name)
-    if startswith(name, '#')
-        # This is an anonymous function. See if it can be printed nicely
-        lwrds = code_lowered(f, types)
-        if length(lwrds) != 1
-            return string(f)
+    depth_0 = static(0)
+    b_0 = μ
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        b_{i} = basemeasure(b_{i-1})
+        if b_{i} isa typeof(b_{i-1})
+            return static(i-1)
         end
-        lwrd = lwrds[1]
-        c = lwrd.code
-        if length(c) == 2 && ((isa(c[2], Expr) && c[2].head === :return) || (isdefined(Core, :ReturnNode) && isa(c[2], Core.ReturnNode)))
-            # This is a single-line anonymous function, we should handle it
-            s = lwrd.slotnames[2:end]
-            result = ""
-            if length(s) == 1
-                result *= string(s[1])
-                result *= "->"
-            else
-                result *= string(tuple(s...))
-                result *= "->"
-            end
-            c1 = string(c[1])
-            for i = 1:length(s)
-                c1 = replace(c1, "_"*string(i+1)=>string(s[i]))
-            end
-            result *= c1
-            return result
-        else
-            return string(f)
+    end
+    return static(10)
+end
+
+
+@inline function basemeasure_sequence(μ::M) where {M}  
+    depth = basemeasure_depth(μ)
+    basemeasure_sequence(μ, depth)
+end
+
+@generated function basemeasure_sequence(μ::M, ::StaticInt{N}) where {M,N}
+    quote
+        b_1 = μ
+        Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+            b_{i+1} = basemeasure(b_{i})
         end
-    else
-        return string(f)
+        return Base.Cartesian.@ntuple $N b
     end
 end
 
-_eltype(T) = eltype(T)
 
-function _eltype(g::Base.Generator{I}) where {I}
-    Core.Compiler.return_type(g.f, Tuple{_eltype(I)})
-end
+# @inline function basemeasure_depth(μ::M) where {M}
+#     return basemeasure_depth(μ, basemeasure(μ), static(0))
+# end
 
-function _eltype(::Type{Base.Generator{I,ComposedFunction{Outer,Inner}}}) where {Outer,Inner,I}
-    _eltype(Base.Generator{_eltype(Base.Generator{I,Inner}), Outer})
-end
+# @inline function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
+#     s
+# end
 
-function _eltype(::Type{Base.Generator{I,F}}) where {F<:Function,I}
-    f = instance(F)
-    Core.Compiler.return_type(f, Tuple{_eltype(I)})
-end
-
-function _eltype(::Type{Z}) where {Z<:Iterators.Zip}
-    map(_eltype, Z.types[1].types)
-end
+# @generated function basemeasure_depth(μ::M, β::B, ::StaticInt{N}) where {M,B,N}
+#     s = Expr(:call, Expr(:curly, :StaticInt, N + 1))
+#     quote
+#         $(Expr(:meta, :inline))
+#         basemeasure_depth(β, basemeasure(β), $s)
+#     end
+# end
 
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)
+
+function infer_zero(f, args...)
+    inferred_type = Core.Compiler.return_type(f, typeof.(args))
+    zero(typeintersect(AbstractFloat, inferred_type))
+end
+
+@inline function allequal(f, x::AbstractArray)
+    val = f(first(x))
+    @simd for xj in x
+        f(xj) == val || return false
+    end
+    return true
+end
+
+
+allequal(x::AbstractArray) = allequal(identity, x)

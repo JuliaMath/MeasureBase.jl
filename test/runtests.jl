@@ -23,9 +23,9 @@ d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 
 test_measures = [
     # Chain(x -> Normal(μ=x), Normal(μ=0.0))
-    For(3) do j
-        Dirac(j)
-    end
+    # For(3) do j
+    #     Dirac(j)
+    # end
     # For(2, 3) do i, j
     #     Dirac(i) + Dirac(j)
     # end
@@ -79,29 +79,29 @@ end
     @test logdensity_def(Dirac(0.3), 0.4) == -Inf
 end
 
-@testset "For" begin
-    FORDISTS = [
-        For(1:10) do j
-            Dirac(j)
-        end
-        For(4, 3) do i, j
-            Dirac(i) ⊗ Dirac(j)
-        end
-        For(1:4, 1:4) do i, j
-            Dirac(i) ⊗ Dirac(j)
-        end
-        For(eachrow(rand(4, 2))) do x
-            Dirac(x[1]) ⊗ Dirac(x[2])
-        end
-        For(rand(4), rand(4)) do i, j
-            Dirac(i) ⊗ Dirac(j)
-        end
-    ]
+# @testset "For" begin
+#     FORDISTS = [
+#         For(1:10) do j
+#             Dirac(j)
+#         end
+#         For(4, 3) do i, j
+#             Dirac(i) ⊗ Dirac(j)
+#         end
+#         For(1:4, 1:4) do i, j
+#             Dirac(i) ⊗ Dirac(j)
+#         end
+#         For(eachrow(rand(4, 2))) do x
+#             Dirac(x[1]) ⊗ Dirac(x[2])
+#         end
+#         For(rand(4), rand(4)) do i, j
+#             Dirac(i) ⊗ Dirac(j)
+#         end
+#     ]
 
-    for d in FORDISTS
-        test_interface(d)
-    end
-end
+#     for d in FORDISTS
+#         test_interface(d)
+#     end
+# end
 
 @testset "Half" begin
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))

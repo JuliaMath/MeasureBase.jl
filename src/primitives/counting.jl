@@ -4,6 +4,8 @@ export Counting, CountingMeasure
 
 struct CountingMeasure <: PrimitiveMeasure end
 
+insupport(::CountingMeasure, x) = true
+
 struct Counting{T} <: AbstractMeasure
     support::T
 
@@ -28,4 +30,4 @@ Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
 
 insupport(μ::Counting, x) = x ∈ μ.support
 
-insupport(μ::Counting{T}, x) where {T<:Type} = x isa T
+insupport(μ::Counting{T}, x) where {T<:Type} = x isa μ.support

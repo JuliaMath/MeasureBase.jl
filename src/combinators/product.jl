@@ -6,6 +6,8 @@ using Base: @propagate_inbounds
 import Base
 using FillArrays
 
+export AbstractProductMeasure
+
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
 function Pretty.tile(μ::AbstractProductMeasure)
@@ -35,11 +37,25 @@ function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M<:
     end
 end
 
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M<:AbstractMeasure}
+    mappedarray(mar.data) do dⱼ
+        rand(rng, T, mar.f(dⱼ))
+    end |> collect
+end
+
 function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M}
     map(mar) do dⱼ
         rand(rng, dⱼ)
     end
 end
+
+
+function _rand_product(rng::AbstractRNG, ::Type{T}, mar::ReadonlyMappedArray, ::Type{M}) where {T,M}
+    mappedarray(mar.data) do dⱼ
+        rand(rng, mar.f(dⱼ))
+    end |> collect
+end
+
 
 @inline function logdensity_def(d::AbstractProductMeasure, x)
     mapreduce(logdensity_def, +, marginals(d), x)
@@ -59,17 +75,47 @@ end
     sum(ℓs)
 end
 
+@generated function logdensity_def(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+    k1 = QuoteNode(first(N))
+    q = quote
+        m = marginals(d)
+        ℓ = logdensity_def(getproperty(m, $k1), getproperty(x, $k1))
+    end
+    for k in Base.tail(N)
+        k = QuoteNode(k)
+        qk = :(ℓ += logdensity_def(getproperty(m, $k), getproperty(x, $k)))
+        push!(q.args, qk)
+    end
+
+    return q
+end
+
+@generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+    q = quote
+        m = marginals(d)
+    end
+    for k in N
+        qk = QuoteNode(k)
+        push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
+    end
+
+    vals = map(x -> Expr(:(=), x,x), N)
+    push!(q, Expr(:tuple, vals...))
+    return q
+end
+
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
+    mar = marginals(μ)
     T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingulartype(B)))
+    _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
 
 
 
 function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingulartype(B)))
+    _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
 
 function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {T,B}
@@ -77,6 +123,7 @@ function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {T,B}
 end
 
 function _basemeasure(μ::ProductMeasure{A}, ::Type{B}, ::False) where {T,A<:AbstractMappedArray{T},B}
+    mar = marginals(μ)
     productmeasure(mappedarray(basemeasure, mar))
 end
 
@@ -131,4 +178,20 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
     sz = size(mar)
     x = Array{elT,length(sz)}(undef, sz)
     rand!(rng, d, x)
+end
+
+
+@inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
+    mar = marginals(d)
+    for j in eachindex(x)
+        @inbounds dynamic(insupport(mar[j], x[j])) || return false
+    end
+    return true
+end
+
+@inline function insupport(d::AbstractProductMeasure, x)
+    for (mj,xj) in zip(marginals(d), x)
+        dynamic(insupport(mj, xj)) || return false
+    end
+    return true
 end

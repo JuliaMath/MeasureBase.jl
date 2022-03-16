@@ -39,3 +39,5 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::SpikeMixture)
 end
 
 testvalue(μ::SpikeMixture) = testvalue(μ.m)
+
+insupport(μ::SpikeMixture, x) = dynamic(insupport(μ.m, x)) || iszero(x) 

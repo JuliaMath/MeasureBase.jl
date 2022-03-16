@@ -30,6 +30,13 @@ end
 
 productmeasure(mar::Base.Generator) = ProductMeasure(mar)
 productmeasure(mar::AbstractArray) = ProductMeasure(mar)
+
+
+# TODO: Make this static when its length is static
+@inline function productmeasure(mar::AbstractArray{WeightedMeasure{StaticFloat64{W}, M}}) where {W,M}
+    return weightedmeasure(W * length(mar), productmeasure(map(basemeasure, mar)))
+end
+
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)
 
@@ -93,6 +100,10 @@ kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_
 # kleisli(Normal(μ=2))
 function kleisli(μ::M) where {M<:AbstractMeasure}
     kleisli(M)
+end
+
+function kleisli(d::PowerMeasure)
+    Base.Fix2(powermeasure, d.axes) ∘ kleisli(d.parent)
 end
 
 # kleisli(Normal{(:μ,), Tuple{Int64}})
