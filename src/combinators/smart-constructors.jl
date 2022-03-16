@@ -102,6 +102,10 @@ function kleisli(μ::M) where {M<:AbstractMeasure}
     kleisli(M)
 end
 
+function kleisli(d::PowerMeasure)
+    Base.Fix2(powermeasure, d.axes) ∘ kleisli(d.parent)
+end
+
 # kleisli(Normal{(:μ,), Tuple{Int64}})
 function kleisli(::Type{M}) where {M<:AbstractMeasure}
     constructorof(M)

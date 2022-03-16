@@ -102,6 +102,7 @@ module Interface
 using Reexport
 using MeasureBase
 using MeasureBase:basemeasure_depth, proxy
+using MeasureBase: insupport
 @reexport using Test
 
 export test_interface
