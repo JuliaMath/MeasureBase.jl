@@ -100,13 +100,13 @@ end
     end
 
     vals = map(x -> Expr(:(=), x,x), N)
-    push!(q, Expr(:tuple, vals...))
+    push!(q.args, Expr(:tuple, vals...))
     return q
 end
 
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
-    T = Core.Compiler.return_type(mar.f, Tuple{_eltype(mar.iter)})
+    T = Core.Compiler.return_type(mar.f, Tuple{eltype(mar.iter)})
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
     _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
