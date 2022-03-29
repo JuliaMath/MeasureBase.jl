@@ -28,15 +28,12 @@ export rebase
 
 export AbstractMeasure
 
-
 import IfElse: ifelse
 export logdensity_def
 export basemeasure
 export basekleisli
 
-
 export insupport
-
 
 abstract type AbstractMeasure end
 
@@ -112,8 +109,6 @@ using MeasureBase: insupport
 
 export test_interface
 export basemeasure_depth
-
-
 export proxy
 
 @reexport using Test
