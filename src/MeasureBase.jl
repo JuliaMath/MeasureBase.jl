@@ -28,6 +28,13 @@ export rebase
 
 export AbstractMeasure
 
+import IfElse: ifelse
+export logdensity_def
+export basemeasure
+export basekleisli
+
+export insupport
+
 abstract type AbstractMeasure end
 
 using Static: @constprop
@@ -45,11 +52,6 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
-import IfElse: ifelse
-export logdensity_def
-export basemeasure
-export basekleisli
-
 using LogExpFunctions: logsumexp
 
 """
@@ -66,7 +68,6 @@ function logdensity_def end
 using Compat
 
 include("splat.jl")
-include("partial-static.jl")
 include("proxies.jl")
 include("kleisli.jl")
 include("parameterized.jl")
@@ -100,15 +101,18 @@ include("density.jl")
 module Interface
 
 using Reexport
-using MeasureBase
+
+@reexport using MeasureBase
+
 using MeasureBase:basemeasure_depth, proxy
 using MeasureBase: insupport
-@reexport using Test
 
 export test_interface
 export basemeasure_depth
 export proxy
 export insupport
+
+@reexport using Test
 
 include("interface.jl")
 end # module Interface

@@ -113,52 +113,26 @@ export unsafe_logdensityof
 
 # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
 @inline function unsafe_logdensityof(μ::M, x) where {M}
-    ℓ_0 = partialstatic(logdensity_def(μ, x))
+    ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         b_{i} = basemeasure(b_{i-1})
-        # @show b_{i}
         if b_{i} isa typeof(b_{i-1})
             return ℓ_{i-1}
         end
-        ℓ_{i} = let Δℓ_{i} = partialstatic(logdensity_def(b_{i}, x))
-            # @show Δt
-            # @show Δℓ_{i}
-            # println(repeat("-",100))
+        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
             ℓ_{i-1} + Δℓ_{i}
         end
     end
     return ℓ_10
 end
 
-# # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
-# @inline function unsafe_logdensityof(μ::M, x) where {M}
-#     unsafe_logdensityof(μ, x, basemeasure_depth(μ))
-# end
-
-# @generated function unsafe_logdensityof(μ, x, ::StaticInt{N}) where {N}
-#     q = quote
-#         $(Expr(:meta, :inline))
-#         ℓ = partialstatic(logdensity_def(μ, x))
-#     end
-
-#     oldℓname = :ℓ
-#     for j in 1:N
-#         newℓname = Symbol(:ℓ_, j)
-#         push!(q.args, quote
-#             μ = basemeasure(μ)
-#             Δℓ = partialstatic(logdensity_def(μ, x))
-#             $newℓname = $oldℓname + Δℓ
-#         end)
-#         oldℓname = newℓname
-#     end
-#     return q
-# end
-   
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
-    (ℓ₋, β) = _logdensityof(ν, basemeasure(ν), x)
+    ℓ₊ = logdensity_def(μ, x)
+    ℓ₋ = logdensity_def(ν, x)
+    α = basemeasure(μ)
+    β = basemeasure(ν)
     return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
 end
 
@@ -175,8 +149,6 @@ end
         return oftype(ℓ, NaN)
     end
 end
-
-# logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
 
 export densityof
 export logdensityof
