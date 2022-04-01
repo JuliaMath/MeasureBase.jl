@@ -31,3 +31,5 @@ dirac(d::AbstractMeasure) = Dirac(rand(d))
 testvalue(d::Dirac) = d.x
 
 insupport(d::Dirac, x) = x == d.x
+
+logdensity_def(μ::Dirac, ν::Dirac, x) = logdensity_def(μ, x) - logdensity_def(ν, x)
