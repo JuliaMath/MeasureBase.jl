@@ -76,6 +76,14 @@ superpose(a::AbstractArray) = SuperpositionMeasure(a)
 superpose(t::Tuple) = SuperpositionMeasure(t)
 superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
+function superpose(μ::T, ν::T) where {T}
+    if μ==ν
+        return weightedmeasure(static(logtwo), μ)
+    else
+        return superpose((μ, ν))
+    end
+end
+
 function superpose(μ::AbstractMeasure, ν::AbstractMeasure)
     components = (μ, ν)
     superpose(components)

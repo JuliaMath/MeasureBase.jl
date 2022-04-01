@@ -72,6 +72,8 @@ export basemeasure_depth
 end
 
 
+export basemeasure_sequence
+
 @inline function basemeasure_sequence(μ::M) where {M}  
     depth = basemeasure_depth(μ)
     basemeasure_sequence(μ, depth)
@@ -86,7 +88,6 @@ end
         return Base.Cartesian.@ntuple $N b
     end
 end
-
 
 # @inline function basemeasure_depth(μ::M) where {M}
 #     return basemeasure_depth(μ, basemeasure(μ), static(0))
