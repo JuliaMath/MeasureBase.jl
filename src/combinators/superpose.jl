@@ -58,9 +58,20 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(components)
 end
 
-function logdensity_def(μ::SuperpositionMeasure, x)
-    logsumexp((logdensity_def(m, x) for m in μ.components))
+using LogarithmicNumbers
+
+function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+    (μ, ν) = s.components
+    α = basemeasure(μ)
+    β = basemeasure(ν)
+    dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
+    dν_dβ = exp(ULogarithmic, logdensity_def(ν, x))
+    dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
+    return dμ_dα / (1 + inv(dα_dβ)) + dν_dβ / (1 + dα_dβ)
 end
+
+
+logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
