@@ -32,7 +32,7 @@ function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
     return Density(μ, base)
 end
 
-logdensityof(d::Density, x) = logdensityof(d.μ, x) - logdensityof(d.base, x)
+logdensityof(d::Density, x) = logdensity_rel(d.μ, d.base, x)
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
@@ -127,6 +127,9 @@ export unsafe_logdensityof
     return ℓ_10
 end
 
+export density_rel
+
+@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     ℓ₊ = logdensity_def(μ, x)
