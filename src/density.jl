@@ -127,15 +127,14 @@ export unsafe_logdensityof
     return ℓ_10
 end
 
-# TODO: FIX THIS!!!
-# e.g., try MeasureBase.logdensity_rel(Normal(0,1), Normal(), 10)
-
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     dynamic(insupport(μ, x)) || begin
         dynamic(insupport(ν, x)) || return NaN
         return -Inf
     end
     dynamic(insupport(ν, x)) || return Inf
+
+
 
     μ_depth = basemeasure_depth(μ)
     ν_depth = basemeasure_depth(ν)
@@ -155,7 +154,6 @@ end
     end
 
     @assert basemeasure_depth(μ_0) == basemeasure_depth(ν_0)
-
 
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         if μ_{i-1} == ν_{i-1}
