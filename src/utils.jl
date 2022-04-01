@@ -60,7 +60,6 @@ end
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
-    depth_0 = static(0)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         b_{i} = basemeasure(b_{i-1})

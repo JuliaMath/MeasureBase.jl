@@ -60,7 +60,9 @@ end
 
 using LogarithmicNumbers
 
-function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
+
+@inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
     insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
     insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
@@ -69,26 +71,35 @@ function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
     dν_dβ = exp(ULogarithmic, logdensity_def(ν, x))
     dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
-    return dμ_dα / (1 + inv(dα_dβ)) + dν_dβ / (1 + dα_dβ)
+    dβ_dα = inv(dα_dβ)
+    return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
 end
 
 using StatsFuns
 
-function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
+@inline function logdensity_def(μ::T, ν::T, x::Any) where T<:(SuperpositionMeasure{Tuple{A, B}} where {A, B})
+    if μ === ν
+        return zero(return_type(logdensity_def, (μ, x)))
+    else
+        return logdensity_def(μ,x) - logdensity_def(ν, x)
+    end
+end
+
+@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
     (μ, ν) = s.components
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
+@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
     (μ, ν) = s.components
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-function logdensity_def(s, β::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+@inline function logdensity_def(s, β::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     -logdensity_def(β, s, x)
 end
 
-logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
+@inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
