@@ -15,7 +15,7 @@ isnonnegative(x) = x ≥ 0.0
 
 @inline function basemeasure(μ::Half)
     constℓ = static(logtwo)
-    varℓ = Returns(static(0.0))
+    varℓ = Returns(0.0)
     base = basemeasure(unhalf(μ))
     FactoredBase(constℓ, varℓ, base)
 end
