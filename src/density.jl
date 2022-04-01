@@ -174,9 +174,9 @@ export density_rel
        
     @warn """
     No common base measure for
-        $μ
+        $μ_10
     and
-        $ν
+        $ν_10
 
     Returning a relative log-density of NaN. If this is incorrect, add a
     three-argument method
