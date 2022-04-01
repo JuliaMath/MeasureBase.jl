@@ -131,6 +131,8 @@ export density_rel
 
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
+export logdensity_rel
+
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     insupport(μ, x) || begin
         insupport(ν, x) || return NaN
