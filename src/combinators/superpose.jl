@@ -87,11 +87,15 @@ end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
     (μ, ν) = s.components
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
     (μ, ν) = s.components
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 

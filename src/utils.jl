@@ -84,7 +84,7 @@ end
         Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
             b_{i+1} = basemeasure(b_{i})
         end
-        return Base.Cartesian.@ntuple $N b
+        return Base.Cartesian.@ntuple $(N+1) b
     end
 end
 
