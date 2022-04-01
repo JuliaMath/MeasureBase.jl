@@ -62,6 +62,8 @@ using LogarithmicNumbers
 
 function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
+    insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
+    insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
     α = basemeasure(μ)
     β = basemeasure(ν)
     dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
@@ -70,6 +72,21 @@ function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     return dμ_dα / (1 + inv(dα_dβ)) + dν_dβ / (1 + dα_dβ)
 end
 
+using StatsFuns
+
+function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
+    (μ, ν) = s.components
+    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+end
+
+function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
+    (μ, ν) = s.components
+    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+end
+
+function logdensity_def(s, β::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+    -logdensity_def(β, s, x)
+end
 
 logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
