@@ -143,14 +143,16 @@ export density_rel
 
     Δdepth = μ_depth - ν_depth
 
-    ℓ₊ = ℓ₋ = 0.0
     if Δdepth > 0
         (ℓ₊, μ_0) = logdensity_steps(μ, x, Δdepth)
+        ℓ₋ = zero(ℓ₊)
         ν_0 = ν
     elseif Δdepth < 0
         (ℓ₋, ν_0) = logdensity_steps(ν, x, -Δdepth)
+        ℓ₊ = zero(ℓ₋)
         μ_0 = μ
     else
+        ℓ₊ = ℓ₋ = 0.0
         μ_0 = μ
         ν_0 = ν
     end
@@ -161,7 +163,7 @@ export density_rel
         if μ_{i-1} == ν_{i-1}
             return ℓ₊ - ℓ₋
         elseif static_hasmethod(logdensity_def, Tuple{typeof(μ_{i-1}), typeof(ν_{i-1}), typeof(x)})
-            return ℓ + logdensity_def(μ_{i-1}, ν_{i-1}, x)
+            return ℓ₊ - ℓ₋ + logdensity_def(μ_{i-1}, ν_{i-1}, x)
         end
 
         ℓ₊ += logdensity_def(μ_{i-1}, x)
