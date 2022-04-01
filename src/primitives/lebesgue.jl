@@ -36,3 +36,7 @@ Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
 insupport(::Lebesgue{RealNumbers}, ::Real) = true
+
+logdensity_def(::LebesgueMeasure, ::CountingMeasure, x) = -Inf
+
+logdensity_def(::CountingMeasure, ::LebesgueMeasure, x) = Inf
