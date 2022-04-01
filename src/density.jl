@@ -132,13 +132,11 @@ export density_rel
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    dynamic(insupport(μ, x)) || begin
-        dynamic(insupport(ν, x)) || return NaN
+    insupport(μ, x) || begin
+        insupport(ν, x) || return NaN
         return -Inf
     end
-    dynamic(insupport(ν, x)) || return Inf
-
-
+    insupport(ν, x) || return Inf
 
     μ_depth = basemeasure_depth(μ)
     ν_depth = basemeasure_depth(ν)
