@@ -175,14 +175,6 @@ export density_rel
     @error "No common base measure"
 end
 
-
-#     ℓ₊ = logdensity_def(μ, x)
-#     ℓ₋ = logdensity_def(ν, x)
-#     α = basemeasure(μ)
-#     β = basemeasure(ν)
-#     return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
-# end
-
 logdensity_steps(μ, x, ::StaticInt{0}) = (zero(logdensity_def(μ, x)), μ)
 
 @inline function logdensity_steps(μ, x, ::StaticInt{n}) where {n}
