@@ -127,13 +127,76 @@ export unsafe_logdensityof
     return ℓ_10
 end
 
+# TODO: FIX THIS!!!
+# e.g., try MeasureBase.logdensity_rel(Normal(0,1), Normal(), 10)
 
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    ℓ₊ = logdensity_def(μ, x)
-    ℓ₋ = logdensity_def(ν, x)
-    α = basemeasure(μ)
-    β = basemeasure(ν)
-    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
+    dynamic(insupport(μ, x)) || begin
+        dynamic(insupport(ν, x)) || return NaN
+        return -Inf
+    end
+    dynamic(insupport(ν, x)) || return Inf
+
+    μ_depth = basemeasure_depth(μ)
+    ν_depth = basemeasure_depth(ν)
+
+    Δdepth = μ_depth - ν_depth
+
+    ℓ₊ = ℓ₋ = 0.0
+    if Δdepth > 0
+        (ℓ₊, μ_0) = logdensity_steps(μ, x, Δdepth)
+        ν_0 = ν
+    elseif Δdepth < 0
+        (ℓ₋, ν_0) = logdensity_steps(ν, x, -Δdepth)
+        μ_0 = μ
+    else
+        μ_0 = μ
+        ν_0 = ν
+    end
+
+    @assert basemeasure_depth(μ_0) == basemeasure_depth(ν_0)
+
+
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        if μ_{i-1} == ν_{i-1}
+            return ℓ₊ - ℓ₋
+        elseif static_hasmethod(logdensity_def, Tuple{typeof(μ_{i-1}), typeof(ν_{i-1}), typeof(x)})
+            return ℓ + logdensity_def(μ_{i-1}, ν_{i-1}, x)
+        end
+
+        ℓ₊ += logdensity_def(μ_{i-1}, x)
+        ℓ₋ += logdensity_def(ν_{i-1}, x)
+        μ_{i} = basemeasure(μ_{i-1})
+        ν_{i} = basemeasure(ν_{i-1})
+    end
+       
+    @error "No common base measure"
+end
+
+
+#     ℓ₊ = logdensity_def(μ, x)
+#     ℓ₋ = logdensity_def(ν, x)
+#     α = basemeasure(μ)
+#     β = basemeasure(ν)
+#     return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
+# end
+
+logdensity_steps(μ, x, ::StaticInt{0}) = (zero(logdensity_def(μ, x)), μ)
+
+@inline function logdensity_steps(μ, x, ::StaticInt{n}) where {n}
+    ℓ_0 = logdensity_def(μ, x)
+    b_0 = μ
+    
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        i > n && begin
+            return (ℓ_{i-1}, b_{i-1})
+        end
+        b_{i} = basemeasure(b_{i-1})
+        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
+            ℓ_{i-1} + Δℓ_{i}
+        end       
+    end
+    return (ℓ_10, b_10)
 end
 
 @inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
