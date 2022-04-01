@@ -35,4 +35,4 @@ Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
-insupport(::Lebesgue{RealNumbers}, ::Real) = static(true)
+insupport(::Lebesgue{RealNumbers}, ::Real) = true
