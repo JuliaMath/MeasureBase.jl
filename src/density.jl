@@ -203,20 +203,6 @@ logdensity_steps(μ, x, ::StaticInt{0}) = (zero(logdensity_def(μ, x)), μ)
     return (ℓ_10, b_10)
 end
 
-@inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
-    if static_hasmethod(logdensity_def, Tuple{A,B,X})
-        return ℓ + logdensity_def(α, β, x)
-    elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
-        return ℓ + logdensity_def(β, α, x)
-    else
-        @warn """
-        No method 
-        logdensity(::$A, ::$B, ::$X)
-        """
-        return oftype(ℓ, NaN)
-    end
-end
-
 export densityof
 export logdensityof
 
