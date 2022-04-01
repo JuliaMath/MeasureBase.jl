@@ -170,7 +170,17 @@ export density_rel
         ν_{i} = basemeasure(ν_{i-1})
     end
        
-    @error "No common base measure"
+    @warn """
+    No common base measure for
+        $μ
+    and
+        $ν
+
+    Returning a relative log-density of NaN. If this is incorrect, add a
+    three-argument method
+        logdensity_def(μ, ν, x)
+    """
+    return NaN
 end
 
 logdensity_steps(μ, x, ::StaticInt{0}) = (zero(logdensity_def(μ, x)), μ)
