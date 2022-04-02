@@ -168,21 +168,23 @@ end
 end
 
 @testset "logdensity_rel" begin
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 0.0) == Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 1.0) == -Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 2.0) == Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 0.0) == 0.0
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 1.0) == Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 0.0) == Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 1.0) == 0.0
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 0.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 1.0) == -Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 2.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 0.0) == 0.0
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 1.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 0.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 1.0) == 0.0
 
-    @test MeasureBase.logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
-    @test MeasureBase.logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 1.0) == Inf
-    @test MeasureBase.logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 2.0) == -Inf
-    @test MeasureBase.logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 0.0) == 0.0
-    @test MeasureBase.logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 1.0) == -Inf
-    @test MeasureBase.logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
-    @test MeasureBase.logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 1.0) == 0.0
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 1.0) == Inf
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 2.0) == -Inf
+    @test logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 0.0) == 0.0
+    @test logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 1.0) == -Inf
+    @test logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
+    @test logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 1.0) == 0.0
+    
+    @test isnan(logdensity_rel(Dirac(0), Dirac(1), 2))
 end
 
 # @testset "Density measures and Radon-Nikodym" begin
