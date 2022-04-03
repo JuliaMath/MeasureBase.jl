@@ -125,6 +125,8 @@ include("rand.jl")
 
 include("density.jl")
 
+include("interface.jl")
+
 using .Interface
 
 end # module MeasureBase
