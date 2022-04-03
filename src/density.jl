@@ -192,7 +192,7 @@ known to be in the support of both `m1` and `m2`.
 
 See also `logdensity_rel`.
 """
-@inline function unsafelogdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+@inline function unsafe_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     if static_hasmethod(logdensity_def, Tuple{M, N, X})
         return logdensity_def(μ, ν, x)
     end
