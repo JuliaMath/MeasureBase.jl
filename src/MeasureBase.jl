@@ -33,6 +33,18 @@ export logdensity_def
 export basemeasure
 export basekleisli
 
+"""
+    inssupport(m, x)
+    insupport(m)
+
+`insupport(m,x)` computes whether `x` is in the support of `m`.
+
+`insupport(m)` returns a function, and satisfies
+
+    insupport(m)(x) == insupport(m, x)
+"""
+function insupport end
+
 export insupport
 
 abstract type AbstractMeasure end
