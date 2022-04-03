@@ -67,13 +67,21 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 using LogExpFunctions: logsumexp
 
 """
-    logdensity_def(μ::AbstractMeasure{X}, x::X)
+`logdensity_def` is the standard way to define a log-density for a new measure.
+Note that this definition does not include checking for membership in the
+support; this is instead checked using `insupport`. `logdensity_def` is
+a low-level function, and should typically not be called directly. See
+`logdensityof` for more information and other alternatives.
 
-Compute the logdensity of the measure μ at the point x. This is the standard way
-to define `logdensity` for a new measure. the base measure is implicit here, and
-is understood to be `basemeasure(μ)`.
+    logdensity_def(m, x)
 
-Methods for computing density relative to other measures will be
+Compute the log-density of the measure m at the point x, relative to
+`basemeasure(m)`, and assuming `insupport(m, x)`.
+
+    logdensity_def(m1, m2, x)
+
+Compute the log-density of `m1` relative to `m2` at the point `x`, assuming
+`insupport(m1, x)` and `insupport(m2, x)`.
 """
 function logdensity_def end
 
