@@ -73,10 +73,14 @@ support; this is instead checked using `insupport`. `logdensity_def` is
 a low-level function, and should typically not be called directly. See
 `logdensityof` for more information and other alternatives.
 
+---
+
     logdensity_def(m, x)
 
-Compute the log-density of the measure m at the point x, relative to
+Compute the log-density of the measure m at the point `x`, relative to
 `basemeasure(m)`, and assuming `insupport(m, x)`.
+
+---
 
     logdensity_def(m1, m2, x)
 
