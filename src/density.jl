@@ -32,7 +32,7 @@ function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
     return Density(μ, base)
 end
 
-logdensityof(d::Density, x) = logdensityof(d.μ, x) - logdensityof(d.base, x)
+logdensityof(d::Density, x) = logdensity_rel(d.μ, d.base, x)
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
@@ -103,7 +103,26 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline function logdensityof(μ, x)
+"""
+    logdensityof(m::AbstractMeasure, x) 
+
+Compute the log-density of the measure `m` at `x`. Density is always relative,
+but `DensityInterface.jl` does not account for this. For compatibility with
+this, `logdensityof` for a measure is always implicitly relative to
+[`rootmeasure(x)`](@ref rootmeasure). 
+
+`logdensityof` works by first computing `insupport(m, x)`. If this is true, then
+`unsafe_logdensityof` is called. If `insupport(m, x)` is known to be `true`, it
+can be a little faster to directly call `unsafe_logdensityof(m, x)`. 
+
+To compute log-density relative to `basemeasure(m)` or *define* a log-density
+(relative to `basemeasure(m)` or another measure given explicitly), see
+`logdensity_def`. 
+
+To compute a log-density relative to a specific base-measure, see
+`logdensity_rel`. 
+"""
+@inline function logdensityof(μ::AbstractMeasure, x)
     t() = dynamic(unsafe_logdensityof(μ, x))
     f() = -Inf
     ifelse(insupport(μ, x), t, f)()
@@ -112,71 +131,124 @@ end
 export unsafe_logdensityof
 
 # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
+"""
+    unsafe_logdensityof(m, x)
+
+Compute the log-density of the measure `m` at `x` relative to `rootmeasure(m)`.
+This is "unsafe" because it does not check `insupport(m, x)`.
+
+See also `logdensityof`.
+"""
 @inline function unsafe_logdensityof(μ::M, x) where {M}
-    ℓ_0 = partialstatic(logdensity_def(μ, x))
+    ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         b_{i} = basemeasure(b_{i-1})
-        # @show b_{i}
         if b_{i} isa typeof(b_{i-1})
             return ℓ_{i-1}
         end
-        ℓ_{i} = let Δℓ_{i} = partialstatic(logdensity_def(b_{i}, x))
-            # @show Δt
-            # @show Δℓ_{i}
-            # println(repeat("-",100))
+        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
             ℓ_{i-1} + Δℓ_{i}
         end
     end
     return ℓ_10
 end
 
-# # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
-# @inline function unsafe_logdensityof(μ::M, x) where {M}
-#     unsafe_logdensityof(μ, x, basemeasure_depth(μ))
-# end
+export density_rel
 
-# @generated function unsafe_logdensityof(μ, x, ::StaticInt{N}) where {N}
-#     q = quote
-#         $(Expr(:meta, :inline))
-#         ℓ = partialstatic(logdensity_def(μ, x))
-#     end
+@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
-#     oldℓname = :ℓ
-#     for j in 1:N
-#         newℓname = Symbol(:ℓ_, j)
-#         push!(q.args, quote
-#             μ = basemeasure(μ)
-#             Δℓ = partialstatic(logdensity_def(μ, x))
-#             $newℓname = $oldℓname + Δℓ
-#         end)
-#         oldℓname = newℓname
-#     end
-#     return q
-# end
-   
+export logdensity_rel
 
+@inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
+
+unstatic(::Type{T}) where {T} = T
+unstatic(::Type{StaticFloat64{X}}) where X = Float64
+
+"""
+    logdensity_rel(m1, m2, x)
+
+Compute the log-density of `m1` relative to `m2` at `x`. This function checks
+whether `x` is in the support of `m1` or `m2` (or both, or neither). If `x` is
+known to be in the support of both, it can be more efficient to call
+`unsafe_logdensity_rel`. 
+"""
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    (ℓ₊, α) = _logdensityof(μ, basemeasure(μ), x)
-    (ℓ₋, β) = _logdensityof(ν, basemeasure(ν), x)
-    return _logdensity_rel(α, β, x, ℓ₊ - ℓ₋)
+    T = unstatic(float(promote_type(return_type(logdensity_def, (μ, x)), return_type(logdensity_def, (ν, x)))))
+    insupport(μ, x) || begin
+        insupport(ν, x) || return convert(T, NaN)
+        return convert(T, -Inf)
+    end
+    insupport(ν, x) || return convert(T, Inf)
+
+    return unsafe_logdensity_rel(μ, ν, x)
 end
 
-@inline function _logdensity_rel(α::A, β::B, x::X, ℓ) where {A,B,X}
-    if static_hasmethod(logdensity_def, Tuple{A,B,X})
-        return ℓ + logdensity_def(α, β, x)
-    elseif static_hasmethod(logdensity_def, Tuple{B,A,X})
-        return ℓ + logdensity_def(β, α, x)
+"""
+    unsafe_logdensity_rel(m1, m2, x)
+
+Compute the log-density of `m1` relative to `m2` at `x`, assuming `x` is
+known to be in the support of both `m1` and `m2`.
+
+See also `logdensity_rel`.
+"""
+@inline function unsafe_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    if static_hasmethod(logdensity_def, Tuple{M, N, X})
+        return logdensity_def(μ, ν, x)
+    end
+    μs = basemeasure_sequence(μ)
+    νs = basemeasure_sequence(ν)
+    return _logdensity_rel(μs, νs, x)
+end
+
+# Note that this method assumes `μ` and `ν` to have the same type
+function logdensity_def(μ::T, ν::T, x) where {T}
+    if μ === ν
+        return zero(return_type(logdensity_def, (μ, x)))
     else
-        @warn """
-        No method 
-        logdensity(::$A, ::$B, ::$X)
-        """
-        return oftype(ℓ, NaN)
+        return logdensity_def(μ,x) - logdensity_def(ν, x)
     end
 end
 
-# logdensity_def(::Lebesgue{ℝ}, ::Lebesgue{ℝ}, x) = zero(x)
+@generated function _logdensity_rel(μs::Tμ, νs::Tν, x::X)  where {Tμ, Tν, X}
+    sμ = schema(Tμ)
+    sν = schema(Tν)
+   
+    q = quote 
+        $(Expr(:meta, :inline))
+    end
+    
+    for it in Iterators.product(enumerate(sμ), enumerate(sν))
+        ((nμ, μtype), (nν, νtype)) = it
+        if static_hasmethod(logdensity_def, Tuple{μtype, νtype, X})
+            push!(q.args, :(ℓ = logdensity_def(μs[$nμ], νs[$nν], x)))
+            for i in 1:nμ-1
+                push!(q.args, :(ℓ += logdensity_def(μs[$i], x)))
+            end
+            for j in 1:nν-1
+                push!(q.args, :(ℓ -= logdensity_def(νs[$j], x)))
+            end
+
+            return q
+        end
+    end
+
+    return quote
+        μ = μs[end]
+        ν = νs[end]
+        @warn """
+        No common base measure for
+            $μ
+        and
+            $ν
+
+        Returning a relative log-density of NaN. If this is incorrect, add a
+        three-argument method
+            logdensity_def(μ, ν, x)
+        """
+        NaN
+    end
+end
 
 export densityof
 export logdensityof

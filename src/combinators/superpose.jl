@@ -58,9 +58,52 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(components)
 end
 
-function logdensity_def(μ::SuperpositionMeasure, x)
-    logsumexp((logdensity_def(m, x) for m in μ.components))
+using LogarithmicNumbers
+
+oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
+
+@inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+    (μ, ν) = s.components
+    insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
+    insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
+    α = basemeasure(μ)
+    β = basemeasure(ν)
+    dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
+    dν_dβ = exp(ULogarithmic, logdensity_def(ν, x))
+    dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
+    dβ_dα = inv(dα_dβ)
+    return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
 end
+
+using StatsFuns
+
+@inline function logdensity_def(μ::T, ν::T, x::Any) where T<:(SuperpositionMeasure{Tuple{A, B}} where {A, B})
+    if μ === ν
+        return zero(return_type(logdensity_def, (μ, x)))
+    else
+        return logdensity_def(μ,x) - logdensity_def(ν, x)
+    end
+end
+
+@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
+    (μ, ν) = s.components
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
+    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+end
+
+@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
+    (μ, ν) = s.components
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
+    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+end
+
+@inline function logdensity_def(s, β::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+    -logdensity_def(β, s, x)
+end
+
+@inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 

@@ -34,7 +34,9 @@ test_measures = [
     3 * Lebesgue(ℝ)
     Dirac(π)
     Lebesgue(ℝ)
-    # Dirac(0.0) + Lebesgue(ℝ)
+    0.2 * Lebesgue(ℝ) + 0.8 * Dirac(0.0)
+    Dirac(0) + Dirac(1)
+    Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 0.2)
     # d ⊙ d
 ]
@@ -167,15 +169,34 @@ end
     end
 end
 
-# @testset "Density measures and Radon-Nikodym" begin
-#     x = randn()
-#     let d = ∫(𝒹(Cauchy(), Normal()), Normal())
-#         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
-#     end
+@testset "logdensity_rel" begin
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 0.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 1.0) == -Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(1.0), 2.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 0.0) == 0.0
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Dirac(0.0), 1.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 0.0) == Inf
+    @test logdensity_rel(Dirac(0.0)+Lebesgue(), Lebesgue(), 1.0) == 0.0
 
-#     let f = 𝒹(∫(x -> x^2, Normal()), Normal())
-#         @test f(x) ≈ x^2
-#     end
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 1.0) == Inf
+    @test logdensity_rel(Dirac(1.0), Dirac(0.0)+Lebesgue(), 2.0) == -Inf
+    @test logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 0.0) == 0.0
+    @test logdensity_rel(Dirac(0.0), Dirac(0.0)+Lebesgue(), 1.0) == -Inf
+    @test logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 0.0) == -Inf
+    @test logdensity_rel(Lebesgue(), Dirac(0.0)+Lebesgue(), 1.0) == 0.0
+    
+    @test isnan(logdensity_rel(Dirac(0), Dirac(1), 2))
+end
+
+@testset "Density measures and Radon-Nikodym" begin
+    x = randn()
+    f(x) = x^2
+    @test  logdensityof(𝒹(∫exp(f, Lebesgue()), Lebesgue()),x ) ≈ f(x)
+
+    let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
+        @test logdensityof(f,x) ≈ x^2
+    end
 
 #     let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
 #         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
@@ -184,4 +205,4 @@ end
 #     let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
 #         @test f(x) ≈ x^2
 #     end
-# end
+end

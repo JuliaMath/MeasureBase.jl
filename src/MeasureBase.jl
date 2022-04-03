@@ -28,6 +28,25 @@ export rebase
 
 export AbstractMeasure
 
+import IfElse: ifelse
+export logdensity_def
+export basemeasure
+export basekleisli
+
+"""
+    inssupport(m, x)
+    insupport(m)
+
+`insupport(m,x)` computes whether `x` is in the support of `m`.
+
+`insupport(m)` returns a function, and satisfies
+
+    insupport(m)(x) == insupport(m, x)
+"""
+function insupport end
+
+export insupport
+
 abstract type AbstractMeasure end
 
 using Static: @constprop
@@ -45,28 +64,35 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
-import IfElse: ifelse
-export logdensity_def
-export basemeasure
-export basekleisli
-
 using LogExpFunctions: logsumexp
 
 """
-    logdensity_def(μ::AbstractMeasure{X}, x::X)
+`logdensity_def` is the standard way to define a log-density for a new measure.
+Note that this definition does not include checking for membership in the
+support; this is instead checked using `insupport`. `logdensity_def` is
+a low-level function, and should typically not be called directly. See
+`logdensityof` for more information and other alternatives.
 
-Compute the logdensity of the measure μ at the point x. This is the standard way
-to define `logdensity` for a new measure. the base measure is implicit here, and
-is understood to be `basemeasure(μ)`.
+---
 
-Methods for computing density relative to other measures will be
+    logdensity_def(m, x)
+
+Compute the log-density of the measure m at the point `x`, relative to
+`basemeasure(m)`, and assuming `insupport(m, x)`.
+
+---
+
+    logdensity_def(m1, m2, x)
+
+Compute the log-density of `m1` relative to `m2` at the point `x`, assuming
+`insupport(m1, x)` and `insupport(m2, x)`.
 """
 function logdensity_def end
 
 using Compat
 
+include("schema.jl")
 include("splat.jl")
-include("partial-static.jl")
 include("proxies.jl")
 include("kleisli.jl")
 include("parameterized.jl")
@@ -81,6 +107,7 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/conditional.jl")
 include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/factoredbase.jl")
@@ -97,21 +124,6 @@ include("combinators/smart-constructors.jl")
 include("rand.jl")
 
 include("density.jl")
-module Interface
-
-using Reexport
-using MeasureBase
-using MeasureBase:basemeasure_depth, proxy
-using MeasureBase: insupport
-@reexport using Test
-
-export test_interface
-export basemeasure_depth
-export proxy
-export insupport
-
-include("interface.jl")
-end # module Interface
 
 using .Interface
 
