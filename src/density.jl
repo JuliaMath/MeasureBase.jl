@@ -103,7 +103,7 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 # TODO: `density` and `logdensity` functions for `DensityMeasure`
 
-@inline function logdensityof(μ, x)
+@inline function logdensityof(μ::AbstractMeasure, x)
     t() = dynamic(unsafe_logdensityof(μ, x))
     f() = -Inf
     ifelse(insupport(μ, x), t, f)()
