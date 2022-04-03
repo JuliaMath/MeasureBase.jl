@@ -109,7 +109,7 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 Compute the log-density of the measure `m` at `x`. Density is always relative,
 but `DensityInterface.jl` does not account for this. For compatibility with
 this, `logdensityof` for a measure is always implicitly relative to
-`rootmeasure(x)`.
+[`rootmeasure(x)`](@ref rootmeasure). 
 
 `logdensityof` works by first computing `insupport(m, x)`. If this is true, then
 `unsafe_logdensityof` is called. If `insupport(m, x)` is known to be `true`, it
