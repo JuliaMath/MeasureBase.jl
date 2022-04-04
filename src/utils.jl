@@ -73,19 +73,17 @@ end
 
 export basemeasure_sequence
 
-@inline function basemeasure_sequence(μ::M) where {M}  
-    depth = basemeasure_depth(μ)
-    basemeasure_sequence(μ, depth)
-end
-
-@generated function basemeasure_sequence(μ::M, ::StaticInt{N}) where {M,N}
-    quote
-        b_1 = μ
-        Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-            b_{i+1} = basemeasure(b_{i})
+@inline function basemeasure_sequence(μ::M) where {M}
+    b_1 = μ
+    done = false
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        b_{i+1} = if done nothing else basemeasure(b_{i}) end
+        if b_{i+1} isa typeof(b_{i})
+            done = true
+            b_{i+1} = nothing
         end
-        return Base.Cartesian.@ntuple $(N+1) b
     end
+    return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
 # @inline function basemeasure_depth(μ::M) where {M}
