@@ -125,8 +125,6 @@ include("rand.jl")
 
 include("density.jl")
 
-@reexport using Test
-
 include("interface.jl")
 
 using .Interface
