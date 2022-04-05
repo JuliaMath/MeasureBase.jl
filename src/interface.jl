@@ -1,3 +1,19 @@
+module Interface
+
+using Reexport
+
+@reexport using MeasureBase
+
+using MeasureBase:basemeasure_depth, proxy
+using MeasureBase: insupport, basemeasure_sequence, commonbase
+
+export test_interface
+export basemeasure_depth
+export proxy
+export insupport
+export basemeasure_sequence
+export commonbase
+
 using Test
 
 function dynamic_basemeasure_depth(μ)
@@ -40,3 +56,8 @@ function test_interface(μ::M) where {M}
         end
     end
 end
+
+end # module Interface
+
+
+

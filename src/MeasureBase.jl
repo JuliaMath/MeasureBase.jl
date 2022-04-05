@@ -124,24 +124,10 @@ include("combinators/smart-constructors.jl")
 include("rand.jl")
 
 include("density.jl")
-module Interface
-
-using Reexport
-
-@reexport using MeasureBase
-
-using MeasureBase:basemeasure_depth, proxy
-using MeasureBase: insupport
-
-export test_interface
-export basemeasure_depth
-export proxy
-export insupport
 
 @reexport using Test
 
 include("interface.jl")
-end # module Interface
 
 using .Interface
 
