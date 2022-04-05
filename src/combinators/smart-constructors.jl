@@ -84,7 +84,7 @@ function superpose(μ::T, ν::T) where {T}
     end
 end
 
-function superpose(μ::AbstractMeasure, ν::AbstractMeasure)
+function superpose(μ, ν)
     components = (μ, ν)
     superpose(components)
 end

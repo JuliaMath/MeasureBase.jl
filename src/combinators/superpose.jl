@@ -54,8 +54,7 @@ testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
 # end
 
 function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
-    components = (μ, ν)
-    superpose(components)
+    superpose(μ, ν)
 end
 
 using LogarithmicNumbers
@@ -75,7 +74,7 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
     return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
 end
 
-using StatsFuns
+using LogExpFunctions
 
 @inline function logdensity_def(μ::T, ν::T, x::Any) where T<:(SuperpositionMeasure{Tuple{A, B}} where {A, B})
     if μ === ν
@@ -105,7 +104,7 @@ end
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
-basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
+basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components)...)
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}

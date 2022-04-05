@@ -64,6 +64,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
+using NaNMath
 using LogExpFunctions: logsumexp
 
 """
