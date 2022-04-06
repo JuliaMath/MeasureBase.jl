@@ -15,17 +15,32 @@ end
     kleisli(f, M)
     kleisli((f1, f2, ...), M)
 
-A kleisli `κ = kleisli(f, m)` returns a wrapper around
-a function `f` giving the parameters for a measure of type `M`,
-such that `κ(x) = M(f(x)...)`
-respective `κ(x) = M(f1(x), f2(x), ...)`
+`kleisli` was originally called `kernel`, as in a *Markov kernel*. Such a kernel
+can be considered to map each value in its domain to a probability measure.
+
+In the context of MeasureTheory, the codomain is not required to be a
+*probability* measure; any measure will do. This makes "Markov" not really fit,
+since the map need not be Markovian.
+
+This leaves us with "kernel", which can mean too wide a range of things to be
+useful in such a general context as measure theory. See for example
+https://github.com/JuliaGaussianProcesses/KernelFunctions.jl for one common use
+of this term.
+
+We solve this problem by changing to a term from an even more general context.
+In category theory, a *Kleisli arrow* is a function taking monadic values.
+Since measures comprise a monad, our use is a special case of this.
+
+A kleisli `κ = kleisli(f, m)` returns a wrapper around a function `f` giving the
+parameters for a measure of type `M`, such that `κ(x) = M(f(x)...)` respective
+`κ(x) = M(f1(x), f2(x), ...)`
 
 If the argument is a named tuple `(;a=f1, b=f1)`, `κ(x)` is defined as
 `M(;a=f(x),b=g(x))`.
 
 # Reference
 
-* https://en.wikipedia.org/wiki/Markov_kleisli
+* https://en.wikipedia.org/wiki/Markov_kernel
 """
 function kleisli end
 
