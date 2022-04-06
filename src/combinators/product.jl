@@ -65,6 +65,10 @@ struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
 
+@inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
+    mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
+end
+
 function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep=" ⊗ ")
 end
