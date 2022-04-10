@@ -9,7 +9,7 @@ insupport(::CountingMeasure, x) = true
 struct Counting{T} <: AbstractMeasure
     support::T
 
-    Counting(supp) = new{instance_type(supp)}(supp)
+    Counting(supp) = new{Core.Typeof(supp)}(supp)
 end
 
 function logdensity_def(μ::Counting, x)
