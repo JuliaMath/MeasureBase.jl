@@ -237,11 +237,15 @@ end
     end
     
     for i in 1:M-1
-        push!(q.args, :(ℓ += logdensity_def(μs[$i], x)))
+        push!(q.args, :(Δℓ = logdensity_def(μs[$i], x)))
+        # push!(q.args, :(println("Adding", Δℓ)))
+        push!(q.args, :(ℓ += Δℓ))
     end
 
     for j in 1:N-1
-        push!(q.args, :(ℓ += logdensity_def(νs[$j], x)))
+        push!(q.args, :(Δℓ = logdensity_def(νs[$j], x)))
+        # push!(q.args, :(println("Subtracting", Δℓ)))
+        push!(q.args, :(ℓ -= Δℓ))
     end
 
     push!(q.args, :(return ℓ))
