@@ -84,15 +84,17 @@ measure of the previous term, and with no repeated entries.
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-@inline function commonbase(μ, ν)
-    return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν))
+commonbase(μ, ν) = commonbase(μ, ν, Any) 
+
+@inline function commonbase(μ, ν, ::Type{T}) where {T}
+    return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν), T)
 end
 
-@generated function commonbase(μ::M, ν::N) where {M<:Tuple,N<:Tuple}
+@generated function commonbase(μ::M, ν::N, ::Type{T}) where {M<:Tuple,N<:Tuple,T}
     m = schema(M)
     n = schema(N)
 
-    sols = Iterators.filter(((i,j),) ->  static_hasmethod(logdensity_def, Tuple{m[i], n[j], Any}), Iterators.product(1:length(m), 1:length(n))) 
+    sols = Iterators.filter(((i,j),) ->  static_hasmethod(logdensity_def, Tuple{m[i], n[j], T}), Iterators.product(1:length(m), 1:length(n))) 
     isempty(sols) && return :(nothing)
     minsol = static.(argmin(((i,j),) -> i+j, sols))
     quote

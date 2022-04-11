@@ -198,7 +198,7 @@ See also `logdensity_rel`.
     end
     μs = basemeasure_sequence(μ)
     νs = basemeasure_sequence(ν)
-    cb = commonbase(μs, νs)
+    cb = commonbase(μs, νs, X)
     # _logdensity_rel(μ, ν)
     isnothing(cb) && begin
         μ = μs[end]
