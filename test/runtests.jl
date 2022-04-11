@@ -105,6 +105,12 @@ end
 #     end
 # end
 
+
+@testset "powers" begin
+    @test logdensityof(Lebesgue() ^ 3, 2) == logdensityof(Lebesgue() ^ (3,), 2)
+    @test logdensityof(Lebesgue() ^ 3, 2) == logdensityof(Lebesgue() ^ (3,1), (2,0))
+end
+
 @testset "Half" begin
     Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     HalfNormal() = Half(Normal())
