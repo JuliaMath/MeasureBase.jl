@@ -14,8 +14,13 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:AbstractArray}
     k = mapreduce(length, *, dims) * μ.logweight
+    return weightedmeasure(k, μ.base^dims)
+end
+
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+    k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
