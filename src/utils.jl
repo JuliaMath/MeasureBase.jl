@@ -86,6 +86,15 @@ end
 
 commonbase(μ, ν) = commonbase(μ, ν, Any) 
 
+"""
+    commonbase(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
+
+Find minimal (with respect to their sum) `i` and `j` such that there is a method
+
+    logdensity_def(basemeasure_sequence(μ)[i], basemeasure_sequence(ν)[j], ::T)
+
+This is used in `logdensity_rel` to help make that function efficient.
+"""
 @inline function commonbase(μ, ν, ::Type{T}) where {T}
     return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν), T)
 end
