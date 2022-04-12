@@ -67,6 +67,8 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 using NaNMath
 using LogExpFunctions: logsumexp
 
+@deprecate instance_type(x) Core.Typeof(x) false
+
 """
 `logdensity_def` is the standard way to define a log-density for a new measure.
 Note that this definition does not include checking for membership in the
