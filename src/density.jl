@@ -175,10 +175,7 @@ known to be in the support of both, it can be more efficient to call
 """
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     T = unstatic(promote_type(return_type(logdensity_def, (μ, x)), return_type(logdensity_def, (ν, x))))
-    insupport(μ, x) || begin
-        insupport(ν, x) || return convert(T, NaN)
-        return convert(T, -Inf)
-    end
+    insupport(μ, x) || return convert(T, ifelse(insupport(ν, x), -Inf, NaN))
     insupport(ν, x) || return convert(T, Inf)
 
     return unsafe_logdensity_rel(μ, ν, x)
