@@ -63,8 +63,22 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
-    insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
-    insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
+
+    # Jumping through some hoops here to avoid having this be a breaking
+    # version. After the next breaking version, this can probably be changed to
+    # the more familiar
+    #     inμ || return exp(ULogarithmic, logdensity_def(ν, x))
+    # etc
+    let inμ = insupport(μ, x)
+        if inμ isa False || !inμ
+            return exp(ULogarithmic, logdensity_def(ν, x))
+        end
+    end
+    let inν = insupport(ν, x)
+        if !inν || inν isa False
+            return exp(ULogarithmic, logdensity_def(μ, x))
+        end
+    end
     α = basemeasure(μ)
     β = basemeasure(ν)
     dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
