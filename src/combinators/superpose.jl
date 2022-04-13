@@ -61,21 +61,11 @@ using LogarithmicNumbers
 
 oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
-macro ifelse(c,t,f)
-    c = esc(c)
-    t = esc(t)
-    f = esc(f)
-    quote
-        let cond = $c; t() = $t; f() = $f
-            ifelse(cond, t, f)()
-        end
-    end
-end
-
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
-    @ifelse(insupport(μ, x), nothing, return exp(ULogarithmic, logdensity_def(ν, x)))
-    @ifelse(insupport(ν, x), nothing, return exp(ULogarithmic, logdensity_def(μ, x)))
+
+    insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
+    insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
   
     α = basemeasure(μ)
     β = basemeasure(ν)
@@ -98,15 +88,16 @@ end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
     (μ, ν) = s.components
-    @ifelse(insupport(μ, x), nothing, return logdensity_rel(ν, β, x))
-    @ifelse(insupport(ν, x), nothing, return logdensity_rel(μ, β, x))
+
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
     (μ, ν) = s.components
-    @ifelse(insupport(μ, x), nothing, return logdensity_rel(ν, β, x))
-    @ifelse(insupport(ν, x), nothing, return logdensity_rel(μ, β, x))
+    insupport(μ, x) || return logdensity_rel(ν, β, x)
+    insupport(ν, x) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
