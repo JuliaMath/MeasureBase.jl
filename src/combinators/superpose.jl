@@ -75,7 +75,7 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
         end
     end
     let inν = insupport(ν, x)
-        if !inν || inν isa False
+        if inν isa False || !inν
             return exp(ULogarithmic, logdensity_def(μ, x))
         end
     end
