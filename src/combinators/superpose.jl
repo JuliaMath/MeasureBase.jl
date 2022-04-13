@@ -61,24 +61,22 @@ using LogarithmicNumbers
 
 oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
+macro ifelse(c,t,f)
+    c = esc(c)
+    t = esc(t)
+    f = esc(f)
+    quote
+        let cond = $c; t() = $t; f() = $f
+            ifelse(cond, t, f)()
+        end
+    end
+end
+
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
-
-    # Jumping through some hoops here to avoid having this be a breaking
-    # version. After the next breaking version, this can probably be changed to
-    # the more familiar
-    #     inμ || return exp(ULogarithmic, logdensity_def(ν, x))
-    # etc
-    let inμ = insupport(μ, x)
-        if inμ isa False || !inμ
-            return exp(ULogarithmic, logdensity_def(ν, x))
-        end
-    end
-    let inν = insupport(ν, x)
-        if inν isa False || !inν
-            return exp(ULogarithmic, logdensity_def(μ, x))
-        end
-    end
+    @ifelse(insupport(μ, x), nothing, return exp(ULogarithmic, logdensity_def(ν, x)))
+    @ifelse(insupport(ν, x), nothing, return exp(ULogarithmic, logdensity_def(μ, x)))
+  
     α = basemeasure(μ)
     β = basemeasure(ν)
     dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
@@ -100,15 +98,15 @@ end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
     (μ, ν) = s.components
-    insupport(μ, x) || return logdensity_rel(ν, β, x)
-    insupport(ν, x) || return logdensity_rel(μ, β, x)
+    @ifelse(insupport(μ, x), nothing, return logdensity_rel(ν, β, x))
+    @ifelse(insupport(ν, x), nothing, return logdensity_rel(μ, β, x))
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
 @inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
     (μ, ν) = s.components
-    insupport(μ, x) || return logdensity_rel(ν, β, x)
-    insupport(ν, x) || return logdensity_rel(μ, β, x)
+    @ifelse(insupport(μ, x), nothing, return logdensity_rel(ν, β, x))
+    @ifelse(insupport(ν, x), nothing, return logdensity_rel(μ, β, x))
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
