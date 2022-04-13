@@ -52,11 +52,6 @@ end
     return getfield(T, :instance)::T
 end
 
-# See https://github.com/cscherrer/KeywordCalls.jl/issues/22
-@inline instance_type(f::F) where {F} = F
-@inline instance_type(T::UnionAll) = Type{T}
-@inline instance_type(T::DataType) = Type{T}
-
 export basemeasure_depth
 
 @inline function basemeasure_depth(μ::M) where {M}
@@ -70,9 +65,12 @@ export basemeasure_depth
     return static(10)
 end
 
+"""
+    basemeasure_sequence(m)
 
-export basemeasure_sequence
-
+Construct the longest `Tuple` starting with `m` having each term as the base
+measure of the previous term, and with no repeated entries.
+"""
 @inline function basemeasure_sequence(μ::M) where {M}
     b_1 = μ
     done = false
@@ -86,21 +84,32 @@ export basemeasure_sequence
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-# @inline function basemeasure_depth(μ::M) where {M}
-#     return basemeasure_depth(μ, basemeasure(μ), static(0))
-# end
+commonbase(μ, ν) = commonbase(μ, ν, Any) 
 
-# @inline function basemeasure_depth(μ::M, β::M, s::StaticInt{N}) where {M,N}
-#     s
-# end
+"""
+    commonbase(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
 
-# @generated function basemeasure_depth(μ::M, β::B, ::StaticInt{N}) where {M,B,N}
-#     s = Expr(:call, Expr(:curly, :StaticInt, N + 1))
-#     quote
-#         $(Expr(:meta, :inline))
-#         basemeasure_depth(β, basemeasure(β), $s)
-#     end
-# end
+Find minimal (with respect to their sum) `i` and `j` such that there is a method
+
+    logdensity_def(basemeasure_sequence(μ)[i], basemeasure_sequence(ν)[j], ::T)
+
+This is used in `logdensity_rel` to help make that function efficient.
+"""
+@inline function commonbase(μ, ν, ::Type{T}) where {T}
+    return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν), T)
+end
+
+@generated function commonbase(μ::M, ν::N, ::Type{T}) where {M<:Tuple,N<:Tuple,T}
+    m = schema(M)
+    n = schema(N)
+
+    sols = Iterators.filter(((i,j),) ->  static_hasmethod(logdensity_def, Tuple{m[i], n[j], T}), Iterators.product(1:length(m), 1:length(n))) 
+    isempty(sols) && return :(nothing)
+    minsol = static.(argmin(((i,j),) -> i+j, sols))
+    quote
+        $minsol
+    end
+end
 
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)

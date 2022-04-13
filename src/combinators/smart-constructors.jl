@@ -14,8 +14,13 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:AbstractArray}
     k = mapreduce(length, *, dims) * μ.logweight
+    return weightedmeasure(k, μ.base^dims)
+end
+
+function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+    k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
@@ -84,7 +89,7 @@ function superpose(μ::T, ν::T) where {T}
     end
 end
 
-function superpose(μ::AbstractMeasure, ν::AbstractMeasure)
+function superpose(μ, ν)
     components = (μ, ν)
     superpose(components)
 end

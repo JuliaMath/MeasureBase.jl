@@ -5,12 +5,14 @@ using Reexport
 @reexport using MeasureBase
 
 using MeasureBase:basemeasure_depth, proxy
-using MeasureBase: insupport
+using MeasureBase: insupport, basemeasure_sequence, commonbase
 
 export test_interface
 export basemeasure_depth
 export proxy
 export insupport
+export basemeasure_sequence
+export commonbase
 
 using Test
 

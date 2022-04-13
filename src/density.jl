@@ -174,12 +174,11 @@ known to be in the support of both, it can be more efficient to call
 `unsafe_logdensity_rel`. 
 """
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    T = unstatic(float(promote_type(return_type(logdensity_def, (μ, x)), return_type(logdensity_def, (ν, x)))))
-    insupport(μ, x) || begin
-        insupport(ν, x) || return convert(T, NaN)
-        return convert(T, -Inf)
-    end
-    insupport(ν, x) || return convert(T, Inf)
+    T = unstatic(promote_type(return_type(logdensity_def, (μ, x)), return_type(logdensity_def, (ν, x))))
+    inμ = insupport(μ, x)
+    inν = insupport(ν, x)
+    inμ || return convert(T, ifelse(inν, -Inf, NaN))
+    inν || return convert(T, Inf)
 
     return unsafe_logdensity_rel(μ, ν, x)
 end
@@ -198,7 +197,24 @@ See also `logdensity_rel`.
     end
     μs = basemeasure_sequence(μ)
     νs = basemeasure_sequence(ν)
-    return _logdensity_rel(μs, νs, x)
+    cb = commonbase(μs, νs, X)
+    # _logdensity_rel(μ, ν)
+    isnothing(cb) && begin
+        μ = μs[end]
+        ν = νs[end]
+        @warn """
+        No common base measure for
+            $μ
+        and
+            $ν
+
+        Returning a relative log-density of NaN. If this is incorrect, add a
+        three-argument method
+            logdensity_def($μ, $ν, x)
+        """
+        return NaN
+    end
+    return _logdensity_rel(μs, νs, cb, x)
 end
 
 # Note that this method assumes `μ` and `ν` to have the same type
@@ -210,44 +226,29 @@ function logdensity_def(μ::T, ν::T, x) where {T}
     end
 end
 
-@generated function _logdensity_rel(μs::Tμ, νs::Tν, x::X)  where {Tμ, Tν, X}
+@generated function _logdensity_rel(μs::Tμ, νs::Tν, ::Tuple{StaticInt{M},StaticInt{N}}, x::X)  where {Tμ, Tν,M,N,X}
     sμ = schema(Tμ)
     sν = schema(Tν)
    
     q = quote 
         $(Expr(:meta, :inline))
+        ℓ = logdensity_def(μs[$M], νs[$N], x)
     end
     
-    for it in Iterators.product(enumerate(sμ), enumerate(sν))
-        ((nμ, μtype), (nν, νtype)) = it
-        if static_hasmethod(logdensity_def, Tuple{μtype, νtype, X})
-            push!(q.args, :(ℓ = logdensity_def(μs[$nμ], νs[$nν], x)))
-            for i in 1:nμ-1
-                push!(q.args, :(ℓ += logdensity_def(μs[$i], x)))
-            end
-            for j in 1:nν-1
-                push!(q.args, :(ℓ -= logdensity_def(νs[$j], x)))
-            end
-
-            return q
-        end
+    for i in 1:M-1
+        push!(q.args, :(Δℓ = logdensity_def(μs[$i], x)))
+        # push!(q.args, :(println("Adding", Δℓ)))
+        push!(q.args, :(ℓ += Δℓ))
     end
 
-    return quote
-        μ = μs[end]
-        ν = νs[end]
-        @warn """
-        No common base measure for
-            $μ
-        and
-            $ν
-
-        Returning a relative log-density of NaN. If this is incorrect, add a
-        three-argument method
-            logdensity_def(μ, ν, x)
-        """
-        NaN
+    for j in 1:N-1
+        push!(q.args, :(Δℓ = logdensity_def(νs[$j], x)))
+        # push!(q.args, :(println("Subtracting", Δℓ)))
+        push!(q.args, :(ℓ -= Δℓ))
     end
+
+    push!(q.args, :(return ℓ))
+    return q
 end
 
 export densityof
