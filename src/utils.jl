@@ -48,7 +48,11 @@ end
 # issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
 
 
-@generated function instance(::Type{T}) where {T}
+# @generated function instance(::Type{T}) where {T}
+#     return getfield(T, :instance)::T
+# end
+
+function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
 end
 
