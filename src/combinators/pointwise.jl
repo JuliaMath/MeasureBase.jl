@@ -1,18 +1,13 @@
 export ⊙
 
-struct PointwiseProductMeasure{M,L} <: AbstractMeasure
-    measure::M
+struct PointwiseProductMeasure{P,L} <: AbstractMeasure
+    prior::P
     likelihood::L
-
-    function PointwiseProductMeasure(μ::M, ℓ::L) where {M,L}
-        @assert static_hasmethod(logdensity_def, Tuple{L, gentype(μ)})
-        return new{M,L}(μ, ℓ)
-    end
 end
 
 function Base.show(io::IO, μ::PointwiseProductMeasure)
     io = IOContext(io, :compact => true)
-    print(io, μ.measure, " ⊙ ", μ.likelihood)
+    print(io, μ.prior, " ⊙ ", μ.likelihood)
 end
 
 function Base.show_unquoted(io::IO, μ::PointwiseProductMeasure, indent::Int, prec::Int)
@@ -29,12 +24,17 @@ end
 
 ⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)
 
-@inline function logdensity_def(d::PointwiseProductMeasure, x)
-    logdensity_def(d.measure, x) + logdensity_def(d.likelihood, x)
+@inline function logdensity_def(d::PointwiseProductMeasure, p)
+    (μ, ℓ) = (d.prior, d.likelihood)
+    logdensity_def(μ, p) + logdensityof(ℓ.k(p), ℓ.x)
 end
 
 function gentype(d::PointwiseProductMeasure)
-    @inbounds gentype(d.measure)
+    gentype(d.prior)
 end
 
-basemeasure(d::PointwiseProductMeasure) = @inbounds basemeasure(d.measure)
+basemeasure(d::PointwiseProductMeasure, x) = basemeasure(d.prior, x)
+
+basemeasure(d::PointwiseProductMeasure) = basemeasure(d.prior)
+
+insupport(d::PointwiseProductMeasure, x) = insupport(d.prior, x)

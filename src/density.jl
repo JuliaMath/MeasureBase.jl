@@ -143,7 +143,7 @@ See also `logdensityof`.
     ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i-1})
+        b_{i} = basemeasure(b_{i-1}, x)
         if b_{i} isa typeof(b_{i-1})
             return ℓ_{i-1}
         end

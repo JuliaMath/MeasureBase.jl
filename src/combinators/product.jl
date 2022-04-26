@@ -94,19 +94,19 @@ end
     return q
 end
 
-@generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-    q = quote
-        m = marginals(d)
-    end
-    for k in N
-        qk = QuoteNode(k)
-        push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
-    end
+# @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+#     q = quote
+#         m = marginals(d)
+#     end
+#     for k in N
+#         qk = QuoteNode(k)
+#         push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
+#     end
 
-    vals = map(x -> Expr(:(=), x,x), N)
-    push!(q.args, Expr(:tuple, vals...))
-    return q
-end
+#     vals = map(x -> Expr(:(=), x,x), N)
+#     push!(q.args, Expr(:tuple, vals...))
+#     return q
+# end
 
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
@@ -187,8 +187,8 @@ end
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     mar = marginals(d)
-    for j in eachindex(x)
-        @inbounds dynamic(insupport(mar[j], x[j])) || return false
+    for (j,mj) in enumerate(mar)
+        dynamic(insupport(mj, x[j])) || return false
     end
     return true
 end

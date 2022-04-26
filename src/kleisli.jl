@@ -55,7 +55,7 @@ mapcall(t, x) = map(func -> func(x), t)
 
 # (k::Kleisli{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
 
-(k::ParameterizedKleisli)(x) where {M} = k.f(; mapcall(k.param_maps, x)...)
+(k::ParameterizedKleisli)(x) = k.f(; mapcall(k.param_maps, x)...)
 
 (k::ParameterizedKleisli)(x...) = k(x)
 

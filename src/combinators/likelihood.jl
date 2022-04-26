@@ -2,7 +2,13 @@ export AbstractLikelihood, Likelihood
 
 abstract type AbstractLikelihood end
 
-@inline logdensityof(ℓ::AbstractLikelihood, par) = logdensity_def(ℓ, par)
+# @inline function logdensityof(ℓ::AbstractLikelihood, p)
+#     t() = dynamic(unsafe_logdensityof(ℓ, p))
+#     f() = -Inf
+#     ifelse(insupport(ℓ, p), t, f)()
+# end
+
+# insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @doc raw"""
     Likelihood(k::AbstractKleisli, x)
@@ -128,10 +134,33 @@ function Base.show(io::IO, ℓ::Likelihood)
     Pretty.pprint(io, ℓ)
 end
 
-@inline function logdensity_def(ℓ::Likelihood, p::Tuple)
-    return logdensity_def(ℓ.k(p), ℓ.x)
-end
+# @inline function logdensity_def(ℓ::Likelihood, p)
+#     return logdensity_def(ℓ.k(p), ℓ.x)
+# end
 
-@inline function logdensity_def(ℓ::Likelihood, p)
-    return logdensity_def(ℓ.k((p,)), ℓ.x)
-end
+# basemeasure(ℓ::Likelihood, p) = basemeasure(ℓ.k(p), ℓ.x)
+
+# basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
+
+export likelihood
+
+likelihood(k, x) = Likelihood(k, x)
+
+likelihood(k, x, pars::NamedTuple) = likelihood(kleisli(k, pars), x)
+
+"""
+    log_likelihood_ratio(ℓ::Likelihood, p, q)
+
+Compute the log of the likelihood ratio, in order to compare two choices for
+parameters. This is computed as
+
+    logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+
+Since `logdensity_rel` can leave common base measure unevaluated, this can be
+more efficient than
+
+    logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
+"""
+log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+
+# likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))

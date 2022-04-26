@@ -8,6 +8,12 @@ half(μ::AbstractMeasure) = Half(μ)
 # PointwiseProductMeasure
 
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
+    @show μ
+    T = Core.Compiler.return_type(ℓ.k, Tuple{gentype(μ)})
+    return pointwiseproduct(T, μ, ℓ)
+end
+
+function pointwiseproduct(::Type{T}, μ::AbstractMeasure, ℓ::Likelihood) where {T}
     return PointwiseProductMeasure(μ, ℓ)
 end
 
@@ -108,7 +114,7 @@ end
 ###############################################################################
 # Kleisli
 
-kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
+kleisli(f, pars::NamedTuple) = ParameterizedKleisli(f, pars)
 
 # kleisli(Normal(μ=2))
 function kleisli(μ::M) where {M<:AbstractMeasure}
