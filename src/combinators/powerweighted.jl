@@ -11,7 +11,10 @@ basemeasure(d::PowerWeightedMeasure, x) = basemeasure(d.parent, x)
 
 basemeasure(d::PowerWeightedMeasure) = basemeasure(d.parent) ↑ d.exponent
 
-powerweightedmeasure(d, α) = PowerWeightedMeasure(d, α)
+function powerweightedmeasure(d, α)
+    isone(α) && return d
+    PowerWeightedMeasure(d, α)
+end
 
 (d::AbstractMeasure) ↑ α = powerweightedmeasure(d, α)
 
