@@ -174,7 +174,7 @@ using Random: rand!, GLOBAL_RNG, AbstractRNG
 end
 
 export rand!
-using Random: rand!, GLOBAL_RNG, AbstractRNG
+using Random: rand!, GLOBAL_RNG
 
 function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
     elT = typeof(rand(rng, T, first(mar)))

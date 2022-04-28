@@ -19,3 +19,15 @@ end
 (d::AbstractMeasure) ↑ α = powerweightedmeasure(d, α)
 
 insupport(d::PowerWeightedMeasure, x) = insupport(d.parent, x)
+
+function Base.show(io::IO, d::PowerWeightedMeasure)
+    print(io, d.parent, " ↑ ", d.exponent)
+end
+
+function powerweightedmeasure(d::PowerWeightedMeasure, α)
+    powerweightedmeasure(d.parent, α * d.exponent)
+end
+
+function powerweightedmeasure(d::WeightedMeasure, α)
+    weightedmeasure(α*d.logweight, powerweightedmeasure(d.base, α))
+end
