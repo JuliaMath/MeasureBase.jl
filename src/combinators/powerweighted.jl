@@ -7,7 +7,7 @@ end
 
 logdensity_def(d::PowerWeightedMeasure, x) = d.exponent * logdensity_def(d.parent, x)
 
-basemeasure(d::PowerWeightedMeasure, x) = basemeasure(d.parent, x)
+basemeasure(d::PowerWeightedMeasure, x) = basemeasure(d.parent, x) ↑ d.exponent
 
 basemeasure(d::PowerWeightedMeasure) = basemeasure(d.parent) ↑ d.exponent
 
