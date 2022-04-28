@@ -144,9 +144,13 @@ end
 
 export likelihood
 
-likelihood(k, x) = Likelihood(k, x)
+likelihood(k, x, ::NamedTuple{()}) = Likelihood(k, x)
+
+likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
 
 likelihood(k, x, pars::NamedTuple) = likelihood(kleisli(k, pars), x)
+
+likelihood(k::AbstractKleisli, x) = Likelihood(k, x)
 
 """
     log_likelihood_ratio(ℓ::Likelihood, p, q)
