@@ -10,7 +10,7 @@ export WeightedMeasure, AbstractWeightedMeasure
 abstract type AbstractWeightedMeasure <: AbstractMeasure end
 
 # By default the weight for all measure is 1
-logweight(::AbtractMeasure) = 0
+logweight(::AbstractMeasure) = 0
 logweight(μ::AbstractWeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
