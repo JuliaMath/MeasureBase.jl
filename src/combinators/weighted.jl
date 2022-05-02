@@ -20,7 +20,7 @@ Base.length(μ::AbstractWeightedMeasure) = length(basemeasure(μ))
     d.logweight
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure)
+function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
     rand(rng, T, basemeasure(μ))
 end
 
