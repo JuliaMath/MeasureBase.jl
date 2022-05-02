@@ -55,18 +55,6 @@ productmeasure(f, param_maps, pars) = ProductMeasure(kleisli(f, param_maps), par
 
 productmeasure(k::ParameterizedKleisli, pars) = productmeasure(k.f, k.param_maps, pars)
 
-
-function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
-    fb = f.value
-    dims = size(pars)
-    n = prod(dims)
-    inbounds(x) = all(fb.inbounds, x)
-    constℓ = n * fb.constℓ
-    varℓ() = n * fb.varℓ()
-    base = fb.base^dims
-    FactoredBase(inbounds, constℓ, varℓ, base)
-end
-
 function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
     ℓ = f.value.logweight
     base = f.value.base
