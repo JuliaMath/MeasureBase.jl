@@ -26,3 +26,9 @@ upcoming changes.
 Base.:|(μ::AbstractMeasure, constraint) = ConditionalMeasure(μ, constraint)
 
 @inline basemeasure(cm::ConditionalMeasure) = basemeasure(cm.parent) | cm.constraint
+
+@generated function Base.:|(μ::ProductMeasure{NamedTuple{M,T}}, constraint::NamedTuple{N}) where {N}
+    mar = marginals(μ)
+    newkeys = tuple(setdiff(keys(mar), N)...)
+    productmeasure(NamedTuple{newkeys}(mar))
+end
