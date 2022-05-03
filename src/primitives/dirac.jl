@@ -18,9 +18,7 @@ end
 
 basemeasure(d::Dirac) = CountingMeasure()
 
-density_def(μ::Dirac, x) = x == μ.x
-
-logdensity_def(μ::Dirac, x) = (x == μ.x) ? 0.0 : -Inf
+logdensity_def(μ::Dirac, x) = 0.0
 
 Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
 
@@ -31,5 +29,3 @@ dirac(d::AbstractMeasure) = Dirac(rand(d))
 testvalue(d::Dirac) = d.x
 
 insupport(d::Dirac, x) = x == d.x
-
-logdensity_def(μ::Dirac, ν::Dirac, x) = logdensity_def(μ, x) - logdensity_def(ν, x)
