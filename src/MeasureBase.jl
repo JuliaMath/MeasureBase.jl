@@ -110,7 +110,6 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
-include("combinators/conditional.jl")
 include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/weighted.jl")
@@ -123,6 +122,7 @@ include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
+include("combinators/conditional.jl")
 
 include("rand.jl")
 
