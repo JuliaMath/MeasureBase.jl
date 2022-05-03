@@ -85,7 +85,7 @@ using LogExpFunctions
 @inline function logdensity_def(
     μ::T,
     ν::T,
-    x::Any,
+    x,
 ) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
