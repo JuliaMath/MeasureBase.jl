@@ -29,16 +29,17 @@ end
 
 productmeasure(mar::Fill) = powermeasure(mar.value, mar.axes)
 
-function productmeasure(mar::ReadonlyMappedArray{T, N, A, Returns{M}}) where {T,N,A,M}
+function productmeasure(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
 end
 
 productmeasure(mar::Base.Generator) = ProductMeasure(mar)
 productmeasure(mar::AbstractArray) = ProductMeasure(mar)
 
-
 # TODO: Make this static when its length is static
-@inline function productmeasure(mar::AbstractArray{WeightedMeasure{StaticFloat64{W}, M}}) where {W,M}
+@inline function productmeasure(
+    mar::AbstractArray{WeightedMeasure{StaticFloat64{W},M}},
+) where {W,M}
     return weightedmeasure(W * length(mar), productmeasure(map(basemeasure, mar)))
 end
 
@@ -48,7 +49,6 @@ productmeasure(tup::Tuple) = ProductMeasure(tup)
 productmeasure(f, param_maps, pars) = ProductMeasure(kleisli(f, param_maps), pars)
 
 productmeasure(k::ParameterizedKleisli, pars) = productmeasure(k.f, k.param_maps, pars)
-
 
 function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
     fb = f.value
@@ -81,18 +81,30 @@ superpose(a::AbstractArray) = SuperpositionMeasure(a)
 superpose(t::Tuple) = SuperpositionMeasure(t)
 superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
-function superpose(μ::T, ν::T) where {T}
-    if μ==ν
+function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
+    if μ == ν
         return weightedmeasure(static(logtwo), μ)
     else
         return superpose((μ, ν))
     end
 end
 
-function superpose(μ, ν)
-    components = (μ, ν)
-    superpose(components)
+function superpose(μ::AbstractMeasure, μs...)
+    if all(==(μ), μs)
+        return weightedmeasure(log(length(μs) + 1), μ)
+    else
+        return superpose((μ, μs...))
+    end
 end
+
+add_measures(μs::AbstractVector, νs) = push!(μs, νs...)
+add_measures(μs::Tuple, νs) = (μs..., νs...)
+
+function superpose(μ::SuperpositionMeasure, μs...)
+    SuperpositionMeasure(add_measures(μ.components, μs))
+end
+
+superpose(μ::SuperpositionMeasure) = μ
 
 ###############################################################################
 # WeightedMeasure
@@ -130,6 +142,5 @@ function kleisli(::Type{M}; param_maps...) where {M}
     nt = NamedTuple(param_maps)
     kleisli(M, nt)
 end
-
 
 kleisli(k::ParameterizedKleisli) = k
