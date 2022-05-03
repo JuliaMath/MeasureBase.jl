@@ -1,7 +1,7 @@
 export SuperpositionMeasure
 
 @doc raw"""
-    struct SuperpositionMeasure{X,NT} <: AbstractMeasure
+    struct SuperpositionMeasure{NT} <: AbstractMeasure
         components :: NT
     end
 Superposition of measures is analogous to mixture distributions, but (because
@@ -74,6 +74,10 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
     dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
     dβ_dα = inv(dα_dβ)
     return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
+end
+
+function density_def(s::SuperpositionMeasure, x)
+    error("Not implemented")
 end
 
 using LogExpFunctions
