@@ -13,6 +13,7 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
 

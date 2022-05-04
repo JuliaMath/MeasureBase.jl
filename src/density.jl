@@ -69,7 +69,7 @@ function _densitymeasure(f, base, _)
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    ifelse(insupport(d.base, x), logdensityof(d.f, x) > -Inf, false)
+    insupport(d.base, x) == true && logdensityof(d.f, x) > -Inf
 end
 
 basemeasure(μ::DensityMeasure) = μ.base
@@ -123,9 +123,8 @@ To compute a log-density relative to a specific base-measure, see
 `logdensity_rel`. 
 """
 @inline function logdensityof(μ::AbstractMeasure, x)
-    t() = dynamic(unsafe_logdensityof(μ, x))
-    f() = -Inf
-    ifelse(insupport(μ, x), t, f)()
+    result = dynamic(unsafe_logdensityof(μ, x))
+    ifelse(insupport(μ, x) == true, result, oftype(result, -Inf))
 end
 
 export unsafe_logdensityof

@@ -8,7 +8,6 @@ half(μ::AbstractMeasure) = Half(μ)
 # PointwiseProductMeasure
 
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
-    @show μ
     T = Core.Compiler.return_type(ℓ.k, Tuple{gentype(μ)})
     return pointwiseproduct(T, μ, ℓ)
 end

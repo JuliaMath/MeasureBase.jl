@@ -126,7 +126,7 @@ end
         end
     end
 
-    @inferred logdensityof(ℓ, 2.0)
+    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin

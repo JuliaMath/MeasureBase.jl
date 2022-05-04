@@ -5,6 +5,10 @@ struct PointwiseProductMeasure{P,L} <: AbstractMeasure
     likelihood::L
 end
 
+
+
+iterate(p::PointwiseProductMeasure, i=1) = iterate((p.prior, p.likelihood), i)
+
 function Base.show(io::IO, μ::PointwiseProductMeasure)
     io = IOContext(io, :compact => true)
     print(io, μ.prior, " ⊙ ", μ.likelihood)
@@ -25,16 +29,19 @@ end
 ⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)
 
 @inline function logdensity_def(d::PointwiseProductMeasure, p)
-    (μ, ℓ) = (d.prior, d.likelihood)
-    logdensity_def(μ, p) + logdensityof(ℓ.k(p), ℓ.x)
+    μ, ℓ = d
+    logdensityof(ℓ.k(p), ℓ.x)
 end
 
 function gentype(d::PointwiseProductMeasure)
     gentype(d.prior)
 end
 
-basemeasure(d::PointwiseProductMeasure, x) = basemeasure(d.prior, x)
+@inbounds function insupport(d::PointwiseProductMeasure, p) 
+    μ, ℓ = d
+    insupport(μ, p) && insupport(ℓ.k(p), ℓ.x)
+end
+
+basemeasure(d::PointwiseProductMeasure, x) = d.prior
 
 basemeasure(d::PointwiseProductMeasure) = basemeasure(d.prior)
-
-insupport(d::PointwiseProductMeasure, x) = insupport(d.prior, x)
