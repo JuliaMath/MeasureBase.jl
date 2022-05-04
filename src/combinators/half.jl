@@ -11,13 +11,8 @@ end
 
 unhalf(μ::Half) = μ.parent
 
-isnonnegative(x) = x ≥ 0.0
-
 @inline function basemeasure(μ::Half)
-    constℓ = static(logtwo)
-    varℓ = Returns(0.0)
-    base = basemeasure(unhalf(μ))
-    FactoredBase(constℓ, varℓ, base)
+    weightedmeasure(static(logtwo), basemeasure(unhalf(μ)))
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
@@ -27,7 +22,8 @@ end
 logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
 
 @inline function insupport(d::Half, x)
-    ifelse(isnonnegative(x), insupport(unhalf(d), x), false)
+    x ≥ 0 || return false
+    insupport(unhalf(d), x)
 end
 
 testvalue(::Half) = 1.0
