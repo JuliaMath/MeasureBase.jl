@@ -62,8 +62,8 @@ function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBas
 end
 
 function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
-    ℓ = f.value.logweight
-    base = f.value.base
+    ℓ = _logweight(f.value)
+    base = basemeasure(f.value)
     newbase = productmeasure(Returns(base), identity, pars)
     weightedmeasure(length(pars) * ℓ, newbase)
 end
@@ -102,7 +102,7 @@ function weightedmeasure(ℓ::R, b::M) where {R,M}
 end
 
 function weightedmeasure(ℓ, b::WeightedMeasure)
-    weightedmeasure(ℓ + b.logweight, b.base)
+    weightedmeasure(ℓ + _logweight(b), b.base)
 end
 
 ###############################################################################
