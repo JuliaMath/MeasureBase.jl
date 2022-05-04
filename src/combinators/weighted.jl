@@ -12,8 +12,6 @@ abstract type AbstractWeightedMeasure <: AbstractMeasure end
 # By default the weight for all measure is 1
 _logweight(::AbstractMeasure) = 0
 
-Base.length(μ::AbstractWeightedMeasure) = length(basemeasure(μ))
-
 @inline function logdensity_def(d::AbstractWeightedMeasure, _)
     d.logweight
 end
