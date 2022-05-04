@@ -1,98 +1,86 @@
 # TODO: Dangerous to export this - let's not
-abstract type AbstractKleisli <: AbstractMeasure end
+abstract type AbstractTransitionKernel <: AbstractMeasure end
 
-struct ParameterizedKleisli{F,N,T} <: AbstractKleisli
+struct ParameterizedTransitionKernel{F,N,T} <: AbstractTransitionKernel
     f::F
     param_maps::NamedTuple{N,T}
 
-    ParameterizedKleisli(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} =
+    ParameterizedTransitionKernel(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} =
         new{Type{F},N,T}(F, param_maps)
-    ParameterizedKleisli(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} =
+    ParameterizedTransitionKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} =
         new{F,N,T}(f, param_maps)
 end
 
 """
-    kleisli(f, M)
-    kleisli((f1, f2, ...), M)
+    kernel(f, M)
+    kernel((f1, f2, ...), M)
 
-`kleisli` was originally called `kernel`, as in a *Markov kernel*. Such a kernel
-can be considered to map each value in its domain to a probability measure.
-
-In the context of MeasureTheory, the codomain is not required to be a
-*probability* measure; any measure will do. This makes "Markov" not really fit,
-since the map need not be Markovian.
-
-This leaves us with "kernel", which can mean too wide a range of things to be
-useful in such a general context as measure theory. See for example
-https://github.com/JuliaGaussianProcesses/KernelFunctions.jl for one common use
-of this term.
-
-We solve this problem by changing to a term from an even more general context.
-In category theory, a *Kleisli arrow* is a function taking monadic values.
-Since measures comprise a monad, our use is a special case of this.
-
-A kleisli `κ = kleisli(f, m)` returns a wrapper around a function `f` giving the
+A kernel `κ = kernel(f, m)` returns a wrapper around a function `f` giving the
 parameters for a measure of type `M`, such that `κ(x) = M(f(x)...)` respective
 `κ(x) = M(f1(x), f2(x), ...)`
 
 If the argument is a named tuple `(;a=f1, b=f1)`, `κ(x)` is defined as
 `M(;a=f(x),b=g(x))`.
 
+This function is not exported, because "kernel" can have so many other meanings.
+See for example https://github.com/JuliaGaussianProcesses/KernelFunctions.jl for
+another common use of this term.
+
 # Reference
 
 * https://en.wikipedia.org/wiki/Markov_kernel
 """
-function kleisli end
+function kernel end
 
 
-# kleisli(Normal) do x
+# kernel(Normal) do x
 #     (μ=x,σ=x^2)
 # end
 
-kleisli(f, ::Type{M}) where {M} = kleisli(M, f)
+kernel(f, ::Type{M}) where {M} = kernel(M, f)
 
 mapcall(t, x) = map(func -> func(x), t)
 
-# (k::Kleisli{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
+# (k::TransitionKernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
 
-(k::ParameterizedKleisli)(x) = k.f(; mapcall(k.param_maps, x)...)
+(k::ParameterizedTransitionKernel)(x) = k.f(; mapcall(k.param_maps, x)...)
 
-(k::ParameterizedKleisli)(x...) = k(x)
+(k::ParameterizedTransitionKernel)(x...) = k(x)
 
-function (k::ParameterizedKleisli)(x::Tuple)
+function (k::ParameterizedTransitionKernel)(x::Tuple)
     k.f(NamedTuple{k.param_maps}(x))
 end
 
 
 """
-For any `k::Kleisli`, `basekleisli` is expected to satisfy
+For any `k::TransitionKernel`, `basekernel` is expected to satisfy
 ```
-basekleisli(k)(p) == (basemeasure ∘ k)(p)
+basekernel(k)(p) == (basemeasure ∘ k)(p)
 ```
 
-The main purpose of `basekleisli` is to make it efficient to compute
+The main purpose of `basekernel` is to make it efficient to compute
 ```
-basemeasure(d::ProductMeasure) = productmeasure(basekleisli(d.f), d.xs)
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
 ```
 """
-function basekleisli end
+function basekernel end
 
 # TODO: Find a way to do better than this
-basekleisli(f) = basemeasure ∘ f
+basekernel(f) = basemeasure ∘ f
 
-basekleisli(k::ParameterizedKleisli) = kleisli(basekleisli(k.f), k.param_maps)
+basekernel(k::ParameterizedTransitionKernel) = kernel(basekernel(k.f), k.param_maps)
 
-basekleisli(f::Returns) = Returns(basemeasure(f.value))
+basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 
-function Base.show(io::IO, μ::AbstractKleisli)
+function Base.show(io::IO, μ::AbstractTransitionKernel)
     io = IOContext(io, :compact => true)
     Pretty.pprint(io, μ)
 end
 
-function Pretty.quoteof(k::ParameterizedKleisli)
+function Pretty.quoteof(k::ParameterizedTransitionKernel)
     qf = Pretty.quoteof(k.f)
     qg = Pretty.quoteof(k.param_maps)
-    :(ParameterizedKleisli($qf, $qg))
+    :(ParameterizedTransitionKernel($qf, $qg))
 end
 

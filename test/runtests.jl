@@ -65,8 +65,8 @@ testbroken_measures = [
     end
 end
 
-# @testset "Kleisli" begin
-#     κ = MeasureBase.kleisli(MeasureBase.Dirac, identity)
+# @testset "TransitionKernel" begin
+#     κ = MeasureBase.kernel(MeasureBase.Dirac, identity)
 #     @test rand(κ(1.1)) == 1.1
 # end
 
@@ -137,7 +137,7 @@ end
 
 #     ℓs = [
 #         Likelihood(Normal{(:μ,)},              3.0)
-#         Likelihood(kleisli(Normal, x -> (μ=x, σ=2.0)), 3.0)
+#         Likelihood(kernel(Normal, x -> (μ=x, σ=2.0)), 3.0)
 #     ]
 
 #     for (d,p) in dps

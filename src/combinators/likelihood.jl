@@ -11,7 +11,7 @@ abstract type AbstractLikelihood end
 # insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @doc raw"""
-    Likelihood(k::AbstractKleisli, x)
+    Likelihood(k::AbstractTransitionKernel, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
 
@@ -115,9 +115,9 @@ struct Likelihood{K,X} <: AbstractLikelihood
     k::K
     x::X
 
-    Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = new{K,X}(k,x)
+    Likelihood(k::K, x::X) where {K<:AbstractTransitionKernel,X} = new{K,X}(k,x)
     Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k,x)
-    Likelihood(μ, x) = Likelihood(kleisli(μ), x)
+    Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
 
 # Not really a density, but this makes the code work
@@ -148,9 +148,9 @@ likelihood(k, x, ::NamedTuple{()}) = Likelihood(k, x)
 
 likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
 
-likelihood(k, x, pars::NamedTuple) = likelihood(kleisli(k, pars), x)
+likelihood(k, x, pars::NamedTuple) = likelihood(kernel(k, pars), x)
 
-likelihood(k::AbstractKleisli, x) = Likelihood(k, x)
+likelihood(k::AbstractTransitionKernel, x) = Likelihood(k, x)
 
 """
     log_likelihood_ratio(ℓ::Likelihood, p, q)

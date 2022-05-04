@@ -31,7 +31,7 @@ export AbstractMeasure
 import IfElse: ifelse
 export logdensity_def
 export basemeasure
-export basekleisli
+export basekernel
 
 """
     inssupport(m, x)
@@ -97,7 +97,7 @@ using Compat
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
-include("kleisli.jl")
+include("kernel.jl")
 include("parameterized.jl")
 include("combinators/half.jl")
 include("domains.jl")

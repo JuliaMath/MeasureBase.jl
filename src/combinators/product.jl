@@ -133,7 +133,7 @@ end
 
 function _basemeasure(μ::ProductMeasure{Base.Generator{I,F}}, ::Type{B}, ::False) where {I,F,B}
     mar = marginals(μ)
-    productmeasure(Base.Generator(basekleisli(mar.f), mar.iter))
+    productmeasure(Base.Generator(basekernel(mar.f), mar.iter))
 end
 
 marginals(μ::ProductMeasure) = μ.marginals
