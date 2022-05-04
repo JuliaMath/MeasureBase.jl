@@ -77,8 +77,8 @@ end
 
 @testset "Dirac" begin
     @test rand(Dirac(0.2)) == 0.2
-    @test logdensity_def(Dirac(0.3), 0.3) == 0.0
-    @test logdensity_def(Dirac(0.3), 0.4) == -Inf
+    @test logdensityof(Dirac(0.3), 0.3) == 0.0
+    @test logdensityof(Dirac(0.3), 0.4) == -Inf
 end
 
 # @testset "For" begin
