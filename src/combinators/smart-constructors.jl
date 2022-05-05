@@ -104,7 +104,7 @@ end
 kernel(f, pars::NamedTuple) = ParameterizedTransitionKernel(f, pars)
 
 # kernel(Normal(μ=2))
-function kernel(μ::M) where {M<:AbstractMeasure}
+function kernel(μ::M) where {M<:ParameterizedMeasure}
     kernel(M)
 end
 
