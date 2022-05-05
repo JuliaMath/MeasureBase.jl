@@ -212,3 +212,5 @@ end
 #         @test f(x) ≈ x^2
 #     end
 end
+
+include("combinators/weighted.jl")

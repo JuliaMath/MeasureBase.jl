@@ -9,11 +9,15 @@ export WeightedMeasure, AbstractWeightedMeasure
 
 abstract type AbstractWeightedMeasure <: AbstractMeasure end
 
-logweight(μ::AbstractWeightedMeasure) = μ.logweight
-basemeasure(μ::AbstractWeightedMeasure) = μ.base
+# By default the weight for all measure is 1
+_logweight(::AbstractMeasure) = 0
 
-@inline function logdensity_def(d::AbstractWeightedMeasure, x)
+@inline function logdensity_def(d::AbstractWeightedMeasure, _)
     d.logweight
+end
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
+    rand(rng, T, basemeasure(μ))
 end
 
 ###############################################################################
@@ -22,6 +26,9 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight::R
     base::M
 end
+
+_logweight(μ::WeightedMeasure) = μ.logweight
+basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
 function Base.show(io::IO, μ::WeightedMeasure)
     io = IOContext(io, :compact => true)
