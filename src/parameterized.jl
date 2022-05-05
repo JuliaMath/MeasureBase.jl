@@ -33,9 +33,15 @@ function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
 end
 
 @inline function _kernel(::Type{C}, ::Val{N}) where {C,N}
-    @inline function(args::T) where {T<:Tuple}
+    @inline function f(args::T) where {T<:Tuple}
         C(NamedTuple{N,T}(args))::C{N,T}
     end
+
+    @inline function f(arg::T) where {T} 
+        C(NamedTuple{N,Tuple{T}}((arg,)))::C{N,Tuple{T}}
+    end
+
+    f
 end
 
 function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
