@@ -67,7 +67,7 @@ end
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
     parent = d.parent
     sum(x) do xj
-        @inline logdensity_def(parent, xj)
+        logdensity_def(parent, xj)
     end
 end
 
