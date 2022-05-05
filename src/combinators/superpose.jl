@@ -1,3 +1,7 @@
+
+using LogarithmicNumbers
+using LogExpFunctions
+
 export SuperpositionMeasure
 
 @doc raw"""
@@ -57,8 +61,6 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end
 
-using LogarithmicNumbers
-
 oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
@@ -79,8 +81,6 @@ end
 function density_def(s::SuperpositionMeasure, x)
     error("Not implemented")
 end
-
-using LogExpFunctions
 
 @inline function logdensity_def(
     μ::T,
@@ -119,8 +119,9 @@ end
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
-basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}  =
+function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
     superpose(map(basemeasure, μ.components)...)
+end
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
 # TODO: Fix `rand` method (this one is wrong)
