@@ -120,9 +120,6 @@ struct Likelihood{K,X} <: AbstractLikelihood
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
 
-# Not really a density, but this makes the code work
-@inline DensityKind(::Likelihood) = IsDensity()
-
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
     x = Pretty.quoteof(ℓ.x)
