@@ -23,7 +23,9 @@ the notion of normalization may not even make sense.
 Because of this, this interface is not yet stable, and users should expect
 upcoming changes.
 """
-Base.:|(μ::AbstractMeasure, constraint) = ConditionalMeasure(μ, constraint)
+Base.:|(μ::AbstractMeasure, constraint) = condition(μ, constraint)
+
+condition(μ, constraint) = ConditionalMeasure(μ, constraint)
 
 @inline basemeasure(cm::ConditionalMeasure) = basemeasure(cm.parent) | cm.constraint
 
