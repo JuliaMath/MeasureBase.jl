@@ -152,6 +152,8 @@ likelihood(k, x, pars::NamedTuple) = likelihood(kernel(k, pars), x)
 
 likelihood(k::AbstractTransitionKernel, x) = Likelihood(k, x)
 
+export log_likelihood_ratio
+
 """
     log_likelihood_ratio(ℓ::Likelihood, p, q)
 
