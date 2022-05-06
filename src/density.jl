@@ -69,7 +69,7 @@ function _densitymeasure(f, base, _)
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && logdensityof(d.f, x) > -Inf
+    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
 end
 
 basemeasure(μ::DensityMeasure) = μ.base
