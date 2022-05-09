@@ -9,21 +9,8 @@ end
 
 iterate(p::PointwiseProductMeasure, i=1) = iterate((p.prior, p.likelihood), i)
 
-function Base.show(io::IO, μ::PointwiseProductMeasure)
-    io = IOContext(io, :compact => true)
-    print(io, μ.prior, " ⊙ ", μ.likelihood)
-end
-
-function Base.show_unquoted(io::IO, μ::PointwiseProductMeasure, indent::Int, prec::Int)
-    io = IOContext(io, :compact => true)
-    if Base.operator_precedence(:*) ≤ prec
-        print(io, "(")
-        show(io, μ)
-        print(io, ")")
-    else
-        show(io, μ)
-    end
-    return nothing
+function Pretty.tile(d::PointwiseProductMeasure)
+    Pretty.pair_layout(Pretty.tile(d.prior), Pretty.tile(d.likelihood), sep=" ⊙ ")
 end
 
 ⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)

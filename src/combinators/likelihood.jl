@@ -95,7 +95,8 @@ Finally, let's return to the expression for Bayes's Law,
 
 The product on the right side is computed pointwise. To work with this in
 MeasureBase, we have a "pointwise product" `⊙`, which takes a measure and a
-likelihood, and returns a new measure, that is, the unnormalized posterior that has density ``P(θ) P(x|θ)`` with respect to the base measure of the prior.
+likelihood, and returns a new measure, that is, the unnormalized posterior that
+has density ``P(θ) P(x|θ)`` with respect to the base measure of the prior.
 
 For example, say we have
 
@@ -140,6 +141,15 @@ end
 # basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
 
 export likelihood
+
+"""
+    likelihood(k::AbstractTransitionKernel, x; constraints...)
+    likelihood(k::AbstractTransitionKernel, x, constraints::NamedTuple)
+
+A likelihood is *not* a measure. Rather, a likelihood acts on a measure, through
+the "pointwise product" `⊙`, yielding another measure.
+"""
+function likelihood end
 
 likelihood(k, x, ::NamedTuple{()}) = Likelihood(k, x)
 

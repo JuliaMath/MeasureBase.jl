@@ -40,3 +40,7 @@ condition(μ, constraint) = ConditionalMeasure(μ, constraint)
 function Base.:|(μ::ProductMeasure{NamedTuple{M,T}}, constraint::NamedTuple{N}) where {M,T,N}
     productmeasure(merge(marginals(μ),rmap(Dirac, constraint)))
 end
+
+function Pretty.tile(d::ConditionalMeasure)
+    Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.constraint), sep=" | ")
+end

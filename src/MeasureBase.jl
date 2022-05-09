@@ -52,11 +52,9 @@ abstract type AbstractMeasure end
 
 using Static: @constprop
 
-function Pretty.tile(d::M) where {M<:AbstractMeasure}
+function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
-    result = Pretty.literal(repr(M))
-    isempty(the_names) && return result * Pretty.literal("()")
-    Pretty.list_layout(Pretty.tile.([getfield(d, n) for n in the_names]); prefix=result)
+    :($M($([getfield(d, n) for n in the_names]...)))
 end
 
 @inline DensityKind(::AbstractMeasure) = HasDensity()

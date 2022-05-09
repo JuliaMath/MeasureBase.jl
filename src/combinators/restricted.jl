@@ -1,18 +1,16 @@
-struct RestrictedMeasure{F,M} <: AbstractMeasure
-    f::F
+struct RestrictedMeasure{P,M} <: AbstractMeasure
+    predicate::P
     base::M
 end
 
-@inline function logdensity_def(d::RestrictedMeasure, x)
-    d.f(x) || return -Inf
-    return 0.0
-end
-
-function density_def(d::RestrictedMeasure, x)
-    d.f(x) || return 0.0
-    return 1.0
-end
+@inline logdensity_def(d::RestrictedMeasure, x) = logdensity_def(d.base, x)
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
-insupport(μ::RestrictedMeasure, x) = μ.f(x) && insupport(μ.base, x)
+insupport(μ::RestrictedMeasure, x) = μ.predicate(x) && insupport(μ.base, x)
+
+function Pretty.quoteof(d::RestrictedMeasure)
+    qf = Pretty.quoteof(d.predicate)
+    qbase = Pretty.quoteof(d.base)
+    :(RestrictedMeasure($qf, $qbase))
+end

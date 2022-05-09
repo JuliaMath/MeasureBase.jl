@@ -31,3 +31,7 @@ end
 function powerweightedmeasure(d::WeightedMeasure, α)
     weightedmeasure(α*d.logweight, powerweightedmeasure(d.base, α))
 end
+
+function Pretty.tile(d::PowerWeightedMeasure)
+    Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.exponent), sep=" ↑ ")
+end

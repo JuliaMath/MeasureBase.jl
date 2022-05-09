@@ -84,3 +84,6 @@ function Pretty.quoteof(k::ParameterizedTransitionKernel)
     :(ParameterizedTransitionKernel($qf, $qg))
 end
 
+const kleisli = kernel
+
+export kleisli

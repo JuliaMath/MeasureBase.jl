@@ -63,6 +63,7 @@ end
 
 ###############################################################################
 # RestrictedMeasure
+export restrict
 
 restrict(f, b) = RestrictedMeasure(f, b)
 

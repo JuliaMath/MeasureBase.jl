@@ -219,7 +219,7 @@ end
 # Note that this method assumes `μ` and `ν` to have the same type
 function logdensity_def(μ::T, ν::T, x) where {T}
     if μ === ν
-        return zero(return_type(logdensity_def, (μ, x)))
+        return zero(logdensity_def(μ, x))
     else
         return logdensity_def(μ,x) - logdensity_def(ν, x)
     end
