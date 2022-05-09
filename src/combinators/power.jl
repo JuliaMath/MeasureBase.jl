@@ -65,26 +65,16 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 end
 
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
-    ℓ = 0.0
-    # ℓ = zero(typeintersect(AbstractFloat,Core.Compiler.return_type(logdensity_def, Tuple{M,T})))
     parent = d.parent
-    @simd for xj in x
-        Δℓ = logdensity_def(parent, xj)
-        ℓ += Δℓ
+    sum(x) do xj
+        logdensity_def(parent, xj)
     end
-    ℓ
 end
 
-@generated function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
-    quote
-        $(Expr(:meta, :inline))
-        ℓ = 0.0
-        parent = d.parent
-        @inbounds @simd for j in 1:$N
-            Δℓ = logdensity_def(parent, x[j])
-            ℓ += Δℓ
-        end
-        ℓ
+@inline function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
+    parent = d.parent
+    sum(1:N) do j
+        @inbounds logdensity_def(parent, x[j])
     end
 end
 

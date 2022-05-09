@@ -30,21 +30,9 @@ end
 _logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
-function Base.show(io::IO, μ::WeightedMeasure)
-    io = IOContext(io, :compact => true)
-    print(io, exp(μ.logweight), " * ", μ.base)
-end
-
-function Base.show_unquoted(io::IO, μ::WeightedMeasure, indent::Int, prec::Int)
-    io = IOContext(io, :compact => true)
-    if Base.operator_precedence(:*) ≤ prec
-        print(io, "(")
-        show(io, μ)
-        print(io, ")")
-    else
-        show(io, μ)
-    end
-    return nothing
+function Pretty.tile(d::WeightedMeasure)
+    weight = round(exp(d.logweight), sigdigits=4)
+    Pretty.pair_layout(Pretty.tile(weight), Pretty.tile(d.base), sep=" * ")
 end
 
 function Base.:*(k::T, m::AbstractMeasure) where {T<:Number}

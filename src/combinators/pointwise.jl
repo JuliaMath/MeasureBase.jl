@@ -1,40 +1,34 @@
 export ⊙
 
-struct PointwiseProductMeasure{M,L} <: AbstractMeasure
-    measure::M
+struct PointwiseProductMeasure{P,L} <: AbstractMeasure
+    prior::P
     likelihood::L
-
-    function PointwiseProductMeasure(μ::M, ℓ::L) where {M,L}
-        @assert static_hasmethod(logdensity_def, Tuple{L, gentype(μ)})
-        return new{M,L}(μ, ℓ)
-    end
 end
 
-function Base.show(io::IO, μ::PointwiseProductMeasure)
-    io = IOContext(io, :compact => true)
-    print(io, μ.measure, " ⊙ ", μ.likelihood)
-end
 
-function Base.show_unquoted(io::IO, μ::PointwiseProductMeasure, indent::Int, prec::Int)
-    io = IOContext(io, :compact => true)
-    if Base.operator_precedence(:*) ≤ prec
-        print(io, "(")
-        show(io, μ)
-        print(io, ")")
-    else
-        show(io, μ)
-    end
-    return nothing
+
+iterate(p::PointwiseProductMeasure, i=1) = iterate((p.prior, p.likelihood), i)
+
+function Pretty.tile(d::PointwiseProductMeasure)
+    Pretty.pair_layout(Pretty.tile(d.prior), Pretty.tile(d.likelihood), sep=" ⊙ ")
 end
 
 ⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)
 
-@inline function logdensity_def(d::PointwiseProductMeasure, x)
-    logdensity_def(d.measure, x) + logdensity_def(d.likelihood, x)
+@inline function logdensity_def(d::PointwiseProductMeasure, p)
+    μ, ℓ = d
+    logdensityof(ℓ.k(p), ℓ.x)
 end
 
 function gentype(d::PointwiseProductMeasure)
-    @inbounds gentype(d.measure)
+    gentype(d.prior)
 end
 
-basemeasure(d::PointwiseProductMeasure) = @inbounds basemeasure(d.measure)
+@inbounds function insupport(d::PointwiseProductMeasure, p) 
+    μ, ℓ = d
+    insupport(μ, p) && insupport(ℓ.k(p), ℓ.x)
+end
+
+basemeasure(d::PointwiseProductMeasure, x) = d.prior
+
+basemeasure(d::PointwiseProductMeasure) = basemeasure(d.prior)

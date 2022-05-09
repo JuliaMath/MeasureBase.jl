@@ -23,6 +23,24 @@ the notion of normalization may not even make sense.
 Because of this, this interface is not yet stable, and users should expect
 upcoming changes.
 """
-Base.:|(μ::AbstractMeasure, constraint) = ConditionalMeasure(μ, constraint)
+Base.:|(μ::AbstractMeasure, constraint) = condition(μ, constraint)
+
+condition(μ, constraint) = ConditionalMeasure(μ, constraint)
 
 @inline basemeasure(cm::ConditionalMeasure) = basemeasure(cm.parent) | cm.constraint
+
+# @generated function Base.:|(μ::ProductMeasure{NamedTuple{M,T}}, constraint::NamedTuple{N}) where {M,T,N}
+#     newkeys = tuple(setdiff(M, N)...)
+#     quote
+#         mar = marginals(μ)
+#         productmeasure(NamedTuple{$newkeys}(mar))
+#     end
+# end
+
+function Base.:|(μ::ProductMeasure{NamedTuple{M,T}}, constraint::NamedTuple{N}) where {M,T,N}
+    productmeasure(merge(marginals(μ),rmap(Dirac, constraint)))
+end
+
+function Pretty.tile(d::ConditionalMeasure)
+    Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.constraint), sep=" | ")
+end

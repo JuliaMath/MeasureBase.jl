@@ -65,8 +65,8 @@ testbroken_measures = [
     end
 end
 
-# @testset "Kleisli" begin
-#     κ = MeasureBase.kleisli(MeasureBase.Dirac, identity)
+# @testset "TransitionKernel" begin
+#     κ = MeasureBase.kernel(MeasureBase.Dirac, identity)
 #     @test rand(κ(1.1)) == 1.1
 # end
 
@@ -77,8 +77,8 @@ end
 
 @testset "Dirac" begin
     @test rand(Dirac(0.2)) == 0.2
-    @test logdensity_def(Dirac(0.3), 0.3) == 0.0
-    @test logdensity_def(Dirac(0.3), 0.4) == -Inf
+    @test logdensityof(Dirac(0.3), 0.3) == 0.0
+    @test logdensityof(Dirac(0.3), 0.4) == -Inf
 end
 
 # @testset "For" begin
@@ -126,7 +126,7 @@ end
         end
     end
 
-    @inferred logdensityof(ℓ, 2.0)
+    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin
@@ -137,7 +137,7 @@ end
 
 #     ℓs = [
 #         Likelihood(Normal{(:μ,)},              3.0)
-#         Likelihood(kleisli(Normal, x -> (μ=x, σ=2.0)), 3.0)
+#         Likelihood(kernel(Normal, x -> (μ=x, σ=2.0)), 3.0)
 #     ]
 
 #     for (d,p) in dps

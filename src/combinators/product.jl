@@ -94,19 +94,19 @@ end
     return q
 end
 
-@generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-    q = quote
-        m = marginals(d)
-    end
-    for k in N
-        qk = QuoteNode(k)
-        push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
-    end
+# @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+#     q = quote
+#         m = marginals(d)
+#     end
+#     for k in N
+#         qk = QuoteNode(k)
+#         push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
+#     end
 
-    vals = map(x -> Expr(:(=), x,x), N)
-    push!(q.args, Expr(:tuple, vals...))
-    return q
-end
+#     vals = map(x -> Expr(:(=), x,x), N)
+#     push!(q.args, Expr(:tuple, vals...))
+#     return q
+# end
 
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
@@ -133,7 +133,7 @@ end
 
 function _basemeasure(μ::ProductMeasure{Base.Generator{I,F}}, ::Type{B}, ::False) where {I,F,B}
     mar = marginals(μ)
-    productmeasure(Base.Generator(basekleisli(mar.f), mar.iter))
+    productmeasure(Base.Generator(basekernel(mar.f), mar.iter))
 end
 
 marginals(μ::ProductMeasure) = μ.marginals
@@ -174,7 +174,7 @@ using Random: rand!, GLOBAL_RNG, AbstractRNG
 end
 
 export rand!
-using Random: rand!, GLOBAL_RNG, AbstractRNG
+using Random: rand!, GLOBAL_RNG
 
 function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
     elT = typeof(rand(rng, T, first(mar)))
@@ -187,8 +187,8 @@ end
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     mar = marginals(d)
-    for j in eachindex(x)
-        @inbounds dynamic(insupport(mar[j], x[j])) || return false
+    for (j,mj) in enumerate(mar)
+        dynamic(insupport(mj, x[j])) || return false
     end
     return true
 end

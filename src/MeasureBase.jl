@@ -13,6 +13,7 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
 
@@ -31,7 +32,7 @@ export AbstractMeasure
 import IfElse: ifelse
 export logdensity_def
 export basemeasure
-export basekleisli
+export basekernel
 
 """
     inssupport(m, x)
@@ -51,11 +52,9 @@ abstract type AbstractMeasure end
 
 using Static: @constprop
 
-function Pretty.tile(d::M) where {M<:AbstractMeasure}
+function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
-    result = Pretty.literal(repr(M))
-    isempty(the_names) && return result * Pretty.literal("()")
-    Pretty.list_layout(Pretty.tile.([getfield(d, n) for n in the_names]); prefix=result)
+    :($M($([getfield(d, n) for n in the_names]...)))
 end
 
 @inline DensityKind(::AbstractMeasure) = HasDensity()
@@ -97,23 +96,21 @@ using Compat
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
-include("kleisli.jl")
+include("kernel.jl")
 include("parameterized.jl")
 include("combinators/half.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
-include("absolutecontinuity.jl")
+# include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
-include("combinators/conditional.jl")
 include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
-include("combinators/factoredbase.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
@@ -123,6 +120,8 @@ include("combinators/likelihood.jl")
 include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
+include("combinators/powerweighted.jl")
+include("combinators/conditional.jl")
 
 include("rand.jl")
 
