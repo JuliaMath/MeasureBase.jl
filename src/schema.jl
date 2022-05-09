@@ -1,7 +1,7 @@
 # Taken from https://github.com/cscherrer/NestedTuples.jl/blob/cd298fd1e5f7e571701a6fee916d2d47c19f32f5/src/typelevel.jl
 
-ntkeys(::Type{NamedTuple{K,V}}) where {K, V} = K
-ntvaltype(::Type{NamedTuple{K,V}}) where {K, V} = V
+ntkeys(::Type{NamedTuple{K,V}}) where {K,V} = K
+ntvaltype(::Type{NamedTuple{K,V}}) where {K,V} = V
 
 """
     schema(::Type)
@@ -16,19 +16,19 @@ Example:
 """
 function schema end
 
-schema(::NamedTuple{(), Tuple{}}) = NamedTuple()
-schema(::Type{NamedTuple{(), Tuple{}}}) = NamedTuple()
+schema(::NamedTuple{(),Tuple{}}) = NamedTuple()
+schema(::Type{NamedTuple{(),Tuple{}}}) = NamedTuple()
 
-function schema(NT::Type{NamedTuple{names, T}}) where {names, T}
+function schema(NT::Type{NamedTuple{names,T}}) where {names,T}
     return NamedTuple{ntkeys(NT)}(schema(ntvaltype(NT)))
 end
 
-function schema(TT::Type{T}) where {T <: Tuple} 
+function schema(TT::Type{T}) where {T<:Tuple}
     return schema.(Tuple(TT.types))
 end
 
-schema(t::T) where {T <: Tuple} = schema(T) 
+schema(t::T) where {T<:Tuple} = schema(T)
 
-schema(t::T) where {T <: NamedTuple} = schema(T) 
+schema(t::T) where {T<:NamedTuple} = schema(T)
 
 schema(T) = T

@@ -15,7 +15,8 @@ using MeasureBase: superpose
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
     @test_throws ErrorException density_def(μs, 0)
-    @test basemeasure(μs).components == SuperpositionMeasure([CountingMeasure(), CountingMeasure()]).components
+    @test basemeasure(μs).components ==
+          SuperpositionMeasure([CountingMeasure(), CountingMeasure()]).components
 
     μ2 = μ + μ
     @test μ2 isa WeightedMeasure

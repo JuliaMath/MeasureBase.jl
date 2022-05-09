@@ -74,14 +74,13 @@ end
 
 export ZeroSet
 
-struct ZeroSet{F, G} <: AbstractDomain
+struct ZeroSet{F,G} <: AbstractDomain
     f::F
     ∇f::G
 end
 
 # Based on some quick tests, but may need some adjustment
 Base.in(x::AbstractArray{T}, z::ZeroSet) where {T} = abs(z.f(x)) < ldexp(eps(float(T)), 6)
-
 
 ###########################################################
 # CodimOne
@@ -90,14 +89,19 @@ export CodimOne
 
 abstract type CodimOne <: AbstractDomain end
 
-function tangentat(a::CodimOne, b::CodimOne, x::AbstractArray{T}; tol=ldexp(eps(float(T)), 6)) where {T}
+function tangentat(
+    a::CodimOne,
+    b::CodimOne,
+    x::AbstractArray{T};
+    tol = ldexp(eps(float(T)), 6),
+) where {T}
     # Sometimes you get lucky
     a == b && return true
 
     # Get the normal vectors
     g1 = a.∇f(x)
     g2 = b.∇f(x)
-    
+
     # See if one is a multiple of the other
     one(T) - Statistics.corm(g1, zero(T), g2, zero(T)) < tol
 end
@@ -110,13 +114,13 @@ export Simplex
 
 struct Simplex <: CodimOne end
 
-function zeroset(::Simplex) 
+function zeroset(::Simplex)
     f(x::AbstractArray{T}) where {T} = sum(x) - one(T)
     ∇f(x::AbstractArray{T}) where {T} = Fill(one(T), size(x))
     ZeroSet(f, ∇f)
 end
 
-function Base.in(x::AbstractArray{T}, ::Simplex) where {T} 
+function Base.in(x::AbstractArray{T}, ::Simplex) where {T}
     all(≥(zero(eltype(x))), x) || return false
     return x ∈ zeroset(Simplex())
 end
@@ -128,15 +132,14 @@ projectto!(x, ::Simplex) = normalize!(x, 1)
 
 struct Sphere <: CodimOne end
 
-function zeroset(::Sphere) 
+function zeroset(::Sphere)
     f(x::AbstractArray{T}) where {T} = sum(xⱼ -> xⱼ^2, x) - one(T)
     ∇f(x::AbstractArray{T}) where {T} = x
     ZeroSet(f, ∇f)
 end
 
-function Base.in(x::AbstractArray{T}, ::Sphere) where {T} 
+function Base.in(x::AbstractArray{T}, ::Sphere) where {T}
     return x ∈ zeroset(Sphere())
 end
 
 projectto!(x, ::Sphere) = normalize!(x, 2)
-

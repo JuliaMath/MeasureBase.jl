@@ -4,7 +4,7 @@ using Reexport
 
 @reexport using MeasureBase
 
-using MeasureBase:basemeasure_depth, proxy
+using MeasureBase: basemeasure_depth, proxy
 using MeasureBase: insupport, basemeasure_sequence, commonbase
 
 export test_interface
@@ -31,10 +31,10 @@ function test_interface(μ::M) where {M}
         μ = $μ
         @testset "$μ" begin
             μ = $μ
-           
+
             ###########################################################################
             # basemeasure_depth
-            static_depth = @inferred basemeasure_depth(μ) 
+            static_depth = @inferred basemeasure_depth(μ)
 
             dynamic_depth = dynamic_basemeasure_depth(μ)
 
@@ -58,6 +58,3 @@ function test_interface(μ::M) where {M}
 end
 
 end # module Interface
-
-
-

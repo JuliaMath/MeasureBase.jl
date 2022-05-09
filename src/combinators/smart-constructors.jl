@@ -53,8 +53,9 @@ productmeasure(tup::Tuple) = ProductMeasure(tup)
 
 productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
 
-productmeasure(k::ParameterizedTransitionKernel, pars) = productmeasure(k.f, k.param_maps, pars)
-
+function productmeasure(k::ParameterizedTransitionKernel, pars)
+    productmeasure(k.f, k.param_maps, pars)
+end
 
 function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
     ℓ = _logweight(f.value)
@@ -140,4 +141,3 @@ function kernel(::Type{M}; param_maps...) where {M}
 end
 
 kernel(k::ParameterizedTransitionKernel) = k
-

@@ -8,7 +8,6 @@ end
 showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
-
 export testvalue
 testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
 testvalue(::Type{T}) where {T} = zero(T)
@@ -47,7 +46,6 @@ end
 
 # issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
 
-
 # @generated function instance(::Type{T}) where {T}
 #     return getfield(T, :instance)::T
 # end
@@ -61,9 +59,9 @@ export basemeasure_depth
 @inline function basemeasure_depth(μ::M) where {M}
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i-1})
-        if b_{i} isa typeof(b_{i-1})
-            return static(i-1)
+        b_{i} = basemeasure(b_{i - 1})
+        if b_{i} isa typeof(b_{i - 1})
+            return static(i - 1)
         end
     end
     return static(10)
@@ -79,16 +77,20 @@ measure of the previous term, and with no repeated entries.
     b_1 = μ
     done = false
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i+1} = if done nothing else basemeasure(b_{i}) end
-        if b_{i+1} isa typeof(b_{i})
+        b_{i + 1} = if done
+            nothing
+        else
+            basemeasure(b_{i})
+        end
+        if b_{i + 1} isa typeof(b_{i})
             done = true
-            b_{i+1} = nothing
+            b_{i + 1} = nothing
         end
     end
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-commonbase(μ, ν) = commonbase(μ, ν, Any) 
+commonbase(μ, ν) = commonbase(μ, ν, Any)
 
 """
     commonbase(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
@@ -107,9 +109,12 @@ end
     m = schema(M)
     n = schema(N)
 
-    sols = Iterators.filter(((i,j),) ->  static_hasmethod(logdensity_def, Tuple{m[i], n[j], T}), Iterators.product(1:length(m), 1:length(n))) 
+    sols = Iterators.filter(
+        ((i, j),) -> static_hasmethod(logdensity_def, Tuple{m[i],n[j],T}),
+        Iterators.product(1:length(m), 1:length(n)),
+    )
     isempty(sols) && return :(nothing)
-    minsol = static.(argmin(((i,j),) -> i+j, sols))
+    minsol = static.(argmin(((i, j),) -> i + j, sols))
     quote
         $minsol
     end
@@ -131,15 +136,14 @@ end
     return true
 end
 
-
 allequal(x::AbstractArray) = allequal(identity, x)
 
 rmap(f, x) = f(x)
 
 function rmap(f, t::Tuple)
-    map(x -> rmap(f,x), t)
+    map(x -> rmap(f, x), t)
 end
 
 function rmap(f, nt::NamedTuple{N,T}) where {N,T}
-    NamedTuple{N}(map(x -> rmap(f,x), values(nt)))
+    NamedTuple{N}(map(x -> rmap(f, x), values(nt)))
 end

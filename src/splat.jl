@@ -2,7 +2,7 @@ struct Splat{F}
     f::F
 end
 
-function (s::Splat{F})(x) where F
+function (s::Splat{F})(x) where {F}
     s.f(x...)
 end
 

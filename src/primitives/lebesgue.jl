@@ -15,7 +15,7 @@ struct Lebesgue{T} <: AbstractMeasure
 end
 
 function Pretty.tile(μ::Lebesgue)
-    Pretty.list_layout([Pretty.tile(μ.support)]; prefix=:Lebesgue)
+    Pretty.list_layout([Pretty.tile(μ.support)]; prefix = :Lebesgue)
 end
 
 gentype(::Lebesgue) = Float64
