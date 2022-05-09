@@ -48,7 +48,11 @@ end
 # issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
 
 
-@generated function instance(::Type{T}) where {T}
+# @generated function instance(::Type{T}) where {T}
+#     return getfield(T, :instance)::T
+# end
+
+function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
 end
 
@@ -129,3 +133,13 @@ end
 
 
 allequal(x::AbstractArray) = allequal(identity, x)
+
+rmap(f, x) = f(x)
+
+function rmap(f, t::Tuple)
+    map(x -> rmap(f,x), t)
+end
+
+function rmap(f, nt::NamedTuple{N,T}) where {N,T}
+    NamedTuple{N}(map(x -> rmap(f,x), values(nt)))
+end

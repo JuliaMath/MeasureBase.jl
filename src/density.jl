@@ -69,7 +69,7 @@ function _densitymeasure(f, base, _)
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    ifelse(insupport(d.base, x), logdensityof(d.f, x) > -Inf, false)
+    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
 end
 
 basemeasure(μ::DensityMeasure) = μ.base
@@ -123,9 +123,8 @@ To compute a log-density relative to a specific base-measure, see
 `logdensity_rel`. 
 """
 @inline function logdensityof(μ::AbstractMeasure, x)
-    t() = dynamic(unsafe_logdensityof(μ, x))
-    f() = -Inf
-    ifelse(insupport(μ, x), t, f)()
+    result = dynamic(unsafe_logdensityof(μ, x))
+    ifelse(insupport(μ, x) == true, result, oftype(result, -Inf))
 end
 
 export unsafe_logdensityof
@@ -143,7 +142,7 @@ See also `logdensityof`.
     ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i-1})
+        b_{i} = basemeasure(b_{i-1}, x)
         if b_{i} isa typeof(b_{i-1})
             return ℓ_{i-1}
         end
@@ -220,7 +219,7 @@ end
 # Note that this method assumes `μ` and `ν` to have the same type
 function logdensity_def(μ::T, ν::T, x) where {T}
     if μ === ν
-        return zero(return_type(logdensity_def, (μ, x)))
+        return zero(logdensity_def(μ, x))
     else
         return logdensity_def(μ,x) - logdensity_def(ν, x)
     end

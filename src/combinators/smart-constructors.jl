@@ -8,6 +8,11 @@ half(μ::AbstractMeasure) = Half(μ)
 # PointwiseProductMeasure
 
 function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
+    T = Core.Compiler.return_type(ℓ.k, Tuple{gentype(μ)})
+    return pointwiseproduct(T, μ, ℓ)
+end
+
+function pointwiseproduct(::Type{T}, μ::AbstractMeasure, ℓ::Likelihood) where {T}
     return PointwiseProductMeasure(μ, ℓ)
 end
 
@@ -46,30 +51,21 @@ end
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)
 
-productmeasure(f, param_maps, pars) = ProductMeasure(kleisli(f, param_maps), pars)
+productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
 
-productmeasure(k::ParameterizedKleisli, pars) = productmeasure(k.f, k.param_maps, pars)
+productmeasure(k::ParameterizedTransitionKernel, pars) = productmeasure(k.f, k.param_maps, pars)
 
-function productmeasure(f::Returns{FB}, param_maps, pars) where {FB<:FactoredBase}
-    fb = f.value
-    dims = size(pars)
-    n = prod(dims)
-    inbounds(x) = all(fb.inbounds, x)
-    constℓ = n * fb.constℓ
-    varℓ() = n * fb.varℓ()
-    base = fb.base^dims
-    FactoredBase(inbounds, constℓ, varℓ, base)
-end
 
 function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
-    ℓ = f.value.logweight
-    base = f.value.base
+    ℓ = _logweight(f.value)
+    base = basemeasure(f.value)
     newbase = productmeasure(Returns(base), identity, pars)
     weightedmeasure(length(pars) * ℓ, newbase)
 end
 
 ###############################################################################
 # RestrictedMeasure
+export restrict
 
 restrict(f, b) = RestrictedMeasure(f, b)
 
@@ -114,33 +110,34 @@ function weightedmeasure(ℓ::R, b::M) where {R,M}
 end
 
 function weightedmeasure(ℓ, b::WeightedMeasure)
-    weightedmeasure(ℓ + b.logweight, b.base)
+    weightedmeasure(ℓ + _logweight(b), b.base)
 end
 
 ###############################################################################
-# Kleisli
+# TransitionKernel
 
-kleisli(μ, op1, op2, param_maps...) = ParameterizedKleisli(μ, op1, op2, param_maps...)
+kernel(f, pars::NamedTuple) = ParameterizedTransitionKernel(f, pars)
 
-# kleisli(Normal(μ=2))
-function kleisli(μ::M) where {M<:AbstractMeasure}
-    kleisli(M)
+# kernel(Normal(μ=2))
+function kernel(μ::M) where {M<:ParameterizedMeasure}
+    kernel(M)
 end
 
-function kleisli(d::PowerMeasure)
-    Base.Fix2(powermeasure, d.axes) ∘ kleisli(d.parent)
+function kernel(d::PowerMeasure)
+    Base.Fix2(powermeasure, d.axes) ∘ kernel(d.parent)
 end
 
-# kleisli(Normal{(:μ,), Tuple{Int64}})
-function kleisli(::Type{M}) where {M<:AbstractMeasure}
+# kernel(Normal{(:μ,), Tuple{Int64}})
+function kernel(::Type{M}) where {M<:AbstractMeasure}
     constructorof(M)
 end
 
-# kleisli(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kleisli{constructorof(P),O}(op)
+# kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
-function kleisli(::Type{M}; param_maps...) where {M}
+function kernel(::Type{M}; param_maps...) where {M}
     nt = NamedTuple(param_maps)
-    kleisli(M, nt)
+    kernel(M, nt)
 end
 
-kleisli(k::ParameterizedKleisli) = k
+kernel(k::ParameterizedTransitionKernel) = k
+

@@ -2,10 +2,16 @@ export AbstractLikelihood, Likelihood
 
 abstract type AbstractLikelihood end
 
-@inline logdensityof(ℓ::AbstractLikelihood, par) = logdensity_def(ℓ, par)
+# @inline function logdensityof(ℓ::AbstractLikelihood, p)
+#     t() = dynamic(unsafe_logdensityof(ℓ, p))
+#     f() = -Inf
+#     ifelse(insupport(ℓ, p), t, f)()
+# end
+
+# insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @doc raw"""
-    Likelihood(k::AbstractKleisli, x)
+    Likelihood(k::AbstractTransitionKernel, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
 
@@ -89,7 +95,8 @@ Finally, let's return to the expression for Bayes's Law,
 
 The product on the right side is computed pointwise. To work with this in
 MeasureBase, we have a "pointwise product" `⊙`, which takes a measure and a
-likelihood, and returns a new measure, that is, the unnormalized posterior that has density ``P(θ) P(x|θ)`` with respect to the base measure of the prior.
+likelihood, and returns a new measure, that is, the unnormalized posterior that
+has density ``P(θ) P(x|θ)`` with respect to the base measure of the prior.
 
 For example, say we have
 
@@ -109,13 +116,10 @@ struct Likelihood{K,X} <: AbstractLikelihood
     k::K
     x::X
 
-    Likelihood(k::K, x::X) where {K<:AbstractKleisli,X} = new{K,X}(k,x)
+    Likelihood(k::K, x::X) where {K<:AbstractTransitionKernel,X} = new{K,X}(k,x)
     Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k,x)
-    Likelihood(μ, x) = Likelihood(kleisli(μ), x)
+    Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
-
-# Not really a density, but this makes the code work
-@inline DensityKind(::Likelihood) = IsDensity()
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
@@ -128,10 +132,48 @@ function Base.show(io::IO, ℓ::Likelihood)
     Pretty.pprint(io, ℓ)
 end
 
-@inline function logdensity_def(ℓ::Likelihood, p::Tuple)
-    return logdensity_def(ℓ.k(p), ℓ.x)
-end
+# @inline function logdensity_def(ℓ::Likelihood, p)
+#     return logdensity_def(ℓ.k(p), ℓ.x)
+# end
 
-@inline function logdensity_def(ℓ::Likelihood, p)
-    return logdensity_def(ℓ.k((p,)), ℓ.x)
-end
+# basemeasure(ℓ::Likelihood, p) = basemeasure(ℓ.k(p), ℓ.x)
+
+# basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
+
+export likelihood
+
+"""
+    likelihood(k::AbstractTransitionKernel, x; constraints...)
+    likelihood(k::AbstractTransitionKernel, x, constraints::NamedTuple)
+
+A likelihood is *not* a measure. Rather, a likelihood acts on a measure, through
+the "pointwise product" `⊙`, yielding another measure.
+"""
+function likelihood end
+
+likelihood(k, x, ::NamedTuple{()}) = Likelihood(k, x)
+
+likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
+
+likelihood(k, x, pars::NamedTuple) = likelihood(kernel(k, pars), x)
+
+likelihood(k::AbstractTransitionKernel, x) = Likelihood(k, x)
+
+export log_likelihood_ratio
+
+"""
+    log_likelihood_ratio(ℓ::Likelihood, p, q)
+
+Compute the log of the likelihood ratio, in order to compare two choices for
+parameters. This is computed as
+
+    logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+
+Since `logdensity_rel` can leave common base measure unevaluated, this can be
+more efficient than
+
+    logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
+"""
+log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+
+# likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
