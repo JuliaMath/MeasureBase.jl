@@ -79,7 +79,12 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 end
 
 function density_def(s::SuperpositionMeasure, x)
-    error("Not implemented")
+    T = typeof(s)
+    msg = """
+    Not implemented: There is no method
+    density_def(::$T, x)
+    """
+    error(msg)
 end
 
 @inline function logdensity_def(
