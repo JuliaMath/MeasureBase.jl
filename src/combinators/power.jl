@@ -71,16 +71,10 @@ end
     end
 end
 
-@generated function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
-    quote
-        $(Expr(:meta, :inline))
-        ℓ = 0.0
-        parent = d.parent
-        @inbounds @simd for j in 1:$N
-            Δℓ = logdensity_def(parent, x[j])
-            ℓ += Δℓ
-        end
-        ℓ
+@inline function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
+    parent = d.parent
+    sum(1:N) do j
+        @inbounds logdensity_def(parent, x[j])
     end
 end
 
