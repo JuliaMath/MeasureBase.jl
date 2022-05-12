@@ -5,10 +5,15 @@ struct ParameterizedTransitionKernel{F,N,T} <: AbstractTransitionKernel
     f::F
     param_maps::NamedTuple{N,T}
 
-    ParameterizedTransitionKernel(::Type{F}, param_maps::NamedTuple{N,T}) where {F,N,T} =
+    function ParameterizedTransitionKernel(
+        ::Type{F},
+        param_maps::NamedTuple{N,T},
+    ) where {F,N,T}
         new{Type{F},N,T}(F, param_maps)
-    ParameterizedTransitionKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T} =
+    end
+    function ParameterizedTransitionKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T}
         new{F,N,T}(f, param_maps)
+    end
 end
 
 """
@@ -32,7 +37,6 @@ another common use of this term.
 """
 function kernel end
 
-
 # kernel(Normal) do x
 #     (μ=x,σ=x^2)
 # end
@@ -50,7 +54,6 @@ mapcall(t, x) = map(func -> func(x), t)
 function (k::ParameterizedTransitionKernel)(x::Tuple)
     k.f(NamedTuple{k.param_maps}(x))
 end
-
 
 """
 For any `k::TransitionKernel`, `basekernel` is expected to satisfy
@@ -71,7 +74,6 @@ basekernel(f) = basemeasure ∘ f
 basekernel(k::ParameterizedTransitionKernel) = kernel(basekernel(k.f), k.param_maps)
 
 basekernel(f::Returns) = Returns(basemeasure(f.value))
-
 
 function Base.show(io::IO, μ::AbstractTransitionKernel)
     io = IOContext(io, :compact => true)

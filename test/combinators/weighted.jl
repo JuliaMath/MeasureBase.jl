@@ -13,7 +13,7 @@ using MeasureBase: _logweight, weightedmeasure, WeightedMeasure
     @test μ isa WeightedMeasure
     @test _logweight(μ) == log(w)
     @test _logweight(w * μ) == 2 * log(w)
-    @test rand(MersenneTwister(123), μ) == rand(MersenneTwister(123), μ₀) 
+    @test rand(MersenneTwister(123), μ) == rand(MersenneTwister(123), μ₀)
     x = rand()
     @test logdensity_def(μ, x) == log(w)
     @test logdensityof(μ, x) == logdensityof(μ₀, x)

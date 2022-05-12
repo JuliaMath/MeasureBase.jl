@@ -7,16 +7,16 @@ end
 
 logdensity_def(d::PowerWeightedMeasure, x) = d.exponent * logdensity_def(d.parent, x)
 
-basemeasure(d::PowerWeightedMeasure, x) = basemeasure(d.parent, x) ↑ d.exponent
+basemeasure(d::PowerWeightedMeasure, x) = basemeasure(d.parent, x)↑d.exponent
 
-basemeasure(d::PowerWeightedMeasure) = basemeasure(d.parent) ↑ d.exponent
+basemeasure(d::PowerWeightedMeasure) = basemeasure(d.parent)↑d.exponent
 
 function powerweightedmeasure(d, α)
     isone(α) && return d
     PowerWeightedMeasure(d, α)
 end
 
-(d::AbstractMeasure) ↑ α = powerweightedmeasure(d, α)
+(d::AbstractMeasure)↑α = powerweightedmeasure(d, α)
 
 insupport(d::PowerWeightedMeasure, x) = insupport(d.parent, x)
 
@@ -29,9 +29,9 @@ function powerweightedmeasure(d::PowerWeightedMeasure, α)
 end
 
 function powerweightedmeasure(d::WeightedMeasure, α)
-    weightedmeasure(α*d.logweight, powerweightedmeasure(d.base, α))
+    weightedmeasure(α * d.logweight, powerweightedmeasure(d.base, α))
 end
 
 function Pretty.tile(d::PowerWeightedMeasure)
-    Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.exponent), sep=" ↑ ")
+    Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.exponent), sep = " ↑ ")
 end

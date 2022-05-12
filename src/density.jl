@@ -78,7 +78,6 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-
 export ∫
 
 """
@@ -142,12 +141,12 @@ See also `logdensityof`.
     ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i-1}, x)
-        if b_{i} isa typeof(b_{i-1})
-            return ℓ_{i-1}
+        b_{i} = basemeasure(b_{i - 1}, x)
+        if b_{i} isa typeof(b_{i - 1})
+            return ℓ_{i - 1}
         end
         ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
-            ℓ_{i-1} + Δℓ_{i}
+            ℓ_{i - 1} + Δℓ_{i}
         end
     end
     return ℓ_10
@@ -162,7 +161,7 @@ export logdensity_rel
 @inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
 
 unstatic(::Type{T}) where {T} = T
-unstatic(::Type{StaticFloat64{X}}) where X = Float64
+unstatic(::Type{StaticFloat64{X}}) where {X} = Float64
 
 """
     logdensity_rel(m1, m2, x)
@@ -173,7 +172,12 @@ known to be in the support of both, it can be more efficient to call
 `unsafe_logdensity_rel`. 
 """
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    T = unstatic(promote_type(return_type(logdensity_def, (μ, x)), return_type(logdensity_def, (ν, x))))
+    T = unstatic(
+        promote_type(
+            return_type(logdensity_def, (μ, x)),
+            return_type(logdensity_def, (ν, x)),
+        ),
+    )
     inμ = insupport(μ, x)
     inν = insupport(ν, x)
     inμ || return convert(T, ifelse(inν, -Inf, NaN))
@@ -191,7 +195,7 @@ known to be in the support of both `m1` and `m2`.
 See also `logdensity_rel`.
 """
 @inline function unsafe_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    if static_hasmethod(logdensity_def, Tuple{M, N, X})
+    if static_hasmethod(logdensity_def, Tuple{M,N,X})
         return logdensity_def(μ, ν, x)
     end
     μs = basemeasure_sequence(μ)
@@ -221,19 +225,24 @@ function logdensity_def(μ::T, ν::T, x) where {T}
     if μ === ν
         return zero(logdensity_def(μ, x))
     else
-        return logdensity_def(μ,x) - logdensity_def(ν, x)
+        return logdensity_def(μ, x) - logdensity_def(ν, x)
     end
 end
 
-@generated function _logdensity_rel(μs::Tμ, νs::Tν, ::Tuple{StaticInt{M},StaticInt{N}}, x::X)  where {Tμ, Tν,M,N,X}
+@generated function _logdensity_rel(
+    μs::Tμ,
+    νs::Tν,
+    ::Tuple{StaticInt{M},StaticInt{N}},
+    x::X,
+) where {Tμ,Tν,M,N,X}
     sμ = schema(Tμ)
     sν = schema(Tν)
-   
-    q = quote 
+
+    q = quote
         $(Expr(:meta, :inline))
         ℓ = logdensity_def(μs[$M], νs[$N], x)
     end
-    
+
     for i in 1:M-1
         push!(q.args, :(Δℓ = logdensity_def(μs[$i], x)))
         # push!(q.args, :(println("Adding", Δℓ)))
@@ -267,4 +276,4 @@ basemeasure(rebase(μ, ν)) == ν
 density(rebase(μ, ν)) == 𝒹(μ,ν)
 ``` 
 """
-rebase(μ, ν) = ∫(𝒹(μ,ν), ν)
+rebase(μ, ν) = ∫(𝒹(μ, ν), ν)

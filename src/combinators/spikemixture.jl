@@ -8,10 +8,10 @@ struct SpikeMixture{M,W,S} <: AbstractMeasure
     s::S   # spike weight
 end
 
-SpikeMixture(μ,w) = SpikeMixture(μ, w, static(1.0) - w) 
+SpikeMixture(μ, w) = SpikeMixture(μ, w, static(1.0) - w)
 
 function Pretty.tile(μ::SpikeMixture)
-    Pretty.list_layout(Pretty.tile.([μ.m, μ.w]), prefix="SpikeMixture")
+    Pretty.list_layout(Pretty.tile.([μ.m, μ.w]), prefix = "SpikeMixture")
 end
 
 # TODO: Should this base measure be local? 
@@ -21,10 +21,9 @@ end
     SpikeMixture(basemeasure(μ.m), static(1.0), static(1.0))
 end
 
-
 @inline function logdensity_def(μ::SpikeMixture, x)
     if iszero(x)
-        return log(μ.s) 
+        return log(μ.s)
     else
         return log(μ.w) + logdensity_def(μ.m, x)
     end
@@ -40,4 +39,4 @@ end
 
 testvalue(μ::SpikeMixture) = testvalue(μ.m)
 
-insupport(μ::SpikeMixture, x) = dynamic(insupport(μ.m, x)) || iszero(x) 
+insupport(μ::SpikeMixture, x) = dynamic(insupport(μ.m, x)) || iszero(x)

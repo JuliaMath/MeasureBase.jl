@@ -5,12 +5,10 @@ struct PointwiseProductMeasure{P,L} <: AbstractMeasure
     likelihood::L
 end
 
-
-
-iterate(p::PointwiseProductMeasure, i=1) = iterate((p.prior, p.likelihood), i)
+iterate(p::PointwiseProductMeasure, i = 1) = iterate((p.prior, p.likelihood), i)
 
 function Pretty.tile(d::PointwiseProductMeasure)
-    Pretty.pair_layout(Pretty.tile(d.prior), Pretty.tile(d.likelihood), sep=" ⊙ ")
+    Pretty.pair_layout(Pretty.tile(d.prior), Pretty.tile(d.likelihood), sep = " ⊙ ")
 end
 
 ⊙(μ, ℓ) = pointwiseproduct(μ, ℓ)
@@ -24,7 +22,7 @@ function gentype(d::PointwiseProductMeasure)
     gentype(d.prior)
 end
 
-@inbounds function insupport(d::PointwiseProductMeasure, p) 
+@inbounds function insupport(d::PointwiseProductMeasure, p)
     μ, ℓ = d
     insupport(μ, p) && insupport(ℓ.k(p), ℓ.x)
 end

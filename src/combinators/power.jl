@@ -24,7 +24,11 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M}) where {T, M<:AbstractMeasure}
+function Base.rand(
+    rng::AbstractRNG,
+    ::Type{T},
+    d::PowerMeasure{M},
+) where {T,M<:AbstractMeasure}
     map(CartesianIndices(d.axes)) do _
         rand(rng, T, d.parent)
     end
@@ -36,10 +40,10 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     end
 end
 
-@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}
-    a = axes(Fill{T, N}(x, sz))
+@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
+    a = axes(Fill{T,N}(x, sz))
     A = typeof(a)
-    PowerMeasure{T,A}(x,a)
+    PowerMeasure{T,A}(x, a)
 end
 
 marginals(d::PowerMeasure) = Fill(d.parent, d.axes)
@@ -61,7 +65,7 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 # basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 @inline function basemeasure(d::PowerMeasure)
-    basemeasure(d.parent) ^ d.axes
+    basemeasure(d.parent)^d.axes
 end
 
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
@@ -71,7 +75,10 @@ end
     end
 end
 
-@inline function logdensity_def(d::PowerMeasure{M, Tuple{Base.OneTo{StaticInt{N}}}}, x) where {M,N}
+@inline function logdensity_def(
+    d::PowerMeasure{M,Tuple{Base.OneTo{StaticInt{N}}}},
+    x,
+) where {M,N}
     parent = d.parent
     sum(1:N) do j
         @inbounds logdensity_def(parent, x[j])

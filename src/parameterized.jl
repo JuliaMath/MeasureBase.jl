@@ -28,7 +28,7 @@ end
 #
 
 function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    C = constructorof(P) 
+    C = constructorof(P)
     _kernel(C, Val(N))
 end
 
@@ -37,7 +37,7 @@ end
         C(NamedTuple{N,T}(args))::C{N,T}
     end
 
-    @inline function f(arg::T) where {T} 
+    @inline function f(arg::T) where {T}
         C(NamedTuple{N,Tuple{T}}((arg,)))::C{N,Tuple{T}}
     end
 
@@ -112,8 +112,6 @@ paramnames(::Type{M}) where {M} = ...
 See also `params`
 """
 function paramnames end
-
-
 
 paramnames(μ::M) where {M} = paramnames(M)
 

@@ -1,7 +1,11 @@
+
+using LogarithmicNumbers
+using LogExpFunctions
+
 export SuperpositionMeasure
 
 @doc raw"""
-    struct SuperpositionMeasure{X,NT} <: AbstractMeasure
+    struct SuperpositionMeasure{NT} <: AbstractMeasure
         components :: NT
     end
 Superposition of measures is analogous to mixture distributions, but (because
@@ -57,8 +61,6 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end
 
-using LogarithmicNumbers
-
 oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
@@ -66,7 +68,7 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 
     insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
     insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
-  
+
     α = basemeasure(μ)
     β = basemeasure(ν)
     dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
@@ -76,13 +78,24 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
     return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
 end
 
-using LogExpFunctions
+function density_def(s::SuperpositionMeasure, x)
+    T = typeof(s)
+    msg = """
+    Not implemented: There is no method
+    density_def(::$T, x)
+    """
+    error(msg)
+end
 
-@inline function logdensity_def(μ::T, ν::T, x::Any) where T<:(SuperpositionMeasure{Tuple{A, B}} where {A, B})
+@inline function logdensity_def(
+    μ::T,
+    ν::T,
+    x,
+) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
     else
-        return logdensity_def(μ,x) - logdensity_def(ν, x)
+        return logdensity_def(μ, x) - logdensity_def(ν, x)
     end
 end
 
@@ -94,7 +107,11 @@ end
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β::SuperpositionMeasure, x) where {A,B}
+@inline function logdensity_def(
+    s::SuperpositionMeasure{Tuple{A,B}},
+    β::SuperpositionMeasure,
+    x,
+) where {A,B}
     (μ, ν) = s.components
     insupport(μ, x) == true || return logdensity_rel(ν, β, x)
     insupport(ν, x) == true || return logdensity_rel(μ, β, x)
@@ -107,7 +124,10 @@ end
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
-basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components)...)
+function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
+    superpose(map(basemeasure, μ.components)...)
+end
+basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
