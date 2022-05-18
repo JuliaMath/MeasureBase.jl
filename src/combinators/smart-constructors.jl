@@ -135,9 +135,19 @@ end
 
 # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
+ntkeys(::Type{NT}) where {N, NT<:NamedTuple{N}} = N
+
 function kernel(::Type{M}; param_maps...) where {M}
     nt = NamedTuple(param_maps)
     kernel(M, nt)
+end
+
+function kernel(::Type{M}, f::F) where {M,F<:Function}
+    T = Base._return_type(f, Tuple{Any})
+    @assert T<:NamedTuple
+    ks = ntkeys(T)
+    param_maps = NamedTuple{ks}(map(_ -> identity, values(ks)))
+    ParameterizedTransitionKernel(M, param_maps, f)
 end
 
 kernel(k::ParameterizedTransitionKernel) = k

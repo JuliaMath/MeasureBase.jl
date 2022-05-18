@@ -31,7 +31,7 @@ _logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
 function Pretty.tile(d::WeightedMeasure)
-    weight = round(exp(d.logweight), sigdigits = 4)
+    weight = round(dynamic(exp(d.logweight)), sigdigits = 4)
     Pretty.pair_layout(Pretty.tile(weight), Pretty.tile(d.base), sep = " * ")
 end
 
