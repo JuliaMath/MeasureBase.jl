@@ -1,19 +1,30 @@
 # TODO: Dangerous to export this - let's not
 abstract type AbstractTransitionKernel <: AbstractMeasure end
 
-struct ParameterizedTransitionKernel{F,N,T} <: AbstractTransitionKernel
-    f::F
+struct ParameterizedTransitionKernel{M,S,N,T} <: AbstractTransitionKernel
+    m::M
+    suff::S
     param_maps::NamedTuple{N,T}
 
     function ParameterizedTransitionKernel(
-        ::Type{F},
+        ::Type{M},
+        suff::S,
         param_maps::NamedTuple{N,T},
-    ) where {F,N,T}
-        new{Type{F},N,T}(F, param_maps)
+    ) where {M,S,N,T}
+        new{Type{M},S,N,T}(M,suff, param_maps)
     end
-    function ParameterizedTransitionKernel(f::F, param_maps::NamedTuple{N,T}) where {F,N,T}
-        new{F,N,T}(f, param_maps)
+    function ParameterizedTransitionKernel(m::M, suff::S, param_maps::NamedTuple{N,T}) where {M,S,N,T}
+        new{M,S,N,T}(m, suff, param_maps)
     end
+end
+
+struct GenericTransitionKernel{F} <: AbstractTransitionKernel
+    f::F
+end
+
+struct TypedTransitionKernel{M,F} <: AbstractTransitionKernel
+    m::M
+    f::F
 end
 
 """
@@ -41,19 +52,40 @@ function kernel end
 #     (μ=x,σ=x^2)
 # end
 
-kernel(f, ::Type{M}) where {M} = kernel(M, f)
+kernel(f) = GenericTransitionKernel(f)
+
+kernel(f::F, ::Type{M}; kwargs...) where {F<:Function, M} = kernel(M,f)
+
+function kernel(::Type{M}, f::F) where {M,F<:Function}
+    T = Core.Compiler.return_type(f, Tuple{Any} )
+    _kernel(M,f,T)
+end
+
+function _kernel(::Type{M}, f::F, ::Type{NamedTuple{N,T}}) where {M,F<:Function,k,N<:NTuple{k,Symbol},T}
+    maps = ntuple(Val(k)) do i
+        x -> @inbounds x[i]
+    end
+
+    kernel(M, values ∘ f, NamedTuple{N}(maps))
+end
+    
+function _kernel(::Type{M}, f::F, ::Type{T}) where {M,F<:Function,T}
+    TypedTransitionKernel{Type{M},F}(M,f)
+end
+
+
+kernel(suff, ::Type{M}; kwargs...) where {M} = _kernel(M, f)
 
 mapcall(t, x) = map(func -> func(x), t)
 
 # (k::TransitionKernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
 
-(k::ParameterizedTransitionKernel)(x) = k.f(; mapcall(k.param_maps, x)...)
+function (k::ParameterizedTransitionKernel)(x)
+    s = k.suff(x)
+    k.m(; mapcall(k.param_maps, s)...)
+end
 
 (k::ParameterizedTransitionKernel)(x...) = k(x)
-
-function (k::ParameterizedTransitionKernel)(x::Tuple)
-    k.f(NamedTuple{k.param_maps}(x))
-end
 
 """
 For any `k::TransitionKernel`, `basekernel` is expected to satisfy
