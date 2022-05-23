@@ -10,16 +10,30 @@ function Base.propertynames(μ::ParameterizedMeasure{N}) where {N}
     return N
 end
 
-function Base.show(io::IO, μ::ParameterizedMeasure{()})
-    io = IOContext(io, :compact => true)
-    print(io, nameof(typeof(μ)), "()")
+function Pretty.tile(d::ParameterizedMeasure)
+    result = Pretty.literal(nameof(typeof(d)))
+    par = getfield(d, :par)
+    result *= Pretty.literal(sprint(show, par; context=:compact => true))
+    result
 end
 
-function Base.show(io::IO, μ::ParameterizedMeasure{N}) where {N}
-    io = IOContext(io, :compact => true)
-    print(io, nameof(typeof(μ)))
-    print(io, getfield(μ, :par))
+function Pretty.tile(d::ParameterizedMeasure{()})
+    result = Pretty.literal(nameof(typeof(d)))
+    par = getfield(d, :par)
+    result *= Pretty.literal("()")
+    result
 end
+
+# function Base.show(io::IO, μ::ParameterizedMeasure{()})
+#     io = IOContext(io, :compact => true)
+#     print(io, nameof(typeof(μ)), "()")
+# end
+
+# function Base.show(io::IO, μ::ParameterizedMeasure{N}) where {N}
+#     io = IOContext(io, :compact => true)
+#     print(io, nameof(typeof(μ)))
+#     print(io, getfield(μ, :par))
+# end
 
 # Allow things like
 #
@@ -47,7 +61,7 @@ end
 function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)
-    return C(arg)
+    return C(arg)::P
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
