@@ -24,23 +24,10 @@ function Pretty.tile(d::ParameterizedMeasure{()})
     result
 end
 
-# function Base.show(io::IO, μ::ParameterizedMeasure{()})
-#     io = IOContext(io, :compact => true)
-#     print(io, nameof(typeof(μ)), "()")
-# end
-
-# function Base.show(io::IO, μ::ParameterizedMeasure{N}) where {N}
-#     io = IOContext(io, :compact => true)
-#     print(io, nameof(typeof(μ)))
-#     print(io, getfield(μ, :par))
-# end
-
 # Allow things like
 #
 # julia> Normal{(:μ,)}(2)
 # Normal(μ = 2,)
-#
-
 function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     _kernel(C, Val(N))
