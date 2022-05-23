@@ -104,9 +104,9 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 #     :(ParameterizedTransitionKernel($qf, $qg))
 # end
 
-# const kleisli = kernel
+const kleisli = kernel
 
-# export kleisli
+export kleisli
 
 # kernel(f, pars::NamedTuple) = ParameterizedTransitionKernel(f, pars)
 
@@ -125,3 +125,5 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 # end
 
 # kernel(k::ParameterizedTransitionKernel) = k
+
+kernel(k::AbstractTransitionKernel) = k
