@@ -6,7 +6,6 @@ struct GenericTransitionKernel{F} <: AbstractTransitionKernel
 end
 
 (k::GenericTransitionKernel)(x) = k.f(x)
-(k::GenericTransitionKernel)(x1, x2, xs...) = k.f((x1, x2, xs...))
 
 struct TypedTransitionKernel{M,F} <: AbstractTransitionKernel
     m::M
@@ -35,26 +34,34 @@ struct ParameterizedTransitionKernel{M,S,N,T} <: AbstractTransitionKernel
     end
 end
 
-# """
-#     kernel(f, M)
-#     kernel((f1, f2, ...), M)
+"""
+A *kernel* is a function that returns a measure.
 
-# A kernel `κ = kernel(f, m)` returns a wrapper around a function `f` giving the
-# parameters for a measure of type `M`, such that `κ(x) = M(f(x)...)` respective
-# `κ(x) = M(f1(x), f2(x), ...)`
+    k1 = kernel() do x
+        Normal(x, x^2)
+    end
 
-# If the argument is a named tuple `(;a=f1, b=f1)`, `κ(x)` is defined as
-# `M(;a=f(x),b=g(x))`.
+    k2 = kernel(Normal) do x
+        (μ = x, σ = x^2)
+    end
 
-# This function is not exported, because "kernel" can have so many other meanings.
-# See for example https://github.com/JuliaGaussianProcesses/KernelFunctions.jl for
-# another common use of this term.
+    k3 = kernel(Normal; μ = identity, σ = abs2)
 
-# # Reference
+    k4 = kernel(Normal; μ = first, σ = last) do x
+        (x, x^2)
+    end
 
-# * https://en.wikipedia.org/wiki/Markov_kernel
-# """
-# function kernel end
+    x = randn(); k1(x) == k2(x) == k3(x) == k4(x)
+
+This function is not exported, because "kernel" can have so many other meanings.
+See for example https://github.com/JuliaGaussianProcesses/KernelFunctions.jl for
+another common use of this term.
+
+# Reference
+
+* https://en.wikipedia.org/wiki/Markov_kernel
+"""
+function kernel end
 
 # # kernel(Normal) do x
 # #     (μ=x,σ=x^2)
@@ -75,6 +82,9 @@ end
 
 (k::AbstractTransitionKernel)(x1, x2, xs...) = k((x1, x2, xs...))
 
+(k::AbstractTransitionKernel)(;kwargs...) = k(NamedTuple(kwargs))
+
+
 """
 For any `k::TransitionKernel`, `basekernel` is expected to satisfy
 ```
@@ -83,7 +93,7 @@ basekernel(k)(p) == (basemeasure ∘ k)(p)
 
 The main purpose of `basekernel` is to make it efficient to compute
 ```
-basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
+basemeasure(d::ProductMeasure) == productmeasure(basekernel(d.f), d.xs)
 ```
 """
 function basekernel end
@@ -93,18 +103,15 @@ basekernel(f) = basemeasure ∘ f
 
 basekernel(f::Returns) = Returns(basemeasure(f.value))
 
-# function Base.show(io::IO, μ::AbstractTransitionKernel)
-#     io = IOContext(io, :compact => true)
-#     Pretty.pprint(io, μ)
-# end
+function Base.show(io::IO, μ::AbstractTransitionKernel)
+    io = IOContext(io, :compact => true)
+    Pretty.pprint(io, μ)
+end
 
-# function Pretty.quoteof(k::ParameterizedTransitionKernel)
-#     qf = Pretty.quoteof(k.f)
-#     qg = Pretty.quoteof(k.param_maps)
-#     :(ParameterizedTransitionKernel($qf, $qg))
-# end
+function Pretty.tile(k::K) where {K<:AbstractTransitionKernel}
+    Pretty.list_layout(Pretty.tile.([getproperty(k, p) for p in propertynames(k)]), prefix=nameof(constructorof(K)))
+end
 
-function kernel end
 
 const kleisli = kernel
 
