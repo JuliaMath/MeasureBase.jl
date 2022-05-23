@@ -114,7 +114,7 @@ export Simplex
 
 struct Simplex <: CodimOne end
 
-function zeroset(::Simplex)
+function zeroset(::Simplex)merge
     f(x::AbstractArray{T}) where {T} = sum(x) - one(T)
     ∇f(x::AbstractArray{T}) where {T} = Fill(one(T), size(x))
     ZeroSet(f, ∇f)
@@ -133,7 +133,7 @@ projectto!(x, ::Simplex) = normalize!(x, 1)
 struct Sphere <: CodimOne end
 
 function zeroset(::Sphere)
-    f(x::AbstractArray{T}) where {T} = sum(abs2, x) - one(T)
+    f(x::AbstractArray{T}) where {T} = dot(x,x) - one(T)
     ∇f(x::AbstractArray{T}) where {T} = x
     ZeroSet(f, ∇f)
 end
