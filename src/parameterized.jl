@@ -13,7 +13,7 @@ end
 function Pretty.tile(d::ParameterizedMeasure)
     result = Pretty.literal(nameof(typeof(d)))
     par = getfield(d, :par)
-    result *= Pretty.literal(sprint(show, par; context=:compact => true))
+    result *= Pretty.literal(sprint(show, par; context = :compact => true))
     result
 end
 
@@ -49,7 +49,11 @@ end
 function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)
-    return C(arg)::P
+    return _parameterized(C, arg)
+end
+
+function _parameterized(::Type{C}, arg::NamedTuple{N,T}) where {C,N,T}
+    return C(arg)::C{N,T}
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}

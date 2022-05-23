@@ -126,7 +126,6 @@ end
 #     Base.Fix2(powermeasure, d.axes) ∘ kernel(d.parent)
 # end
 
-
 # function kernel(f)
 #     T = Core.Compiler.return_type(f, Tuple{Any} )
 #     _kernel(f, T)
@@ -146,13 +145,19 @@ function _kernel(f, ::Type{P}) where {N,P<:ParameterizedMeasure{N}}
     kernel(params ∘ f, C, NamedTuple{N}(maps))
 end
 
-kernel(f::F, ::Type{M}; kwargs...) where {F<:Function, M} = kernel(f, M, NamedTuple(kwargs))
+function _kernel(f, ::Type{P}) where {N,P}
+    GenericTransitionKernel(f)
+end
 
-kernel(f::F, ::Type{M}, nt::NamedTuple) where {F<:Function,M} = ParameterizedTransitionKernel(M,f,nt)
+kernel(f::F, ::Type{M}; kwargs...) where {F<:Function,M} = kernel(f, M, NamedTuple(kwargs))
 
-function kernel(f::F, ::Type{M}, ::NamedTuple{()}) where {F<:Function, M} 
-    T = Core.Compiler.return_type(f, Tuple{Any} )
-    _kernel(f,M,T)
+function kernel(f::F, ::Type{M}, nt::NamedTuple) where {F<:Function,M}
+    ParameterizedTransitionKernel(M, f, nt)
+end
+
+function kernel(f::F, ::Type{M}, ::NamedTuple{()}) where {F<:Function,M}
+    T = Core.Compiler.return_type(f, Tuple{Any})
+    _kernel(f, M, T)
 end
 
 kernel(::Type{P}, nt::NamedTuple) where {P<:ParameterizedMeasure} = kernel(identity, P, nt)
@@ -172,10 +177,10 @@ function _kernel(f::F, ::Type{M}, ::Type{NT}) where {M,F,N,NT<:NamedTuple{N}}
 
     ParameterizedTransitionKernel(M, values ∘ f, NamedTuple{N}(maps))
 end
-    
+
 kernel(f::F; kwargs...) where {F<:Function} = kernel(f, NamedTuple(kwargs))
 
 function kernel(f::F, nt::NamedTuple{()}) where {F<:Function}
-    T  = Core.Compiler.return_type(f, Tuple{Any} )
+    T = Core.Compiler.return_type(f, Tuple{Any})
     _kernel(f, T)
 end

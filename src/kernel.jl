@@ -5,11 +5,8 @@ struct GenericTransitionKernel{F} <: AbstractTransitionKernel
     f::F
 end
 
-
 (k::GenericTransitionKernel)(x) = k.f(x)
 (k::GenericTransitionKernel)(x1, x2, xs...) = k.f((x1, x2, xs...))
-
-
 
 struct TypedTransitionKernel{M,F} <: AbstractTransitionKernel
     m::M
@@ -27,14 +24,16 @@ struct ParameterizedTransitionKernel{M,S,N,T} <: AbstractTransitionKernel
         suff::S,
         param_maps::NamedTuple{N,T},
     ) where {M,S,N,T}
-        new{Type{M},S,N,T}(M,suff, param_maps)
+        new{Type{M},S,N,T}(M, suff, param_maps)
     end
-    function ParameterizedTransitionKernel(m::M, suff::S, param_maps::NamedTuple{N,T}) where {M,S,N,T}
+    function ParameterizedTransitionKernel(
+        m::M,
+        suff::S,
+        param_maps::NamedTuple{N,T},
+    ) where {M,S,N,T}
         new{M,S,N,T}(m, suff, param_maps)
     end
 end
-
-
 
 # """
 #     kernel(f, M)
@@ -65,8 +64,6 @@ end
 #     TypedTransitionKernel{Type{M},F}(M,f)
 # end
 
-
-
 mapcall(t, x) = map(func -> func(x), t)
 
 # # (k::TransitionKernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
@@ -94,7 +91,6 @@ end
 # TODO: Find a way to do better than this
 basekernel(f) = basemeasure ∘ f
 
-
 basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 # function Base.show(io::IO, μ::AbstractTransitionKernel)
@@ -112,10 +108,7 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 
 # export kleisli
 
-
-
 # kernel(f, pars::NamedTuple) = ParameterizedTransitionKernel(f, pars)
-
 
 # # kernel(Normal{(:μ,), Tuple{Int64}})
 # function kernel(::Type{M}) where {M<:AbstractMeasure}
@@ -130,7 +123,5 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 #     nt = NamedTuple(param_maps)
 #     kernel(M, nt)
 # end
-
-
 
 # kernel(k::ParameterizedTransitionKernel) = k
