@@ -119,10 +119,5 @@ export kleisli
 
 # # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
-# function kernel(::Type{M}; param_maps...) where {M}
-#     nt = NamedTuple(param_maps)
-#     kernel(M, nt)
-# end
-
 
 kernel(k::AbstractTransitionKernel) = k
