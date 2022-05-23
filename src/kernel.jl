@@ -104,6 +104,8 @@ basekernel(f::Returns) = Returns(basemeasure(f.value))
 #     :(ParameterizedTransitionKernel($qf, $qg))
 # end
 
+function kernel end
+
 const kleisli = kernel
 
 export kleisli
