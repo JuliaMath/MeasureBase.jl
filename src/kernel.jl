@@ -73,20 +73,20 @@ function (k::ParameterizedTransitionKernel)(x)
     k.m(; mapcall(k.param_maps, s)...)
 end
 
-# (k::AbstractTransitionKernel)(x1, x2, xs...) = k((x1, x2, xs...))
+(k::AbstractTransitionKernel)(x1, x2, xs...) = k((x1, x2, xs...))
 
-# """
-# For any `k::TransitionKernel`, `basekernel` is expected to satisfy
-# ```
-# basekernel(k)(p) == (basemeasure ∘ k)(p)
-# ```
+"""
+For any `k::TransitionKernel`, `basekernel` is expected to satisfy
+```
+basekernel(k)(p) == (basemeasure ∘ k)(p)
+```
 
-# The main purpose of `basekernel` is to make it efficient to compute
-# ```
-# basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
-# ```
-# """
-# function basekernel end
+The main purpose of `basekernel` is to make it efficient to compute
+```
+basemeasure(d::ProductMeasure) = productmeasure(basekernel(d.f), d.xs)
+```
+"""
+function basekernel end
 
 # TODO: Find a way to do better than this
 basekernel(f) = basemeasure ∘ f
@@ -117,13 +117,10 @@ export kleisli
 
 # # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
 
-# ntkeys(::Type{NT}) where {N, NT<:NamedTuple{N}} = N
-
 # function kernel(::Type{M}; param_maps...) where {M}
 #     nt = NamedTuple(param_maps)
 #     kernel(M, nt)
 # end
 
-# kernel(k::ParameterizedTransitionKernel) = k
 
 kernel(k::AbstractTransitionKernel) = k
