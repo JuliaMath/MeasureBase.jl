@@ -1,4 +1,6 @@
-# TODO: Dangerous to export this - let's not
+export AbstractTransitionKernel,
+    GenericTransitionKernel, TypedTransitionKernel, ParameterizedTransitionKernel
+
 abstract type AbstractTransitionKernel <: AbstractMeasure end
 
 struct GenericTransitionKernel{F} <: AbstractTransitionKernel
@@ -63,17 +65,7 @@ another common use of this term.
 """
 function kernel end
 
-# # kernel(Normal) do x
-# #     (μ=x,σ=x^2)
-# # end
-
-# function _kernel(::Type{M}, f::F, ::Type{T}) where {M,F<:Function,T}
-#     TypedTransitionKernel{Type{M},F}(M,f)
-# end
-
 mapcall(t, x) = map(func -> func(x), t)
-
-# # (k::TransitionKernel{Type{P},<:Tuple})(x) where {P<:ParameterizedMeasure} = k.f(mapcall(k.param_maps, x)...)
 
 function (k::ParameterizedTransitionKernel)(x)
     s = k.suff(x)
@@ -82,7 +74,7 @@ end
 
 (k::AbstractTransitionKernel)(x1, x2, xs...) = k((x1, x2, xs...))
 
-(k::AbstractTransitionKernel)(;kwargs...) = k(NamedTuple(kwargs))
+(k::AbstractTransitionKernel)(; kwargs...) = k(NamedTuple(kwargs))
 
 
 """
@@ -109,22 +101,15 @@ function Base.show(io::IO, μ::AbstractTransitionKernel)
 end
 
 function Pretty.tile(k::K) where {K<:AbstractTransitionKernel}
-    Pretty.list_layout(Pretty.tile.([getproperty(k, p) for p in propertynames(k)]), prefix=nameof(constructorof(K)))
+    Pretty.list_layout(
+        Pretty.tile.([getproperty(k, p) for p in propertynames(k)]),
+        prefix = nameof(constructorof(K)),
+    )
 end
 
 
 const kleisli = kernel
 
 export kleisli
-
-# kernel(f, pars::NamedTuple) = ParameterizedTransitionKernel(f, pars)
-
-# # kernel(Normal{(:μ,), Tuple{Int64}})
-# function kernel(::Type{M}) where {M<:AbstractMeasure}
-#     constructorof(M)
-# end
-
-# # kernel(::Type{P}, op::O) where {O, N, P<:ParameterizedMeasure{N}} = kernel{constructorof(P),O}(op)
-
 
 kernel(k::AbstractTransitionKernel) = k
