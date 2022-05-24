@@ -137,14 +137,12 @@ end
 insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @inline function logdensityof(ℓ::AbstractLikelihood, p)
-    result = dynamic(unsafe_logdensityof(ℓ, p))
-    ifelse(insupport(ℓ, p) == true, result, oftype(result, -Inf))
+    logdensityof(ℓ.k(p), ℓ.x)
 end
 
 @inline function unsafe_logdensityof(ℓ::AbstractLikelihood, p)
     return unsafe_logdensityof(ℓ.k(p), ℓ.x)
 end
-
 
 # basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
 
