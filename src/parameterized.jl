@@ -10,23 +10,24 @@ function Base.propertynames(μ::ParameterizedMeasure{N}) where {N}
     return N
 end
 
-function Base.show(io::IO, μ::ParameterizedMeasure{()})
-    io = IOContext(io, :compact => true)
-    print(io, nameof(typeof(μ)), "()")
+function Pretty.tile(d::ParameterizedMeasure)
+    result = Pretty.literal(nameof(typeof(d)))
+    par = getfield(d, :par)
+    result *= Pretty.literal(sprint(show, par; context = :compact => true))
+    result
 end
 
-function Base.show(io::IO, μ::ParameterizedMeasure{N}) where {N}
-    io = IOContext(io, :compact => true)
-    print(io, nameof(typeof(μ)))
-    print(io, getfield(μ, :par))
+function Pretty.tile(d::ParameterizedMeasure{()})
+    result = Pretty.literal(nameof(typeof(d)))
+    par = getfield(d, :par)
+    result *= Pretty.literal("()")
+    result
 end
 
 # Allow things like
 #
 # julia> Normal{(:μ,)}(2)
 # Normal(μ = 2,)
-#
-
 function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     _kernel(C, Val(N))
@@ -41,13 +42,17 @@ end
         C(NamedTuple{N,Tuple{T}}((arg,)))::C{N,Tuple{T}}
     end
 
-    f
+    kernel(f)
 end
 
 function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)
-    return C(arg)
+    return _parameterized(C, arg)
+end
+
+function _parameterized(::Type{C}, arg::NamedTuple{N,T}) where {C,N,T}
+    return C(arg)::C{N,T}
 end
 
 function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}

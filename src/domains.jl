@@ -133,7 +133,7 @@ projectto!(x, ::Simplex) = normalize!(x, 1)
 struct Sphere <: CodimOne end
 
 function zeroset(::Sphere)
-    f(x::AbstractArray{T}) where {T} = sum(xⱼ -> xⱼ^2, x) - one(T)
+    f(x::AbstractArray{T}) where {T} = dot(x, x) - one(T)
     ∇f(x::AbstractArray{T}) where {T} = x
     ZeroSet(f, ∇f)
 end

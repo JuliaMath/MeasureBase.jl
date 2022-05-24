@@ -100,7 +100,6 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 """
 ∫exp(f::Function, μ) = ∫(logfuncdensity(f), μ)
 
-# TODO: `density` and `logdensity` functions for `DensityMeasure`
 
 """
     logdensityof(m::AbstractMeasure, x) 
