@@ -15,12 +15,12 @@ end
 
 @inbounds function insupport(d::PointwiseProductMeasure, p)
     prior, ℓ = d
-    insupport(prior, p) && insupport(ℓ.k(p), ℓ.x)
+    insupport(prior, p) && insupport(ℓ, p)
 end
 
 @inline function logdensity_def(d::PointwiseProductMeasure, p)
     prior, ℓ = d
-    unsafe_logdensityof(ℓ.k(p), ℓ.x)
+    unsafe_logdensityof(ℓ, p)
 end
 
 basemeasure(d::PointwiseProductMeasure) = d.prior

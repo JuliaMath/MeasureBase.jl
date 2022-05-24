@@ -121,6 +121,8 @@ struct Likelihood{K,X} <: AbstractLikelihood
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
 
+DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
+
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
     x = Pretty.quoteof(ℓ.x)
@@ -132,11 +134,17 @@ function Base.show(io::IO, ℓ::Likelihood)
     Pretty.pprint(io, ℓ)
 end
 
-# @inline function logdensity_def(ℓ::Likelihood, p)
-#     return logdensity_def(ℓ.k(p), ℓ.x)
-# end
+insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
-# basemeasure(ℓ::Likelihood, p) = basemeasure(ℓ.k(p), ℓ.x)
+@inline function logdensityof(ℓ::AbstractLikelihood, p)
+    result = dynamic(unsafe_logdensityof(ℓ, p))
+    ifelse(insupport(ℓ, p) == true, result, oftype(result, -Inf))
+end
+
+@inline function unsafe_logdensityof(ℓ::AbstractLikelihood, p)
+    return unsafe_logdensityof(ℓ.k(p), ℓ.x)
+end
+
 
 # basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
 
