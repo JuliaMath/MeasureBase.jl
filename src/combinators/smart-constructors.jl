@@ -80,7 +80,7 @@ superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
 function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
     if μ == ν
-        return weightedmeasure(static(logtwo), μ)
+        return weightedmeasure(logtwo, μ)
     else
         return superpose((μ, ν))
     end
