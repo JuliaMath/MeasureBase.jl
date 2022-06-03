@@ -1,11 +1,12 @@
-struct StdExponential <: AbstractMeasure end
+struct StandardExponential <: AbstractMeasure end
 
-export StdExponential
+export StandardExponential
 
-insupport(d::StdExponential, x) = x ≥ zero(x)
+insupport(d::StandardExponential, x) = x ≥ zero(x)
 
-@inline logdensity_def(::StdExponential, x) = -x
-@inline basemeasure(::StdExponential) = Lebesgue()
+@inline logdensity_def(::StandardExponential, x) = -x
+@inline basemeasure(::StandardExponential) = Lebesgue()
 
-Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdExponential) where {T} = randexp(rng, T)
-
+function Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StandardExponential) where {T}
+    randexp(rng, T)
+end
