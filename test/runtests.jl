@@ -7,7 +7,7 @@ using MeasureBase
 using MeasureBase: test_interface
 
 using Aqua
-Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false, deps_compat = false)
+Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
 
 d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 
