@@ -1,11 +1,11 @@
-struct StandardNormal <: AbstractMeasure end
+struct StdNormal <: AbstractMeasure end
 
-export StandardNormal
+export StdNormal
 
-insupport(d::StandardNormal, x) = true
-insupport(d::StandardNormal) = Returns(true)
+insupport(d::StdNormal, x) = true
+insupport(d::StdNormal) = Returns(true)
 
-@inline logdensity_def(::StandardNormal, x) = -x^2 / 2
-@inline basemeasure(::StandardNormal) = WeightedMeasure(static(-0.5 * log2π), Lebesgue(ℝ))
+@inline logdensity_def(::StdNormal, x) = -x^2 / 2
+@inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), Lebesgue(ℝ))
 
-Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StandardNormal) where {T} = randn(rng, T)
+Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)

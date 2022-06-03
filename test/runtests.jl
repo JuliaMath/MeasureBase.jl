@@ -37,6 +37,31 @@ test_measures = [
     Dirac(0) + Dirac(1)
     Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 0.2)
+
+    StdNormal()
+    StdNormal()^3
+    StdNormal()^(2, 3)
+    3 * StdNormal()
+    0.2 * StdNormal() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdNormal()
+    SpikeMixture(StdNormal(), 0.2)
+
+    StdUniform()
+    StdUniform()^3
+    StdUniform()^(2, 3)
+    3 * StdUniform()
+    0.2 * StdUniform() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdUniform()
+    SpikeMixture(StdUniform(), 0.2)
+
+    StdExponential()^3
+    StdExponential()^(2, 3)
+    3 * StdExponential()
+    StdExponential()
+    0.2 * StdExponential() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdExponential()
+    SpikeMixture(StdExponential(), 0.2)
+
     # d ⊙ d
 ]
 
