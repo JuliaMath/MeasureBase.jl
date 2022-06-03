@@ -127,7 +127,7 @@ function kernel(d::PowerMeasure)
 end
 
 function kernel(f)
-    T = Core.Compiler.return_type(f, Tuple{Any} )
+    T = Core.Compiler.return_type(f, Tuple{Any})
     _kernel(f, T)
 end
 
