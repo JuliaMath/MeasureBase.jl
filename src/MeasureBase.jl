@@ -1,7 +1,5 @@
 module MeasureBase
 
-const logtwo = log(2.0)
-
 using Random
 import Random: rand!
 import Random: gentype
@@ -94,6 +92,8 @@ function logdensity_def end
 
 using Compat
 
+using IrrationalConstants
+
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
@@ -123,6 +123,10 @@ include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
+
+include("standard/stdnormal.jl")
+include("standard/stduniform.jl")
+include("standard/stdexponential.jl")
 
 include("rand.jl")
 
