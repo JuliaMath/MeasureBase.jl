@@ -53,6 +53,8 @@ function test_interface(μ::M) where {M}
             ℓβ = @inferred logdensityof(β, x)
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
+
+            @test logdensity_def(μ, testvalue(μ)) isa Real
         end
     end
 end
