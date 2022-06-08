@@ -21,7 +21,5 @@ macro useproxy(M)
         @inline $MeasureBase.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
 
         @inline $MeasureBase.testvalue(μ::$M) = testvalue(proxy(μ))
-
-        @inline $MeasureBase.insupport(μ::$M, x) = insupport(proxy(μ), x)
     end
 end
