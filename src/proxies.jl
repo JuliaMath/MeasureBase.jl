@@ -19,7 +19,5 @@ macro useproxy(M)
         @inline $MeasureBase.basemeasure(μ::$M) = basemeasure(proxy(μ))
 
         @inline $MeasureBase.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
-
-        @inline $MeasureBase.testvalue(μ::$M) = testvalue(proxy(μ))
     end
 end
