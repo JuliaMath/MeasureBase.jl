@@ -1,4 +1,4 @@
-struct StdNormal <: AbstractMeasure end
+struct StdNormal <: StdMeasure end
 
 export StdNormal
 

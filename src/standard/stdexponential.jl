@@ -1,4 +1,4 @@
-struct StdExponential <: AbstractMeasure end
+struct StdExponential <: StdMeasure end
 
 export StdExponential
 
