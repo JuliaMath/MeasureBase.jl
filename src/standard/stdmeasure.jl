@@ -1,4 +1,4 @@
-abstract type StdMeasure<:AbstractMeasure end
+abstract type StdMeasure <: AbstractMeasure end
 
 StdMeasure(::typeof(rand)) = StdUniform()
 StdMeasure(::typeod(randn)) = StdNormal()
