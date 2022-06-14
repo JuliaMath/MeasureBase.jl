@@ -1,4 +1,4 @@
-struct StdUniform <: AbstractMeasure end
+struct StdUniform <: StdMeasure end
 
 export StdUniform
 
