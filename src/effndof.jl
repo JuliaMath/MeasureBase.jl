@@ -2,7 +2,7 @@
     effndof(μ)
 
 Returns the effective number of degrees of freedom of variates of
-measure-like object `μ`.
+measure `μ`.
 
 The effective NDOF my differ from the length of the variates. For example,
 the effective NDOF for a Dirichlet distribution with variates of length `n`

@@ -53,8 +53,8 @@ struct NoVarTransform{NU,MU} end
     f = vartransform(ν, μ)::Function
 
 Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_function)
-`f` that transforms values distributed according to measure-like object `μ` to
-values distributed according to a measure-like object `ν`.
+`f` that transforms values distributed according to measure `μ` to
+values distributed according to a measure `ν`.
 
     y = vartransform(ν, μ, x)
 
@@ -75,7 +75,7 @@ appropriate base measures).
 Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
 `μ` to `ν` can be found.
 
-To add transformation rules for a measure-like type `MyMeasure`, specialize
+To add transformation rules for a measure type `MyMeasure`, specialize
 
 * `MeasureBase.vartransform(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
 * `MeasureBase.vartransform(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
@@ -132,7 +132,7 @@ vartransform(::Any, ::Any, x::NoTransformOrigin) = x
 """
     struct VarTransformation <: Function
 
-Transforms a variate from one measure-like object to a variate of another.
+Transforms a variate from one measure to a variate of another.
 
 In general users should not call `VarTransformation` directly, call
 [`vartransform`](@ref) instead.
