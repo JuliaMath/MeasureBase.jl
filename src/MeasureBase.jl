@@ -88,6 +88,7 @@ using Compat
 using IrrationalConstants
 
 include("effndof.jl")
+include("vartransform.jl")
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
