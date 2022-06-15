@@ -87,7 +87,7 @@ using Compat
 
 using IrrationalConstants
 
-include("effndof.jl")
+include("getdof.jl")
 include("vartransform.jl")
 include("schema.jl")
 include("splat.jl")

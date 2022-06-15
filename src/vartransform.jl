@@ -86,7 +86,7 @@ and/or
 * `MeasureBase.from_origin(μ::MyMeasure, y) = x`
 * `MeasureBase.to_origin(μ::MyMeasure, x) = y`
 
-and ensure `MeasureBase.effndof(μ::MyMeasure)` is defined correctly.
+and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
 
 If no direct transformation rule is available, `vartransform(ν, μ, x)` uses
 the following strategy:
@@ -112,7 +112,7 @@ end
 @inline _vartransform_with_intermediate_step2(ν, m, x_m::NoTransformOrigin) = x_m
 
 function _vartransform_with_intermediate(ν, m::NoTransformOrigin, μ, x)
-    _vartransform_with_intermediate(ν, StdUniform()^effndof(μ), μ, x)
+    _vartransform_with_intermediate(ν, StdUniform()^getdof(μ), μ, x)
 end
 
 
@@ -121,7 +121,7 @@ _vartransform_with_intermediate(::NU, ::NU, ::MU, x) where {NU,MU} = NoVarTransf
 _vartransform_with_intermediate(::NU, ::MU, ::MU, x) where {NU,MU} = NoVarTransform{NU,MU}()
 
 function vartransform(ν, μ, x)
-    require_same_effndof(ν, μ)
+    check_dof(ν, μ)
     m = vartransform_intermediate(vartransform_origin(ν), vartransform_origin(μ))
     _vartransform_with_intermediate(ν, m, μ, x)
 end
@@ -142,12 +142,12 @@ struct VarTransformation{NU,MU} <: Function
     μ::MU
 
     function VarTransformation{NU,MU}(ν::NU, μ::MU) where {NU,MU}
-        require_same_effndof(ν, μ)
+        check_dof(ν, μ)
         return new{NU,MU}(ν, μ)
     end
 
     function VarTransformation(ν::NU, μ::MU) where {NU,MU}
-        require_same_effndof(ν, μ)
+        check_dof(ν, μ)
         return new{NU,MU}(ν, μ)
     end
 end
