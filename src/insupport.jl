@@ -30,15 +30,3 @@ function require_insupport(μ, x::AbstractArray{T,N}) where {T,N}
     end
     return nothing
 end
-
-
-"""
-    MeasureBase.check_varshape(μ, x)::Nothing
-
-Checks if `x` has the correct shape/size for a variate of measure-like object
-`μ`, throws an `ArgumentError` if not.
-"""
-function check_varshape end
-
-_check_varshape_pullback(ΔΩ) = NoTangent(), ZeroTangent()
-ChainRulesCore.rrule(::typeof(check_varshape), μ, x) = check_varshape(μ, x), _check_varshape_pullback
