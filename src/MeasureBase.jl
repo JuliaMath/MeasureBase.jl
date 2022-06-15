@@ -11,6 +11,9 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+using InverseFunctions
+using ChangesOfVariables
+
 import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
