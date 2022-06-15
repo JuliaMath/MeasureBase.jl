@@ -18,6 +18,7 @@ using ConstructionBase: constructorof
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
+using ChainRulesCore
 using FillArrays
 using Static
 
