@@ -129,7 +129,7 @@ _vartransform_with_intermediate(::NU, ::MU, ::MU, x) where {NU,MU} = NoVarTransf
 
 function vartransform_def(ν, μ, x)
     check_dof(ν, μ)
-    m = vartransform_intermediate(vartransform_origin(ν), vartransform_origin(μ))
+    m = select_vartransform_intermediate(vartransform_origin(ν), vartransform_origin(μ))
     _vartransform_with_intermediate(ν, m, μ, x)
 end
 
