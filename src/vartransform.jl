@@ -96,11 +96,9 @@ If no specialized `vartransform_def(::MU, ::NU, ...)` is available then
 the default implementation of`vartransform_def(ν, μ, x)` uses the following
 strategy:
 
-* Evaluate [`vartransform_origin`](@ref) for μ and ν. If both have an origin,
-  select one as an intermediate measure using
-  [`select_vartransform_intermediate`](@ref). Try to transform from `μ` to
-  that intermediate measure and then to `ν` origin(s) of `μ` and/or `ν` if
-  available.
+* Evaluate [`vartransform_origin`](@ref) for μ and ν. Transform between
+  each and it's origin, if available, and use the origin(s) as intermediate
+  measures for another transformation.
 
 * If all else fails, try to transform from μ to a standard multivariate
   uniform measure and then to ν.
@@ -110,30 +108,46 @@ See [`vartransform`](@ref).
 function vartransform_def end
 
 
-function _vartransform_with_intermediate(ν, m, μ, x)
-    x_m = vartransform_def(m, μ, x)
-    _vartransform_with_intermediate_step2(ν, m, x_m)
+function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
+    x_o = to_origin(μ, x)
+    y_o = vartransform_def(ν_o, μ_o, x_o)
+    y = from_origin(ν, y_o)
+    return y
 end
 
-@inline _vartransform_with_intermediate_step2(ν, m, x_m) = vartransform_def(ν, m, x_m)
-@inline _vartransform_with_intermediate_step2(ν, m, x_m::NoTransformOrigin) = x_m
+function _vartransform_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
+    y_o = vartransform_def(ν_o, μ, x)
+    y = from_origin(ν, y_o)
+    return y
+end
 
-function _vartransform_with_intermediate(ν, m::NoTransformOrigin, μ, x)
+function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
+    x_o = to_origin(μ, x)
+    y = vartransform_def(ν, μ_o, x_o)
+    return y
+end
+
+function _vartransform_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
     _vartransform_with_intermediate(ν, StdUniform()^getdof(μ), μ, x)
 end
 
+@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where MU = μ_o
+function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
+    throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
+end
 
-# Prevent endless recursion:
-_vartransform_with_intermediate(::NU, ::NU, ::MU, x) where {NU,MU} = NoVarTransform{NU,MU}()
-_vartransform_with_intermediate(::NU, ::MU, ::MU, x) where {NU,MU} = NoVarTransform{NU,MU}()
+@inline function _checked_vartransform_origin(μ::MU) where MU
+    μ_o = vartransform_origin(μ)
+    _origin_must_have_separate_type(MU, μ_o)
+end
 
 function vartransform_def(ν, μ, x)
     check_dof(ν, μ)
-    m = select_vartransform_intermediate(vartransform_origin(ν), vartransform_origin(μ))
-    _vartransform_with_intermediate(ν, m, μ, x)
+    _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
 end
 
 vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
+vartransform_def(::Any, ::Any, x::NoVarTransform) = x
 
 
 """
@@ -198,26 +212,3 @@ function Base.show(io::IO, f::VarTransformation)
 end
 
 Base.show(io::IO, M::MIME"text/plain", f::VarTransformation) = show(io, f)
-
-
-
-
-
-"""
-    MeasureBase.select_vartransform_intermediate(a, b)
-
-Selects one of two candidate pullback measures `a, b` to use as an
-intermediate in variate transformations.
-
-See [`MeasureBase.vartransform_intermediate`](@ref).
-"""
-function select_vartransform_intermediate end
-
-select_vartransform_intermediate(nu, ::NoTransformOrigin) = nu
-select_vartransform_intermediate(::NoTransformOrigin, mu) = mu
-select_vartransform_intermediate(::NoTransformOrigin, mu::NoTransformOrigin) = mu
-
-# Ensure forward and inverse transformation use the same intermediate:
-@generated function select_vartransform_intermediate(a, b)
-    return nameof(a) < nameof(b) ? :a : :b
-end
