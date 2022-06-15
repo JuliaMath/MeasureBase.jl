@@ -53,13 +53,8 @@ struct NoVarTransform{NU,MU} end
     f = vartransform(ν, μ)
 
 Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_function)
-`f` that transforms values distributed according to measure `μ` to
-values distributed according to a measure `ν`.
-
-    y = vartransform(ν, μ, x)
-
-Transforms a value `x` distributed according to `μ` to a value `y` distributed
-according to `ν`.
+`f` that transforms a value `x` distributed according to measure `μ` to
+a value `y = f(x)` distributed according to a measure `ν`.
 
 The [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
 from `μ` under `f` is is equivalent to `ν`.
@@ -77,8 +72,8 @@ Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
 
 To add transformation rules for a measure type `MyMeasure`, specialize
 
-* `MeasureBase.vartransform(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
-* `MeasureBase.vartransform(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
+* `MeasureBase.vartransform_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
+* `MeasureBase.vartransform_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
 
 and/or
 
@@ -87,9 +82,19 @@ and/or
 * `MeasureBase.to_origin(μ::MyMeasure, x) = y`
 
 and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
+"""
+function vartransform end
 
-If no direct transformation rule is available, `vartransform(ν, μ, x)` uses
-the following strategy:
+
+"""
+    vartransform_def(ν, μ, x)
+
+Transforms a value `x` distributed according to `μ` to a value `y` distributed
+according to `ν`.
+
+If no specialized `vartransform_def(::MU, ::NU, ...)` is available then
+the default implementation of`vartransform_def(ν, μ, x)` uses the following
+strategy:
 
 * Evaluate [`vartransform_origin`](@ref) for μ and ν. If both have an origin,
   select one as an intermediate measure using
@@ -99,16 +104,18 @@ the following strategy:
 
 * If all else fails, try to transform from μ to a standard multivariate
   uniform measure and then to ν.
+
+See [`vartransform`](@ref).
 """
-function vartransform end
+function vartransform_def end
 
 
 function _vartransform_with_intermediate(ν, m, μ, x)
-    x_m = vartransform(m, μ, x)
+    x_m = vartransform_def(m, μ, x)
     _vartransform_with_intermediate_step2(ν, m, x_m)
 end
 
-@inline _vartransform_with_intermediate_step2(ν, m, x_m) = vartransform(ν, m, x_m)
+@inline _vartransform_with_intermediate_step2(ν, m, x_m) = vartransform_def(ν, m, x_m)
 @inline _vartransform_with_intermediate_step2(ν, m, x_m::NoTransformOrigin) = x_m
 
 function _vartransform_with_intermediate(ν, m::NoTransformOrigin, μ, x)
@@ -120,13 +127,13 @@ end
 _vartransform_with_intermediate(::NU, ::NU, ::MU, x) where {NU,MU} = NoVarTransform{NU,MU}()
 _vartransform_with_intermediate(::NU, ::MU, ::MU, x) where {NU,MU} = NoVarTransform{NU,MU}()
 
-function vartransform(ν, μ, x)
+function vartransform_def(ν, μ, x)
     check_dof(ν, μ)
     m = vartransform_intermediate(vartransform_origin(ν), vartransform_origin(μ))
     _vartransform_with_intermediate(ν, m, μ, x)
 end
 
-vartransform(::Any, ::Any, x::NoTransformOrigin) = x
+vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
 
 
 """
@@ -134,7 +141,7 @@ vartransform(::Any, ::Any, x::NoTransformOrigin) = x
 
 Transforms a variate from one measure to a variate of another.
 
-In general users should not call `VarTransformation` directly, call
+In general `VarTransformation` should not be called directly, call
 [`vartransform`](@ref) instead.
 """
 struct VarTransformation{NU,MU} <: Function
@@ -155,7 +162,7 @@ end
 vartransform(ν, μ) = VarTransformation(ν, μ)
 
 
-(f::VarTransformation)(x) = vartransform(f.ν, f.μ, x)
+(f::VarTransformation)(x) = vartransform_def(f.ν, f.μ, x)
 
 InverseFunctions.inverse(f::VarTransformation) = VarTransformation(f.μ, f.ν)
 
