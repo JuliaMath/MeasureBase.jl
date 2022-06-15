@@ -50,7 +50,7 @@ struct NoVarTransform{NU,MU} end
 
 
 """
-    f = vartransform(ν, μ)::Function
+    f = vartransform(ν, μ)
 
 Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_function)
 `f` that transforms values distributed according to measure `μ` to
