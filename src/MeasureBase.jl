@@ -124,6 +124,7 @@ include("combinators/conditional.jl")
 include("standard/stdmeasure.jl")
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
+include("standard/stdlogistic.jl")
 
 include("rand.jl")
 
