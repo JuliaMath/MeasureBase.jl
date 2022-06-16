@@ -122,7 +122,6 @@ include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
 
 include("standard/stdmeasure.jl")
-include("standard/stdnormal.jl")
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 
