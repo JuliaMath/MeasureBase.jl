@@ -40,3 +40,11 @@ insupport(::Lebesgue{RealNumbers}, ::Real) = true
 logdensity_def(::LebesgueMeasure, ::CountingMeasure, x) = -Inf
 
 logdensity_def(::CountingMeasure, ::LebesgueMeasure, x) = Inf
+
+@inline getdof(::Lebesgue) = static(1)
+
+@inline checked_var(::Lebesgue, x::Real) = x
+
+@propagate_inbounds function checked_var(::Lebesgue, x::Any)
+    @boundscheck throw(ArgumentError("Invalid variate type for measure"))
+end

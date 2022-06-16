@@ -6,15 +6,8 @@ StdMeasure(::typeof(randexp)) = StdExponential()
 
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 
-@inline checked_var(::StdMeasure, x::Real) = x
-
-@propagate_inbounds function checked_var(::StdMeasure, x::Any)
-    @boundscheck throw(ArgumentError("Invalid variate type for measure"))
-end
-
 
 @inline vartransform_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
-
 
 function vartransform_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
     check_dof(ν, μ)

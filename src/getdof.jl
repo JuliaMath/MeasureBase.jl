@@ -1,4 +1,14 @@
 """
+MeasureBase.NoDOF{MU}
+
+Indicates that there is no way to compute degrees of freedom of a measure
+of type `MU` with the given information, e.g. because the DOF are not
+a global property of the measure.
+"""
+struct NoDOF{MU} end
+
+
+"""
     getdof(μ)
 
 Returns the effective number of degrees of freedom of variates of
@@ -11,6 +21,12 @@ is `n - 1`.
 Also see [`check_dof`](@ref).
 """
 function getdof end
+
+# Prevent infinite recursion:
+@inline _default_getdof(::Type{MU}, ::MU) where MU = NoDOF{MU}
+@inline _default_getdof(::Type{MU}, mu_base) where MU = getdof(mu_base)
+
+@inline getdof(μ::MU) where MU = _default_getdof(MU, basemeasure(μ))
 
 
 """
@@ -50,6 +66,10 @@ return `NoVarCheck{MU,T}()` if not check can be performed.
 """
 function checked_var end
 
-@inline checked_var(::MU, ::T) where {MU,T} = NoVarCheck{MU,T}
+# Prevent infinite recursion:
+@propagate_inbounds _default_checked_var(::Type{MU}, ::MU, ::Any) where MU = NoVarCheck{MU,T}
+@propagate_inbounds _default_checked_var(::Type{MU}, mu_base, x) where MU = checked_var(mu_base, x)
+
+@propagate_inbounds checked_var(mu::MU, x) where MU = _default_checked_var(MU, basemeasure(mu), x)
 
 ChainRulesCore.rrule(::typeof(checked_var), ν, x) = NoTangent(), NoTangent(), ZeroTangent()

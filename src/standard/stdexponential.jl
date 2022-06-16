@@ -7,8 +7,6 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline logdensity_def(::StdExponential, x) = -x
 @inline basemeasure(::StdExponential) = Lebesgue()
 
-@inline getdof(::StdExponential) = static(1)
-
 @inline vartransform_def(::StdUniform, μ::StdExponential, x) = - expm1(-x)
 @inline vartransform_def(::StdExponential, μ::StdUniform, x) = - log1p(-x)
 
