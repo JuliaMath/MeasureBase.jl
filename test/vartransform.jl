@@ -11,7 +11,7 @@ using ChangesOfVariables: with_logabsdet_jacobian
     supertype(x::AbstractArray{T,N}) where {T,N} = AbstractArray{T,N}
 
     function test_transform_and_back(ν, μ)
-        @testset "vartransform $μ to $ν0" begin
+        @testset "vartransform $μ to $ν" begin
             x = rand(μ)
             @test !(@inferred(vartransform(ν, μ)(x)) isa NoVarTransform)
             f = vartransform(ν, μ)
