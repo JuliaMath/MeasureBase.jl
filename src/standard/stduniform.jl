@@ -9,4 +9,4 @@ insupport(d::StdUniform, x) = zero(x) ≤ x ≤ one(x)
 
 @inline getdof(::StdUniform) = static(1)
 
-Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = randn(rng, T)
+Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = rand(rng, T)

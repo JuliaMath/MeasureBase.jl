@@ -12,6 +12,5 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline vartransform_def(::StdUniform, μ::StdExponential, x) = - expm1(- checked_var(μ, x))
 @inline vartransform_def(::StdExponential, μ::StdUniform, x) = - log1p(- checked_var(μ, x))
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdExponential) where {T}
-    randexp(rng, T)
-end
+Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdExponential) where {T} = randexp(rng, T)
+
