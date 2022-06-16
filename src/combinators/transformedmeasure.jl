@@ -15,36 +15,43 @@ function paramnames(::AbstractTransformedMeasure) end
 function parent(::AbstractTransformedMeasure) end
 
 
+abstract type TransformVolCorr end
+struct WithVolCorr <: TDVolCorr end
+struct NoVolCorr <: TDVolCorr end
+
+
 export PushforwardMeasure
 
 """
-    struct PushforwardMeasure{FF,IF,M} <: AbstractPushforward
+    struct PushforwardMeasure{FF,IF,MU,VC<:TransformVolCorr} <: AbstractPushforward
         f :: FF
         inv_f :: IF
-        origin :: M
+        origin :: MU
+        volcorr :: VC
     end
 """
-struct PushforwardMeasure{FF,IF,M} <: AbstractPushforward
+struct PushforwardMeasure{FF,IF,M,VC<:TransformVolCorr} <: AbstractPushforward
     f::FF
     inv_f::IF
     origin::M
+    volcorr::VC
 end
 
-gettransform(μ::PushforwardMeasure) = μ.f
-parent(μ::PushforwardMeasure) = μ.origin
+gettransform(ν::PushforwardMeasure) = ν.f
+parent(ν::PushforwardMeasure) = ν.origin
 
 
-function Pretty.tile(μ::PushforwardMeasure)
-    Pretty.list_layout(Pretty.tile.([μ.f, μ.inv_f, μ.origin]); prefix = :PushforwardMeasure)
+function Pretty.tile(ν::PushforwardMeasure)
+    Pretty.list_layout(Pretty.tile.([ν.f, ν.inv_f, ν.origin]); prefix = :PushforwardMeasure)
 end
 
-@inline function logdensity_def(μ::PushforwardMeasure, x)
-    x_orig, inv_ladj = with_logabsdet_jacobian(μ.inv_f, x)
-    logd_orig = logdensityof(μ.origin, x_orig)
 
+@inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr}, y) where {FF,IF,M}
+    x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
+    logd_orig = logdensityof(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
-    ifelse(
+    return ifelse(
         # Zero density wins against infinite volume:
         (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
         # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
@@ -55,25 +62,30 @@ end
     )
 end
 
+@inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr}, y) where {FF,IF,M}
+    x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
+    return logdensityof(ν.origin, x_orig)
+end
 
-insupport(μ::PushforwardMeasure, x) = insupport(to_origin(μ, x))
 
-testvalue(μ::PushforwardMeasure) = from_origin(μ, testvalue(vartransform_origin(μ)))
+insupport(ν::PushforwardMeasure, y) = insupport(to_origin(ν, y))
 
-@inline function basemeasure(μ::PushforwardMeasure)
-    PushforwardMeasure(μ.f, μ.inv_f, basemeasure(vartransform_origin(μ)))
+testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(vartransform_origin(ν)))
+
+@inline function basemeasure(ν::PushforwardMeasure)
+    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(vartransform_origin(ν)))
 end
 
 @inline getdof(::MU) where {MU<:PushforwardMeasure} = NoDOF{MU}()
 
 @inline checked_var(::MU, ::Any) where {MU<:PushforwardMeasure} = NoVarCheck{MU}()
 
-@inline vartransform_origin(μ::PushforwardMeasure) = μ.origin
-@inline to_origin(μ::PushforwardMeasure, y) = μ.inv_f(y)
-@inline from_origin(μ::PushforwardMeasure, x) = μ.f(x)
+@inline vartransform_origin(ν::PushforwardMeasure) = ν.origin
+@inline to_origin(ν::PushforwardMeasure, x) = ν.inv_f(x)
+@inline from_origin(ν::PushforwardMeasure, y) = ν.f(y)
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::PushforwardMeasure) where T
-    return from_origin(μ, rand(rng, T, vartransform_origin(μ)))
+function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where T
+    return from_origin(ν, rand(rng, T, vartransform_origin(ν)))
 end
 
 
