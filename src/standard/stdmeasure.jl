@@ -10,12 +10,6 @@ function vartransform_def(@nospecialize(::StdMeasure), @nospecialize(d::StdMeasu
     throw(ArgumentError("$(typeof(x)) is not a valid variate type for measures of type $(typeof(d))"))
 end
 
-@inline vartransform_def(::StdUniform, ::StdLogistic, x::Real) = logistic(x)
-@inline vartransform_def(::StdLogistic, ::StdUniform, x::Real) = logit(x)
-
-@inline vartransform_def(::StdUniform, ::StdExponential, x::Real) = - expm1(-x)
-@inline vartransform_def(::StdExponential, ::StdUniform, x::Real) = - log1p(-x)
-
 
 function vartransform_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
     check_dof(ν, μ)
