@@ -2,11 +2,7 @@ struct StdLogistic <: StdMeasure end
 
 export StdLogistic
 
-@inline _isreal(x) = false
-@inline _isreal(x::Real) = true
-
-@inline insupport(d::StdLogistic, x) = _isreal(x)
-@inline insupport(d::StdLogistic) = _isreal
+@inline insupport(d::StdLogistic, x) = true
 
 @inline logdensity_def(::StdLogistic, x) = (u = -abs(x); u - 2*log1pexp(u))
 @inline basemeasure(::StdLogistic) = Lebesgue()
