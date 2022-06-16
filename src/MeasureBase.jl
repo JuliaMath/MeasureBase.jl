@@ -37,6 +37,7 @@ export basemeasure
 export basekernel
 export productmeasure
 export insupport
+export getdof
 
 include("insupport.jl")
 
