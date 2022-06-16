@@ -100,3 +100,6 @@ end
         dynamic(insupport(p, xj))
     end
 end
+
+
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
