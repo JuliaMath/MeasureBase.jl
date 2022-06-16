@@ -14,20 +14,20 @@ function getdof end
 
 
 """
-    MeasureBase.check_dof(a, b)::Nothing
+    MeasureBase.check_dof(ν, μ)::Nothing
 
-Check if `a` and `b` have the same effective number of degrees of freedom
+Check if `ν` and `μ` have the same effective number of degrees of freedom
 according to [`MeasureBase.getdof`](@ref).
 """
 function check_dof end
 
-ChainRulesCore.rrule(::typeof(check_dof), a, b) = nothing, _nogradient_pullback2
-
 function check_dof(ν, μ)
-    trg_d_n = getdof(ν)
-    src_d_n = getdof(μ)
-    if trg_d_n != src_d_n
-        throw(ArgumentError("Can't convert to $(typeof(ν).name) with $(trg_d_n) eff. DOF from $(typeof(μ).name) with $(src_d_n) eff. DOF"))
+    n_ν = getdof(ν)
+    n_μ = getdof(μ)
+    if n_ν != n_μ
+        throw(ArgumentError("Measure ν of type $(nameof(typeof(ν))) has $(n_ν) DOF but μ of type $(nameof(typeof(μ))) has $(n_μ) DOF"))
     end
     return nothing
 end
+
+ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = NoTangent(), NoTangent(), NoTangent()
