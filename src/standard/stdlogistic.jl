@@ -13,5 +13,3 @@ export StdLogistic
 @inline vartransform_def(::StdLogistic, ::StdUniform, x::Real) = logit(x)
 
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdLogistic) where {T} = logit(rand(rng, T))
-
-@inline StdMeasure(::typeof(randn)) = StdLogistic()
