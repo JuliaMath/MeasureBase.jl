@@ -6,11 +6,6 @@ StdMeasure(::typeof(randexp)) = StdExponential()
 
 @inline vartransform_def(::MU, ::MU, x::Real) where {MU<:StdMeasure} = x
 
-function vartransform_def(@nospecialize(::StdMeasure), @nospecialize(d::StdMeasure), @nospecialize(x))
-    throw(ArgumentError("$(typeof(x)) is not a valid variate type for measures of type $(typeof(d))"))
-end
-
-
 function vartransform_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
     check_dof(ν, μ)
     vartransform_def(ν, μ.parent, only(x))
