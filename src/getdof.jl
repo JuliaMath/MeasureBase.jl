@@ -23,7 +23,7 @@ function check_dof end
 
 ChainRulesCore.rrule(::typeof(check_dof), a, b) = nothing, _nogradient_pullback2
 
-function check_dof(a, b)
+function check_dof(ν, μ)
     trg_d_n = getdof(ν)
     src_d_n = getdof(μ)
     if trg_d_n != src_d_n
