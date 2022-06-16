@@ -1,6 +1,7 @@
 using Test
 
 using MeasureBase: vartransform, NoVarTransform
+using MeasureBase: StdUniform, StdExponential, StdLogistic
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
