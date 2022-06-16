@@ -38,6 +38,7 @@ export basekernel
 export productmeasure
 export insupport
 export getdof
+export vartransform
 
 include("insupport.jl")
 
