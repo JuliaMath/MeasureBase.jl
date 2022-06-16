@@ -107,6 +107,25 @@ See [`vartransform`](@ref).
 """
 function vartransform_def end
 
+vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
+vartransform_def(::Any, ::Any, x::NoVarTransform) = x
+
+function vartransform_def(ν, μ, x)
+    check_dof(ν, μ)
+    _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
+end
+
+
+@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where MU = μ_o
+function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
+    throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
+end
+
+@inline function _checked_vartransform_origin(μ::MU) where MU
+    μ_o = vartransform_origin(μ)
+    _origin_must_have_separate_type(MU, μ_o)
+end
+
 
 function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
@@ -128,26 +147,23 @@ function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
 end
 
 function _vartransform_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
-    _vartransform_with_intermediate(ν, StdUniform()^getdof(μ), μ, x)
+    _vartransform_with_intermediate(ν, _vartransform_intermediate(ν, μ), μ, x)
 end
 
-@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where MU = μ_o
-function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
-    throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
+
+@inline _vartransform_intermediate(ν, μ) = _vartransform_intermediate(getdof(ν), getdof(μ))
+@inline _vartransform_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
+@inline _vartransform_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
+
+function _vartransform_with_intermediate(ν, m, μ, x)
+    z = vartransform_def(m, μ, x)
+    y = vartransform_def(ν, m, z)
+    return y
 end
 
-@inline function _checked_vartransform_origin(μ::MU) where MU
-    μ_o = vartransform_origin(μ)
-    _origin_must_have_separate_type(MU, μ_o)
-end
-
-function vartransform_def(ν, μ, x)
-    check_dof(ν, μ)
-    _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
-end
-
-vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
-vartransform_def(::Any, ::Any, x::NoVarTransform) = x
+# Prevent infinite recursion in case vartransform_intermediate doesn't change type:
+@inline _vartransform_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
+@inline _vartransform_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
 
 
 """
