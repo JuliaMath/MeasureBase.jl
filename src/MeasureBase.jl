@@ -1,5 +1,7 @@
 module MeasureBase
 
+using Base: @propagate_inbounds
+
 using Random
 import Random: rand!
 import Random: gentype
