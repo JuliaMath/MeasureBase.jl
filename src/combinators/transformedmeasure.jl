@@ -42,15 +42,17 @@ end
     x_orig, inv_ladj = with_logabsdet_jacobian(μ.inv_f, x)
     logd_orig = logdensityof(μ.origin, x_orig)
 
-    logd = logd_orig + inv_ladj
-    R = typeof(logd)
-    if isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf
+    logd = float(logd_orig + inv_ladj)
+    neginf = oftype(logd, -Inf)
+    if (
         # Zero density wins against infinite volume:
-        R(-Inf)
-    elseif isfinite(logd_orig) && (inv_ladj == -Inf)
+        (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
+
         # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
         # Return constant -Inf to prevent problems with ForwardDiff:
-        R(-Inf)
+        (isfinite(logd_orig) && (inv_ladj == -Inf))
+    )
+        neginf
     else
         logd
     end
