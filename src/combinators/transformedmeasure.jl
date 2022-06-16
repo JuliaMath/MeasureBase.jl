@@ -63,7 +63,7 @@ end
 end
 
 @inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr}, y) where {FF,IF,M}
-    x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
+    x_orig = to_origin(ν, y)
     return logdensityof(ν.origin, x_orig)
 end
 
