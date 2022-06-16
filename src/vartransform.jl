@@ -189,12 +189,14 @@ struct VarTransformation{NU,MU} <: Function
     end
 end
 
-vartransform(ν, μ) = VarTransformation(ν, μ)
+@inline vartransform(ν, μ) = VarTransformation(ν, μ)
 
 
-(f::VarTransformation)(x) = vartransform_def(f.ν, f.μ, x)
+Base.@propagate_inbounds function (f::VarTransformation)(x)
+    return vartransform_def(f.ν, f.μ, checked_var(f.μ, x))
+end
 
-InverseFunctions.inverse(f::VarTransformation) = VarTransformation(f.μ, f.ν)
+@inline InverseFunctions.inverse(f::VarTransformation) = VarTransformation(f.μ, f.ν)
 
 
 function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)

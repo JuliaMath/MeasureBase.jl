@@ -13,7 +13,7 @@ StdMeasure(::typeof(randexp)) = StdExponential()
 end
 
 
-@inline vartransform_def(::MU, μ::MU, x) where {MU<:StdMeasure} = checked_var(μ, x)
+@inline vartransform_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
 
 
 function vartransform_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
@@ -28,10 +28,10 @@ end
 
 function vartransform_def(ν::PowerMeasure{<:StdMeasure,<:NTuple{1,Base.OneTo}}, μ::PowerMeasure{<:StdMeasure,<:NTuple{1,Base.OneTo}}, x)
     check_dof(ν, μ)
-    return vartransform(ν.parent, μ.parent).(checked_var(μ, x))
+    return vartransform(ν.parent, μ.parent).(x)
 end
 
 function vartransform_def(ν::PowerMeasure{<:StdMeasure,<:NTuple{N,Base.OneTo}}, μ::PowerMeasure{<:StdMeasure,<:NTuple{M,Base.OneTo}}, x) where {N,M}
     check_dof(ν, μ)
-    return reshape(vartransform(ν.parent, μ.parent).(checked_var(μ, x)), map(length, ν.axes)...)
+    return reshape(vartransform(ν.parent, μ.parent).(x), map(length, ν.axes)...)
 end
