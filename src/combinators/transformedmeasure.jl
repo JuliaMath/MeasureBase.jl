@@ -44,18 +44,15 @@ end
 
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
-    if (
+    ifelse(
         # Zero density wins against infinite volume:
         (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
-
         # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
         # Return constant -Inf to prevent problems with ForwardDiff:
-        (isfinite(logd_orig) && (inv_ladj == -Inf))
-    )
-        neginf
-    else
+        (isfinite(logd_orig) && (inv_ladj == -Inf)),
+        neginf,
         logd
-    end
+    )
 end
 
 
