@@ -103,3 +103,14 @@ end
 
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
+
+@propagate_inbounds function checked_var(μ::PowerMeasure, x::AbstractArray{<:Any})
+    @boundscheck begin
+        sz_μ = map(length, μ.axes)
+        sz_x = size(x)
+        if sz_μ != sz_x
+            throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        end
+    end
+    return x
+end

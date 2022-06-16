@@ -9,7 +9,7 @@ export StdLogistic
 
 @inline getdof(::StdLogistic) = static(1)
 
-@inline vartransform_def(::StdUniform, ::StdLogistic, x::Real) = logistic(x)
-@inline vartransform_def(::StdLogistic, ::StdUniform, x::Real) = logit(x)
+@inline vartransform_def(::StdUniform, μ::StdLogistic, x) = logistic(checked_var(μ, x))
+@inline vartransform_def(::StdLogistic, μ::StdUniform, x) = logit(checked_var(μ, x))
 
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdLogistic) where {T} = logit(rand(rng, T))

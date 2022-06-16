@@ -31,3 +31,25 @@ function check_dof(ν, μ)
 end
 
 ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = NoTangent(), NoTangent(), NoTangent()
+
+
+"""
+    MeasureBase.NoVarCheck{MU,T}
+
+Indicates that there is no way to check of a values of type `T` are
+variate of measures of type `MU`.
+"""
+struct NoVarCheck{MU,T} end
+
+
+"""
+    MeasureBase.checked_var(μ::MU, x::T)::T
+
+Return `x` if `x` is a valid variate of `μ`, throw an `ArgumentError` if not,
+return `NoVarCheck{MU,T}()` if not check can be performed.
+"""
+function checked_var end
+
+@inline checked_var(::MU, ::T) where {MU,T} = NoVarCheck{MU,T}
+
+ChainRulesCore.rrule(::typeof(checked_var), ν, x) = NoTangent(), NoTangent(), ZeroTangent()
