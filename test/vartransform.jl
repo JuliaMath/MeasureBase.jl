@@ -29,12 +29,14 @@ using ChangesOfVariables: with_logabsdet_jacobian
     end
 
     for μ0 in [StdUniform(), StdExponential(), StdLogistic()], ν0 in [StdUniform(), StdExponential(), StdLogistic()]
-        @testset "vartransform (powers of) $(nameof(typeof(μ0))) to $(nameof(typeof(ν0)))" begin
+        @testset "vartransform (variations of) $(nameof(typeof(μ0))) to $(nameof(typeof(ν0)))" begin
             test_transform_and_back(ν0, μ0)
+            test_transform_and_back(2.2 * ν0, 3 * μ0)
             test_transform_and_back(ν0, μ0^1)
             test_transform_and_back(ν0^1, μ0)
             test_transform_and_back(ν0^3, μ0^3)
             test_transform_and_back(ν0^(2,3,2), μ0^(3,4))
+            test_transform_and_back(2.2 * ν0^(2,3,2), 3 * μ0^(3,4))
             @test_throws ArgumentError vartransform(ν0, μ0)(rand(μ0^12))
             @test_throws ArgumentError vartransform(ν0^3, μ0^3)(rand(μ0^(3,4)))
         end
