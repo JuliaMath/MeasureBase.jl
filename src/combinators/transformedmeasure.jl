@@ -16,8 +16,8 @@ function parent(::AbstractTransformedMeasure) end
 
 
 abstract type TransformVolCorr end
-struct WithVolCorr <: TDVolCorr end
-struct NoVolCorr <: TDVolCorr end
+struct WithVolCorr <: TransformVolCorr end
+struct NoVolCorr <: TransformVolCorr end
 
 
 export PushforwardMeasure
@@ -48,7 +48,7 @@ end
 
 @inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr}, y) where {FF,IF,M}
     x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
-    logd_orig = logdensityof(ν.origin, x_orig)
+    logd_orig = logdensity_def(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
     return ifelse(
@@ -64,16 +64,16 @@ end
 
 @inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr}, y) where {FF,IF,M}
     x_orig = to_origin(ν, y)
-    return logdensityof(ν.origin, x_orig)
+    return logdensity_def(ν.origin, x_orig)
 end
 
 
-insupport(ν::PushforwardMeasure, y) = insupport(to_origin(ν, y))
+insupport(ν::PushforwardMeasure, y) = insupport(vartransform_origin(ν), to_origin(ν, y))
 
 testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(vartransform_origin(ν)))
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(vartransform_origin(ν)))
+    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(vartransform_origin(ν)), NoVolCorr())
 end
 
 @inline getdof(::MU) where {MU<:PushforwardMeasure} = NoDOF{MU}()
@@ -92,9 +92,9 @@ end
 export pushfwd
 
 """
-    pushfwd(f, μ)
+    pushfwd(f, μ, volcorr = WithVolCorr())
 
 Return the [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
 from `μ` the [measurable function](https://en.wikipedia.org/wiki/Measurable_function) `f`.
 """
-pushfwd(f, μ) = PushforwardMeasure(f, inverse(f), μ)
+pushfwd(f, μ, volcorr = WithVolCorr()) = PushforwardMeasure(f, inverse(f), μ, volcorr)
