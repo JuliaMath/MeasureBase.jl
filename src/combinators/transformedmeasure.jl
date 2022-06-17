@@ -76,9 +76,20 @@ testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(vartransform_origi
     PushforwardMeasure(ν.f, ν.inv_f, basemeasure(vartransform_origin(ν)), NoVolCorr())
 end
 
-@inline getdof(::MU) where {MU<:PushforwardMeasure} = NoDOF{MU}()
 
-@inline checked_var(::MU, ::Any) where {MU<:PushforwardMeasure} = NoVarCheck{MU}()
+_pushfwd_dof(::Type{MU}, ::Type, dof) where MU = NoDOF{MU}()
+_pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where MU = dof
+
+# Assume that DOF are preserved if with_logabsdet_jacobian is functional:
+@inline function getdof(ν::MU) where {MU<:PushforwardMeasure}
+    T = Core.Compiler.return_type(testvalue, Tuple{typeof(ν.origin)})
+    R = Core.Compiler.return_type(with_logabsdet_jacobian, Tuple{typeof(ν.f), T})
+    _pushfwd_dof(MU, R, getdof(ν.origin))
+end
+
+# Bypass `checked_var`, would require potentially costly transformation:
+@inline checked_var(::PushforwardMeasure, x) = x
+
 
 @inline vartransform_origin(ν::PushforwardMeasure) = ν.origin
 @inline to_origin(ν::PushforwardMeasure, x) = ν.inv_f(x)

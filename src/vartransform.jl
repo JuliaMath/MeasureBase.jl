@@ -129,7 +129,8 @@ end
 
 function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    y_o = vartransform_def(ν_o, μ_o, x_o)
+    # If μ is a pushforward then checked_var may have been bypassed, so check now:
+    y_o = vartransform_def(ν_o, μ_o, checked_var(μ_o, x_o))
     y = from_origin(ν, y_o)
     return y
 end
@@ -142,7 +143,8 @@ end
 
 function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    y = vartransform_def(ν, μ_o, x_o)
+    # If μ is a pushforward then checked_var may have been bypassed, so check now:
+    y = vartransform_def(ν, μ_o, checked_var(μ_o, x_o))
     return y
 end
 
