@@ -234,3 +234,4 @@ end
 end
 
 include("combinators/weighted.jl")
+include("combinators/transformedmeasure.jl")
