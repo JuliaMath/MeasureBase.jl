@@ -28,3 +28,13 @@ function vartransform_def(ν::PowerMeasure{<:StdMeasure,<:NTuple{N,Base.OneTo}},
     check_dof(ν, μ)
     return reshape(vartransform(ν.parent, μ.parent).(x), map(length, ν.axes)...)
 end
+
+
+# Implement vartransform(NU::Type{<:StdMeasure}, μ) and vartransform(ν, MU::Type{<:StdMeasure}):
+
+_std_measure(::Type{M}, ::StaticInt{1}) where {M<:StdMeasure} = M()
+_std_measure(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
+_std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
+
+MeasureBase.vartransform(::Type{NU}, μ) where {NU<:StdMeasure} = vartransform(_std_measure_for(NU, μ), μ)
+MeasureBase.vartransform(ν, ::Type{MU}) where {MU<:StdMeasure} = vartransform(ν, _std_measure_for(MU, ν))

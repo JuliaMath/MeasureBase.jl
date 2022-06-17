@@ -18,4 +18,11 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic
             @test_throws ArgumentError vartransform(ν0^3, μ0^3)(rand(μ0^(3,4)))
         end
     end
+
+    @testset "vartransform autosel" begin
+        @test @inferred(vartransform(StdExponential, StdUniform())) == vartransform(StdExponential(), StdUniform())
+        @test @inferred(vartransform(StdExponential, StdUniform()^(2,3))) == vartransform(StdExponential()^6, StdUniform()^(2,3))
+        @test @inferred(vartransform(StdUniform(), StdExponential)) == vartransform(StdUniform(), StdExponential())
+        @test @inferred(vartransform(StdUniform()^(2,3), StdExponential)) == vartransform(StdUniform()^(2,3), StdExponential()^6)
+    end
 end
