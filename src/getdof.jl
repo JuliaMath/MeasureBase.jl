@@ -67,7 +67,7 @@ return `NoVarCheck{MU,T}()` if not check can be performed.
 function checked_var end
 
 # Prevent infinite recursion:
-@propagate_inbounds _default_checked_var(::Type{MU}, ::MU, ::Any) where MU = NoVarCheck{MU,T}
+@propagate_inbounds _default_checked_var(::Type{MU}, ::MU, ::T) where {MU,T} = NoVarCheck{MU,T}
 @propagate_inbounds _default_checked_var(::Type{MU}, mu_base, x) where MU = checked_var(mu_base, x)
 
 @propagate_inbounds checked_var(mu::MU, x) where MU = _default_checked_var(MU, basemeasure(mu), x)
