@@ -1,43 +1,43 @@
 """
-    struct MeasureBase.NoTransformOrigin{MU}
+    struct MeasureBase.NoTransformOrigin{NU}
 
 Indicates that no (default) pullback measure is available for measures of
-type `MU`.
+type `NU`.
 
 See [`MeasureBase.vartransform_origin`](@ref).
 """
-struct NoTransformOrigin{MU} end
+struct NoTransformOrigin{NU} end
 
 
 """
-    MeasureBase.vartransform_origin(μ)
+    MeasureBase.vartransform_origin(ν)
 
 Default measure to pullback to resp. pushforward from when transforming
-between `μ` and another measure.
+between `ν` and another measure.
 """
 function vartransform_origin end
 
-vartransform_origin(m::M) where M = NoTransformOrigin{M}()
+vartransform_origin(ν::NU) where NU = NoTransformOrigin{NU}()
 
 
 """
-    MeasureBase.from_origin(μ, y)
+    MeasureBase.from_origin(ν, x)
 
-Push `y` from `MeasureBase.vartransform_origin(μ)` forward to `μ`.
+Push `x` from `MeasureBase.vartransform_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
-from_origin(m::M) where M = NoTransformOrigin{M}()
+from_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}()
 
 
 """
-    MeasureBase.to_origin(μ, x)
+    MeasureBase.to_origin(ν, y)
 
-Pull `x` from `μ` back to `MeasureBase.vartransform_origin(μ)`.
+Pull `y` from `ν` back to `MeasureBase.vartransform_origin(ν)`.
 """
 function to_origin end
 
-to_origin(m::M) where M = NoTransformOrigin{M}()
+to_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}(ν)
 
 
 """
