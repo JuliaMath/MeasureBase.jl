@@ -233,5 +233,7 @@ end
     #     end
 end
 
+include("vartransform.jl")
+
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
