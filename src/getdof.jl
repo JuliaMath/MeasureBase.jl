@@ -1,5 +1,5 @@
 """
-MeasureBase.NoDOF{MU}
+    MeasureBase.NoDOF{MU}
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
