@@ -123,7 +123,6 @@ vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
 vartransform_def(::Any, ::Any, x::NoVarTransform) = x
 
 function vartransform_def(ν, μ, x)
-    check_dof(ν, μ)
     _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
 end
 
