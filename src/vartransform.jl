@@ -193,7 +193,6 @@ struct VarTransformation{NU,MU} <: Function
     μ::MU
 
     function VarTransformation{NU,MU}(ν::NU, μ::MU) where {NU,MU}
-        check_dof(ν, μ)
         return new{NU,MU}(ν, μ)
     end
 
@@ -205,12 +204,18 @@ end
 
 @inline vartransform(ν, μ) = VarTransformation(ν, μ)
 
+function Base.:(==)(a::VarTransformation, b::VarTransformation)
+    return a.ν == b.ν && a.μ == b.μ
+end
+
 
 Base.@propagate_inbounds function (f::VarTransformation)(x)
     return vartransform_def(f.ν, f.μ, checked_var(f.μ, x))
 end
 
-@inline InverseFunctions.inverse(f::VarTransformation) = VarTransformation(f.μ, f.ν)
+@inline function InverseFunctions.inverse(f::VarTransformation{NU,MU}) where {NU,MU}
+    return VarTransformation{MU,NU}(f.μ, f.ν)
+end
 
 
 function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)
