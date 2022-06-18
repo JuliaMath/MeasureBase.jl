@@ -114,3 +114,7 @@ end
     end
     return x
 end
+
+function checked_var(μ::PowerMeasure, x::Any)
+    throw(ArgumentError("Size of variate doesn't match size of power measure"))
+end
