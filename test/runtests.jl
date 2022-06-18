@@ -233,6 +233,7 @@ end
     #     end
 end
 
+include("getdof.jl")
 include("vartransform.jl")
 
 include("combinators/weighted.jl")

@@ -48,6 +48,7 @@ julia = "1.3"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ChainRulesTestUtils = "cdddcdb0-9152-4a09-a978-84456f9df70a"
 
 [targets]
-test = ["Aqua"]
+test = ["Aqua", "ChainRulesTestUtils"]
