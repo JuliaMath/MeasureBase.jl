@@ -46,7 +46,8 @@ function check_dof(ν, μ)
     return nothing
 end
 
-ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = NoTangent(), NoTangent(), NoTangent()
+_check_dof_pullback(ΔΩ) = NoTangent(), NoTangent(), NoTangent()
+ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_dof_pullback
 
 
 """
@@ -72,4 +73,5 @@ function checked_var end
 
 @propagate_inbounds checked_var(mu::MU, x) where MU = _default_checked_var(MU, basemeasure(mu), x)
 
-ChainRulesCore.rrule(::typeof(checked_var), ν, x) = NoTangent(), NoTangent(), ZeroTangent()
+_checked_var_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
+ChainRulesCore.rrule(::typeof(checked_var), ν, x) = checked_var(ν, x), _checked_var_pullback
