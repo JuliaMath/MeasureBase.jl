@@ -87,8 +87,8 @@ end
 
 
 @inline vartransform_origin(ν::PushforwardMeasure) = ν.origin
-@inline to_origin(ν::PushforwardMeasure, x) = ν.inv_f(x)
-@inline from_origin(ν::PushforwardMeasure, y) = ν.f(y)
+@inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
+@inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where T
     return from_origin(ν, rand(rng, T, vartransform_origin(ν)))

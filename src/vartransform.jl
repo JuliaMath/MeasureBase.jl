@@ -78,8 +78,8 @@ To add transformation rules for a measure type `MyMeasure`, specialize
 and/or
 
 * `MeasureBase.vartransform_origin(ν::MyMeasure) = SomeMeasure(...)`
-* `MeasureBase.from_origin(μ::MyMeasure, y) = x`
-* `MeasureBase.to_origin(μ::MyMeasure, x) = y`
+* `MeasureBase.from_origin(μ::MyMeasure, x) = y`
+* `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
 and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
 
