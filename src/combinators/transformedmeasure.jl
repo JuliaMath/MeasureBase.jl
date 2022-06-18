@@ -15,11 +15,6 @@ function paramnames(::AbstractTransformedMeasure) end
 function parent(::AbstractTransformedMeasure) end
 
 
-abstract type TransformVolCorr end
-struct WithVolCorr <: TransformVolCorr end
-struct NoVolCorr <: TransformVolCorr end
-
-
 export PushforwardMeasure
 
 """
