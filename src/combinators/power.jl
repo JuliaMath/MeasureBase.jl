@@ -104,6 +104,9 @@ end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
 
+@inline getdof(::PowerMeasure{<:Any, NTuple{N,Base.OneTo{StaticInt{0}}}}) where N = static(0)
+
+
 @propagate_inbounds function checked_var(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
         sz_μ = map(length, μ.axes)

@@ -30,4 +30,6 @@ using Static: static
     @test @inferred(checked_var(μ2, x2)) === x2
     @test_throws ArgumentError checked_var(μ2, x0)
     test_rrule(checked_var, μ2, x2)
+
+    @test @inferred(getdof((StdExponential()^3)^(static(0),static(0)))) === static(0)
 end
