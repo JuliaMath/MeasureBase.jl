@@ -68,7 +68,7 @@ end
 
 function test_vartransform(ν, μ)
     supertype(x::Real) = Real
-    supertype(x::AbstractArray{T,N}) where {T,N} = AbstractArray{T,N}
+    supertype(x::AbstractArray{<:Real,N}) where N = AbstractArray{<:Real,N}
 
     @testset "vartransform $μ to $ν" begin
         x = rand(μ)
