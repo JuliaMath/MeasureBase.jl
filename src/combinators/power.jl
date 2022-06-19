@@ -85,6 +85,13 @@ end
     end
 end
 
+@inline function logdensity_def(
+    d::PowerMeasure{M,NTuple{N, Base.OneTo{StaticInt{0}}}},
+    x,
+) where {M,N}
+    static(0.0)
+end
+
 @inline function insupport(μ::PowerMeasure, x)
     p = μ.parent
     all(x) do xj
