@@ -4,26 +4,26 @@
 Indicates that no (default) pullback measure is available for measures of
 type `NU`.
 
-See [`MeasureBase.vartransform_origin`](@ref).
+See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransformOrigin{NU} end
 
 
 """
-    MeasureBase.vartransform_origin(ν)
+    MeasureBase.transport_origin(ν)
 
 Default measure to pullback to resp. pushforward from when transforming
 between `ν` and another measure.
 """
-function vartransform_origin end
+function transport_origin end
 
-vartransform_origin(ν::NU) where NU = NoTransformOrigin{NU}()
+transport_origin(ν::NU) where NU = NoTransformOrigin{NU}()
 
 
 """
     MeasureBase.from_origin(ν, x)
 
-Push `x` from `MeasureBase.vartransform_origin(μ)` forward to `ν`.
+Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
@@ -33,7 +33,7 @@ from_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}()
 """
     MeasureBase.to_origin(ν, y)
 
-Pull `y` from `ν` back to `MeasureBase.vartransform_origin(ν)`.
+Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
@@ -77,7 +77,7 @@ To add transformation rules for a measure type `MyMeasure`, specialize
 
 and/or
 
-* `MeasureBase.vartransform_origin(ν::MyMeasure) = SomeMeasure(...)`
+* `MeasureBase.transport_origin(ν::MyMeasure) = SomeMeasure(...)`
 * `MeasureBase.from_origin(μ::MyMeasure, x) = y`
 * `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
@@ -108,7 +108,7 @@ If no specialized `transport_def(::MU, ::NU, ...)` is available then
 the default implementation of`transport_def(ν, μ, x)` uses the following
 strategy:
 
-* Evaluate [`vartransform_origin`](@ref) for μ and ν. Transform between
+* Evaluate [`transport_origin`](@ref) for μ and ν. Transform between
   each and it's origin, if available, and use the origin(s) as intermediate
   measures for another transformation.
 
@@ -133,7 +133,7 @@ function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
 end
 
 @inline function _checked_vartransform_origin(μ::MU) where MU
-    μ_o = vartransform_origin(μ)
+    μ_o = transport_origin(μ)
     _origin_must_have_separate_type(MU, μ_o)
 end
 

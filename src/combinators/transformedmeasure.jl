@@ -63,12 +63,12 @@ end
 end
 
 
-insupport(ν::PushforwardMeasure, y) = insupport(vartransform_origin(ν), to_origin(ν, y))
+insupport(ν::PushforwardMeasure, y) = insupport(transport_origin(ν), to_origin(ν, y))
 
-testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(vartransform_origin(ν)))
+testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(transport_origin(ν)))
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(vartransform_origin(ν)), NoVolCorr())
+    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(transport_origin(ν)), NoVolCorr())
 end
 
 
@@ -86,12 +86,12 @@ end
 @inline checked_var(::PushforwardMeasure, x) = x
 
 
-@inline vartransform_origin(ν::PushforwardMeasure) = ν.origin
+@inline transport_origin(ν::PushforwardMeasure) = ν.origin
 @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
 @inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where T
-    return from_origin(ν, rand(rng, T, vartransform_origin(ν)))
+    return from_origin(ν, rand(rng, T, transport_origin(ν)))
 end
 
 

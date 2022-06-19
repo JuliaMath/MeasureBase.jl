@@ -49,6 +49,6 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
 
-vartransform_origin(ν::WeightedMeasure) = ν.base
+transport_origin(ν::WeightedMeasure) = ν.base
 to_origin(::WeightedMeasure, y) = y
 from_origin(::WeightedMeasure, x) = x
