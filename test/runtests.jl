@@ -37,13 +37,13 @@ test_measures = [
     Dirac(0) + Dirac(1)
     Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 0.2)
-    StdNormal()
-    StdNormal()^3
-    StdNormal()^(2, 3)
-    3 * StdNormal()
-    0.2 * StdNormal() + 0.8 * Dirac(0.0)
-    Dirac(0.0) + StdNormal()
-    SpikeMixture(StdNormal(), 0.2)
+    StdLogistic()
+    StdLogistic()^3
+    StdLogistic()^(2, 3)
+    3 * StdLogistic()
+    0.2 * StdLogistic() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdLogistic()
+    SpikeMixture(StdLogistic(), 0.2)
     StdUniform()
     StdUniform()^3
     StdUniform()^(2, 3)
@@ -233,4 +233,8 @@ end
     #     end
 end
 
+include("getdof.jl")
+include("transport.jl")
+
 include("combinators/weighted.jl")
+include("combinators/transformedmeasure.jl")

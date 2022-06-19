@@ -1,5 +1,7 @@
 module MeasureBase
 
+using Base: @propagate_inbounds
+
 using Random
 import Random: rand!
 import Random: gentype
@@ -11,6 +13,9 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+using InverseFunctions
+using ChangesOfVariables
+
 import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
@@ -18,6 +23,7 @@ using ConstructionBase: constructorof
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
+using ChainRulesCore
 using FillArrays
 using Static
 
@@ -32,20 +38,11 @@ export logdensity_def
 export basemeasure
 export basekernel
 export productmeasure
-
-"""
-    inssupport(m, x)
-    insupport(m)
-
-`insupport(m,x)` computes whether `x` is in the support of `m`.
-
-`insupport(m)` returns a function, and satisfies
-
-    insupport(m)(x) == insupport(m, x)
-"""
-function insupport end
-
 export insupport
+export getdof
+export transport_to
+
+include("insupport.jl")
 
 abstract type AbstractMeasure end
 
@@ -63,7 +60,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
 using NaNMath
-using LogExpFunctions: logsumexp
+using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
 
@@ -94,6 +91,8 @@ using Compat
 
 using IrrationalConstants
 
+include("getdof.jl")
+include("transport.jl")
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
@@ -125,9 +124,9 @@ include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
 
 include("standard/stdmeasure.jl")
-include("standard/stdnormal.jl")
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
+include("standard/stdlogistic.jl")
 
 include("rand.jl")
 
