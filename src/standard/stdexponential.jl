@@ -7,8 +7,8 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline logdensity_def(::StdExponential, x) = -x
 @inline basemeasure(::StdExponential) = Lebesgue()
 
-@inline vartransform_def(::StdUniform, μ::StdExponential, x) = - expm1(-x)
-@inline vartransform_def(::StdExponential, μ::StdUniform, x) = - log1p(-x)
+@inline transport_def(::StdUniform, μ::StdExponential, x) = - expm1(-x)
+@inline transport_def(::StdExponential, μ::StdUniform, x) = - log1p(-x)
 
 Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdExponential) where {T} = randexp(rng, T)
 

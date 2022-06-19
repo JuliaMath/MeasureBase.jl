@@ -6,7 +6,7 @@ using Reexport
 
 using MeasureBase: basemeasure_depth, proxy
 using MeasureBase: insupport, basemeasure_sequence, commonbase
-using MeasureBase: vartransform, NoVarTransform
+using MeasureBase: transport_to, NoVarTransform
 
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
@@ -70,10 +70,10 @@ function test_vartransform(ν, μ)
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where N = AbstractArray{<:Real,N}
 
-    @testset "vartransform $μ to $ν" begin
+    @testset "transport_to $μ to $ν" begin
         x = rand(μ)
-        @test !(@inferred(vartransform(ν, μ)(x)) isa NoVarTransform)
-        f = vartransform(ν, μ)
+        @test !(@inferred(transport_to(ν, μ)(x)) isa NoVarTransform)
+        f = transport_to(ν, μ)
         y = f(x)
         @test @inferred(inverse(f)(y)) ≈ x
         @test @inferred(with_logabsdet_jacobian(f, x)) isa Tuple{supertype(y),Real}

@@ -40,7 +40,7 @@ export basekernel
 export productmeasure
 export insupport
 export getdof
-export vartransform
+export transport_to
 
 include("insupport.jl")
 
@@ -92,7 +92,7 @@ using Compat
 using IrrationalConstants
 
 include("getdof.jl")
-include("vartransform.jl")
+include("transport.jl")
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")

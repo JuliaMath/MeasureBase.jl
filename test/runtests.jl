@@ -234,7 +234,7 @@ end
 end
 
 include("getdof.jl")
-include("vartransform.jl")
+include("transport.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")

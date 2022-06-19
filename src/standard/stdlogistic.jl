@@ -7,7 +7,7 @@ export StdLogistic
 @inline logdensity_def(::StdLogistic, x) = (u = -abs(x); u - 2*log1pexp(u))
 @inline basemeasure(::StdLogistic) = Lebesgue()
 
-@inline vartransform_def(::StdUniform, μ::StdLogistic, x) = logistic(x)
-@inline vartransform_def(::StdLogistic, μ::StdUniform, x) = logit(x)
+@inline transport_def(::StdUniform, μ::StdLogistic, x) = logistic(x)
+@inline transport_def(::StdLogistic, μ::StdUniform, x) = logit(x)
 
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdLogistic) where {T} = logit(rand(rng, T))

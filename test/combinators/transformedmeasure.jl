@@ -2,7 +2,7 @@ using Test
 
 using MeasureBase: pushfwd, StdUniform, StdExponential, StdLogistic
 using MeasureBase: pushfwd, PushforwardMeasure
-using MeasureBase: vartransform
+using MeasureBase: transport_to
 using Statistics: var
 using DensityInterface: logdensityof
 
@@ -17,5 +17,5 @@ using DensityInterface: logdensityof
     
     @test isapprox(var(rand(ν^(10^5))), 1, rtol = 0.05)
 
-    @test vartransform(StdLogistic(), ν)(y) ≈ vartransform(StdLogistic(), ν)(y)
+    @test transport_to(StdLogistic(), ν)(y) ≈ transport_to(StdLogistic(), ν)(y)
 end

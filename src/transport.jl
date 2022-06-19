@@ -50,7 +50,7 @@ struct NoVarTransform{NU,MU} end
 
 
 """
-    f = vartransform(ν, μ)
+    f = transport_to(ν, μ)
 
 Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_function)
 `f` that transforms a value `x` distributed according to measure `μ` to
@@ -72,8 +72,8 @@ Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
 
 To add transformation rules for a measure type `MyMeasure`, specialize
 
-* `MeasureBase.vartransform_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
-* `MeasureBase.vartransform_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
+* `MeasureBase.transport_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
+* `MeasureBase.transport_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
 
 and/or
 
@@ -95,17 +95,17 @@ Depending on [`getdof(μ)`](@ref) (resp. `ν`), an instance of the standard
 distribution itself or a power of it (e.g. `StdUniform()` or
 `StdUniform()^dof`) will be chosen as the transformation partner.
 """
-function vartransform end
+function transport_to end
 
 
 """
-    vartransform_def(ν, μ, x)
+    transport_def(ν, μ, x)
 
 Transforms a value `x` distributed according to `μ` to a value `y` distributed
 according to `ν`.
 
-If no specialized `vartransform_def(::MU, ::NU, ...)` is available then
-the default implementation of`vartransform_def(ν, μ, x)` uses the following
+If no specialized `transport_def(::MU, ::NU, ...)` is available then
+the default implementation of`transport_def(ν, μ, x)` uses the following
 strategy:
 
 * Evaluate [`vartransform_origin`](@ref) for μ and ν. Transform between
@@ -115,14 +115,14 @@ strategy:
 * If all else fails, try to transform from μ to a standard multivariate
   uniform measure and then to ν.
 
-See [`vartransform`](@ref).
+See [`transport_to`](@ref).
 """
-function vartransform_def end
+function transport_def end
 
-vartransform_def(::Any, ::Any, x::NoTransformOrigin) = x
-vartransform_def(::Any, ::Any, x::NoVarTransform) = x
+transport_def(::Any, ::Any, x::NoTransformOrigin) = x
+transport_def(::Any, ::Any, x::NoVarTransform) = x
 
-function vartransform_def(ν, μ, x)
+function transport_def(ν, μ, x)
     _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
 end
 
@@ -141,13 +141,13 @@ end
 function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
     # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y_o = vartransform_def(ν_o, μ_o, checked_var(μ_o, x_o))
+    y_o = transport_def(ν_o, μ_o, checked_var(μ_o, x_o))
     y = from_origin(ν, y_o)
     return y
 end
 
 function _vartransform_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
-    y_o = vartransform_def(ν_o, μ, x)
+    y_o = transport_def(ν_o, μ, x)
     y = from_origin(ν, y_o)
     return y
 end
@@ -155,7 +155,7 @@ end
 function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
     # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y = vartransform_def(ν, μ_o, checked_var(μ_o, x_o))
+    y = transport_def(ν, μ_o, checked_var(μ_o, x_o))
     return y
 end
 
@@ -169,8 +169,8 @@ end
 @inline _vartransform_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
 function _vartransform_with_intermediate(ν, m, μ, x)
-    z = vartransform_def(m, μ, x)
-    y = vartransform_def(ν, m, z)
+    z = transport_def(m, μ, x)
+    y = transport_def(ν, m, z)
     return y
 end
 
@@ -185,7 +185,7 @@ end
 Transforms a variate from one measure to a variate of another.
 
 In general `VarTransformation` should not be called directly, call
-[`vartransform`](@ref) instead.
+[`transport_to`](@ref) instead.
 """
 struct VarTransformation{NU,MU} <: Function
     ν::NU
@@ -201,7 +201,7 @@ struct VarTransformation{NU,MU} <: Function
     end
 end
 
-@inline vartransform(ν, μ) = VarTransformation(ν, μ)
+@inline transport_to(ν, μ) = VarTransformation(ν, μ)
 
 function Base.:(==)(a::VarTransformation, b::VarTransformation)
     return a.ν == b.ν && a.μ == b.μ
@@ -209,7 +209,7 @@ end
 
 
 Base.@propagate_inbounds function (f::VarTransformation)(x)
-    return vartransform_def(f.ν, f.μ, checked_var(f.μ, x))
+    return transport_def(f.ν, f.μ, checked_var(f.μ, x))
 end
 
 @inline function InverseFunctions.inverse(f::VarTransformation{NU,MU}) where {NU,MU}
