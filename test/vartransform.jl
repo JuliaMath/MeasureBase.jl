@@ -2,6 +2,7 @@ using Test
 
 using MeasureBase.Interface: vartransform, test_vartransform
 using MeasureBase: StdUniform, StdExponential, StdLogistic
+using MeasureBase: Dirac
 
 
 @testset "vartransform" begin
@@ -17,6 +18,16 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic
             @test_throws ArgumentError vartransform(ν0, μ0)(rand(μ0^12))
             @test_throws ArgumentError vartransform(ν0^3, μ0^3)(rand(μ0^(3,4)))
         end
+    end
+
+    @testset "transfrom from/to Dirac" begin
+        μ = Dirac(4.2)
+        test_vartransform(StdExponential()^0, μ)
+        test_vartransform(StdExponential()^(0,0,0), μ)
+        test_vartransform(μ, StdExponential()^static(0))
+        test_vartransform(μ, StdExponential()^(static(0),static(0)))
+        @test_throws ArgumentError vartransform(StdExponential()^1, μ)
+        @test_throws ArgumentError vartransform(μ, StdExponential()^1)
     end
 
     @testset "vartransform autosel" begin

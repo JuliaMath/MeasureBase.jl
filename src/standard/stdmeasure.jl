@@ -34,3 +34,12 @@ _std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, get
 
 MeasureBase.vartransform(::Type{NU}, μ) where {NU<:StdMeasure} = vartransform(_std_measure_for(NU, μ), μ)
 MeasureBase.vartransform(ν, ::Type{MU}) where {MU<:StdMeasure} = vartransform(ν, _std_measure_for(MU, ν))
+
+
+# Transform between standard measures and Dirac:
+
+@inline vartransform_def(ν::Dirac, ::PowerMeasure{<:MeasureBase.StdMeasure}, ::Any) = ν.x
+
+@inline function vartransform_def(ν::PowerMeasure{<:MeasureBase.StdMeasure}, ::Dirac, ::Any)
+    Zeros{Bool}(map(_ -> 0, ν.axes))
+end

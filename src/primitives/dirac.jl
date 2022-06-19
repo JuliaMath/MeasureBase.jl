@@ -36,9 +36,3 @@ insupport(d::Dirac, x) = x == d.x
     @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
     x
 end
-
-@inline vartransform_def(ν::Dirac, ::PowerMeasure{<:MeasureBase.StdMeasure}, ::Any) = ν.x
-
-@inline function vartransform_def(ν::PowerMeasure{<:MeasureBase.StdMeasure}, ::Dirac, ::Any)
-    Zeros{Bool}(map(_ -> 0, ν.axes))
-end
