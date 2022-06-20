@@ -12,7 +12,7 @@ using Aqua
 
 Aqua._test_ambiguities(
     Aqua.aspkgids(MeasureBase);
-    exclude=[LogarithmicNumbers.Logarithmic]
+    exclude = [LogarithmicNumbers.Logarithmic],
     # packages::Vector{PkgId};
     # color::Union{Bool, Nothing} = nothing,
     # exclude::AbstractArray = [],

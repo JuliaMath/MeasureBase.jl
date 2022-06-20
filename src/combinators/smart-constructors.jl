@@ -19,7 +19,10 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::WeightedMeasure, dims::NTup) where {N,I<:AbstractArray,NTup<:NTuple{N,I}}
+function powermeasure(
+    μ::WeightedMeasure,
+    dims::NTup,
+) where {N,I<:AbstractArray,NTup<:NTuple{N,I}}
     k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -86,7 +89,7 @@ function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
     end
 end
 
-function superpose(::T, ::T) where T<:SuperpositionMeasure
+function superpose(::T, ::T) where {T<:SuperpositionMeasure}
     @error "FIXME"
 end
 
@@ -169,7 +172,7 @@ function kernel(::Type{M}, ::NamedTuple{()}) where {M}
     TypedTransitionKernel(C, identity)
 end
 
-function kernel(::Type{M}, ::NamedTuple{()}) where M<:ParameterizedMeasure
+function kernel(::Type{M}, ::NamedTuple{()}) where {M<:ParameterizedMeasure}
     @error "FIXME"
 end
 

@@ -86,7 +86,7 @@ end
 end
 
 @inline function logdensity_def(
-    d::PowerMeasure{M,NTuple{N, Base.OneTo{StaticInt{0}}}},
+    d::PowerMeasure{M,NTuple{N,Base.OneTo{StaticInt{0}}}},
     x,
 ) where {M,N}
     static(0.0)
@@ -108,11 +108,11 @@ end
     end
 end
 
-
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
 
-@inline getdof(::PowerMeasure{<:Any, NTuple{N,Base.OneTo{StaticInt{0}}}}) where N = static(0)
-
+@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Base.OneTo{StaticInt{0}}}}) where {N}
+    static(0)
+end
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin

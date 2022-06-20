@@ -10,7 +10,6 @@ insupport(m)(x) == insupport(m, x)
 """
 function insupport end
 
-
 """
     MeasureBase.require_insupport(μ, x)::Nothing
 

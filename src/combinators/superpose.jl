@@ -87,11 +87,7 @@ function density_def(s::SuperpositionMeasure, x)
     error(msg)
 end
 
-@inline function logdensity_def(
-    μ::T,
-    ν::T,
-    x,
-) where {T<:SuperpositionMeasure{NTuple{2}}}
+@inline function logdensity_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure{NTuple{2}}}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
     else
@@ -118,7 +114,7 @@ end
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-@inline function logdensity_def(s, β::SuperpositionMeasure{NTuple{2}}, x) 
+@inline function logdensity_def(s, β::SuperpositionMeasure{NTuple{2}}, x)
     -logdensity_def(β, s, x)
 end
 
