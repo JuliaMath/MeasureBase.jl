@@ -14,7 +14,7 @@ using DensityInterface: logdensityof
 
     y = rand(ν_ref)
     @test @inferred(logdensityof(ν, y)) ≈ logdensityof(ν_ref, y)
-    
+
     @test isapprox(var(rand(ν^(10^5))), 1, rtol = 0.05)
 
     @test transport_to(StdLogistic(), ν)(y) ≈ transport_to(StdLogistic(), ν)(y)

@@ -8,7 +8,6 @@ See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransformOrigin{NU} end
 
-
 """
     MeasureBase.transport_origin(ν)
 
@@ -17,8 +16,7 @@ between `ν` and another measure.
 """
 function transport_origin end
 
-transport_origin(ν::NU) where NU = NoTransformOrigin{NU}()
-
+transport_origin(ν::NU) where {NU} = NoTransformOrigin{NU}()
 
 """
     MeasureBase.from_origin(ν, x)
@@ -27,8 +25,7 @@ Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
-from_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}()
-
+from_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}()
 
 """
     MeasureBase.to_origin(ν, y)
@@ -37,8 +34,7 @@ Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
-to_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}(ν)
-
+to_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}(ν)
 
 """
     struct MeasureBase.NoTransport{NU,MU} end
@@ -47,7 +43,6 @@ Indicates that no transformation from a measure of type `MU` to a measure of
 type `NU` could be found.
 """
 struct NoTransport{NU,MU} end
-
 
 """
     f = transport_to(ν, μ)
@@ -97,7 +92,6 @@ distribution itself or a power of it (e.g. `StdUniform()` or
 """
 function transport_to end
 
-
 """
     transport_def(ν, μ, x)
 
@@ -123,20 +117,24 @@ transport_def(::Any, ::Any, x::NoTransformOrigin) = x
 transport_def(::Any, ::Any, x::NoTransport) = x
 
 function transport_def(ν, μ, x)
-    _transport_with_intermediate(ν, _checked_transport_origin(ν), _checked_transport_origin(μ), μ, x)
+    _transport_with_intermediate(
+        ν,
+        _checked_transport_origin(ν),
+        _checked_transport_origin(μ),
+        μ,
+        x,
+    )
 end
 
-
-@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where MU = μ_o
-function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
+@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where {MU} = μ_o
+function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where {MU}
     throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
 end
 
-@inline function _checked_transport_origin(μ::MU) where MU
+@inline function _checked_transport_origin(μ::MU) where {MU}
     μ_o = transport_origin(μ)
     _origin_must_have_separate_type(MU, μ_o)
 end
-
 
 function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
@@ -163,7 +161,6 @@ function _transport_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrig
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
-
 @inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
@@ -175,9 +172,12 @@ function _transport_with_intermediate(ν, m, μ, x)
 end
 
 # Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
-@inline _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
-
+@inline function _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU}
+    NoTransport{NU,MU}()
+end
+@inline function _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU}
+    NoTransport{NU,MU}()
+end
 
 """
     struct TransportFunction <: Function
@@ -207,7 +207,6 @@ function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
 
-
 Base.@propagate_inbounds function (f::TransportFunction)(x)
     return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
@@ -215,7 +214,6 @@ end
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
     return TransportFunction{MU,NU}(f.μ, f.ν)
 end
-
 
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
@@ -227,17 +225,19 @@ function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     return y, fixed_ladj
 end
 
-
 Base.:(∘)(::typeof(identity), f::TransportFunction) = f
 Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f
 
 function Base.:∘(outer::TransportFunction, inner::TransportFunction)
     if !(outer.μ == inner.ν || isequal(outer.μ, inner.ν) || outer.μ ≈ inner.ν)
-        throw(ArgumentError("Cannot compose TransportFunction if source of outer doesn't equal target of inner."))
-    end 
+        throw(
+            ArgumentError(
+                "Cannot compose TransportFunction if source of outer doesn't equal target of inner.",
+            ),
+        )
+    end
     return TransportFunction(outer.ν, inner.μ)
 end
-
 
 function Base.show(io::IO, f::TransportFunction)
     print(io, Base.typename(typeof(f)).name, "(")
@@ -248,7 +248,6 @@ function Base.show(io::IO, f::TransportFunction)
 end
 
 Base.show(io::IO, M::MIME"text/plain", f::TransportFunction) = show(io, f)
-
 
 """
     abstract type TransformVolCorr

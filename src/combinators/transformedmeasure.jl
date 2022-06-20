@@ -14,7 +14,6 @@ function paramnames(::AbstractTransformedMeasure) end
 
 function parent(::AbstractTransformedMeasure) end
 
-
 export PushforwardMeasure
 
 """
@@ -35,13 +34,14 @@ end
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
-
 function Pretty.tile(ν::PushforwardMeasure)
     Pretty.list_layout(Pretty.tile.([ν.f, ν.inv_f, ν.origin]); prefix = :PushforwardMeasure)
 end
 
-
-@inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr}, y) where {FF,IF,M}
+@inline function logdensity_def(
+    ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr},
+    y,
+) where {FF,IF,M}
     x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
     logd_orig = logdensity_def(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
@@ -53,15 +53,17 @@ end
         # Return constant -Inf to prevent problems with ForwardDiff:
         (isfinite(logd_orig) && (inv_ladj == -Inf)),
         neginf,
-        logd
+        logd,
     )
 end
 
-@inline function logdensity_def(ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr}, y) where {FF,IF,M}
+@inline function logdensity_def(
+    ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr},
+    y,
+) where {FF,IF,M}
     x_orig = to_origin(ν, y)
     return logdensity_def(ν.origin, x_orig)
 end
-
 
 insupport(ν::PushforwardMeasure, y) = insupport(transport_origin(ν), to_origin(ν, y))
 
@@ -71,29 +73,26 @@ testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(transport_origin(�
     PushforwardMeasure(ν.f, ν.inv_f, basemeasure(transport_origin(ν)), NoVolCorr())
 end
 
-
-_pushfwd_dof(::Type{MU}, ::Type, dof) where MU = NoDOF{MU}()
-_pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where MU = dof
+_pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
+_pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 
 # Assume that DOF are preserved if with_logabsdet_jacobian is functional:
 @inline function getdof(ν::MU) where {MU<:PushforwardMeasure}
     T = Core.Compiler.return_type(testvalue, Tuple{typeof(ν.origin)})
-    R = Core.Compiler.return_type(with_logabsdet_jacobian, Tuple{typeof(ν.f), T})
+    R = Core.Compiler.return_type(with_logabsdet_jacobian, Tuple{typeof(ν.f),T})
     _pushfwd_dof(MU, R, getdof(ν.origin))
 end
 
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
-
 @inline transport_origin(ν::PushforwardMeasure) = ν.origin
 @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
 @inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where T
+function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return from_origin(ν, rand(rng, T, transport_origin(ν)))
 end
-
 
 export pushfwd
 
