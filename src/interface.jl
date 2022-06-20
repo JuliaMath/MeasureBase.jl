@@ -65,10 +65,9 @@ function test_interface(μ::M) where {M}
     end
 end
 
-
 function test_transport(ν, μ)
     supertype(x::Real) = Real
-    supertype(x::AbstractArray{<:Real,N}) where N = AbstractArray{<:Real,N}
+    supertype(x::AbstractArray{<:Real,N}) where {N} = AbstractArray{<:Real,N}
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
@@ -82,7 +81,7 @@ function test_transport(ν, μ)
         x2, ladj_inv = with_logabsdet_jacobian(inverse(f), y)
         @test x ≈ x2
         @test y ≈ y2
-        @test ladj_fwd ≈ - ladj_inv
+        @test ladj_fwd ≈ -ladj_inv
         @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
     end
 end
