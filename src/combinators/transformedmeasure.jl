@@ -82,8 +82,8 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where MU = dof
     _pushfwd_dof(MU, R, getdof(ν.origin))
 end
 
-# Bypass `checked_var`, would require potentially costly transformation:
-@inline checked_var(::PushforwardMeasure, x) = x
+# Bypass `checked_arg`, would require potentially costly transformation:
+@inline checked_arg(::PushforwardMeasure, x) = x
 
 
 @inline transport_origin(ν::PushforwardMeasure) = ν.origin

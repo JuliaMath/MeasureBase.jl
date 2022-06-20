@@ -114,7 +114,7 @@ end
 @inline getdof(::PowerMeasure{<:Any, NTuple{N,Base.OneTo{StaticInt{0}}}}) where N = static(0)
 
 
-@propagate_inbounds function checked_var(μ::PowerMeasure, x::AbstractArray{<:Any})
+@propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
         sz_μ = map(length, μ.axes)
         sz_x = size(x)
@@ -125,6 +125,6 @@ end
     return x
 end
 
-function checked_var(μ::PowerMeasure, x::Any)
+function checked_arg(μ::PowerMeasure, x::Any)
     throw(ArgumentError("Size of variate doesn't match size of power measure"))
 end

@@ -41,12 +41,12 @@ to_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}(ν)
 
 
 """
-    struct MeasureBase.NoVarTransform{NU,MU} end
+    struct MeasureBase.NoTransport{NU,MU} end
 
 Indicates that no transformation from a measure of type `MU` to a measure of
 type `NU` could be found.
 """
-struct NoVarTransform{NU,MU} end
+struct NoTransport{NU,MU} end
 
 
 """
@@ -120,10 +120,10 @@ See [`transport_to`](@ref).
 function transport_def end
 
 transport_def(::Any, ::Any, x::NoTransformOrigin) = x
-transport_def(::Any, ::Any, x::NoVarTransform) = x
+transport_def(::Any, ::Any, x::NoTransport) = x
 
 function transport_def(ν, μ, x)
-    _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
+    _transport_with_intermediate(ν, _checked_transport_origin(ν), _checked_transport_origin(μ), μ, x)
 end
 
 
@@ -132,92 +132,92 @@ function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
     throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
 end
 
-@inline function _checked_vartransform_origin(μ::MU) where MU
+@inline function _checked_transport_origin(μ::MU) where MU
     μ_o = transport_origin(μ)
     _origin_must_have_separate_type(MU, μ_o)
 end
 
 
-function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
+function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y_o = transport_def(ν_o, μ_o, checked_var(μ_o, x_o))
+    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
+    y_o = transport_def(ν_o, μ_o, checked_arg(μ_o, x_o))
     y = from_origin(ν, y_o)
     return y
 end
 
-function _vartransform_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
+function _transport_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
     y_o = transport_def(ν_o, μ, x)
     y = from_origin(ν, y_o)
     return y
 end
 
-function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
+function _transport_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y = transport_def(ν, μ_o, checked_var(μ_o, x_o))
+    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
+    y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
     return y
 end
 
-function _vartransform_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
-    _vartransform_with_intermediate(ν, _vartransform_intermediate(ν, μ), μ, x)
+function _transport_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
+    _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
 
-@inline _vartransform_intermediate(ν, μ) = _vartransform_intermediate(getdof(ν), getdof(μ))
-@inline _vartransform_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
-@inline _vartransform_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
+@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
+@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
+@inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
-function _vartransform_with_intermediate(ν, m, μ, x)
+function _transport_with_intermediate(ν, m, μ, x)
     z = transport_def(m, μ, x)
     y = transport_def(ν, m, z)
     return y
 end
 
 # Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline _vartransform_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
-@inline _vartransform_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
+@inline _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
+@inline _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
 
 
 """
-    struct VarTransformation <: Function
+    struct TransportFunction <: Function
 
 Transforms a variate from one measure to a variate of another.
 
-In general `VarTransformation` should not be called directly, call
+In general `TransportFunction` should not be called directly, call
 [`transport_to`](@ref) instead.
 """
-struct VarTransformation{NU,MU} <: Function
+struct TransportFunction{NU,MU} <: Function
     ν::NU
     μ::MU
 
-    function VarTransformation{NU,MU}(ν::NU, μ::MU) where {NU,MU}
+    function TransportFunction{NU,MU}(ν::NU, μ::MU) where {NU,MU}
         return new{NU,MU}(ν, μ)
     end
 
-    function VarTransformation(ν::NU, μ::MU) where {NU,MU}
+    function TransportFunction(ν::NU, μ::MU) where {NU,MU}
         check_dof(ν, μ)
         return new{NU,MU}(ν, μ)
     end
 end
 
-@inline transport_to(ν, μ) = VarTransformation(ν, μ)
+@inline transport_to(ν, μ) = TransportFunction(ν, μ)
 
-function Base.:(==)(a::VarTransformation, b::VarTransformation)
+function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
 
 
-Base.@propagate_inbounds function (f::VarTransformation)(x)
-    return transport_def(f.ν, f.μ, checked_var(f.μ, x))
+Base.@propagate_inbounds function (f::TransportFunction)(x)
+    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
 
-@inline function InverseFunctions.inverse(f::VarTransformation{NU,MU}) where {NU,MU}
-    return VarTransformation{MU,NU}(f.μ, f.ν)
+@inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
+    return TransportFunction{MU,NU}(f.μ, f.ν)
 end
 
 
-function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)
+function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
     logpdf_src = logdensityof(f.μ, x)
     logpdf_trg = logdensityof(f.ν, y)
@@ -228,18 +228,18 @@ function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)
 end
 
 
-Base.:(∘)(::typeof(identity), f::VarTransformation) = f
-Base.:(∘)(f::VarTransformation, ::typeof(identity)) = f
+Base.:(∘)(::typeof(identity), f::TransportFunction) = f
+Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f
 
-function Base.:∘(outer::VarTransformation, inner::VarTransformation)
+function Base.:∘(outer::TransportFunction, inner::TransportFunction)
     if !(outer.μ == inner.ν || isequal(outer.μ, inner.ν) || outer.μ ≈ inner.ν)
-        throw(ArgumentError("Cannot compose VarTransformation if source of outer doesn't equal target of inner."))
+        throw(ArgumentError("Cannot compose TransportFunction if source of outer doesn't equal target of inner."))
     end 
-    return VarTransformation(outer.ν, inner.μ)
+    return TransportFunction(outer.ν, inner.μ)
 end
 
 
-function Base.show(io::IO, f::VarTransformation)
+function Base.show(io::IO, f::TransportFunction)
     print(io, Base.typename(typeof(f)).name, "(")
     show(io, f.ν)
     print(io, ", ")
@@ -247,7 +247,7 @@ function Base.show(io::IO, f::VarTransformation)
     print(io, ")")
 end
 
-Base.show(io::IO, M::MIME"text/plain", f::VarTransformation) = show(io, f)
+Base.show(io::IO, M::MIME"text/plain", f::TransportFunction) = show(io, f)
 
 
 """
@@ -262,7 +262,7 @@ abstract type TransformVolCorr end
     NoVolCorr()
 
 Indicate that density calculations should ignore the volume element of
-var transformations. Should only be used in special cases in which
+variate transformations. Should only be used in special cases in which
 the volume element has already been taken into account in a different
 way.
 """
@@ -272,7 +272,7 @@ struct NoVolCorr <: TransformVolCorr end
     WithVolCorr()
 
 Indicate that density calculations should take the volume element of
-var transformations into account (typically via the
+variate transformations into account (typically via the
 log-abs-det-Jacobian of the transform).
 """
 struct WithVolCorr <: TransformVolCorr end

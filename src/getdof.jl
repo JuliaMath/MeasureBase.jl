@@ -51,27 +51,27 @@ ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_do
 
 
 """
-    MeasureBase.NoVarCheck{MU,T}
+    MeasureBase.NoArgCheck{MU,T}
 
 Indicates that there is no way to check of a values of type `T` are
 variate of measures of type `MU`.
 """
-struct NoVarCheck{MU,T} end
+struct NoArgCheck{MU,T} end
 
 
 """
-    MeasureBase.checked_var(μ::MU, x::T)::T
+    MeasureBase.checked_arg(μ::MU, x::T)::T
 
 Return `x` if `x` is a valid variate of `μ`, throw an `ArgumentError` if not,
-return `NoVarCheck{MU,T}()` if not check can be performed.
+return `NoArgCheck{MU,T}()` if not check can be performed.
 """
-function checked_var end
+function checked_arg end
 
 # Prevent infinite recursion:
-@propagate_inbounds _default_checked_var(::Type{MU}, ::MU, ::T) where {MU,T} = NoVarCheck{MU,T}
-@propagate_inbounds _default_checked_var(::Type{MU}, mu_base, x) where MU = checked_var(mu_base, x)
+@propagate_inbounds _default_checked_arg(::Type{MU}, ::MU, ::T) where {MU,T} = NoArgCheck{MU,T}
+@propagate_inbounds _default_checked_arg(::Type{MU}, mu_base, x) where MU = checked_arg(mu_base, x)
 
-@propagate_inbounds checked_var(mu::MU, x) where MU = _default_checked_var(MU, basemeasure(mu), x)
+@propagate_inbounds checked_arg(mu::MU, x) where MU = _default_checked_arg(MU, basemeasure(mu), x)
 
-_checked_var_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
-ChainRulesCore.rrule(::typeof(checked_var), ν, x) = checked_var(ν, x), _checked_var_pullback
+_checked_arg_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
+ChainRulesCore.rrule(::typeof(checked_arg), ν, x) = checked_arg(ν, x), _checked_arg_pullback

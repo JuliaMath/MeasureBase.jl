@@ -6,14 +6,14 @@ using Reexport
 
 using MeasureBase: basemeasure_depth, proxy
 using MeasureBase: insupport, basemeasure_sequence, commonbase
-using MeasureBase: transport_to, NoVarTransform
+using MeasureBase: transport_to, NoTransport
 
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
 
 export test_interface
-export test_vartransform
+export test_transport
 export basemeasure_depth
 export proxy
 export insupport
@@ -66,13 +66,13 @@ function test_interface(μ::M) where {M}
 end
 
 
-function test_vartransform(ν, μ)
+function test_transport(ν, μ)
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where N = AbstractArray{<:Real,N}
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
-        @test !(@inferred(transport_to(ν, μ)(x)) isa NoVarTransform)
+        @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)
         f = transport_to(ν, μ)
         y = f(x)
         @test @inferred(inverse(f)(y)) ≈ x
