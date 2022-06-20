@@ -19,19 +19,11 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
     return transport_def(ν, μ.parent, only(x))
 end
 
-function transport_def(
-    ::StdMeasure,
-    ::PowerMeasure{<:StdMeasure},
-    ::NoTransport,
-)
+function transport_def(::StdMeasure, ::PowerMeasure{<:StdMeasure}, ::NoTransport)
     @error "FIXME"
 end
 
-function transport_def(
-    ::StdMeasure,
-    ::PowerMeasure{<:StdMeasure},
-    ::NoTransformOrigin,
-)
+function transport_def(::StdMeasure, ::PowerMeasure{<:StdMeasure}, ::NoTransformOrigin)
     @error "FIXME"
 end
 
@@ -39,11 +31,7 @@ function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
     return Fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes)...)
 end
 
-function transport_def(
-    ::PowerMeasure{<:StdMeasure},
-    ::StdMeasure,
-    ::NoTransformOrigin,
-)
+function transport_def(::PowerMeasure{<:StdMeasure}, ::StdMeasure, ::NoTransformOrigin)
     @error "FIXME"
 end
 
@@ -113,7 +101,7 @@ function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
     transport_to(ν, _std_measure_for(MU, ν))
 end
 
-function transport_to(::Type{NU}, ::Type{MU}) where {MU<:StdMeasure, NU<:StdMeasure}
+function transport_to(::Type{NU}, ::Type{MU}) where {MU<:StdMeasure,NU<:StdMeasure}
     @error "FIXME"
 end
 
@@ -121,19 +109,11 @@ end
 
 @inline transport_def(ν::Dirac, ::PowerMeasure{<:StdMeasure}, ::Any) = ν.x
 
-function transport_def(
-    ::Dirac,
-    ::PowerMeasure{<:StdMeasure},
-    ::NoTransport,
-)
+function transport_def(::Dirac, ::PowerMeasure{<:StdMeasure}, ::NoTransport)
     @error "FIXME"
 end
 
-function transport_def(
-    ::Dirac,
-    ::PowerMeasure{<:StdMeasure},
-    ::NoTransformOrigin,
-)
+function transport_def(::Dirac, ::PowerMeasure{<:StdMeasure}, ::NoTransformOrigin)
     @error "FIXME"
 end
 

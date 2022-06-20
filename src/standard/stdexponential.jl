@@ -10,11 +10,7 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline transport_def(::StdUniform, μ::StdExponential, x) = -expm1(-x)
 @inline transport_def(::StdExponential, μ::StdUniform, x) = -log1p(-x)
 
-function transport_def(
-    ::StdUniform,
-    ::StdExponential,
-    ::NoTransformOrigin,
-)
+function transport_def(::StdUniform, ::StdExponential, ::NoTransformOrigin)
     @error "FIXME"
 end
 
@@ -22,11 +18,7 @@ end
     @error "FIXME"
 end
 
-function transport_def(
-    ::StdUniform,
-    ::StdExponential,
-    ::NoTransport,
-)
+function transport_def(::StdUniform, ::StdExponential, ::NoTransport)
     @error "FIXME"
 end
 
