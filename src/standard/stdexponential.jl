@@ -11,9 +11,9 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline transport_def(::StdExponential, μ::StdUniform, x) = -log1p(-x)
 
 function transport_def(
-    ::MeasureBase.StdUniform,
-    ::MeasureBase.StdExponential,
-    ::MeasureBase.NoTransformOrigin,
+    ::StdUniform,
+    ::StdExponential,
+    ::NoTransformOrigin,
 )
     @error "FIXME"
 end
@@ -23,9 +23,9 @@ end
 end
 
 function transport_def(
-    ::MeasureBase.StdUniform,
-    ::MeasureBase.StdExponential,
-    ::MeasureBase.NoTransport,
+    ::StdUniform,
+    ::StdExponential,
+    ::NoTransport,
 )
     @error "FIXME"
 end

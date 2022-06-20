@@ -20,17 +20,17 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
 end
 
 function transport_def(
-    ::MeasureBase.StdMeasure,
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure},
-    ::MeasureBase.NoTransport,
+    ::StdMeasure,
+    ::PowerMeasure{<:StdMeasure},
+    ::NoTransport,
 )
     @error "FIXME"
 end
 
 function transport_def(
-    ::MeasureBase.StdMeasure,
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure},
-    ::MeasureBase.NoTransformOrigin,
+    ::StdMeasure,
+    ::PowerMeasure{<:StdMeasure},
+    ::NoTransformOrigin,
 )
     @error "FIXME"
 end
@@ -40,9 +40,9 @@ function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
 end
 
 function transport_def(
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure},
-    ::MeasureBase.StdMeasure,
-    ::MeasureBase.NoTransformOrigin,
+    ::PowerMeasure{<:StdMeasure},
+    ::StdMeasure,
+    ::NoTransformOrigin,
 )
     @error "FIXME"
 end
@@ -60,9 +60,9 @@ function transport_def(
 end
 
 function transport_def(
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure,<:Tuple{Base.OneTo}},
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure,<:Tuple{Base.OneTo}},
-    ::MeasureBase.NoTransport,
+    ::PowerMeasure{<:StdMeasure,<:Tuple{Base.OneTo}},
+    ::PowerMeasure{<:StdMeasure,<:Tuple{Base.OneTo}},
+    ::NoTransport,
 )
     @error "FIXME"
 end
@@ -84,9 +84,9 @@ function transport_def(
 end
 
 function transport_def(
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure,<:Tuple{Vararg{Base.OneTo,N}}},
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure,<:Tuple{Vararg{Base.OneTo,M}}},
-    ::MeasureBase.NoTransport,
+    ::PowerMeasure{<:StdMeasure,<:Tuple{Vararg{Base.OneTo,N}}},
+    ::PowerMeasure{<:StdMeasure,<:Tuple{Vararg{Base.OneTo,M}}},
+    ::NoTransport,
 ) where {N,M}
     @error "FIXME"
 end
@@ -105,11 +105,16 @@ _std_measure(::Type{M}, ::StaticInt{1}) where {M<:StdMeasure} = M()
 _std_measure(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
 _std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
 
-function MeasureBase.transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
     transport_to(_std_measure_for(NU, μ), μ)
 end
-function MeasureBase.transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+
+function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
     transport_to(ν, _std_measure_for(MU, ν))
+end
+
+function transport_to(::Type{NU}, ::Type{MU}) where {MU<:StdMeasure, NU<:StdMeasure}
+    @error "FIXME"
 end
 
 # Transform between standard measures and Dirac:
@@ -117,17 +122,17 @@ end
 @inline transport_def(ν::Dirac, ::PowerMeasure{<:StdMeasure}, ::Any) = ν.x
 
 function transport_def(
-    ::MeasureBase.Dirac,
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure},
-    ::MeasureBase.NoTransport,
+    ::Dirac,
+    ::PowerMeasure{<:StdMeasure},
+    ::NoTransport,
 )
     @error "FIXME"
 end
 
 function transport_def(
-    ::MeasureBase.Dirac,
-    ::MeasureBase.PowerMeasure{<:MeasureBase.StdMeasure},
-    ::MeasureBase.NoTransformOrigin,
+    ::Dirac,
+    ::PowerMeasure{<:StdMeasure},
+    ::NoTransformOrigin,
 )
     @error "FIXME"
 end

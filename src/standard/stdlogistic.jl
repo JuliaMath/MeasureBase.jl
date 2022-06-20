@@ -11,25 +11,25 @@ export StdLogistic
 @inline transport_def(::StdLogistic, μ::StdUniform, x) = logit(x)
 
 function transport_def(
-    ::MeasureBase.StdUniform,
-    ::MeasureBase.StdLogistic,
-    ::MeasureBase.NoTransformOrigin,
+    ::StdUniform,
+    ::StdLogistic,
+    ::NoTransformOrigin,
 )
     @error "FIXME"
 end
 
 function transport_def(
-    ::MeasureBase.StdUniform,
-    ::MeasureBase.StdLogistic,
-    ::MeasureBase.NoTransport,
+    ::StdUniform,
+    ::StdLogistic,
+    ::NoTransport,
 )
     @error "FIXME"
 end
 
 function transport_def(
-    ::MeasureBase.StdLogistic,
-    ::MeasureBase.StdUniform,
-    ::MeasureBase.NoTransport,
+    ::StdLogistic,
+    ::StdUniform,
+    ::NoTransport,
 )
     @error "FIXME"
 end
