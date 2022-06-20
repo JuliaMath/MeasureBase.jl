@@ -19,15 +19,17 @@ end
 ###############################################################################
 # PowerMeaure
 
+powermeasure(m::AbstractMeasure, ::Tuple{}) = m
+
 function powermeasure(
     μ::WeightedMeasure,
-    dims::NTup,
-) where {N,I<:AbstractArray,NTup<:NTuple{N,I}}
+    dims::Tuple{<:AbstractArray, Vararg{<:AbstractArray}},
+)
     k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
-function powermeasure(μ::WeightedMeasure, dims::NTup) where {N,I,NTup<:NTuple{N,I}}
+function powermeasure(μ::WeightedMeasure, dims::Tuple{<:Integer, Vararg{<:Integer}})
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end

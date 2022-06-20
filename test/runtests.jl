@@ -8,7 +8,7 @@ using MeasureBase
 using MeasureBase: test_interface
 
 using Aqua
-# Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
+Aqua.test_all(MeasureBase; ambiguities = false)
 
 Aqua._test_ambiguities(
     Aqua.aspkgids(MeasureBase);
