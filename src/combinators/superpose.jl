@@ -91,7 +91,7 @@ end
     μ::T,
     ν::T,
     x,
-) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
+) where {T<:SuperpositionMeasure{NTuple{2}}}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
     else
@@ -99,7 +99,7 @@ end
     end
 end
 
-@inline function logdensity_def(s::SuperpositionMeasure{Tuple{A,B}}, β, x) where {A,B}
+@inline function logdensity_def(s::SuperpositionMeasure{NTuple{2}}, β, x)
     (μ, ν) = s.components
 
     insupport(μ, x) == true || return logdensity_rel(ν, β, x)
@@ -108,7 +108,7 @@ end
 end
 
 @inline function logdensity_def(
-    s::SuperpositionMeasure{Tuple{A,B}},
+    s::SuperpositionMeasure{NTuple{2}},
     β::SuperpositionMeasure,
     x,
 ) where {A,B}
@@ -118,13 +118,13 @@ end
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-@inline function logdensity_def(s, β::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
+@inline function logdensity_def(s, β::SuperpositionMeasure{NTuple{2}}, x) 
     -logdensity_def(β, s, x)
 end
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
-function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
+function basemeasure(μ::SuperpositionMeasure{NTuple{2}})
     superpose(map(basemeasure, μ.components)...)
 end
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))

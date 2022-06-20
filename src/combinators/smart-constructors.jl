@@ -19,12 +19,12 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:AbstractArray}
+function powermeasure(μ::WeightedMeasure, dims::NTup) where {N,I<:AbstractArray,NTup<:NTuple{N,I}}
     k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function powermeasure(μ::WeightedMeasure, dims::NTup) where {N,I,NTup<:NTuple{N,I}}
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -84,6 +84,10 @@ function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
     else
         return superpose((μ, ν))
     end
+end
+
+function superpose(::T, ::T) where T<:SuperpositionMeasure
+    @error "FIXME"
 end
 
 function superpose(μ::AbstractMeasure, μs...)
@@ -163,6 +167,10 @@ kernel(::Type{T}; kwargs...) where {T} = kernel(T, NamedTuple(kwargs))
 function kernel(::Type{M}, ::NamedTuple{()}) where {M}
     C = constructorof(M)
     TypedTransitionKernel(C, identity)
+end
+
+function kernel(::Type{M}, ::NamedTuple{()}) where M<:ParameterizedMeasure
+    @error "FIXME"
 end
 
 function _kernel(f::F, ::Type{M}, ::Type{NT}) where {M,F,N,NT<:NamedTuple{N}}

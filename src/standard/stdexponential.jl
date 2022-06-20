@@ -10,5 +10,17 @@ insupport(d::StdExponential, x) = x ≥ zero(x)
 @inline transport_def(::StdUniform, μ::StdExponential, x) = - expm1(-x)
 @inline transport_def(::StdExponential, μ::StdUniform, x) = - log1p(-x)
 
+transport_def(::MeasureBase.StdUniform, ::MeasureBase.StdExponential, ::MeasureBase.NoTransformOrigin) = @error "FIXME"
+
+@inline function transport_def(::StdExponential, ::StdUniform, ::NoTransformOrigin)
+    @error "FIXME"
+end
+
+transport_def(::MeasureBase.StdUniform, ::MeasureBase.StdExponential, ::MeasureBase.NoTransport) = @error "FIXME"
+
+@inline function transport_def(::StdExponential, ::StdUniform, ::NoTransport)
+    @error "FIXME"
+end
+
 Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdExponential) where {T} = randexp(rng, T)
 

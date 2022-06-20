@@ -133,7 +133,7 @@ function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
     _basemeasure(μ, B, static(Base.issingletontype(B)))
 end
 
-function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {T,B}
+function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {B}
     return instance(B)^axes(marginals(μ))
 end
 
