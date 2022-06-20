@@ -1,6 +1,6 @@
 using Test
 
-using MeasureBase.Interface: transport_to, test_vartransform
+using MeasureBase.Interface: transport_to, test_transport
 using MeasureBase: StdUniform, StdExponential, StdLogistic
 using MeasureBase: Dirac
 
@@ -8,13 +8,13 @@ using MeasureBase: Dirac
 @testset "transport_to" begin
     for μ0 in [StdUniform(), StdExponential(), StdLogistic()], ν0 in [StdUniform(), StdExponential(), StdLogistic()]
         @testset "transport_to (variations of) $(nameof(typeof(μ0))) to $(nameof(typeof(ν0)))" begin
-            test_vartransform(ν0, μ0)
-            test_vartransform(2.2 * ν0, 3 * μ0)
-            test_vartransform(ν0, μ0^1)
-            test_vartransform(ν0^1, μ0)
-            test_vartransform(ν0^3, μ0^3)
-            test_vartransform(ν0^(2,3,2), μ0^(3,4))
-            test_vartransform(2.2 * ν0^(2,3,2), 3 * μ0^(3,4))
+            test_transport(ν0, μ0)
+            test_transport(2.2 * ν0, 3 * μ0)
+            test_transport(ν0, μ0^1)
+            test_transport(ν0^1, μ0)
+            test_transport(ν0^3, μ0^3)
+            test_transport(ν0^(2,3,2), μ0^(3,4))
+            test_transport(2.2 * ν0^(2,3,2), 3 * μ0^(3,4))
             @test_throws ArgumentError transport_to(ν0, μ0)(rand(μ0^12))
             @test_throws ArgumentError transport_to(ν0^3, μ0^3)(rand(μ0^(3,4)))
         end
@@ -22,10 +22,10 @@ using MeasureBase: Dirac
 
     @testset "transfrom from/to Dirac" begin
         μ = Dirac(4.2)
-        test_vartransform(StdExponential()^0, μ)
-        test_vartransform(StdExponential()^(0,0,0), μ)
-        test_vartransform(μ, StdExponential()^static(0))
-        test_vartransform(μ, StdExponential()^(static(0),static(0)))
+        test_transport(StdExponential()^0, μ)
+        test_transport(StdExponential()^(0,0,0), μ)
+        test_transport(μ, StdExponential()^static(0))
+        test_transport(μ, StdExponential()^(static(0),static(0)))
         @test_throws ArgumentError transport_to(StdExponential()^1, μ)
         @test_throws ArgumentError transport_to(μ, StdExponential()^1)
     end

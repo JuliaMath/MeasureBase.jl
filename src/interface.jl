@@ -13,7 +13,7 @@ using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
 
 export test_interface
-export test_vartransform
+export test_transport
 export basemeasure_depth
 export proxy
 export insupport
@@ -66,7 +66,7 @@ function test_interface(μ::M) where {M}
 end
 
 
-function test_vartransform(ν, μ)
+function test_transport(ν, μ)
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where N = AbstractArray{<:Real,N}
 
