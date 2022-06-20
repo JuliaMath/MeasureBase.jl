@@ -262,7 +262,7 @@ abstract type TransformVolCorr end
     NoVolCorr()
 
 Indicate that density calculations should ignore the volume element of
-var transformations. Should only be used in special cases in which
+variate transformations. Should only be used in special cases in which
 the volume element has already been taken into account in a different
 way.
 """
@@ -272,7 +272,7 @@ struct NoVolCorr <: TransformVolCorr end
     WithVolCorr()
 
 Indicate that density calculations should take the volume element of
-var transformations into account (typically via the
+variate transformations into account (typically via the
 log-abs-det-Jacobian of the transform).
 """
 struct WithVolCorr <: TransformVolCorr end
