@@ -140,8 +140,8 @@ end
 
 function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y_o = transport_def(ν_o, μ_o, checked_var(μ_o, x_o))
+    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
+    y_o = transport_def(ν_o, μ_o, checked_arg(μ_o, x_o))
     y = from_origin(ν, y_o)
     return y
 end
@@ -154,8 +154,8 @@ end
 
 function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_var may have been bypassed, so check now:
-    y = transport_def(ν, μ_o, checked_var(μ_o, x_o))
+    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
+    y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
     return y
 end
 
@@ -209,7 +209,7 @@ end
 
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return transport_def(f.ν, f.μ, checked_var(f.μ, x))
+    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
