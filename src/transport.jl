@@ -123,7 +123,7 @@ transport_def(::Any, ::Any, x::NoTransformOrigin) = x
 transport_def(::Any, ::Any, x::NoTransport) = x
 
 function transport_def(ν, μ, x)
-    _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
+    _transport_with_intermediate(ν, _checked_transport_origin(ν), _checked_transport_origin(μ), μ, x)
 end
 
 
@@ -132,13 +132,13 @@ function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where MU
     throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
 end
 
-@inline function _checked_vartransform_origin(μ::MU) where MU
+@inline function _checked_transport_origin(μ::MU) where MU
     μ_o = transport_origin(μ)
     _origin_must_have_separate_type(MU, μ_o)
 end
 
 
-function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
+function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
     x_o = to_origin(μ, x)
     # If μ is a pushforward then checked_arg may have been bypassed, so check now:
     y_o = transport_def(ν_o, μ_o, checked_arg(μ_o, x_o))
@@ -146,37 +146,37 @@ function _vartransform_with_intermediate(ν, ν_o, μ_o, μ, x)
     return y
 end
 
-function _vartransform_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
+function _transport_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
     y_o = transport_def(ν_o, μ, x)
     y = from_origin(ν, y_o)
     return y
 end
 
-function _vartransform_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
+function _transport_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
     # If μ is a pushforward then checked_arg may have been bypassed, so check now:
     y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
     return y
 end
 
-function _vartransform_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
-    _vartransform_with_intermediate(ν, _vartransform_intermediate(ν, μ), μ, x)
+function _transport_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
+    _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
 
-@inline _vartransform_intermediate(ν, μ) = _vartransform_intermediate(getdof(ν), getdof(μ))
-@inline _vartransform_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
-@inline _vartransform_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
+@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
+@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
+@inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
-function _vartransform_with_intermediate(ν, m, μ, x)
+function _transport_with_intermediate(ν, m, μ, x)
     z = transport_def(m, μ, x)
     y = transport_def(ν, m, z)
     return y
 end
 
 # Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline _vartransform_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
-@inline _vartransform_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
+@inline _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
+@inline _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
 
 
 """
