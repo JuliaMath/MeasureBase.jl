@@ -180,44 +180,44 @@ end
 
 
 """
-    struct VarTransformation <: Function
+    struct TransportFunction <: Function
 
 Transforms a variate from one measure to a variate of another.
 
-In general `VarTransformation` should not be called directly, call
+In general `TransportFunction` should not be called directly, call
 [`transport_to`](@ref) instead.
 """
-struct VarTransformation{NU,MU} <: Function
+struct TransportFunction{NU,MU} <: Function
     ν::NU
     μ::MU
 
-    function VarTransformation{NU,MU}(ν::NU, μ::MU) where {NU,MU}
+    function TransportFunction{NU,MU}(ν::NU, μ::MU) where {NU,MU}
         return new{NU,MU}(ν, μ)
     end
 
-    function VarTransformation(ν::NU, μ::MU) where {NU,MU}
+    function TransportFunction(ν::NU, μ::MU) where {NU,MU}
         check_dof(ν, μ)
         return new{NU,MU}(ν, μ)
     end
 end
 
-@inline transport_to(ν, μ) = VarTransformation(ν, μ)
+@inline transport_to(ν, μ) = TransportFunction(ν, μ)
 
-function Base.:(==)(a::VarTransformation, b::VarTransformation)
+function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
 
 
-Base.@propagate_inbounds function (f::VarTransformation)(x)
+Base.@propagate_inbounds function (f::TransportFunction)(x)
     return transport_def(f.ν, f.μ, checked_var(f.μ, x))
 end
 
-@inline function InverseFunctions.inverse(f::VarTransformation{NU,MU}) where {NU,MU}
-    return VarTransformation{MU,NU}(f.μ, f.ν)
+@inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
+    return TransportFunction{MU,NU}(f.μ, f.ν)
 end
 
 
-function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)
+function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
     logpdf_src = logdensityof(f.μ, x)
     logpdf_trg = logdensityof(f.ν, y)
@@ -228,18 +228,18 @@ function ChangesOfVariables.with_logabsdet_jacobian(f::VarTransformation, x)
 end
 
 
-Base.:(∘)(::typeof(identity), f::VarTransformation) = f
-Base.:(∘)(f::VarTransformation, ::typeof(identity)) = f
+Base.:(∘)(::typeof(identity), f::TransportFunction) = f
+Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f
 
-function Base.:∘(outer::VarTransformation, inner::VarTransformation)
+function Base.:∘(outer::TransportFunction, inner::TransportFunction)
     if !(outer.μ == inner.ν || isequal(outer.μ, inner.ν) || outer.μ ≈ inner.ν)
-        throw(ArgumentError("Cannot compose VarTransformation if source of outer doesn't equal target of inner."))
+        throw(ArgumentError("Cannot compose TransportFunction if source of outer doesn't equal target of inner."))
     end 
-    return VarTransformation(outer.ν, inner.μ)
+    return TransportFunction(outer.ν, inner.μ)
 end
 
 
-function Base.show(io::IO, f::VarTransformation)
+function Base.show(io::IO, f::TransportFunction)
     print(io, Base.typename(typeof(f)).name, "(")
     show(io, f.ν)
     print(io, ", ")
@@ -247,7 +247,7 @@ function Base.show(io::IO, f::VarTransformation)
     print(io, ")")
 end
 
-Base.show(io::IO, M::MIME"text/plain", f::VarTransformation) = show(io, f)
+Base.show(io::IO, M::MIME"text/plain", f::TransportFunction) = show(io, f)
 
 
 """
