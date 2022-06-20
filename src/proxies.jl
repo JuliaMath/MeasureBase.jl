@@ -14,10 +14,10 @@ function proxy end
 macro useproxy(M)
     M = esc(M)
     quote
-        @inline $MeasureBase.logdensity_def(μ::$M, x) = logdensity_def(proxy(μ), x)
+        @inline $logdensity_def(μ::$M, x) = logdensity_def(proxy(μ), x)
 
-        @inline $MeasureBase.basemeasure(μ::$M) = basemeasure(proxy(μ))
+        @inline $basemeasure(μ::$M) = basemeasure(proxy(μ))
 
-        @inline $MeasureBase.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
+        @inline $basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
     end
 end
