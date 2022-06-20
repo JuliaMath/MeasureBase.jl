@@ -41,12 +41,12 @@ to_origin(ν::NU, ::Any) where NU = NoTransformOrigin{NU}(ν)
 
 
 """
-    struct MeasureBase.NoVarTransform{NU,MU} end
+    struct MeasureBase.NoTransport{NU,MU} end
 
 Indicates that no transformation from a measure of type `MU` to a measure of
 type `NU` could be found.
 """
-struct NoVarTransform{NU,MU} end
+struct NoTransport{NU,MU} end
 
 
 """
@@ -120,7 +120,7 @@ See [`transport_to`](@ref).
 function transport_def end
 
 transport_def(::Any, ::Any, x::NoTransformOrigin) = x
-transport_def(::Any, ::Any, x::NoVarTransform) = x
+transport_def(::Any, ::Any, x::NoTransport) = x
 
 function transport_def(ν, μ, x)
     _vartransform_with_intermediate(ν, _checked_vartransform_origin(ν), _checked_vartransform_origin(μ), μ, x)
@@ -175,8 +175,8 @@ function _vartransform_with_intermediate(ν, m, μ, x)
 end
 
 # Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline _vartransform_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
-@inline _vartransform_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoVarTransform{NU,MU}()
+@inline _vartransform_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
+@inline _vartransform_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU} = NoTransport{NU,MU}()
 
 
 """

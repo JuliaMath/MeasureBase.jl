@@ -6,7 +6,7 @@ using Reexport
 
 using MeasureBase: basemeasure_depth, proxy
 using MeasureBase: insupport, basemeasure_sequence, commonbase
-using MeasureBase: transport_to, NoVarTransform
+using MeasureBase: transport_to, NoTransport
 
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
@@ -72,7 +72,7 @@ function test_transport(ν, μ)
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
-        @test !(@inferred(transport_to(ν, μ)(x)) isa NoVarTransform)
+        @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)
         f = transport_to(ν, μ)
         y = f(x)
         @test @inferred(inverse(f)(y)) ≈ x
