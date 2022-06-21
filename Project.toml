@@ -42,7 +42,7 @@ MappedArrays = "0.4"
 NaNMath = "0.3, 1"
 PrettyPrinting = "0.3, 0.4"
 Reexport = "1"
-Static = "0.5, 0.6"
+Static = "0.5, 0.6, 0.7"
 Tricks = "0.1"
 julia = "1.3"
 
