@@ -126,17 +126,6 @@ end
     -logdensity_def(β, s, x)
 end
 
-function logdensity_def(
-    ::T,
-    ::S,
-    ::Any,
-) where {
-    T<:(MeasureBase.SuperpositionMeasure{Tuple{A,B}} where {A,B}),
-    S<:(MeasureBase.SuperpositionMeasure{Tuple{A,B}} where {A,B}),
-}
-    @error "FIXME"
-end
-
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
 function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}

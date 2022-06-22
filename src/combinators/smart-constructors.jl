@@ -29,7 +29,7 @@ function powermeasure(
     return weightedmeasure(k, μ.base^dims)
 end
 
-function powermeasure(μ::WeightedMeasure, dims::Tuple{<:Integer,Vararg{<:Integer}})
+function powermeasure(μ::WeightedMeasure, dims::NonEmptyTuple)
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -89,10 +89,6 @@ function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
     else
         return superpose((μ, ν))
     end
-end
-
-function superpose(::T, ::T) where {T<:SuperpositionMeasure}
-    @error "FIXME"
 end
 
 function superpose(μ::AbstractMeasure, μs...)
@@ -172,10 +168,6 @@ kernel(::Type{T}; kwargs...) where {T} = kernel(T, NamedTuple(kwargs))
 function kernel(::Type{M}, ::NamedTuple{()}) where {M}
     C = constructorof(M)
     TypedTransitionKernel(C, identity)
-end
-
-function kernel(::Type{M}, ::NamedTuple{()}) where {M<:ParameterizedMeasure}
-    @error "FIXME"
 end
 
 function _kernel(f::F, ::Type{M}, ::Type{NT}) where {M,F,N,NT<:NamedTuple{N}}
