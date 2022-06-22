@@ -1,4 +1,5 @@
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
+const NonEmptyTuple = Tuple{Any, Vararg{Any}}
 
 function Base.show(io::IO, μ::AbstractMeasure)
     io = IOContext(io, :compact => true)
