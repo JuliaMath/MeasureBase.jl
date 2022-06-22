@@ -122,7 +122,7 @@ end
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
-@inline function logdensity_def(s, β::S, x) where {A,B,S<:SuperpositionMeasure{Tuple{A,B}}}
+@inline function logdensity_def(s, β::(SuperpositionMeasure{Tuple{A,B}} where {A,B}), x)
     -logdensity_def(β, s, x)
 end
 
