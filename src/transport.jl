@@ -1,15 +1,15 @@
 """
-    struct NoTransformOrigin{NU}
+    struct MeasureBase.NoTransformOrigin{NU}
 
 Indicates that no (default) pullback measure is available for measures of
 type `NU`.
 
-See [`transport_origin`](@ref).
+See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransformOrigin{NU} end
 
 """
-    transport_origin(ν)
+    MeasureBase.transport_origin(ν)
 
 Default measure to pullback to resp. pushforward from when transforming
 between `ν` and another measure.
@@ -19,25 +19,25 @@ function transport_origin end
 transport_origin(ν::NU) where {NU} = NoTransformOrigin{NU}()
 
 """
-    from_origin(ν, x)
+    MeasureBase.from_origin(ν, x)
 
-Push `x` from `transport_origin(μ)` forward to `ν`.
+Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
 from_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}()
 
 """
-    to_origin(ν, y)
+    MeasureBase.to_origin(ν, y)
 
-Pull `y` from `ν` back to `transport_origin(ν)`.
+Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
 to_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}(ν)
 
 """
-    struct NoTransport{NU,MU} end
+    struct MeasureBase.NoTransport{NU,MU} end
 
 Indicates that no transformation from a measure of type `MU` to a measure of
 type `NU` could be found.
@@ -67,16 +67,16 @@ Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
 
 To add transformation rules for a measure type `MyMeasure`, specialize
 
-* `transport_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
-* `transport_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
+* `MeasureBase.transport_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
+* `MeasureBase.transport_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
 
 and/or
 
-* `transport_origin(ν::MyMeasure) = SomeMeasure(...)`
-* `from_origin(μ::MyMeasure, x) = y`
-* `to_origin(μ::MyMeasure, y) = x`
+* `MeasureBase.transport_origin(ν::MyMeasure) = SomeMeasure(...)`
+* `MeasureBase.from_origin(μ::MyMeasure, x) = y`
+* `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
-and ensure `getdof(μ::MyMeasure)` is defined correctly.
+and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
 
 A standard measure type like `StdUniform`, `StdExponential` or
 `StdLogistic` may also be used as the source or target of the transform:

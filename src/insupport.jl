@@ -11,7 +11,7 @@ insupport(m)(x) == insupport(m, x)
 function insupport end
 
 """
-    require_insupport(μ, x)::Nothing
+    MeasureBase.require_insupport(μ, x)::Nothing
 
 Checks if `x` is in the support of distribution/measure `μ`, throws an
 `ArgumentError` if not.
