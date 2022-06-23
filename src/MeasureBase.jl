@@ -46,7 +46,7 @@ include("insupport.jl")
 
 abstract type AbstractMeasure end
 
-using Static: @constprop
+using Compat: @constprop
 
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
