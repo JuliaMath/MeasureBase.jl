@@ -2,12 +2,23 @@ using Test
 using Base.Iterators: take
 using Random
 using LinearAlgebra
+import LogarithmicNumbers
 
 using MeasureBase
 using MeasureBase: test_interface
 
 using Aqua
-Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
+Aqua.test_all(MeasureBase; ambiguities = false)
+
+# Aqua._test_ambiguities(
+#     Aqua.aspkgids(MeasureBase);
+#     exclude = [LogarithmicNumbers.Logarithmic],
+#     # packages::Vector{PkgId};
+#     # color::Union{Bool, Nothing} = nothing,
+#     # exclude::AbstractArray = [],
+#     # # Options to be passed to `Test.detect_ambiguities`:
+#     # detect_ambiguities_options...,
+# )
 
 d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 

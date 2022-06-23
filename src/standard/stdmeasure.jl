@@ -37,17 +37,18 @@ _std_measure(::Type{M}, ::StaticInt{1}) where {M<:StdMeasure} = M()
 _std_measure(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
 _std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
 
-function MeasureBase.transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
     transport_to(_std_measure_for(NU, μ), μ)
 end
-function MeasureBase.transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+
+function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
     transport_to(ν, _std_measure_for(MU, ν))
 end
 
 # Transform between standard measures and Dirac:
 
-@inline transport_def(ν::Dirac, ::PowerMeasure{<:MeasureBase.StdMeasure}, ::Any) = ν.x
+@inline transport_def(ν::Dirac, ::PowerMeasure{<:StdMeasure}, ::Any) = ν.x
 
-@inline function transport_def(ν::PowerMeasure{<:MeasureBase.StdMeasure}, ::Dirac, ::Any)
+@inline function transport_def(ν::PowerMeasure{<:StdMeasure}, ::Dirac, ::Any)
     Zeros{Bool}(map(_ -> 0, ν.axes))
 end
