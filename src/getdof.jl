@@ -1,5 +1,5 @@
 """
-    NoDOF{MU}
+    MeasureBase.NoDOF{MU}
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
@@ -28,10 +28,10 @@ function getdof end
 @inline getdof(μ::MU) where {MU} = _default_getdof(MU, basemeasure(μ))
 
 """
-    check_dof(ν, μ)::Nothing
+    MeasureBase.check_dof(ν, μ)::Nothing
 
 Check if `ν` and `μ` have the same effective number of degrees of freedom
-according to [`getdof`](@ref).
+according to [`MeasureBase.getdof`](@ref).
 """
 function check_dof end
 
@@ -52,7 +52,7 @@ _check_dof_pullback(ΔΩ) = NoTangent(), NoTangent(), NoTangent()
 ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_dof_pullback
 
 """
-    NoArgCheck{MU,T}
+    MeasureBase.NoArgCheck{MU,T}
 
 Indicates that there is no way to check of a values of type `T` are
 variate of measures of type `MU`.
@@ -60,7 +60,7 @@ variate of measures of type `MU`.
 struct NoArgCheck{MU,T} end
 
 """
-    checked_arg(μ::MU, x::T)::T
+    MeasureBase.checked_arg(μ::MU, x::T)::T
 
 Return `x` if `x` is a valid variate of `μ`, throw an `ArgumentError` if not,
 return `NoArgCheck{MU,T}()` if not check can be performed.
