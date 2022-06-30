@@ -5,4 +5,4 @@
 [![Build Status](https://github.com/cscherrer/MeasureBase.jl/workflows/CI/badge.svg)](https://github.com/cscherrer/MeasureBase.jl/actions)
 [![Coverage](https://codecov.io/gh/cscherrer/MeasureBase.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/cscherrer/MeasureBase.jl)
 
-This package is a lightweight version of [MeasureTheory](https://github.com/cscherrer/MeasureTheory.jl). It contains only the basic functionalities needed to define and use measures.
+This light-weight package contains core functionality of [MeasureTheory](https://github.com/cscherrer/MeasureTheory.jl), it contains only the basic functionalities needed to define and use measures.
