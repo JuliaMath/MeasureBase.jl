@@ -1,5 +1,14 @@
-diagonal_pair(x) = x => x
+latentof(m) = m
+manifestof(m) = m
 
-latentof(m::AbstractMeasure) = m
-manifestof(m::AbstractMeasure) = m
-jointof(m::AbstractMeasure) = pushfwd(diagonal_pair, m)
+function jointof(m)
+    fwd(x) = x => x
+    
+    function back(p::Pair)
+        x,y = p
+        @assert x === y
+        return x
+    end
+
+    PushforwardMeasure(fwd, back, m, NoVolCorr())
+end
