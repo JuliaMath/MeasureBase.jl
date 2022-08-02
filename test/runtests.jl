@@ -137,6 +137,10 @@ end
 #     end
 # end
 
+@testset "broadcasting" begin
+    @test logdensityof.(Dirac(2), [1,2,3]) isa Vector{Float64}
+end
+
 @testset "powers" begin
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
