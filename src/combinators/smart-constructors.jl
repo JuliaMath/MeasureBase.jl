@@ -19,12 +19,17 @@ end
 ###############################################################################
 # PowerMeaure
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I<:AbstractArray}
+powermeasure(m::AbstractMeasure, ::Tuple{}) = m
+
+function powermeasure(
+    μ::WeightedMeasure,
+    dims::Tuple{<:AbstractArray,Vararg{<:AbstractArray}},
+)
     k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
 
-function powermeasure(μ::WeightedMeasure, dims::NTuple{N,I}) where {N,I}
+function powermeasure(μ::WeightedMeasure, dims::NonEmptyTuple)
     k = prod(dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)
 end
@@ -80,7 +85,7 @@ superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
 function superpose(μ::T, ν::T) where {T<:AbstractMeasure}
     if μ == ν
-        return weightedmeasure(static(logtwo), μ)
+        return weightedmeasure(logtwo, μ)
     else
         return superpose((μ, ν))
     end
@@ -127,7 +132,7 @@ function kernel(d::PowerMeasure)
 end
 
 function kernel(f)
-    T = Core.Compiler.return_type(f, Tuple{Any} )
+    T = Core.Compiler.return_type(f, Tuple{Any})
     _kernel(f, T)
 end
 

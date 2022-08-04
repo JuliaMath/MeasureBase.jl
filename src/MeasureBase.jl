@@ -1,6 +1,6 @@
 module MeasureBase
 
-const logtwo = log(2.0)
+using Base: @propagate_inbounds
 
 using Random
 import Random: rand!
@@ -13,6 +13,9 @@ import DensityInterface: densityof
 import DensityInterface: DensityKind
 using DensityInterface
 
+using InverseFunctions
+using ChangesOfVariables
+
 import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
@@ -20,6 +23,7 @@ using ConstructionBase: constructorof
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
+using ChainRulesCore
 using FillArrays
 using Static
 
@@ -48,6 +52,10 @@ export productmeasure
 function insupport end
 
 export insupport
+export getdof
+export transport_to
+
+include("insupport.jl")
 
 abstract type AbstractMeasure end
 
@@ -65,7 +73,7 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
 using NaNMath
-using LogExpFunctions: logsumexp
+using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
 
@@ -94,6 +102,10 @@ function logdensity_def end
 
 using Compat
 
+using IrrationalConstants
+
+include("getdof.jl")
+include("transport.jl")
 include("schema.jl")
 include("splat.jl")
 include("proxies.jl")
@@ -123,6 +135,12 @@ include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
+
+include("standard/stdmeasure.jl")
+include("standard/stduniform.jl")
+include("standard/stdexponential.jl")
+include("standard/stdlogistic.jl")
+include("latent-joint.jl")
 
 include("rand.jl")
 

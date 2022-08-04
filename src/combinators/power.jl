@@ -85,6 +85,13 @@ end
     end
 end
 
+@inline function logdensity_def(
+    d::PowerMeasure{M,NTuple{N,Base.OneTo{StaticInt{0}}}},
+    x,
+) where {M,N}
+    static(0.0)
+end
+
 @inline function insupport(μ::PowerMeasure, x)
     p = μ.parent
     all(x) do xj
@@ -99,4 +106,25 @@ end
         # https://github.com/SciML/Static.jl/issues/36
         dynamic(insupport(p, xj))
     end
+end
+
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
+
+@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Base.OneTo{StaticInt{0}}}}) where {N}
+    static(0)
+end
+
+@propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
+    @boundscheck begin
+        sz_μ = map(length, μ.axes)
+        sz_x = size(x)
+        if sz_μ != sz_x
+            throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        end
+    end
+    return x
+end
+
+function checked_arg(μ::PowerMeasure, x::Any)
+    throw(ArgumentError("Size of variate doesn't match size of power measure"))
 end

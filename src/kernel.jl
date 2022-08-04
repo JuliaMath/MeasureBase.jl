@@ -76,7 +76,6 @@ end
 
 (k::AbstractTransitionKernel)(; kwargs...) = k(NamedTuple(kwargs))
 
-
 """
 For any `k::TransitionKernel`, `basekernel` is expected to satisfy
 ```
@@ -106,7 +105,6 @@ function Pretty.tile(k::K) where {K<:AbstractTransitionKernel}
         prefix = nameof(constructorof(K)),
     )
 end
-
 
 const kleisli = kernel
 

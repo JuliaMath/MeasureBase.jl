@@ -12,7 +12,7 @@ end
 unhalf(μ::Half) = μ.parent
 
 @inline function basemeasure(μ::Half)
-    weightedmeasure(static(logtwo), basemeasure(unhalf(μ)))
+    weightedmeasure(logtwo, basemeasure(unhalf(μ)))
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}

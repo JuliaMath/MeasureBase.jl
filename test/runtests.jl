@@ -2,12 +2,23 @@ using Test
 using Base.Iterators: take
 using Random
 using LinearAlgebra
+import LogarithmicNumbers
 
 using MeasureBase
 using MeasureBase: test_interface
 
 using Aqua
-Aqua.test_all(MeasureBase; ambiguities = false, unbound_args = false)
+Aqua.test_all(MeasureBase; ambiguities = false)
+
+# Aqua._test_ambiguities(
+#     Aqua.aspkgids(MeasureBase);
+#     exclude = [LogarithmicNumbers.Logarithmic],
+#     # packages::Vector{PkgId};
+#     # color::Union{Bool, Nothing} = nothing,
+#     # exclude::AbstractArray = [],
+#     # # Options to be passed to `Test.detect_ambiguities`:
+#     # detect_ambiguities_options...,
+# )
 
 d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 
@@ -37,6 +48,28 @@ test_measures = [
     Dirac(0) + Dirac(1)
     Dirac(0.0) + Lebesgue(ℝ)
     SpikeMixture(Lebesgue(ℝ), 0.2)
+    StdLogistic()
+    StdLogistic()^3
+    StdLogistic()^(2, 3)
+    3 * StdLogistic()
+    0.2 * StdLogistic() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdLogistic()
+    SpikeMixture(StdLogistic(), 0.2)
+    StdUniform()
+    StdUniform()^3
+    StdUniform()^(2, 3)
+    3 * StdUniform()
+    0.2 * StdUniform() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdUniform()
+    SpikeMixture(StdUniform(), 0.2)
+    StdExponential()^3
+    StdExponential()^(2, 3)
+    3 * StdExponential()
+    StdExponential()
+    0.2 * StdExponential() + 0.8 * Dirac(0.0)
+    Dirac(0.0) + StdExponential()
+    SpikeMixture(StdExponential(), 0.2)
+
     # d ⊙ d
 ]
 
@@ -211,4 +244,8 @@ end
     #     end
 end
 
+include("getdof.jl")
+include("transport.jl")
+
 include("combinators/weighted.jl")
+include("combinators/transformedmeasure.jl")

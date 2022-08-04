@@ -29,3 +29,10 @@ dirac(d::AbstractMeasure) = Dirac(rand(d))
 testvalue(d::Dirac) = d.x
 
 insupport(d::Dirac, x) = x == d.x
+
+@inline getdof(::Dirac) = static(0)
+
+@propagate_inbounds function checked_arg(μ::Dirac, x)
+    @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
+    x
+end

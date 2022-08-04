@@ -48,3 +48,7 @@ Base.:*(m::AbstractMeasure, k::Real) = k * m
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
+
+transport_origin(ν::WeightedMeasure) = ν.base
+to_origin(::WeightedMeasure, y) = y
+from_origin(::WeightedMeasure, x) = x
