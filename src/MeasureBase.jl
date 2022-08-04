@@ -59,6 +59,8 @@ include("insupport.jl")
 
 abstract type AbstractMeasure end
 
+AbstractMeasure(m::AbstractMeasure) = m
+
 using Static: @constprop
 
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
