@@ -38,6 +38,8 @@ function test_interface(μ::M) where {M}
         @testset "$μ" begin
             μ = $μ
 
+            @test AbstractMeasure(μ) isa AbstractMeasure
+
             ###########################################################################
             # basemeasure_depth
             static_depth = @inferred basemeasure_depth(μ)
