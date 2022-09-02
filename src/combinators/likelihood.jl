@@ -121,6 +121,8 @@ struct Likelihood{K,X} <: AbstractLikelihood
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
 
+(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
+
 DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
 
 function Pretty.quoteof(ℓ::Likelihood)
@@ -146,24 +148,24 @@ end
 
 # basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
 
-export likelihood
+export likelihoodof
 
 """
-    likelihood(k::AbstractTransitionKernel, x; constraints...)
-    likelihood(k::AbstractTransitionKernel, x, constraints::NamedTuple)
+    likelihoodof(k::AbstractTransitionKernel, x; constraints...)
+    likelihoodof(k::AbstractTransitionKernel, x, constraints::NamedTuple)
 
 A likelihood is *not* a measure. Rather, a likelihood acts on a measure, through
 the "pointwise product" `⊙`, yielding another measure.
 """
-function likelihood end
+function likelihoodof end
 
-likelihood(k, x, ::NamedTuple{()}) = Likelihood(k, x)
+likelihoodof(k, x, ::NamedTuple{()}) = Likelihood(k, x)
 
-likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
+likelihoodof(k, x; kwargs...) = likelihoodof(k, x, NamedTuple(kwargs))
 
-likelihood(k, x, pars::NamedTuple) = likelihood(kernel(k, pars), x)
+likelihoodof(k, x, pars::NamedTuple) = likelihoodof(kernel(k, pars), x)
 
-likelihood(k::AbstractTransitionKernel, x) = Likelihood(k, x)
+likelihoodof(k::AbstractTransitionKernel, x) = Likelihood(k, x)
 
 export log_likelihood_ratio
 
@@ -182,4 +184,22 @@ more efficient than
 """
 log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
 
-# likelihood(k, x; kwargs...) = likelihood(k, x, NamedTuple(kwargs))
+# likelihoodof(k, x; kwargs...) = likelihoodof(k, x, NamedTuple(kwargs))
+
+export likelihood_ratio
+
+"""
+    likelihood_ratio(ℓ::Likelihood, p, q)
+
+Compute the log of the likelihood ratio, in order to compare two choices for
+parameters. This is equal to
+
+    density_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+
+but is computed using LogarithmicNumbers.jl to avoid underflow and overflow.
+Since `density_rel` can leave common base measure unevaluated, this can be
+more efficient than
+
+    logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
+"""
+likelihood_ratio(ℓ::Likelihood, p, q) = exp(ULogarithmic, logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x))

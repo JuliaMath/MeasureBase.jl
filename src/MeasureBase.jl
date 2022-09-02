@@ -70,6 +70,8 @@ end
 
 @inline DensityKind(::AbstractMeasure) = HasDensity()
 
+Broadcast.broadcastable(m::AbstractMeasure) = Ref(m)
+
 gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
