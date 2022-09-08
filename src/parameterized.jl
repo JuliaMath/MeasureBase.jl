@@ -60,8 +60,6 @@ function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
     return C(NamedTuple{N}(args))::C{N,typeof(args)}
 end
 
-# (::Type{P})(; kwargs...) where {P<:ParameterizedMeasure} = P(NamedTuple(kwargs))
-
 function ConstructionBase.setproperties(
     d::P,
     nt::NamedTuple,
