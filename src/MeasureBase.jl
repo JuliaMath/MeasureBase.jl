@@ -148,6 +148,7 @@ include("standard/stdnormal.jl")
 include("latent-joint.jl")
 
 include("rand.jl")
+include("fixedrng.jl")
 
 include("density.jl")
 
