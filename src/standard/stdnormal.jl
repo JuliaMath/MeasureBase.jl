@@ -5,7 +5,7 @@ export StdNormal
 @inline insupport(d::StdNormal, x) = true
 
 @inline logdensity_def(::StdNormal, x) = -x^2 / 2
-@inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), Lebesgue(ℝ))
+@inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), LebesgueMeasure())
 
 @inline getdof(::StdNormal) = static(1)
 
