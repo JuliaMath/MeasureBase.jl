@@ -45,7 +45,7 @@ end
     kernel(f)
 end
 
-function (::Type{P})(nt::NamedTuple) where {N,P<:ParameterizedMeasure{N}}
+function (::Type{P})(nt::NamedTuple{K,T}) where {K,T,N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)
     return _parameterized(C, arg)
@@ -59,8 +59,6 @@ function (::Type{P})(args...) where {N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     return C(NamedTuple{N}(args))::C{N,typeof(args)}
 end
-
-(::Type{P})(; kwargs...) where {P<:ParameterizedMeasure} = P(NamedTuple(kwargs))
 
 function ConstructionBase.setproperties(
     d::P,
