@@ -1,12 +1,12 @@
 using Test
 
 using MeasureBase.Interface: transport_to, test_transport
-using MeasureBase: StdUniform, StdExponential, StdLogistic
+using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac
 
 @testset "transport_to" begin
-    for μ0 in [StdUniform(), StdExponential(), StdLogistic()],
-        ν0 in [StdUniform(), StdExponential(), StdLogistic()]
+    for μ0 in [StdUniform(), StdExponential(), StdLogistic(), StdNormal()],
+        ν0 in [StdUniform(), StdExponential(), StdLogistic(), StdNormal()]
 
         @testset "transport_to (variations of) $(nameof(typeof(μ0))) to $(nameof(typeof(ν0)))" begin
             test_transport(ν0, μ0)
