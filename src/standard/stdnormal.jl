@@ -18,4 +18,3 @@ export StdNormal
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)
 
 
-@inline StdMeasure(::typeof(randn)) = StdNormal()

@@ -2,6 +2,7 @@ abstract type StdMeasure <: AbstractMeasure end
 
 StdMeasure(::typeof(rand)) = StdUniform()
 StdMeasure(::typeof(randexp)) = StdExponential()
+StdMeasure(::typeof(randn)) = StdNormal()
 
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 
