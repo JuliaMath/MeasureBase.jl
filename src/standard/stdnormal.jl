@@ -1,3 +1,5 @@
+using SpecialFunctions
+
 struct StdNormal <: StdMeasure end
 
 export StdNormal
