@@ -31,8 +31,30 @@ struct PushforwardMeasure{FF,IF,M,VC<:TransformVolCorr} <: AbstractPushforward
     volcorr::VC
 end
 
+
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
+
+transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
+
+from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
+to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(f), y))
+
+transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
+    if μ == parent(ν)
+        return ν.f(x)
+    else
+        invoke(transport_def, Tuple{Any, Any, Any}, ν, μ, x)
+    end
+end
+
+transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M}
+    if μ == parent(ν)
+        return ν.inv_f(x)
+    else
+        invoke(transport_def, Tuple{Any, Any, Any}, μ, ν, x)
+    end
+end
 
 function Pretty.tile(ν::PushforwardMeasure)
     Pretty.list_layout(Pretty.tile.([ν.f, ν.inv_f, ν.origin]); prefix = :PushforwardMeasure)
