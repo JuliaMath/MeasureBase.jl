@@ -42,6 +42,7 @@ logdensity_def(::LebesgueMeasure, ::CountingMeasure, x) = -Inf
 logdensity_def(::CountingMeasure, ::LebesgueMeasure, x) = Inf
 
 @inline getdof(::Lebesgue) = static(1)
+@inline getdof(::LebesgueMeasure) = static(1)
 
 @inline checked_arg(::Lebesgue, x::Real) = x
 @inline checked_arg(::LebesgueMeasure, x::Real) = x

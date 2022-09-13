@@ -35,11 +35,6 @@ end
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
-transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
-
-from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
-to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(f), y))
-
 function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
     if μ == parent(ν)
         return ν.f(x)
@@ -108,9 +103,14 @@ end
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
-@inline transport_origin(ν::PushforwardMeasure) = ν.origin
-@inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-@inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
+# @inline transport_origin(ν::PushforwardMeasure) = ν.origin
+# @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
+# @inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
+
+@inline transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
+@inline from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
+@inline to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(f), y))
+
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return from_origin(ν, rand(rng, T, transport_origin(ν)))
