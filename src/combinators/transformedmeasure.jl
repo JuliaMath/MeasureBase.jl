@@ -113,7 +113,7 @@ end
 
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
-    return from_origin(ν, rand(rng, T, transport_origin(ν)))
+    return ν.f(rand(rng, T, parent(ν)))
 end
 
 export pushfwd
