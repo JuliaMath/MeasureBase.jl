@@ -37,6 +37,6 @@ function Base.rand(rng::AbstractRNG, T::Type, μ::SpikeMixture)
     return (rand(rng, T) < μ.w) * rand(rng, T, μ.m)
 end
 
-testvalue(μ::SpikeMixture) = testvalue(μ.m)
+testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
 
 insupport(μ::SpikeMixture, x) = dynamic(insupport(μ.m, x)) || iszero(x)

@@ -26,8 +26,6 @@ export dirac
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
-testvalue(d::Dirac) = d.x
-
 insupport(d::Dirac, x) = x == d.x
 
 @inline getdof(::Dirac) = static(0)

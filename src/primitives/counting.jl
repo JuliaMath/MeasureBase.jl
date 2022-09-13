@@ -20,7 +20,7 @@ basemeasure(::Counting) = CountingMeasure()
 
 Counting() = Counting(ℤ)
 
-testvalue(d::Counting) = testvalue(d.support)
+testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 
 proxy(d::Counting) = restrict(in(d.support), CountingMeasure())
 

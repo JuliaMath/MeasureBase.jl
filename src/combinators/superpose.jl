@@ -34,7 +34,7 @@ function Pretty.tile(d::SuperpositionMeasure)
     result *= Pretty.literal(")")
 end
 
-testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
+testvalue(::Type{T}, μ::SuperpositionMeasure) where {T} = testvalue(T, first(μ.components))
 
 # SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
 

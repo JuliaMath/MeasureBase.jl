@@ -84,7 +84,7 @@ end
 
 insupport(ν::PushforwardMeasure, y) = insupport(transport_origin(ν), to_origin(ν, y))
 
-testvalue(ν::PushforwardMeasure) = from_origin(ν, testvalue(transport_origin(ν)))
+testvalue(::Type{T}, ν::PushforwardMeasure) where {T} = from_origin(ν, testvalue(T, transport_origin(ν)))
 
 @inline function basemeasure(ν::PushforwardMeasure)
     PushforwardMeasure(ν.f, ν.inv_f, basemeasure(transport_origin(ν)), NoVolCorr())
@@ -109,7 +109,7 @@ end
 
 @inline transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
 @inline from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
-@inline to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(f), y))
+@inline to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(μ), y))
 
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}

@@ -24,7 +24,7 @@ Lebesgue() = Lebesgue(ℝ)
 
 # basemeasure(::Lebesgue) = LebesgueMeasure()
 
-testvalue(d::Lebesgue) = testvalue(d.support)
+testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueMeasure())
 @useproxy Lebesgue

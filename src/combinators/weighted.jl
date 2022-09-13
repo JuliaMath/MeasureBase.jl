@@ -20,6 +20,8 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) whe
     rand(rng, T, basemeasure(μ))
 end
 
+testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basemeasure(μ))
+
 ###############################################################################
 
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure

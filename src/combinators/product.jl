@@ -161,7 +161,7 @@ marginals(μ::ProductMeasure) = μ.marginals
 _map(f, args...) = map(f, args...)
 _map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(f ∘ x.f, x.data)
 
-testvalue(d::AbstractProductMeasure) = _map(testvalue, marginals(d))
+testvalue(::Type{T}, d::AbstractProductMeasure) where {T} = _map(m -> testvalue(T, m), marginals(d))
 
 export ⊗
 

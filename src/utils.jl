@@ -11,13 +11,9 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
 
-function testvalue(μ::M) where {M<:AbstractMeasure}
-    if Core.Compiler.return_type(rand, Tuple{M}) isa Core.TypeofBottom
-        return testvalue(basemeasure(μ))
-    else
-        return rand(FixedRNG(), μ)
-    end
-end
+@inline testvalue(μ) = testvalue(Float64, μ) 
+
+@inline testvalue(::Type{T}, μ) where {T} = rand(FixedRNG(), T, μ)
 
 testvalue(::Type{T}) where {T} = zero(T)
 
