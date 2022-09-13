@@ -40,7 +40,7 @@ transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
 from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
 to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(f), y))
 
-transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
+function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
     if μ == parent(ν)
         return ν.f(x)
     else
@@ -48,11 +48,11 @@ transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
     end
 end
 
-transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M}
+function transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M}
     if μ == parent(ν)
-        return ν.inv_f(x)
+        return ν.inv_f(y)
     else
-        invoke(transport_def, Tuple{Any, Any, Any}, μ, ν, x)
+        invoke(transport_def, Tuple{Any, Any, Any}, μ, ν, y)
     end
 end
 

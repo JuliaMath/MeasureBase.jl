@@ -3,8 +3,18 @@ using Test
 using MeasureBase.Interface: transport_to, test_transport
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac
+using LogExpFunctions: logit
 
 @testset "transport_to" begin
+    for (f, μ) in [
+        (logit, StdUniform())
+        (log, StdExponential())
+        (cbrt, StdNormal())
+    ]
+        test_transport(μ, pushfwd(f, μ))
+        test_transport(pushfwd(f, μ), μ)
+    end
+
     for μ0 in [StdUniform(), StdExponential(), StdLogistic(), StdNormal()],
         ν0 in [StdUniform(), StdExponential(), StdLogistic(), StdNormal()]
 
