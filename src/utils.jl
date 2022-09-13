@@ -10,7 +10,15 @@ showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
-testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
+
+function testvalue(μ::M) where {M<:AbstractMeasure}
+    if Core.Compiler.return_type(rand, Tuple{M}) isa Core.TypeofBottom
+        return testvalue(basemeasure(μ))
+    else
+        return rand(FixedRNG(), μ)
+    end
+end
+
 testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
