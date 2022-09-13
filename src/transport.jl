@@ -1,12 +1,12 @@
 """
-    struct MeasureBase.NoTransformOrigin{NU}
+    struct MeasureBase.NoTransportOrigin{NU}
 
 Indicates that no (default) pullback measure is available for measures of
 type `NU`.
 
 See [`MeasureBase.transport_origin`](@ref).
 """
-struct NoTransformOrigin{NU} end
+struct NoTransportOrigin{NU} end
 
 """
     MeasureBase.transport_origin(ν)
@@ -16,7 +16,7 @@ between `ν` and another measure.
 """
 function transport_origin end
 
-transport_origin(ν::NU) where {NU} = NoTransformOrigin{NU}()
+transport_origin(ν::NU) where {NU} = NoTransportOrigin{NU}()
 
 """
     MeasureBase.from_origin(ν, x)
@@ -25,7 +25,7 @@ Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
-from_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}()
+from_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
 
 """
     MeasureBase.to_origin(ν, y)
@@ -34,7 +34,7 @@ Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
-to_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}(ν)
+to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}(ν)
 
 """
     struct MeasureBase.NoTransport{NU,MU} end
@@ -62,7 +62,7 @@ The resulting function `f` should support
 so that densities of `ν` can be derived from densities of `μ` via `f` (using
 appropriate base measures).
 
-Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
+Returns NoTransportOrigin{typeof(ν),typeof(μ)} if no transformation from
 `μ` to `ν` can be found.
 
 To add transformation rules for a measure type `MyMeasure`, specialize
@@ -113,7 +113,7 @@ See [`transport_to`](@ref).
 """
 function transport_def end
 
-transport_def(::Any, ::Any, x::NoTransformOrigin) = x
+transport_def(::Any, ::Any, x::NoTransportOrigin) = x
 transport_def(::Any, ::Any, x::NoTransport) = x
 
 function transport_def(ν, μ, x)
@@ -144,20 +144,20 @@ function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
     return y
 end
 
-function _transport_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
+function _transport_with_intermediate(ν, ν_o, ::NoTransportOrigin, μ, x)
     y_o = transport_def(ν_o, μ, x)
     y = from_origin(ν, y_o)
     return y
 end
 
-function _transport_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
+function _transport_with_intermediate(ν, ::NoTransportOrigin, μ_o, μ, x)
     x_o = to_origin(μ, x)
     # If μ is a pushforward then checked_arg may have been bypassed, so check now:
     y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
     return y
 end
 
-function _transport_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
+function _transport_with_intermediate(ν, ::NoTransportOrigin, ::NoTransportOrigin, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
