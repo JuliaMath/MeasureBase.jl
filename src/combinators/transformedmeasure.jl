@@ -39,7 +39,7 @@ function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M
     if μ == parent(ν)
         return ν.f(x)
     else
-        invoke(transport_def, Tuple{Any, Any, Any}, ν, μ, x)
+        invoke(transport_def, Tuple{Any, PushforwardMeasure, Any}, ν, μ, x)
     end
 end
 
