@@ -114,9 +114,32 @@ end
 export pushfwd
 
 """
-    pushfwd(f, μ, volcorr = WithVolCorr())
+    pushfwd(f, [f_inverse,] μ, volcorr = WithVolCorr())
 
-Return the [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
-from `μ` the [measurable function](https://en.wikipedia.org/wiki/Measurable_function) `f`.
+Return the [pushforward
+measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
+[measurable function](https://en.wikipedia.org/wiki/Measurable_function) `f`.
+
+If `f_inverse` is specified, it must be a valid inverse of the function given by
+restricting `f` to the support of `μ`.
 """
-pushfwd(f, μ, volcorr = WithVolCorr()) = PushforwardMeasure(f, inverse(f), μ, volcorr)
+pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, inverse(f), μ, volcorr)
+
+pushfwd(f, finv, μ, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, finv, μ, volcorr)
+
+@inline function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    _pushfwd(f, inverse(f), μ, volcorr, μ.volcorr)
+end
+
+
+@inline function pushfwd(f, finv, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    _pushfwd(f, finv, μ, volcorr, μ.volcorr)
+end
+
+@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf::V, vμ::V) where {V<:TransformVolCorr}
+    pushfwd(f ∘ μ.f, μ.inv_f ∘ finv, v)
+end
+
+@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf, vμ) 
+    PushforwardMeasure(f, finv, μ, vf)
+end
