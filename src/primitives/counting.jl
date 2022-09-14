@@ -1,10 +1,10 @@
 # Counting measure
 
-export Counting, CountingMeasure
+export Counting, CountingBase
 
-struct CountingMeasure <: PrimitiveMeasure end
+struct CountingBase <: PrimitiveMeasure end
 
-insupport(::CountingMeasure, x) = true
+insupport(::CountingBase, x) = true
 
 struct Counting{T} <: AbstractMeasure
     support::T
@@ -16,15 +16,15 @@ function logdensity_def(μ::Counting, x)
     insupport(μ, x) ? 0.0 : -Inf
 end
 
-basemeasure(::Counting) = CountingMeasure()
+basemeasure(::Counting) = CountingBase()
 
 Counting() = Counting(ℤ)
 
 testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 
-proxy(d::Counting) = restrict(in(d.support), CountingMeasure())
+proxy(d::Counting) = restrict(in(d.support), CountingBase())
 
-Base.:∘(::typeof(basemeasure), ::Type{Counting}) = CountingMeasure()
+Base.:∘(::typeof(basemeasure), ::Type{Counting}) = CountingBase()
 
 Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
 
