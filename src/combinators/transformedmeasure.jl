@@ -47,7 +47,7 @@ function transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M
     if μ == parent(ν)
         return ν.inv_f(y)
     else
-        invoke(transport_def, Tuple{Any, Any, Any}, μ, ν, y)
+        invoke(transport_def, Tuple{Any, PushforwardMeasure, Any}, μ, ν, y)
     end
 end
 
@@ -103,14 +103,9 @@ end
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
-# @inline transport_origin(ν::PushforwardMeasure) = ν.origin
-# @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-# @inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
-
-@inline transport_origin(μ::PushforwardMeasure) = transport_origin(parent(μ))
-@inline from_origin(μ::PushforwardMeasure, x) = μ.f(from_origin(parent(μ), x))
-@inline to_origin(μ::PushforwardMeasure, y) = μ.inv_f(to_origin(parent(μ), y))
-
+@inline transport_origin(ν::PushforwardMeasure) = ν.origin
+@inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
+@inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return ν.f(rand(rng, T, parent(ν)))

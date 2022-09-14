@@ -9,7 +9,7 @@ using LogExpFunctions: logit
     for (f, μ) in [
         (logit, StdUniform())
         (log, StdExponential())
-        (cbrt, StdNormal())
+        (exp, StdNormal())
     ]
         test_transport(μ, pushfwd(f, μ))
         test_transport(pushfwd(f, μ), μ)
