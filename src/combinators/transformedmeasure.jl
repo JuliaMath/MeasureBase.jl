@@ -83,9 +83,10 @@ end
 #     β::PushforwardMeasure{FF2,IF2,M2,<:WithVolCorr},
 #     y,
 # ) where {FF1,IF1,M1,FF2,IF2,M2}
-#     f = β.inv_f ∘ ν.f
-#     inv_f = ν.inv_f ∘ β.f
-#     logdensity_rel(pushfwd(f, inv_f, ν.origin, WithVolCorr()), β.origin, β.inv_f(y))
+#     x = β.inv_f(y)
+#     f = ν.inv_f ∘ β.f
+#     inv_f = β.inv_f ∘ ν.f
+#     logdensity_rel(pushfwd(f, inv_f, ν.origin, WithVolCorr()), β.origin, x)
 # end
 
 @inline function logdensity_def(
