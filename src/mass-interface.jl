@@ -1,18 +1,35 @@
 import LinearAlgebra: normalize
 
-abstract type MeasureMass end
+import Base
 
-struct KnownMass{M,MASS} <: MeasureMass
-    measure::M
-    mass::MASS
+
+export UnknownMass, UnknownFiniteMass
+
+abstract type AbstractUnknownMass <: Real end
+
+struct UnknownFiniteMass <: AbstractUnknownMass
 end
 
-struct UnknownFiniteMass{M} <: MeasureMass
-    measure::M
+struct UnknownMass <: AbstractUnknownMass
 end
 
-struct UnknownMass{M} <: MeasureMass
-    measure::M
+for T in (:UnknownFiniteMass, :UnknownMass)
+    @eval begin
+        Base.:+(::$T, ::$T) = $T()
+        Base.:*(::$T, ::$T) = $T()
+        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+    end
+end
+
+for op in (:+, :*)
+    let
+        U = :UnknownMass
+        UF = :UnknownFiniteMass
+        @eval begin
+            Base.$op(::$U, ::$UF) = $U()
+            Base.$op(::$UF, ::$U) = $U()
+        end
+    end
 end
 
 massof(m::AbstractMeasure) = UnknownMass(m)
@@ -22,18 +39,35 @@ struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent_mass::M
 end
 
-massof(m::NormalizedMeasure) = KnownMass(m, static(1))
+massof(m::NormalizedMeasure) = static(1)
 
-normalize(m::AbstractMeasure) = normalize(m, massof(m))
-normalize(m::AbstractMeasure, mass) = NormalizedMeasure(m, mass)
+normalize(m::AbstractMeasure) = _normalize(m, massof(m))
 
-function normalize(m::AbstractMeasure, mass::KnownMass)
-    @assert m == mass.measure
-    isinf(m.mass) && error("Measure cannot be normalized: $m")
-    inv(mass.mass) * m
+
+_normalize(m::AbstractMeasure, mass::AbstractUnknownMass) = NormalizedMeasure(m, mass)
+
+function _normalize(m::AbstractMeasure, mass)
+    isinf(mass) && error("Measure cannot be normalized: $m")
+    inv(mass) * m
 end
 
-isnormalized(m::AbstractMeasure) = isnormalized(massof(m))
-isnormalized(m::KnownMass) = m.mass == 1
-isnormalized(::MeasureMass) = false
-isnormalized(::NormalizedMeasure) = true
+export isnormalized
+
+"""
+    isnormalized(m::AbstractMeasure)
+
+Checks whether the measure m is normalized, that is, whether `massof(m) == 1`. 
+
+For convenience, we also provide a method on non-measures that only depends on
+`norm`.
+"""
+isnormalized(m::AbstractMeasure) = isone(massof(m))
+
+"""
+    isnormalized(x, p::Real=2)
+
+Check whether `norm(x, p) == 1`.
+"""
+isnormalized(x, p::Real=2) = isone(norm(x, p))
+
+isone(::AbstractUnknownMass) = false
