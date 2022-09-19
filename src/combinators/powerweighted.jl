@@ -35,3 +35,5 @@ end
 function Pretty.tile(d::PowerWeightedMeasure)
     Pretty.pair_layout(Pretty.tile(d.parent), Pretty.tile(d.exponent), sep = " ↑ ")
 end
+
+massof(m::PowerWeightedMeasure) = massof(m.parent) ^ m.exponent

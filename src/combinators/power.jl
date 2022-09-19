@@ -128,3 +128,5 @@ end
 function checked_arg(μ::PowerMeasure, x::Any)
     throw(ArgumentError("Size of variate doesn't match size of power measure"))
 end
+
+massof(m::PowerMeasure) = massof(m.parent) ^ product(m.axes)
