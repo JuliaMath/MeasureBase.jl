@@ -119,6 +119,7 @@ include("combinators/half.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
+include("mass-interface.jl")
 # include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
