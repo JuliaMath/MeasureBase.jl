@@ -157,9 +157,26 @@ measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
 If `f_inverse` is specified, it must be a valid inverse of the function given by
 restricting `f` to the support of `μ`.
 """
-pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, inverse(f), μ, volcorr)
+pushfwd(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(f, inverse(f), μ, volcorr)
 
-pushfwd(f, finv, μ, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, finv, μ, volcorr)
+pushfwd(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, finv, μ, volcorr)
+
+"""
+    pullback(f, [f_inverse,] μ, volcorr = WithVolCorr())
+
+A _pullback_ is a dual concept to a _pushforward_. While a pushforward needs a
+map _from_ the support of a measure, a pullback requires a map _into_ the
+support of a measure. The log-density is then computed through function
+composition, together with a volume correction as needed.
+
+This can be useful, since the log-density of a `PushforwardMeasure` is computing
+in terms of the inverse function; the "forward" function is not used at all. In
+some cases, we may be focusing on log-density (and not, for example, sampling).
+"""
+pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(inverse(f), f, μ, volcorr)
+
+pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(finv, f, μ, volcorr)
+
 
 @inline function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
     _pushfwd(f, inverse(f), μ, volcorr, μ.volcorr)
