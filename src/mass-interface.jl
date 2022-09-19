@@ -5,7 +5,7 @@ import Base
 
 export UnknownMass, UnknownFiniteMass
 
-abstract type AbstractUnknownMass <: Real end
+abstract type AbstractUnknownMass <: Number end
 
 struct UnknownFiniteMass <: AbstractUnknownMass
 end
