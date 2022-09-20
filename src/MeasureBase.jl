@@ -146,7 +146,6 @@ include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
-include("latent-joint.jl")
 
 include("rand.jl")
 include("fixedrng.jl")
