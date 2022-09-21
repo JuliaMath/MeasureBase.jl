@@ -31,7 +31,6 @@ end
 
 massof(m::AbstractMeasure) = UnknownMass(m)
 
-logmassof(m::AbstractMeasure) = log(massof(m))
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P
