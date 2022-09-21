@@ -2,9 +2,6 @@ import LinearAlgebra: normalize
 
 import Base
 
-
-export UnknownMass, UnknownFiniteMass
-
 abstract type AbstractUnknownMass <: Number end
 
 struct UnknownFiniteMass <: AbstractUnknownMass
