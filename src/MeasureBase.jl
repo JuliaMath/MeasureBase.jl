@@ -162,4 +162,10 @@ include("interface.jl")
 
 using .Interface
 
+function (m::AbstractMeasure)(s::Interval)
+    b = transport_def(StdUniform, m, s.right)
+    a = transport_def(StdUniform, m, s.left)
+    return abs(b - a)
+end
+
 end # module MeasureBase
