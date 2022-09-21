@@ -8,6 +8,12 @@ import Random: gentype
 using Statistics
 using LinearAlgebra
 
+import IntervalSets
+# This seems harder than it should be to get `IntervalSets.:(..)`
+@eval (using IntervalSets: $(Symbol(IntervalSets.:(..))))
+
+using IntervalSets: Interval, width
+
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
