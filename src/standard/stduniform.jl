@@ -9,4 +9,4 @@ insupport(d::StdUniform, x) = zero(x) ≤ x ≤ one(x)
 
 Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = rand(rng, T)
 
-StdUniform()(s::Interval) = Lebesgue(𝕀)(s::Interval)
+(::StdUniform)(s::Interval) = Lebesgue(𝕀)(s::Interval)
