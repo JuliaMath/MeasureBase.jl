@@ -43,6 +43,8 @@ Lebesgue() = Lebesgue(ℝ)
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueBase())
+proxy(::Lebesgue{MeasureBase.RealNumbers}) = LebesgueBase()
+
 @useproxy Lebesgue
 
 Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueBase()
