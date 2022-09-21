@@ -23,5 +23,7 @@ macro useproxy(M)
         @inline $MeasureBase.transport_origin(μ::$M) = transport_origin(proxy(μ))
         @inline $MeasureBase.to_origin(μ::$M, y) = to_origin(proxy(μ), y)
         @inline $MeasureBase.from_origin(μ::$M, x) = from_origin(proxy(μ), x)
+
+        (μ::$M)(s) = proxy(μ)(s)
     end
 end
