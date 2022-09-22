@@ -22,7 +22,10 @@ export commonbase
 
 using Test
 
-function dynamic_basemeasure_depth(μ)
+function dynamic_basemeasure_depth(μ::M) where {M}
+    if hasmethod(proxy, Tuple{M})
+        return dynamic_basemeasure_depth(proxy(μ))
+    end
     β = basemeasure(μ)
     depth = 0
     while μ ≠ β
