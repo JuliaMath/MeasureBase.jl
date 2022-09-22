@@ -13,8 +13,6 @@ export StdNormal
 @inline getdof(::StdNormal) = static(1)
 
 @inline transport_def(::StdUniform, μ::StdNormal, x) = erfc(-x * invsqrt2) / 2
-@inline transport_def(::StdNormal, μ::StdUniform, p) = -erfcinv(2*p) * sqrt2
+@inline transport_def(::StdNormal, μ::StdUniform, p) = -erfcinv(2 * p) * sqrt2
 
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)
-
-

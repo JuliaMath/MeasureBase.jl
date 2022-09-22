@@ -202,4 +202,6 @@ more efficient than
 
     logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
 """
-likelihood_ratio(ℓ::Likelihood, p, q) = exp(ULogarithmic, logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x))
+function likelihood_ratio(ℓ::Likelihood, p, q)
+    exp(ULogarithmic, logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x))
+end

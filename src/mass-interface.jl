@@ -4,11 +4,9 @@ import Base
 
 abstract type AbstractUnknownMass <: Number end
 
-struct UnknownFiniteMass <: AbstractUnknownMass
-end
+struct UnknownFiniteMass <: AbstractUnknownMass end
 
-struct UnknownMass <: AbstractUnknownMass
-end
+struct UnknownMass <: AbstractUnknownMass end
 
 for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
@@ -31,7 +29,6 @@ end
 
 massof(m::AbstractMeasure) = UnknownMass(m)
 
-
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P
     parent_mass::M
@@ -40,7 +37,6 @@ end
 massof(m::NormalizedMeasure) = static(1.0)
 
 normalize(m::AbstractMeasure) = _normalize(m, massof(m))
-
 
 _normalize(m::AbstractMeasure, mass::AbstractUnknownMass) = NormalizedMeasure(m, mass)
 
@@ -66,6 +62,6 @@ isnormalized(m::AbstractMeasure) = isone(massof(m))
 
 Check whether `norm(x, p) == 1`.
 """
-isnormalized(x, p::Real=2) = isone(norm(x, p))
+isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
 isone(::AbstractUnknownMass) = false

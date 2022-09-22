@@ -4,7 +4,6 @@ export Lebesgue
 
 struct LebesgueBase <: PrimitiveMeasure end
 
-
 (::LebesgueBase)(s::Interval) = width(s)
 
 testvalue(::LebesgueBase) = 0.0
@@ -12,8 +11,6 @@ testvalue(::LebesgueBase) = 0.0
 insupport(::LebesgueBase, x) = true
 
 insupport(::LebesgueBase) = Returns(true)
-
-
 
 logdensity_def(::LebesgueBase, ::CountingBase, x) = -Inf
 

@@ -31,7 +31,6 @@ struct PushforwardMeasure{FF,IF,M,VC<:TransformVolCorr} <: AbstractPushforward
     volcorr::VC
 end
 
-
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
@@ -39,7 +38,7 @@ function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M
     if μ == parent(ν)
         return ν.f(x)
     else
-        invoke(transport_def, Tuple{Any, PushforwardMeasure, Any}, ν, μ, x)
+        invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, ν, μ, x)
     end
 end
 
@@ -47,7 +46,7 @@ function transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M
     if μ == parent(ν)
         return ν.inv_f(y)
     else
-        invoke(transport_def, Tuple{Any, PushforwardMeasure, Any}, μ, ν, y)
+        invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, μ, ν, y)
     end
 end
 
@@ -118,7 +117,9 @@ end
 
 insupport(ν::PushforwardMeasure, y) = insupport(transport_origin(ν), to_origin(ν, y))
 
-testvalue(::Type{T}, ν::PushforwardMeasure) where {T} = from_origin(ν, testvalue(T, transport_origin(ν)))
+function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
+    from_origin(ν, testvalue(T, transport_origin(ν)))
+end
 
 @inline function basemeasure(ν::PushforwardMeasure)
     PushforwardMeasure(ν.f, ν.inv_f, basemeasure(transport_origin(ν)), NoVolCorr())
@@ -157,9 +158,13 @@ measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
 If `f_inverse` is specified, it must be a valid inverse of the function given by
 restricting `f` to the support of `μ`.
 """
-pushfwd(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(f, inverse(f), μ, volcorr)
+function pushfwd(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    pushfwd(f, inverse(f), μ, volcorr)
+end
 
-pushfwd(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = PushforwardMeasure(f, finv, μ, volcorr)
+function pushfwd(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    PushforwardMeasure(f, finv, μ, volcorr)
+end
 
 """
     pullback(f, [f_inverse,] μ, volcorr = WithVolCorr())
@@ -173,24 +178,41 @@ This can be useful, since the log-density of a `PushforwardMeasure` is computing
 in terms of the inverse function; the "forward" function is not used at all. In
 some cases, we may be focusing on log-density (and not, for example, sampling).
 """
-pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(inverse(f), f, μ, volcorr)
+function pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    pushfwd(inverse(f), f, μ, volcorr)
+end
 
-pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr()) = pushfwd(finv, f, μ, volcorr)
+function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    pushfwd(finv, f, μ, volcorr)
+end
 
-
-@inline function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+@inline function pushfwd(
+    f,
+    μ::PushforwardMeasure,
+    volcorr::TransformVolCorr = WithVolCorr(),
+)
     _pushfwd(f, inverse(f), μ, volcorr, μ.volcorr)
 end
 
-
-@inline function pushfwd(f, finv, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+@inline function pushfwd(
+    f,
+    finv,
+    μ::PushforwardMeasure,
+    volcorr::TransformVolCorr = WithVolCorr(),
+)
     _pushfwd(f, finv, μ, volcorr, μ.volcorr)
 end
 
-@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf::V, vμ::V) where {V<:TransformVolCorr}
+@inline function _pushfwd(
+    f,
+    finv,
+    μ::PushforwardMeasure,
+    vf::V,
+    vμ::V,
+) where {V<:TransformVolCorr}
     pushfwd(f ∘ μ.f, μ.inv_f ∘ finv, μ, v)
 end
 
-@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf, vμ) 
+@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf, vμ)
     PushforwardMeasure(f, finv, μ, vf)
 end
