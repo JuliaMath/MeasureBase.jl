@@ -40,16 +40,16 @@ struct LogDensity{M,B} <: AbstractDensity
     base::B
 end
 
-Base.exp(d::Density{M,B,True})  where {M,B} = density(d.μ, d.base, False())
-Base.log(d::Density{M,B,False}) where {M,B} = density(d.μ, d.base, True())
+Base.exp(d::Density{M,B})  where {M,B} = density(d.μ, d.base, False())
+Base.log(d::Density{M,B}) where {M,B} = density(d.μ, d.base, True())
 
 # TODO: Add methods for `exp ∘ (d::Density)` and `log ∘ (d::Density)`
 
 density(μ, base, log) = Density(μ, base)
 logdensity(μ, base) = LogDensity(μ, base)
 
-Base.∘(::typeof(log), d::Density) = Logdensity(d.μ, d.base)
-Base.∘(::typeof(exp), d::LogDensity) = Density(d.μ, d.base)
+Base.:∘(::typeof(log), d::Density) = logdensity(d.μ, d.base)
+Base.:∘(::typeof(exp), d::LogDensity) = density(d.μ, d.base)
 
 export 𝒹
 
@@ -82,7 +82,7 @@ densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
-abstract type AbstractDensityMeasure <: AbstractMeasure
+abstract type AbstractDensityMeasure <: AbstractMeasure end
 
 """
     struct DensityMeasure{F,B,L} <: AbstractMeasure
