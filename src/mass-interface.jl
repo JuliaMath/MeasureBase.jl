@@ -27,6 +27,7 @@ for op in (:+, :*)
     end
 end
 
+export massof
 massof(m::AbstractMeasure) = UnknownMass(m)
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure

@@ -152,3 +152,5 @@ end
 function rmap(f, nt::NamedTuple{N,T}) where {N,T}
     NamedTuple{N}(map(x -> rmap(f, x), values(nt)))
 end
+
+insupport(m::AbstractMeasure) = Base.Fix1(insupport, m)

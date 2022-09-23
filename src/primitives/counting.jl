@@ -31,3 +31,7 @@ Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
 insupport(μ::Counting, x) = x ∈ μ.support
 
 insupport(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
+
+massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
+
+massof(::CountingBase, s::Set) = length(s)
