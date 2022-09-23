@@ -1,4 +1,4 @@
-abstract type AbstractDensity end
+abstract type AbstractDensity <: Function end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
@@ -16,18 +16,40 @@ Because this function is often difficult to express in closed form, there are
 many different ways of computing it. We therefore provide a formal
 representation to allow comptuational flexibilty.
 """
-struct Density{M,B,L} <: AbstractDensity
+struct Density{M,B} <: AbstractDensity
     μ::M
     base::B
-    log::L
 end
 
-Base.exp(d::Density{M,B,True})  = density(d.μ, d.base, False())
-Base.log(d::Density{M,B,False}) = density(d.μ, d.base, True())
+"""
+    struct Density{M,B}
+        μ::M
+        base::B
+    end
+
+For measures μ and ν with μ≪ν, the density of μ with respect to ν (also called
+the Radon-Nikodym derivative dμ/dν) is a function f defined on the support of ν
+with the property that for any measurable a ⊂ supp(ν), μ(a) = ∫ₐ f dν.
+    
+Because this function is often difficult to express in closed form, there are
+many different ways of computing it. We therefore provide a formal
+representation to allow comptuational flexibilty.
+"""
+struct LogDensity{M,B} <: AbstractDensity
+    μ::M
+    base::B
+end
+
+Base.exp(d::Density{M,B,True})  where {M,B} = density(d.μ, d.base, False())
+Base.log(d::Density{M,B,False}) where {M,B} = density(d.μ, d.base, True())
 
 # TODO: Add methods for `exp ∘ (d::Density)` and `log ∘ (d::Density)`
 
-density(μ, base, log) = Density(μ, base, log)
+density(μ, base, log) = Density(μ, base)
+logdensity(μ, base) = LogDensity(μ, base)
+
+Base.∘(::typeof(log), d::Density) = Logdensity(d.μ, d.base)
+Base.∘(::typeof(exp), d::LogDensity) = Density(d.μ, d.base)
 
 export 𝒹
 
@@ -38,7 +60,8 @@ export log𝒹
 
 Compute the log-density of μ with respect to `base`.
 """
-log𝒹(μ, base) = density(μ, base, True())
+log𝒹(μ, base) = logdensity(μ, base)
+
 
 """
     𝒹(μ, base)
@@ -46,43 +69,59 @@ log𝒹(μ, base) = density(μ, base, True())
 Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
 """
 function 𝒹(μ, base)
-    return density(μ, base, False())
+    return density(μ, base)
 end
 
-(f::Density{M,B,True})(x) where {M,B} = logdensity_rel(f.μ, f.base, x)
+(f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
 
-(f::Density{M,B,False})(x) where {M,B} = density_rel(f.μ, f.base, x)
+(f::Density)(x) = density_rel(f.μ, f.base, x)
 
-logdensityof(d::Density, x) = logdensity_rel(d.μ, d.base, x)
+logdensityof(d::AbstractDensity, x) = logdensity_rel(d.μ, d.base, x)
+densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
+
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
+
+abstract type AbstractDensityMeasure <: AbstractMeasure
 
 """
     struct DensityMeasure{F,B,L} <: AbstractMeasure
         density :: F
         base    :: B
-        log     :: L
     end
 
 A `DensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
-struct DensityMeasure{F,B,L} <: AbstractMeasure
+struct DensityMeasure{F,B,L} <: AbstractDensityMeasure
     f::F
     base::B
-    log::L
 end
 
-function Pretty.tile(μ::DensityMeasure{F,B,True}) where {F,B}
-    result = Pretty.literal("DensityMeasure ∫(")
-    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
-    result *= Pretty.literal("; log = true)")
+"""
+    struct LogDensityMeasure{F,B,L} <: AbstractDensityMeasure
+        density :: F
+        base    :: B
+    end
+
+A `DensityMeasure` is a measure defined by a density with respect to some other
+"base" measure 
+"""
+struct LogDensityMeasure{F,B,L} <: AbstractDensityMeasure
+    f::F
+    base::B
 end
 
-function Pretty.tile(μ::DensityMeasure{F,B,False}) where {F,B}
+function Pretty.tile(μ::LogDensityMeasure{F,B}) where {F,B}
+    result = Pretty.literal("LogDensityMeasure ∫exp(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
+    result *= Pretty.literal(")")
+end
+
+function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("DensityMeasure ∫(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
-    result *= Pretty.literal("; log = false)")
+    result *= Pretty.literal(")")
 end
 
 densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
