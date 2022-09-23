@@ -4,7 +4,7 @@ export Lebesgue
 
 struct LebesgueBase <: PrimitiveMeasure end
 
-(::LebesgueBase)(s::Interval) = width(s)
+massof(::LebesgueBase, s::Interval) = width(s)
 
 testvalue(::LebesgueBase) = 0.0
 
@@ -52,12 +52,12 @@ insupport(μ::Lebesgue, x) = x ∈ μ.support
 
 insupport(::Lebesgue{RealNumbers}, ::Real) = true
 
-(::Lebesgue{RealNumbers})(s::Interval) = width(s)
+massof(::Lebesgue{RealNumbers}, s::Interval) = width(s)
 
 # Example: 
 # julia> Lebesgue(𝕀)(0.2..5)
 # 0.8
-function (μ::Lebesgue{<:BoundedReals})(s::Interval)
+function massof(μ::Lebesgue{<:BoundedReals}, s::Interval)
     a = μ.support.lower
     b = μ.support.upper
     left = max(s.left, a)

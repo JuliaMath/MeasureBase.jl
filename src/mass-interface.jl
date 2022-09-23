@@ -65,3 +65,18 @@ Check whether `norm(x, p) == 1`.
 isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
 isone(::AbstractUnknownMass) = false
+
+# TODO: Make this work for non-unit-mass measures
+function massof(m::AbstractMeasure, s::Interval)
+    b = transport_def(StdUniform(), m, s.right)
+    a = transport_def(StdUniform(), m, s.left)
+    return abs(b - a)
+end
+
+"""
+    (m::AbstractMeasure)(s)
+
+Convenience method for `massof(m, s)`. To make a user-defined measure callable
+in this way, users should add the corresponding `massof` method.
+"""
+(m::AbstractMeasure)(s) = massof(m, s)
