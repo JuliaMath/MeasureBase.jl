@@ -4,6 +4,8 @@ using LogExpFunctions
 
 export SuperpositionMeasure
 
+abstract type AbstractSuperpositionMeasure <: AbstractMeasure end
+
 @doc raw"""
     struct SuperpositionMeasure{NT} <: AbstractMeasure
         components :: NT
@@ -24,7 +26,7 @@ Superposition measures satisfy
     \end{aligned}
 ```
 """
-struct SuperpositionMeasure{C} <: AbstractMeasure
+struct SuperpositionMeasure{C} <: AbstractSuperpositionMeasure
     components::C
 end
 
