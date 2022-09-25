@@ -1,11 +1,18 @@
 ###################################################################
-# Abstract types
+# Abstract types and methods
 
 abstract type AbstractDensity <: Function end
 
+@inline DensityKind(::AbstractDensity) = IsDensity()
+
 abstract type AbstractDensityMeasure <: AbstractMeasure end
 
-@inline DensityKind(::AbstractDensity) = IsDensity()
+@inline function insupport(d::AbstractDensityMeasure, x)
+    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
+end
+
+logdensityof(d::AbstractDensity, x) = logdensity_rel(d.μ, d.base, x)
+densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
 
 ####################################################################################
 # Densities
@@ -27,6 +34,12 @@ representation to allow comptuational flexibilty.
 struct Density{M,B} <: AbstractDensity
     μ::M
     base::B
+end
+
+function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
+    result = Pretty.literal("DensityMeasure ∫(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
+    result *= Pretty.literal(")")
 end
 
 Base.:∘(::typeof(log), d::Density) = logdensity(d.μ, d.base)
@@ -54,7 +67,13 @@ export ∫
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f::Function, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
+∫(f, base) = DensityMeasure(funcdensity(f), base)
+
+∫(f::FuncDensity, base) = DensityMeasure(f, base)
+
+function ∫(f::LogFuncDensity, base)
+    @error "Can't call `∫` on a `LogFuncDensity`; use `∫exp` instead"
+end
 
 ∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
 
@@ -96,10 +115,9 @@ struct LogDensity{M,B} <: AbstractDensity
 end
 
 Base.exp(d::LogDensity) = density(d.μ, d.base)
+Base.:∘(::typeof(exp), d::LogDensity) = density(d.μ, d.base)
 
 logdensity(μ, base) = LogDensity(μ, base)
-
-Base.:∘(::typeof(exp), d::LogDensity) = density(d.μ, d.base)
 
 export log𝒹
 
@@ -113,9 +131,6 @@ log𝒹(μ, base) = logdensity(μ, base)
 (f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
 
 (f::Density)(x) = density_rel(f.μ, f.base, x)
-
-logdensityof(d::AbstractDensity, x) = logdensity_rel(d.μ, d.base, x)
-densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
@@ -139,12 +154,6 @@ function Pretty.tile(μ::LogDensityMeasure{F,B}) where {F,B}
     result *= Pretty.literal(")")
 end
 
-function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
-    result = Pretty.literal("DensityMeasure ∫(")
-    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
-    result *= Pretty.literal(")")
-end
-
 densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
 
 _densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
@@ -155,10 +164,6 @@ function _densitymeasure(f, base, _)
     function, first wrap it in `DensityInterface.funcdensity` or
     `DensityInterface.logfuncdensity`. 
     """
-end
-
-@inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
 end
 
 basemeasure(μ::DensityMeasure) = μ.base
