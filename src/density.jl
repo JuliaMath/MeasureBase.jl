@@ -36,12 +36,6 @@ struct Density{M,B} <: AbstractDensity
     base::B
 end
 
-function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
-    result = Pretty.literal("DensityMeasure ∫(")
-    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
-    result *= Pretty.literal(")")
-end
-
 Base.:∘(::typeof(log), d::Density) = logdensity(d.μ, d.base)
 
 """
@@ -57,6 +51,14 @@ struct DensityMeasure{F,B,L} <: AbstractDensityMeasure
     f::F
     base::B
 end
+
+
+function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
+    result = Pretty.literal("DensityMeasure ∫(")
+    result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
+    result *= Pretty.literal(")")
+end
+
 
 Base.log(d::Density) = logdensity(d.μ, d.base)
 
@@ -75,7 +77,6 @@ function ∫(f::LogFuncDensity, base)
     @error "Can't call `∫` on a `LogFuncDensity`; use `∫exp` instead"
 end
 
-∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
 
 export 𝒹
 
@@ -143,7 +144,7 @@ logdensity_def(d::Density, x) = logdensityof(d, x)
 A `DensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
-struct LogDensityMeasure{F,B,L} <: AbstractDensityMeasure
+struct LogDensityMeasure{F,B} <: AbstractDensityMeasure
     f::F
     base::B
 end
@@ -179,6 +180,10 @@ export ∫exp
 
 Define a new measure in terms of a log-density `f` over some measure `base`.
 """
-∫exp(f::Function, μ) = ∫(logfuncdensity(f), μ)
+∫exp(f, base) = LogDensityMeasure(logfuncdensity(f), base)
 
-∫exp(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
+∫exp(f::LogFuncDensity, base) = LogDensityMeasure(f, base)
+
+function ∫exp(f::FuncDensity, base)
+    @error "Can't call `∫exp` on a `FuncDensity`; use `∫` instead"
+end

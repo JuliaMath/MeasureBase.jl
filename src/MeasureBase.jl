@@ -11,6 +11,7 @@ using LinearAlgebra
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
+using DensityInterface: FuncDensity, LogFuncDensity
 using DensityInterface
 
 using InverseFunctions
