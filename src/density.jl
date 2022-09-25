@@ -91,6 +91,14 @@ end
 
 density(μ, base) = Density(μ, base)
 
+basemeasure(μ::DensityMeasure) = μ.base
+
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
+
+density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
+
+(f::Density)(x) = density_rel(f.μ, f.base, x)
+
 ####################################################################################
 # Log-densities
 
@@ -131,7 +139,6 @@ log𝒹(μ, base) = logdensity(μ, base)
 
 (f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
 
-(f::Density)(x) = density_rel(f.μ, f.base, x)
 
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
@@ -167,11 +174,12 @@ function _densitymeasure(f, base, _)
     """
 end
 
-basemeasure(μ::DensityMeasure) = μ.base
 
-logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
+basemeasure(μ::LogDensityMeasure) = μ.base
 
-density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
+logdensity_def(μ::LogDensityMeasure, x) = logdensityof(μ.f, x)
+
+density_def(μ::LogDensityMeasure, x) = densityof(μ.f, x)
 
 export ∫exp
 
