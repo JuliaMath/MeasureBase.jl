@@ -52,13 +52,11 @@ struct DensityMeasure{F,B,L} <: AbstractDensityMeasure
     base::B
 end
 
-
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("DensityMeasure ∫(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
     result *= Pretty.literal(")")
 end
-
 
 Base.log(d::Density) = logdensity(d.μ, d.base)
 
@@ -76,7 +74,6 @@ Define a new measure in terms of a density `f` over some measure `base`.
 function ∫(f::LogFuncDensity, base)
     @error "Can't call `∫` on a `LogFuncDensity`; use `∫exp` instead"
 end
-
 
 export 𝒹
 
@@ -139,7 +136,6 @@ log𝒹(μ, base) = logdensity(μ, base)
 
 (f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
 
-
 logdensity_def(d::Density, x) = logdensityof(d, x)
 
 """
@@ -173,7 +169,6 @@ function _densitymeasure(f, base, _)
     `DensityInterface.logfuncdensity`. 
     """
 end
-
 
 basemeasure(μ::LogDensityMeasure) = μ.base
 
