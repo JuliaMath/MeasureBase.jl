@@ -108,6 +108,7 @@ using Compat
 
 using IrrationalConstants
 
+include("density-core.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")

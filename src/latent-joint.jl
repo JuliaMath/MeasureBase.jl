@@ -51,9 +51,9 @@ $_LATENT_DOCSTRING
 """
 function jointof(m)
     fwd(x) = x => x
-    
+
     function back(p::Pair)
-        x,y = p
+        x, y = p
         @assert x === y
         return x
     end

@@ -138,7 +138,7 @@ end
 # end
 
 @testset "broadcasting" begin
-    @test logdensityof.(Dirac(2), [1,2,3]) isa Vector{Float64}
+    @test logdensityof.(Dirac(2), [1, 2, 3]) isa Vector{Float64}
 end
 
 @testset "powers" begin
