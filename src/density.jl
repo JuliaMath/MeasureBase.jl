@@ -14,13 +14,12 @@ abstract type AbstractDensity <: Function end
         base::B
     end
 
-For measures μ and ν with μ≪ν, the density of μ with respect to ν (also called
-the Radon-Nikodym derivative dμ/dν) is a function f defined on the support of ν
-with the property that for any measurable a ⊂ supp(ν), μ(a) = ∫ₐ f dν.
-    
-Because this function is often difficult to express in closed form, there are
-many different ways of computing it. We therefore provide a formal
-representation to allow comptuational flexibilty.
+For measures `μ` and `ν`, `Density(μ,ν)` represents the _density function_
+`dμ/dν`, also called the _Radom-Nikodym derivative_:
+https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
+
+Instead of calling this directly, users should call `density_rel(μ, ν)` or
+its abbreviated form, `𝒹(μ,ν)`.
 """
 struct Density{M,B} <: AbstractDensity
     μ::M
@@ -36,7 +35,8 @@ export 𝒹
 """
     𝒹(μ, base)
 
-Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
+Compute the density (Radom-Nikodym derivative) of μ with respect to `base`. This
+is a shorthand form for `density_rel(μ, base)`.
 """
 𝒹(μ, base) = density_rel(μ, base)
 
@@ -53,13 +53,12 @@ density_rel(μ, base) = Density(μ, base)
         base::B
     end
 
-For measures μ and ν with μ≪ν, the density of μ with respect to ν (also called
-the Radon-Nikodym derivative dμ/dν) is a function f defined on the support of ν
-with the property that for any measurable a ⊂ supp(ν), μ(a) = ∫ₐ f dν.
-    
-Because this function is often difficult to express in closed form, there are
-many different ways of computing it. We therefore provide a formal
-representation to allow comptuational flexibilty.
+For measures `μ` and `ν`, `LogDensity(μ,ν)` represents the _log-density function_
+`log(dμ/dν)`, also called the _Radom-Nikodym derivative_:
+https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
+
+Instead of calling this directly, users should call `logdensity_rel(μ, ν)` or
+its abbreviated form, `log𝒹(μ,ν)`.
 """
 struct LogDensity{M,B} <: AbstractDensity
     μ::M
@@ -75,7 +74,8 @@ export log𝒹
 """
     log𝒹(μ, base)
 
-Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
+Compute the log-density (Radom-Nikodym derivative) of μ with respect to `base`.
+This is a shorthand form for `logdensity_rel(μ, base)`
 """
 log𝒹(μ, base) = logdensity_rel(μ, base)
 
@@ -96,7 +96,8 @@ A `DensityMeasure` is a measure defined by a density or log-density with respect
 to some other "base" measure.
 
 Users should not call `DensityMeasure` directly, but should instead call `∫(f,
-base)` (if `f` is a density) or `∫exp(f, base)` (if `f` is a log-density).
+base)` (if `f` is a density function or `DensityInterface.IsDensity` object) or
+`∫exp(f, base)` (if `f` is a log-density function).
 """
 struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
