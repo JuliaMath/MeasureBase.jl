@@ -114,6 +114,11 @@ base)` (if `f` is a density) or `∫exp(f, base)` (if `f` is a log-density).
 struct DensityMeasure{F,B} <: AbstractDensityMeasure
     f::F
     base::B
+
+    function DensityMeasure(f, base)
+        @assert DensityKind(f) == IsDensity()
+        new(f, base)
+    end
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
