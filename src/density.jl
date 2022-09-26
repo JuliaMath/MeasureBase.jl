@@ -121,12 +121,12 @@ end
 
 function Base.getproperty(μ::DensityMeasure, s)
     f = getfield(μ, :f)
-    
+
     if s == :density
         return x -> densityof(f, x)
-    else if s == :logdensity
+    elseif s == :logdensity
         return x -> logdensityof(f, x)
-    else if s == :base
+    elseif s == :base
         return :getfield(μ, :base)
     end
 end
