@@ -5,12 +5,6 @@ abstract type AbstractDensity <: Function end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
-abstract type AbstractDensityMeasure <: AbstractMeasure end
-
-@inline function insupport(d::AbstractDensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
-end
-
 logdensityof(d::AbstractDensity, x) = logdensity_rel(d.μ, d.base, x)
 densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
 
@@ -111,14 +105,18 @@ to some other "base" measure.
 Users should not call `DensityMeasure` directly, but should instead call `∫(f,
 base)` (if `f` is a density) or `∫exp(f, base)` (if `f` is a log-density).
 """
-struct DensityMeasure{F,B} <: AbstractDensityMeasure
+struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
     base::B
 
-    function DensityMeasure(f, base)
+    function DensityMeasure(f::F, base::B) where {F,B}
         @assert DensityKind(f) == IsDensity()
-        new(f, base)
+        new{F,B}(f, base)
     end
+end
+
+@inline function insupport(d::DensityMeasure, x)
+    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
