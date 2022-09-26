@@ -103,7 +103,7 @@ density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 # LogDensity
 
 """
-    struct LogDensity{M,B} <: AbstractLogDensity
+    struct LogDensity{M,B} <: AbstractDensity
         μ::M
         base::B
     end
@@ -116,7 +116,7 @@ Because this function is often difficult to express in closed form, there are
 many different ways of computing it. We therefore provide a formal
 representation to allow comptuational flexibilty.
 """
-struct LogDensity{M,B} <: AbstractLogDensity
+struct LogDensity{M,B} <: AbstractDensity
     μ::M
     base::B
 end
@@ -144,7 +144,7 @@ logdensity(μ, base) = LogDensity(μ, base)
 # LogDensityMeasure
 
 """
-    struct LogDensityMeasure{F,B,L} <: AbstractLogDensityMeasure
+    struct LogDensityMeasure{F,B,L} <: AbstractDensityMeasure
         density :: F
         base    :: B
     end
@@ -152,7 +152,7 @@ logdensity(μ, base) = LogDensity(μ, base)
 A `LogDensityMeasure` is a measure defined by a density with respect to some other
 "base" measure 
 """
-struct LogDensityMeasure{F,B} <: AbstractLogDensityMeasure
+struct LogDensityMeasure{F,B} <: AbstractDensityMeasure
     f::F
     base::B
 end
