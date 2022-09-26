@@ -119,7 +119,7 @@ function Base.propertynames(::DensityMeasure)
     (:density, :logdensity, :base)
 end
 
-function Base.getproperty(μ::DensityMeasure, s)
+function Base.getproperty(μ::DensityMeasure, s::Symbol)
     f = getfield(μ, :f)
 
     if s == :density
