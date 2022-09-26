@@ -162,6 +162,4 @@ include("interface.jl")
 
 using .Interface
 
-
-
 end # module MeasureBase
