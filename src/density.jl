@@ -5,9 +5,6 @@ abstract type AbstractDensity <: Function end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
-logdensityof(d::AbstractDensity, x) = logdensity_rel(d.μ, d.base, x)
-densityof(d::AbstractDensity, x) = density_rel(d.μ, d.base, x)
-
 ####################################################################################
 # Density
 
