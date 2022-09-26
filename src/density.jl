@@ -30,7 +30,7 @@ struct Density{M,B} <: AbstractDensity
     base::B
 end
 
-Base.:∘(::typeof(log), d::Density) = logdensity(d.μ, d.base)
+Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
 
 Base.log(d::Density) = log ∘ d
 
@@ -42,10 +42,10 @@ export 𝒹
 Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
 """
 function 𝒹(μ, base)
-    return density(μ, base)
+    return density_rel(μ, base)
 end
 
-density(μ, base) = Density(μ, base)
+density_rel(μ, base) = Density(μ, base)
 
 (f::Density)(x) = density_rel(f.μ, f.base, x)
 
@@ -83,10 +83,10 @@ export log𝒹
 Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
 """
 function log𝒹(μ, base)
-    return logdensity(μ, base)
+    return logdensity_rel(μ, base)
 end
 
-logdensity(μ, base) = LogDensity(μ, base)
+logdensity_rel(μ, base) = LogDensity(μ, base)
 
 (f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
 

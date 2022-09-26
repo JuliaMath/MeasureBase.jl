@@ -172,14 +172,4 @@ export density_rel
 
 export logdensity_rel
 
-"""
-    logdensity_rel(μ, ν) = x -> logdensity_rel(μ, ν, x)
-"""
-logdensity_rel(μ, ν) = x -> logdensity_rel(μ, ν, x)
-
-"""
-    density_rel(μ, ν) = x -> density_rel(μ, ν, x)
-"""
-density_rel(μ, ν) = x -> density_rel(μ, ν, x)
-
 @inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
