@@ -100,13 +100,16 @@ logdensity(μ, base) = LogDensity(μ, base)
 # DensityMeasure
 
 """
-    struct DensityMeasure{F,B,L} <: AbstractDensityMeasure
+    struct DensityMeasure{F,B} <: AbstractDensityMeasure
         density :: F
         base    :: B
     end
 
-A `DensityMeasure` is a measure defined by a density with respect to some other
-"base" measure 
+A `DensityMeasure` is a measure defined by a density or log-density with respect
+to some other "base" measure.
+
+Users should not call `DensityMeasure` directly, but should instead call `∫(f,
+base)` (if `f` is a density) or `∫exp(f, base)` (if `f` is a log-density).
 """
 struct DensityMeasure{F,B} <: AbstractDensityMeasure
     f::F
