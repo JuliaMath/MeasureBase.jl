@@ -41,9 +41,7 @@ export 𝒹
 
 Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
 """
-function 𝒹(μ, base)
-    return density_rel(μ, base)
-end
+𝒹(μ, base) = density_rel(μ, base)
 
 density_rel(μ, base) = Density(μ, base)
 
@@ -82,9 +80,7 @@ export log𝒹
 
 Compute the density (Radom-Nikodym derivative) of μ with respect to `base`.
 """
-function log𝒹(μ, base)
-    return logdensity_rel(μ, base)
-end
+log𝒹(μ, base) = logdensity_rel(μ, base)
 
 logdensity_rel(μ, base) = LogDensity(μ, base)
 
@@ -115,22 +111,6 @@ struct DensityMeasure{F,B} <: AbstractMeasure
     end
 end
 
-function Base.propertynames(::DensityMeasure)
-    (:density, :logdensity, :base)
-end
-
-function Base.getproperty(μ::DensityMeasure, s::Symbol)
-    f = getfield(μ, :f)
-
-    if s == :density
-        return x -> densityof(f, x)
-    elseif s == :logdensity
-        return x -> logdensityof(f, x)
-    elseif s == :base
-        return getfield(μ, :base)
-    end
-end
-
 @inline function insupport(d::DensityMeasure, x)
     insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
 end
@@ -151,7 +131,7 @@ Define a new measure in terms of a density `f` over some measure `base`.
 ∫(f, base) = _densitymeasure(f, base, DensityKind(f))
 
 _densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-_densitymeasure(f, base, ::HasDensity) = @error "..."
+_densitymeasure(f, base, ::HasDensity) = @error "`∫(f, base)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."
 _densitymeasure(f, base, ::NoDensity) = DensityMeasure(funcdensity(f), base)
 
 export ∫exp
@@ -163,12 +143,12 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 """
 ∫exp(f, base) = _logdensitymeasure(f, base, DensityKind(f))
 
-_logdensitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-_logdensitymeasure(f, base, ::HasDensity) = @error "..."
+_logdensitymeasure(f, base, ::IsDensity) = @error "`∫exp(f, base)` is not valid when `DensityKind(f) == IsDensity()`. Use `∫(f, base)` instead."
+_logdensitymeasure(f, base, ::HasDensity) = @error "`∫exp(f, base)` is not valid when `DensityKind(f) == HasDensity()`."
 _logdensitymeasure(f, base, ::NoDensity) = DensityMeasure(logfuncdensity(f), base)
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-logdensity_def(μ::DensityMeasure, x) = logdensityof(getfield(μ, :f), x)
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
-density_def(μ::DensityMeasure, x) = densityof(getfield(μ, :f), x)
+density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
