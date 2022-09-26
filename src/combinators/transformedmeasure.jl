@@ -210,7 +210,7 @@ end
     vf::V,
     vμ::V,
 ) where {V<:TransformVolCorr}
-    pushfwd(f ∘ μ.f, μ.inv_f ∘ finv, μ, v)
+    pushfwd(f ∘ μ.f, μ.inv_f ∘ finv, μ, vf)
 end
 
 @inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf, vμ)
