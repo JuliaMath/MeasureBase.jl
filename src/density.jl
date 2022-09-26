@@ -127,7 +127,7 @@ function Base.getproperty(μ::DensityMeasure, s::Symbol)
     elseif s == :logdensity
         return x -> logdensityof(f, x)
     elseif s == :base
-        return :getfield(μ, :base)
+        return getfield(μ, :base)
     end
 end
 
@@ -169,6 +169,6 @@ _logdensitymeasure(f, base, ::NoDensity) = DensityMeasure(logfuncdensity(f), bas
 
 basemeasure(μ::DensityMeasure) = μ.base
 
-logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
+logdensity_def(μ::DensityMeasure, x) = logdensityof(getfield(μ, :f), x)
 
-density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
+density_def(μ::DensityMeasure, x) = densityof(getfield(μ, :f), x)
