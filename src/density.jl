@@ -110,8 +110,24 @@ struct DensityMeasure{F,B} <: AbstractMeasure
     base::B
 
     function DensityMeasure(f::F, base::B) where {F,B}
-        @assert DensityKind(f) == IsDensity()
+        @assert DensityKind(f) isa IsDensity
         new{F,B}(f, base)
+    end
+end
+
+function Base.propertynames(::DensityMeasure)
+    (:density, :logdensity, :base)
+end
+
+function Base.getproperty(μ::DensityMeasure, s)
+    f = getfield(μ, :f)
+    
+    if s == :density
+        return x -> densityof(f, x)
+    else if s == :logdensity
+        return x -> logdensityof(f, x)
+    else if s == :base
+        return :getfield(μ, :base)
     end
 end
 
