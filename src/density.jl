@@ -132,7 +132,7 @@ function Base.getproperty(μ::DensityMeasure, s::Symbol)
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
+    insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
