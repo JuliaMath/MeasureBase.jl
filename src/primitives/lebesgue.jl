@@ -24,6 +24,12 @@ logdensity_def(::CountingBase, ::LebesgueBase, x) = Inf
     @boundscheck throw(ArgumentError("Invalid variate type for measure"))
 end
 
+function _massof(m, s::Interval, ::LebesgueBase)
+    b = transport_def(StdUniform(), m, s.right)
+    a = transport_def(StdUniform(), m, s.left)
+    return abs(b - a)
+end
+
 ##########################################################
 struct Lebesgue{T} <: AbstractMeasure
     support::T

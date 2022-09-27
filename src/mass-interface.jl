@@ -104,11 +104,8 @@ isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
 isone(::AbstractUnknownMass) = false
 
-# TODO: Make this work for non-unit-mass measures
-function massof(m::AbstractMeasure, s::Interval)
-    b = transport_def(StdUniform(), m, s.right)
-    a = transport_def(StdUniform(), m, s.left)
-    return abs(b - a)
+function massof(m, s)
+    _massof(m, s, rootmeasure(m))
 end
 
 """
