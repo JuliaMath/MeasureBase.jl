@@ -25,9 +25,12 @@ logdensity_def(::CountingBase, ::LebesgueBase, x) = Inf
 end
 
 function _massof(m, s::Interval, ::LebesgueBase)
-    b = transport_def(StdUniform(), m, s.right)
-    a = transport_def(StdUniform(), m, s.left)
-    return abs(b - a)
+    mass = massof(m)
+    nu = mass * StdUniform()
+    f = transport_to(nu, m)
+    a = f(minimum(s))
+    b = f(maximum(s))
+    return mass * abs(b - a)
 end
 
 ##########################################################
