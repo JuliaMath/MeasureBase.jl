@@ -34,7 +34,7 @@ Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
-to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}(ν)
+to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
 
 """
     struct MeasureBase.NoTransport{NU,MU} end
