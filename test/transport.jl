@@ -20,12 +20,12 @@ using LogExpFunctions: logit
 
         @testset "transport_to (variations of) $(nameof(typeof(μ0))) to $(nameof(typeof(ν0)))" begin
             test_transport(ν0, μ0)
-            test_transport(2.2 * ν0, 3 * μ0)
+            test_transport(2.2 * ν0, 2.2 * μ0)
             test_transport(ν0, μ0^1)
             test_transport(ν0^1, μ0)
             test_transport(ν0^3, μ0^3)
             test_transport(ν0^(2, 3, 2), μ0^(3, 4))
-            test_transport(2.2 * ν0^(2, 3, 2), 3 * μ0^(3, 4))
+            test_transport(2.2 * ν0^(2, 3, 2), 2.2 * μ0^(3, 4))
             @test_throws ArgumentError transport_to(ν0, μ0)(rand(μ0^12))
             @test_throws ArgumentError transport_to(ν0^3, μ0^3)(rand(μ0^(3, 4)))
         end
