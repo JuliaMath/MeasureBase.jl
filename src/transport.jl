@@ -125,7 +125,7 @@ end
     ν_0 = ν
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         ν_{i} = transport_origin(ν_{i - 1})
-        if ν_{i} isa NoTransformOrigin
+        if ν_{i} isa NoTransportOrigin
             return static(i - 1)
         end
     end
