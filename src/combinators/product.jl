@@ -224,3 +224,14 @@ end
     end
     return true
 end
+
+
+getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
+
+function transport_to(ν::PowerMeasure{NU}, μ::ProductMeasure{<:Tuple}, x) where {NU<:StdMeasure}
+    reshape(vcat(map(_TransportToStd{NU}, μ, x)...), ν.axes)
+end
+
+function transport_to(ν::PowerMeasure{NU}, μ::ProductMeasure{<:NamedTuple{names}}, x) where {NU<:StdMeasure, names}
+    transport_to(ν, values(marginals(μ)), values(xb))
+end
