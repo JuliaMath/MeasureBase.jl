@@ -228,10 +228,11 @@ end
 
 getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
 
-function transport_to(ν::PowerMeasure{NU}, μ::ProductMeasure{<:Tuple}, x) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μ, x)...), ν.axes)
+
+function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where N
+    map(checked_arg, marginals(μ), x)
 end
 
-function transport_to(ν::PowerMeasure{NU}, μ::ProductMeasure{<:NamedTuple{names}}, x) where {NU<:StdMeasure, names}
-    transport_to(ν, values(marginals(μ)), values(xb))
+function checked_arg(μ::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where names
+    NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
