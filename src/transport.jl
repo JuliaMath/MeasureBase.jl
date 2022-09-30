@@ -113,9 +113,6 @@ See [`transport_to`](@ref).
 """
 function transport_def end
 
-transport_def(::Any, ::Any, x::NoTransportOrigin) = x
-transport_def(::Any, ::Any, x::NoTransport) = x
-
 function transport_def(ν, μ, x)
     _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
 end
@@ -175,9 +172,13 @@ end
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
+_call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
+_call_transport_def(::Any, ::Any, x::NoTransportOrigin) = x
+_call_transport_def(::Any, ::Any, x::NoTransport) = x
+
 function _transport_with_intermediate(ν, m, μ, x)
-    z = transport_def(m, μ, x)
-    y = transport_def(ν, m, z)
+    z = _call_transport_def(m, μ, x)
+    y = _call_transport_def(ν, m, z)
     return y
 end
 
@@ -218,7 +219,7 @@ function Base.:(==)(a::TransportFunction, b::TransportFunction)
 end
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
+    return _call_transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
