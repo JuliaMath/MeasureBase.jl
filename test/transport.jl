@@ -5,7 +5,11 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac
 using LogExpFunctions: logit
 
+using ChainRulesTestUtils
+
 @testset "transport_to" begin
+    test_rrule(MeasureBase._origin_depth, pushfwd(exp, StdUniform()))
+
     for (f, μ) in [
         (logit, StdUniform())
         (log, StdExponential())
