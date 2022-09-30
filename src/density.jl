@@ -236,7 +236,9 @@ function logdensity_def(μ::T, ν::T, x) where {T}
     if μ === ν
         return zero(logdensity_def(μ, x))
     else
-        return logdensity_def(μ, x) - logdensity_def(ν, x)
+        α = basemeasure(μ)
+        β = basemeasure(ν)
+        return logdensity_def(μ, x) - logdensity_def(ν, x) + logdensity_rel(α, β, x)
     end
 end
 
