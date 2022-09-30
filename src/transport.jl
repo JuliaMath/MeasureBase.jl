@@ -1,14 +1,4 @@
 """
-    struct MeasureBase.NoTransportOrigin{NU}
-
-Indicates that no (default) pullback measure is available for measures of
-type `NU`.
-
-See [`MeasureBase.transport_origin`](@ref).
-"""
-struct NoTransportOrigin{NU} end
-
-"""
     MeasureBase.transport_origin(ν)
 
 Default measure to pullback to resp. pushforward from when transforming
@@ -16,7 +6,7 @@ between `ν` and another measure.
 """
 function transport_origin end
 
-transport_origin(ν::NU) where {NU} = NoTransportOrigin{NU}()
+transport_origin(ν::NU) where {NU} = ν
 
 """
     MeasureBase.from_origin(ν, x)
@@ -25,7 +15,7 @@ Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
-from_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
+from_origin(ν::NU, x) where {NU} = x
 
 """
     MeasureBase.to_origin(ν, y)
@@ -34,7 +24,7 @@ Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
-to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
+to_origin(ν::NU, x) where {NU} = x
 
 """
     struct MeasureBase.NoTransport{NU,MU} end
@@ -42,7 +32,7 @@ to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
 Indicates that no transformation from a measure of type `MU` to a measure of
 type `NU` could be found.
 """
-struct NoTransport{NU,MU} end
+struct NoTransport{NU,MU,X} end
 
 """
     f = transport_to(ν, μ)
@@ -92,92 +82,6 @@ distribution itself or a power of it (e.g. `StdUniform()` or
 """
 function transport_to end
 
-"""
-    transport_def(ν, μ, x)
-
-Transforms a value `x` distributed according to `μ` to a value `y` distributed
-according to `ν`.
-
-If no specialized `transport_def(::MU, ::NU, ...)` is available then
-the default implementation of`transport_def(ν, μ, x)` uses the following
-strategy:
-
-* Evaluate [`transport_origin`](@ref) for μ and ν. Transform between
-  each and it's origin, if available, and use the origin(s) as intermediate
-  measures for another transformation.
-
-* If all else fails, try to transform from μ to a standard multivariate
-  uniform measure and then to ν.
-
-See [`transport_to`](@ref).
-"""
-function transport_def end
-
-transport_def(::Any, ::Any, x::NoTransportOrigin) = x
-transport_def(::Any, ::Any, x::NoTransport) = x
-
-function transport_def(ν, μ, x)
-    _transport_with_intermediate(
-        ν,
-        _checked_transport_origin(ν),
-        _checked_transport_origin(μ),
-        μ,
-        x,
-    )
-end
-
-@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where {MU} = μ_o
-function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where {MU}
-    throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
-end
-
-@inline function _checked_transport_origin(μ::MU) where {MU}
-    μ_o = transport_origin(μ)
-    _origin_must_have_separate_type(MU, μ_o)
-end
-
-function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
-    x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
-    y_o = transport_def(ν_o, μ_o, checked_arg(μ_o, x_o))
-    y = from_origin(ν, y_o)
-    return y
-end
-
-function _transport_with_intermediate(ν, ν_o, ::NoTransportOrigin, μ, x)
-    y_o = transport_def(ν_o, μ, x)
-    y = from_origin(ν, y_o)
-    return y
-end
-
-function _transport_with_intermediate(ν, ::NoTransportOrigin, μ_o, μ, x)
-    x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
-    y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
-    return y
-end
-
-function _transport_with_intermediate(ν, ::NoTransportOrigin, ::NoTransportOrigin, μ, x)
-    _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
-end
-
-@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
-@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
-@inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
-
-function _transport_with_intermediate(ν, m, μ, x)
-    z = transport_def(m, μ, x)
-    y = transport_def(ν, m, z)
-    return y
-end
-
-# Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline function _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU}
-    NoTransport{NU,MU}()
-end
-@inline function _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU}
-    NoTransport{NU,MU}()
-end
 
 """
     struct TransportFunction <: Function
@@ -275,3 +179,124 @@ variate transformations into account (typically via the
 log-abs-det-Jacobian of the transform).
 """
 struct WithVolCorr <: TransformVolCorr end
+
+function transport_def(m1::M, m2::M, x) where {M}
+    @assert m1 === m2
+    return x
+end
+
+export transport_rel
+
+@inline function transport_rel(μ::M, ν::N, x::X) where {M,N,X}
+    if static_hasmethod(transport_def, Tuple{M,N,X})
+        return transport_def(μ, ν, x)
+    end
+    μs = origin_sequence(μ)
+    νs = origin_sequence(ν)
+    co = common_origin(μs, νs, X)
+    isnothing(co) && begin
+        μ = μs[end]
+        ν = νs[end]
+        @warn """
+        No common transport origin for
+            $μ
+        and
+            $ν
+
+        To add one, add a method
+            logdensity_def($μ, $ν, x)
+        """
+        return NoTransport{M,N,X}
+    end
+    return _transport_rel(μs, νs, co, x)
+end
+
+
+@generated function _transport_rel(
+    νs::Tν,
+    μs::Tμ,
+    ::Tuple{StaticInt{N},StaticInt{M}},
+    x::X,
+) where {Tμ,Tν,M,N,X}
+    sμ = schema(Tμ)
+    sν = schema(Tν)
+    
+    xnames = map(m -> Symbol(:x_, m), 1:M)
+    ynames = map(n -> Symbol(:y_, n), 1:N)
+
+    q = quote
+        $(Expr(:meta, :inline))
+        x_1 = x
+    end
+
+    for j in 2:M
+        x_old = xnames[j-1]
+        x_new = xnames[j]
+        push!(q.args, :($x_new = to_origin(μs[$(j-1)], $x_old)))
+    end
+
+    push!(q.args, :($(last(ynames)) = transport_def(last(νs), last(μs), $(last(xnames)))))
+
+    for j in N-1:-1:1
+        push!(q.args, :($(ynames[j]) = from_origin(νs[$j], $(ynames[j+1]))))
+    end
+
+    push!(q.args, :($(ynames[1])))
+    return q
+end
+
+
+
+"""
+    origin_sequence(m)
+
+Construct the longest `Tuple` starting with `m` having each term as the base
+measure of the previous term, and with no repeated entries.
+"""
+@inline function origin_sequence(μ::M) where {M}
+    b_1 = μ
+    done = false
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        b_{i + 1} = if done
+            nothing
+        else
+            transport_origin(b_{i})
+        end
+        if b_{i + 1} isa typeof(b_{i})
+            done = true
+            b_{i + 1} = nothing
+        end
+    end
+    return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
+end
+
+
+common_origin(μ, ν) = common_origin(μ, ν, Any)
+
+"""
+    common_origin(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
+
+Find minimal (with respect to their sum) `i` and `j` such that there is a method
+
+    logdensity_def(origin_sequence(μ)[i], origin_sequence(ν)[j], ::T)
+
+This is used in `logdensity_rel` to help make that function efficient.
+"""
+@inline function common_origin(μ, ν, ::Type{T}) where {T}
+    return common_origin(origin_sequence(μ), origin_sequence(ν), T)
+end
+
+@generated function common_origin(μ::M, ν::N, ::Type{T}) where {M<:Tuple,N<:Tuple,T}
+    m = schema(M)
+    n = schema(N)
+
+    sols = Iterators.filter(
+        ((i, j),) -> static_hasmethod(transport_def, Tuple{m[i],n[j],T}),
+        Iterators.product(1:length(m), 1:length(n)),
+    )
+    isempty(sols) && return :(nothing)
+    minsol = static.(argmin(((i, j),) -> i + j, sols))
+    quote
+        $minsol
+    end
+end

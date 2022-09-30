@@ -130,3 +130,17 @@ function checked_arg(μ::PowerMeasure, x::Any)
 end
 
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
+
+transport_origin(m::PowerMeasure{M,<:NTuple{1, <:Base.OneTo}}) where {M} = transport_origin(m.parent) ^ m.axes
+
+function from_origin(m::PowerMeasure{M,<:NTuple{1, <:Base.OneTo}}, x) where {M}
+    map(x) do xj
+        from_origin(m.parent, xj)
+    end
+end
+
+function to_origin(m::PowerMeasure{M,<:NTuple{1, <:Base.OneTo}}, x) where {M}
+    map(x) do xj
+        to_origin(m.parent, xj)
+    end
+end
