@@ -132,6 +132,10 @@ end
     return static(10)
 end
 
+_origin_depth_pullback(ΔΩ) = NoTangent(), NoTangent()
+ChainRulesCore.rrule(::typeof(_origin_depth), ν) = _origin_depth(ν), _origin_depth_pullback
+
+
 # If both both measures have no origin:
 function _transport_between_origins(ν, ::StaticInt{0}, ::StaticInt{0}, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)

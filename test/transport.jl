@@ -4,7 +4,11 @@ using MeasureBase.Interface: transport_to, test_transport
 using MeasureBase: StdUniform, StdExponential, StdLogistic
 using MeasureBase: Dirac
 
+using ChainRulesTestUtils
+
 @testset "transport_to" begin
+    test_rrule(MeasureBase._origin_depth, pushfwd(exp, StdUniform()))
+
     for μ0 in [StdUniform(), StdExponential(), StdLogistic()],
         ν0 in [StdUniform(), StdExponential(), StdLogistic()]
 
