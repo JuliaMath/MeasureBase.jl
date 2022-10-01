@@ -102,7 +102,7 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 
 
 """
-rebase(μ, ν)
+    rebase(μ, ν)
 
 Express `μ` in terms of a density over `ν`. Satisfies
 ```
