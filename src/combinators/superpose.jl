@@ -30,6 +30,8 @@ struct SuperpositionMeasure{C} <: AbstractSuperpositionMeasure
     components::C
 end
 
+massof(m::SuperpositionMeasure) = sum(massof, m.components)
+
 function Pretty.tile(d::SuperpositionMeasure)
     result = Pretty.literal("SuperpositionMeasure(")
     result *= Pretty.list_layout([Pretty.tile.(d.components)...])

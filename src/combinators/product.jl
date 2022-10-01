@@ -16,6 +16,8 @@ function Pretty.tile(μ::AbstractProductMeasure)
     result *= Pretty.literal(")")
 end
 
+massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
+
 export marginals
 
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)

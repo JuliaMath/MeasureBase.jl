@@ -29,6 +29,8 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     base::M
 end
 
+massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
+
 _logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 

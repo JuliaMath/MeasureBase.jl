@@ -18,6 +18,8 @@ end
 
 basemeasure(d::Dirac) = CountingBase()
 
+massof(::Dirac) = static(1.0)
+
 logdensity_def(μ::Dirac, x) = 0.0
 
 Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
