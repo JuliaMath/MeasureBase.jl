@@ -157,6 +157,7 @@ include("rand.jl")
 include("fixedrng.jl")
 
 include("density.jl")
+include("density-core.jl")
 
 include("interface.jl")
 
