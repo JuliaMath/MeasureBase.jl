@@ -1,13 +1,64 @@
-
 export densityof
 export logdensityof
 
 export density_def
+export density_rel
 
-# TODO: Do we need this method?
-density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 
-density_def(μ, x) = exp(logdensity_def(μ, x))
+export logdensity_rel
+
+export unsafe_logdensityof
+
+
+"""
+    logdensityof(m::AbstractMeasure, x) 
+
+Compute the log-density of the measure `m` at `x`. Density is always relative,
+but `DensityInterface.jl` does not account for this. For compatibility with
+this, `logdensityof` for a measure is always implicitly relative to
+[`rootmeasure(x)`](@ref rootmeasure). 
+
+`logdensityof` works by first computing `insupport(m, x)`. If this is true, then
+`unsafe_logdensityof` is called. If `insupport(m, x)` is known to be `true`, it
+can be a little faster to directly call `unsafe_logdensityof(m, x)`. 
+
+To compute log-density relative to `basemeasure(m)` or *define* a log-density
+(relative to `basemeasure(m)` or another measure given explicitly), see
+`logdensity_def`. 
+
+To compute a log-density relative to a specific base-measure, see
+`logdensity_rel`. 
+"""
+@inline function logdensityof(μ::AbstractMeasure, x)
+    result = dynamic(unsafe_logdensityof(μ, x))
+    ifelse(insupport(μ, x) == true, result, oftype(result, -Inf))
+end
+
+export unsafe_logdensityof
+
+# https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
+"""
+    unsafe_logdensityof(m, x)
+
+Compute the log-density of the measure `m` at `x` relative to `rootmeasure(m)`.
+This is "unsafe" because it does not check `insupport(m, x)`.
+
+See also `logdensityof`.
+"""
+@inline function unsafe_logdensityof(μ::M, x) where {M}
+    ℓ_0 = logdensity_def(μ, x)
+    b_0 = μ
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        b_{i} = basemeasure(b_{i - 1}, x)
+        if b_{i} isa typeof(b_{i - 1})
+            return ℓ_{i - 1}
+        end
+        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
+            ℓ_{i - 1} + Δℓ_{i}
+        end
+    end
+    return ℓ_10
+end
 
 """
     logdensity_rel(m1, m2, x)
@@ -105,71 +156,8 @@ end
     return q
 end
 
-"""
-    logdensityof(m::AbstractMeasure, x) 
-
-Compute the log-density of the measure `m` at `x`. Density is always relative,
-but `DensityInterface.jl` does not account for this. For compatibility with
-this, `logdensityof` for a measure is always implicitly relative to
-[`rootmeasure(x)`](@ref rootmeasure). 
-
-`logdensityof` works by first computing `insupport(m, x)`. If this is true, then
-`unsafe_logdensityof` is called. If `insupport(m, x)` is known to be `true`, it
-can be a little faster to directly call `unsafe_logdensityof(m, x)`. 
-
-To compute log-density relative to `basemeasure(m)` or *define* a log-density
-(relative to `basemeasure(m)` or another measure given explicitly), see
-`logdensity_def`. 
-
-To compute a log-density relative to a specific base-measure, see
-`logdensity_rel`. 
-"""
-@inline function logdensityof(μ::AbstractMeasure, x)
-    result = dynamic(unsafe_logdensityof(μ, x))
-    ifelse(insupport(μ, x) == true, result, oftype(result, -Inf))
-end
-
-export unsafe_logdensityof
-
-# https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
-"""
-    unsafe_logdensityof(m, x)
-
-Compute the log-density of the measure `m` at `x` relative to `rootmeasure(m)`.
-This is "unsafe" because it does not check `insupport(m, x)`.
-
-See also `logdensityof`.
-"""
-@inline function unsafe_logdensityof(μ::M, x) where {M}
-    ℓ_0 = logdensity_def(μ, x)
-    b_0 = μ
-    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i - 1}, x)
-        if b_{i} isa typeof(b_{i - 1})
-            return ℓ_{i - 1}
-        end
-        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
-            ℓ_{i - 1} + Δℓ_{i}
-        end
-    end
-    return ℓ_10
-end
-
-"""
-    rebase(μ, ν)
-
-Express `μ` in terms of a density over `ν`. Satisfies
-```
-basemeasure(rebase(μ, ν)) == ν
-density(rebase(μ, ν)) == 𝒹(μ,ν)
-``` 
-"""
-rebase(μ, ν) = ∫(𝒹(μ, ν), ν)
-
-export density_rel
-
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
-export logdensity_rel
-
-@inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
+# TODO: Do we need this method?
+density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
+density_def(μ, x) = exp(logdensity_def(μ, x))

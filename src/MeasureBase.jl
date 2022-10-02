@@ -151,6 +151,7 @@ include("latent-joint.jl")
 include("rand.jl")
 
 include("density.jl")
+include("density-core.jl")
 
 include("interface.jl")
 
