@@ -17,16 +17,14 @@ function parent(::AbstractTransformedMeasure) end
 export PushforwardMeasure
 
 """
-    struct PushforwardMeasure{FF,IF,MU,VC<:TransformVolCorr} <: AbstractPushforward
-        f :: FF
-        inv_f :: IF
+    struct PushforwardMeasure{F,MU,VC<:TransformVolCorr} <: AbstractPushforward
+        f :: F
         origin :: MU
         volcorr :: VC
     end
 """
-struct PushforwardMeasure{FF,IF,M,VC<:TransformVolCorr} <: AbstractPushforward
-    f::FF
-    inv_f::IF
+struct PushforwardMeasure{F,M,VC<:TransformVolCorr} <: AbstractPushforward
+    f::F
     origin::M
     volcorr::VC
 end
@@ -34,7 +32,7 @@ end
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
-function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M}
+function transport_def(ν::PushforwardMeasure{F,M}, μ::M, x) where {F,M}
     if μ == parent(ν)
         return ν.f(x)
     else
@@ -42,7 +40,7 @@ function transport_def(ν::PushforwardMeasure{FF,IF,M}, μ::M, x) where {FF,IF,M
     end
 end
 
-function transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M}
+function transport_def(μ::M, ν::PushforwardMeasure{F,M}, y) where {F,M}
     if μ == parent(ν)
         return ν.inv_f(y)
     else
@@ -51,15 +49,17 @@ function transport_def(μ::M, ν::PushforwardMeasure{FF,IF,M}, y) where {FF,IF,M
 end
 
 function Pretty.tile(ν::PushforwardMeasure)
-    Pretty.list_layout(Pretty.tile.([ν.f, ν.inv_f, ν.origin]); prefix = :PushforwardMeasure)
+    Pretty.list_layout(Pretty.tile.([ν.f, ν.origin]); prefix = :PushforwardMeasure)
 end
 
 # TODO: Reduce code duplication
 @inline function logdensityof(
-    ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr},
+    ν::PushforwardMeasure{F,M,<:WithVolCorr},
     y,
-) where {FF,IF,M}
-    x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
+) where {F,M}
+    f = ν.f 
+    finv = inverse(f)
+    x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
     μ = ν.origin
     logd_orig = unsafe_logdensityof(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
@@ -89,10 +89,12 @@ end
 # end
 
 @inline function logdensity_def(
-    ν::PushforwardMeasure{FF,IF,M,<:WithVolCorr},
+    ν::PushforwardMeasure{F,M,<:WithVolCorr},
     y,
-) where {FF,IF,M}
-    x_orig, inv_ladj = with_logabsdet_jacobian(ν.inv_f, y)
+) where {F,M}
+    f = ν.f
+    finv = inverse(f)
+    x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
     logd_orig = unsafe_logdensityof(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
@@ -108,9 +110,9 @@ end
 end
 
 @inline function logdensity_def(
-    ν::PushforwardMeasure{FF,IF,M,<:NoVolCorr},
+    ν::PushforwardMeasure{F,M,<:NoVolCorr},
     y,
-) where {FF,IF,M}
+) where {F,M}
     x_orig = to_origin(ν, y)
     return unsafe_logdensityof(ν.origin, x_orig)
 end
@@ -159,11 +161,11 @@ If `f_inverse` is specified, it must be a valid inverse of the function given by
 restricting `f` to the support of `μ`.
 """
 function pushfwd(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(f, inverse(f), μ, volcorr)
+    PushforwardMeasure(f, μ, volcorr)
 end
 
 function pushfwd(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    PushforwardMeasure(f, finv, μ, volcorr)
+    pushfwd(setinverse(f, finv), μ, volcorr)
 end
 
 """
@@ -183,36 +185,7 @@ function pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCor
 end
 
 function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(finv, f, μ, volcorr)
+    pushfwd(setinverse(finv, f), μ, volcorr)
 end
 
-@inline function pushfwd(
-    f,
-    μ::PushforwardMeasure,
-    volcorr::TransformVolCorr = WithVolCorr(),
-)
-    _pushfwd(f, inverse(f), μ, volcorr, μ.volcorr)
-end
-
-@inline function pushfwd(
-    f,
-    finv,
-    μ::PushforwardMeasure,
-    volcorr::TransformVolCorr = WithVolCorr(),
-)
-    _pushfwd(f, finv, μ, volcorr, μ.volcorr)
-end
-
-@inline function _pushfwd(
-    f,
-    finv,
-    μ::PushforwardMeasure,
-    vf::V,
-    vμ::V,
-) where {V<:TransformVolCorr}
-    pushfwd(f ∘ μ.f, μ.inv_f ∘ finv, μ, vf)
-end
-
-@inline function _pushfwd(f, finv, μ::PushforwardMeasure, vf, vμ)
-    PushforwardMeasure(f, finv, μ, vf)
-end
+# TODO: implement pushfwd-of-a-pushforward
