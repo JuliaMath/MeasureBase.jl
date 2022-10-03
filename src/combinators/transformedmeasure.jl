@@ -42,8 +42,7 @@ end
 
 function transport_def(μ::M, ν::PushforwardMeasure{F,M}, y) where {F,M}
     if μ == parent(ν)
-        
-        return inverse(ν.f)
+        return inverse(ν.f)(y)
     else
         invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, μ, ν, y)
     end
