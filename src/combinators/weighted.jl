@@ -53,8 +53,8 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
 
-# Transports must preserve mass
-transport_origin(ν::WeightedMeasure) = weightedmeasure(ν.logweight, transport_origin(ν.base))
+# TODO: Transports must preserve mass
+transport_origin(ν::WeightedMeasure) = ν.base
 
-to_origin(w::WeightedMeasure, y) = to_origin(w.base, y)
-from_origin(w::WeightedMeasure, x) = from_origin(w.base, x)
+to_origin(w::WeightedMeasure, y) = y
+from_origin(w::WeightedMeasure, x) = x
