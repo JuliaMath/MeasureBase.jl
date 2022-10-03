@@ -8,6 +8,12 @@ import Random: gentype
 using Statistics
 using LinearAlgebra
 
+import IntervalSets
+# This seems harder than it should be to get `IntervalSets.:(..)`
+@eval (using IntervalSets: $(Symbol(IntervalSets.:(..))))
+
+using IntervalSets: Interval, width
+
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
@@ -121,6 +127,7 @@ include("combinators/half.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
+include("mass-interface.jl")
 # include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
@@ -146,9 +153,10 @@ include("standard/stdmeasure.jl")
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
-include("latent-joint.jl")
+include("standard/stdnormal.jl")
 
 include("rand.jl")
+include("fixedrng.jl")
 
 include("density.jl")
 include("density-core.jl")

@@ -76,7 +76,7 @@ test_measures = [
 testbroken_measures = [
     # InverseGamma(2) # Not defined yet
     # MvNormal(I(3)) # Entirely broken for now
-    CountingMeasure()
+    CountingBase()
     Likelihood
     TrivialMeasure()
 ]

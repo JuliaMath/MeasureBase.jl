@@ -4,6 +4,8 @@ using LogExpFunctions
 
 export SuperpositionMeasure
 
+abstract type AbstractSuperpositionMeasure <: AbstractMeasure end
+
 @doc raw"""
     struct SuperpositionMeasure{NT} <: AbstractMeasure
         components :: NT
@@ -24,9 +26,11 @@ Superposition measures satisfy
     \end{aligned}
 ```
 """
-struct SuperpositionMeasure{C} <: AbstractMeasure
+struct SuperpositionMeasure{C} <: AbstractSuperpositionMeasure
     components::C
 end
+
+massof(m::SuperpositionMeasure) = sum(massof, m.components)
 
 function Pretty.tile(d::SuperpositionMeasure)
     result = Pretty.literal("SuperpositionMeasure(")
@@ -34,7 +38,7 @@ function Pretty.tile(d::SuperpositionMeasure)
     result *= Pretty.literal(")")
 end
 
-testvalue(μ::SuperpositionMeasure) = testvalue(first(μ.components))
+testvalue(::Type{T}, μ::SuperpositionMeasure) where {T} = testvalue(T, first(μ.components))
 
 # SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
 

@@ -20,12 +20,16 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) whe
     rand(rng, T, basemeasure(μ))
 end
 
+testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basemeasure(μ))
+
 ###############################################################################
 
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight::R
     base::M
 end
+
+massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
 _logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
@@ -49,6 +53,8 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
 
+# TODO: Transports must preserve mass
 transport_origin(ν::WeightedMeasure) = ν.base
-to_origin(::WeightedMeasure, y) = y
-from_origin(::WeightedMeasure, x) = x
+
+to_origin(w::WeightedMeasure, y) = y
+from_origin(w::WeightedMeasure, x) = x

@@ -10,13 +10,13 @@ using MeasureBase: superpose
     @test μs isa SuperpositionMeasure{<:Tuple{Dirac,Dirac}}
     @test μs == SuperpositionMeasure((μ, ν)) == superpose(μ, ν)
     @test density_def(μs, 0) == 1.0
-    @test basemeasure(μs) == CountingMeasure() + CountingMeasure()
+    @test basemeasure(μs) == CountingBase() + CountingBase()
 
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
     @test_throws ErrorException density_def(μs, 0)
     @test basemeasure(μs).components ==
-          SuperpositionMeasure([CountingMeasure(), CountingMeasure()]).components
+          SuperpositionMeasure([CountingBase(), CountingBase()]).components
 
     μ2 = μ + μ
     @test μ2 isa WeightedMeasure

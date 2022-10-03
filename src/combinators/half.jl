@@ -26,4 +26,6 @@ logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
     insupport(unhalf(d), x)
 end
 
-testvalue(::Half) = 1.0
+testvalue(::Type{T}, ::Half) where {T} = one(T)
+
+massof(μ::Half) = massof(unhalf(μ))

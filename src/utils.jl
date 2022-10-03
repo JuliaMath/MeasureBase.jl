@@ -10,7 +10,11 @@ showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
 showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
-testvalue(μ::AbstractMeasure) = testvalue(basemeasure(μ))
+
+@inline testvalue(μ) = rand(FixedRNG(), μ)
+
+@inline testvalue(::Type{T}, μ) where {T} = rand(FixedRNG(), T, μ)
+
 testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
@@ -148,6 +152,8 @@ end
 function rmap(f, nt::NamedTuple{N,T}) where {N,T}
     NamedTuple{N}(map(x -> rmap(f, x), values(nt)))
 end
+
+insupport(m::AbstractMeasure) = Base.Fix1(insupport, m)
 
 @inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
 

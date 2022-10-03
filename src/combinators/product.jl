@@ -16,6 +16,8 @@ function Pretty.tile(μ::AbstractProductMeasure)
     result *= Pretty.literal(")")
 end
 
+massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
+
 export marginals
 
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
@@ -161,7 +163,9 @@ marginals(μ::ProductMeasure) = μ.marginals
 _map(f, args...) = map(f, args...)
 _map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(f ∘ x.f, x.data)
 
-testvalue(d::AbstractProductMeasure) = _map(testvalue, marginals(d))
+function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
+    _map(m -> testvalue(T, m), marginals(d))
+end
 
 export ⊗
 

@@ -11,6 +11,7 @@ using MeasureBase: transport_to, NoTransport
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
+using Tricks: static_hasmethod
 
 export test_interface
 export test_transport
@@ -22,7 +23,10 @@ export commonbase
 
 using Test
 
-function dynamic_basemeasure_depth(μ)
+function dynamic_basemeasure_depth(μ::M) where {M}
+    if static_hasmethod(proxy, Tuple{M})
+        return dynamic_basemeasure_depth(proxy(μ))
+    end
     β = basemeasure(μ)
     depth = 0
     while μ ≠ β
@@ -54,7 +58,7 @@ function test_interface(μ::M) where {M}
             ###########################################################################
             # testvalue, logdensityof
 
-            x = @inferred testvalue(μ)
+            x = @inferred testvalue(Float64, μ)
             β = @inferred basemeasure(μ, x)
 
             ℓμ = @inferred logdensityof(μ, x)
@@ -62,7 +66,7 @@ function test_interface(μ::M) where {M}
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
-            @test logdensity_def(μ, testvalue(μ)) isa Real
+            @test logdensity_def(μ, testvalue(Float64, μ)) isa Real
         end
     end
 end
