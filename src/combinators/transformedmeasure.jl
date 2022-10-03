@@ -42,7 +42,8 @@ end
 
 function transport_def(μ::M, ν::PushforwardMeasure{F,M}, y) where {F,M}
     if μ == parent(ν)
-        return ν.inv_f(y)
+        
+        return inverse(ν.f)
     else
         invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, μ, ν, y)
     end
@@ -124,7 +125,7 @@ function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
 end
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    PushforwardMeasure(ν.f, ν.inv_f, basemeasure(transport_origin(ν)), NoVolCorr())
+    PushforwardMeasure(ν.f, basemeasure(transport_origin(ν)), NoVolCorr())
 end
 
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
@@ -142,7 +143,7 @@ end
 
 @inline transport_origin(ν::PushforwardMeasure) = ν.origin
 @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-@inline to_origin(ν::PushforwardMeasure, y) = ν.inv_f(y)
+@inline to_origin(ν::PushforwardMeasure, y) = inverse(ν.f)(y)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return ν.f(rand(rng, T, parent(ν)))
