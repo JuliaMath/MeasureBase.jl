@@ -71,16 +71,19 @@ function test_interface(μ::M) where {M}
     end
 end
 
-
 function test_transport(ν, μ)
     supertype(x) = Any
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where {N} = AbstractArray{<:Real,N}
 
     structisapprox(a, b) = isapprox(a, b)
-    structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where N = all(map(structisapprox, a, b))
-    structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where names = all(map(structisapprox, values(a), values(b)))
-    
+    function structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where {N}
+        all(map(structisapprox, a, b))
+    end
+    function structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where {names}
+        all(map(structisapprox, values(a), values(b)))
+    end
+
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
         @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)

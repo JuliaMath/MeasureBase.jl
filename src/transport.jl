@@ -117,7 +117,6 @@ function transport_def(ν, μ, x)
     _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
 end
 
-
 @inline function _origin_depth(ν::NU) where {NU}
     ν_0 = ν
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
@@ -132,41 +131,53 @@ end
 _origin_depth_pullback(ΔΩ) = NoTangent(), NoTangent()
 ChainRulesCore.rrule(::typeof(_origin_depth), ν) = _origin_depth(ν), _origin_depth_pullback
 
-
 # If both both measures have no origin:
 function _transport_between_origins(ν, ::StaticInt{0}, ::StaticInt{0}, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
-@generated function _transport_between_origins(ν, ::StaticInt{n_ν}, ::StaticInt{n_μ}, μ, x) where {n_ν, n_μ}
+@generated function _transport_between_origins(
+    ν,
+    ::StaticInt{n_ν},
+    ::StaticInt{n_μ},
+    μ,
+    x,
+) where {n_ν,n_μ}
     prog = quote
         μ0 = μ
         x0 = x
         ν0 = ν
     end
     for i in 1:n_μ
-        μ_i = Symbol(:μ,i); μ_last = Symbol(:μ,i-1)
+        μ_i = Symbol(:μ, i)
+        μ_last = Symbol(:μ, i - 1)
         push!(prog.args, :($μ_i = transport_origin($μ_last)))
     end
     for i in 1:n_μ
-        x_i = Symbol(:x,i); x_last = Symbol(:x,i-1); μ_last = Symbol(:μ,i-1)
+        x_i = Symbol(:x, i)
+        x_last = Symbol(:x, i - 1)
+        μ_last = Symbol(:μ, i - 1)
         push!(prog.args, :($x_i = to_origin($μ_last, $x_last)))
     end
     for i in 1:(n_ν)
-        ν_i = Symbol(:ν,i); ν_last = Symbol(:ν,i-1);
+        ν_i = Symbol(:ν, i)
+        ν_last = Symbol(:ν, i - 1)
         push!(prog.args, :($ν_i = transport_origin($ν_last)))
     end
-    μ_im = Symbol(:μ,n_μ); x_im = Symbol(:x,n_μ)
-    ν_im = Symbol(:ν,n_ν); y_im = Symbol(:y,n_ν)
+    μ_im = Symbol(:μ, n_μ)
+    x_im = Symbol(:x, n_μ)
+    ν_im = Symbol(:ν, n_ν)
+    y_im = Symbol(:y, n_ν)
     push!(prog.args, :($y_im = transport_def($ν_im, $μ_im, $x_im)))
     for i in (n_ν-1):-1:0
-        y_i = Symbol(:y,i); y_last = Symbol(:y,i+1); ν_last = Symbol(:ν,i)
+        y_i = Symbol(:y, i)
+        y_last = Symbol(:y, i + 1)
+        ν_last = Symbol(:ν, i)
         push!(prog.args, :($y_i = from_origin($ν_last, $y_last)))
     end
     push!(prog.args, :(return y0))
     return prog
 end
-
 
 @inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ

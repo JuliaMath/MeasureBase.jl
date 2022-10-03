@@ -225,14 +225,15 @@ end
     return true
 end
 
-
 getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
 
-
-function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where N
+function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
     map(checked_arg, marginals(μ), x)
 end
 
-function checked_arg(μ::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where names
+function checked_arg(
+    μ::ProductMeasure{<:NamedTuple{names}},
+    x::NamedTuple{names},
+) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end

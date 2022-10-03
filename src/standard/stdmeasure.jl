@@ -54,31 +54,40 @@ end
     Zeros{Bool}(map(_ -> 0, ν.axes))
 end
 
-
 # Helpers for product transforms and similar:
 
 struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where NU = transport_to(NU()^getdof(μ), μ)(x)
+_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
 
 struct _TransportFromStd{MU<:StdMeasure} <: Function end
-_TransportFromStd{MU}(ν, x) where MU = transport_to(ν, MU()^getdof(ν))(x)
+_TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
 
-
-function _tuple_transport_def(ν::PowerMeasure{NU}, μs::Tuple, xs::Tuple) where {NU<:StdMeasure}
+function _tuple_transport_def(
+    ν::PowerMeasure{NU},
+    μs::Tuple,
+    xs::Tuple,
+) where {NU<:StdMeasure}
     reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
 end
 
-function transport_def(ν::PowerMeasure{NU}, μ::ProductMeasure{<:Tuple}, x) where {NU<:StdMeasure}
+function transport_def(
+    ν::PowerMeasure{NU},
+    μ::ProductMeasure{<:Tuple},
+    x,
+) where {NU<:StdMeasure}
     _tuple_transport_def(ν, marginals(μ), x)
 end
 
-function transport_def(ν::PowerMeasure{NU}, μ::ProductMeasure{<:NamedTuple{names}}, x) where {NU<:StdMeasure,names}
+function transport_def(
+    ν::PowerMeasure{NU},
+    μ::ProductMeasure{<:NamedTuple{names}},
+    x,
+) where {NU<:StdMeasure,names}
     _tuple_transport_def(ν, values(marginals(μ)), values(x))
 end
 
-
-@inline _offset_cumsum(s, x, y, rest...) = (s, _offset_cumsum(s+x, y, rest...)...)
-@inline _offset_cumsum(s,x) = (s,)
+@inline _offset_cumsum(s, x, y, rest...) = (s, _offset_cumsum(s + x, y, rest...)...)
+@inline _offset_cumsum(s, x) = (s,)
 @inline _offset_cumsum(s) = ()
 
 function _stdvar_viewranges(μs::Tuple, startidx::Integer)
@@ -87,16 +96,28 @@ function _stdvar_viewranges(μs::Tuple, startidx::Integer)
     map((o, n) -> o:o+n-1, offs, N)
 end
 
-function _tuple_transport_def(νs::Tuple, μ::PowerMeasure{MU}, x::AbstractArray{<:Real}) where {MU<:StdMeasure}
+function _tuple_transport_def(
+    νs::Tuple,
+    μ::PowerMeasure{MU},
+    x::AbstractArray{<:Real},
+) where {MU<:StdMeasure}
     vrs = _stdvar_viewranges(νs, firstindex(x))
     xs = map(r -> view(x, r), vrs)
     map(_TransportFromStd{MU}, νs, xs)
 end
 
-function transport_def(ν::ProductMeasure{<:Tuple}, μ::PowerMeasure{MU}, x) where {MU<:StdMeasure}
+function transport_def(
+    ν::ProductMeasure{<:Tuple},
+    μ::PowerMeasure{MU},
+    x,
+) where {MU<:StdMeasure}
     _tuple_transport_def(marginals(ν), μ, x)
 end
 
-function transport_def(ν::ProductMeasure{<:NamedTuple{names}}, μ::PowerMeasure{MU}, x) where {MU<:StdMeasure,names}
+function transport_def(
+    ν::ProductMeasure{<:NamedTuple{names}},
+    μ::PowerMeasure{MU},
+    x,
+) where {MU<:StdMeasure,names}
     NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
 end

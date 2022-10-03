@@ -57,10 +57,22 @@ using ChainRulesTestUtils
     end
 
     @testset "transport for products" begin
-        test_transport(StdUniform()^(2, 2), productmeasure((StdExponential(), StdLogistic()^3)))
-        test_transport(productmeasure((StdExponential(), StdLogistic()^3)), StdUniform()^(2, 2))
+        test_transport(
+            StdUniform()^(2, 2),
+            productmeasure((StdExponential(), StdLogistic()^3)),
+        )
+        test_transport(
+            productmeasure((StdExponential(), StdLogistic()^3)),
+            StdUniform()^(2, 2),
+        )
 
-        test_transport(StdUniform()^(2, 2), productmeasure((a = StdExponential(), b = StdLogistic()^3)))
-        test_transport(productmeasure((a = StdExponential(), b = StdLogistic()^3)), StdUniform()^(2, 2))
+        test_transport(
+            StdUniform()^(2, 2),
+            productmeasure((a = StdExponential(), b = StdLogistic()^3)),
+        )
+        test_transport(
+            productmeasure((a = StdExponential(), b = StdLogistic()^3)),
+            StdUniform()^(2, 2),
+        )
     end
 end
