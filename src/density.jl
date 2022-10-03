@@ -129,7 +129,9 @@ Define a new measure in terms of a density `f` over some measure `base`.
 ∫(f, base) = _densitymeasure(f, base, DensityKind(f))
 
 _densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-_densitymeasure(f, base, ::HasDensity) = @error "`∫(f, base)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."
+function _densitymeasure(f, base, ::HasDensity)
+    @error "`∫(f, base)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."
+end
 _densitymeasure(f, base, ::NoDensity) = DensityMeasure(funcdensity(f), base)
 
 export ∫exp
@@ -141,8 +143,12 @@ Define a new measure in terms of a log-density `f` over some measure `base`.
 """
 ∫exp(f, base) = _logdensitymeasure(f, base, DensityKind(f))
 
-_logdensitymeasure(f, base, ::IsDensity) = @error "`∫exp(f, base)` is not valid when `DensityKind(f) == IsDensity()`. Use `∫(f, base)` instead."
-_logdensitymeasure(f, base, ::HasDensity) = @error "`∫exp(f, base)` is not valid when `DensityKind(f) == HasDensity()`."
+function _logdensitymeasure(f, base, ::IsDensity)
+    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == IsDensity()`. Use `∫(f, base)` instead."
+end
+function _logdensitymeasure(f, base, ::HasDensity)
+    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == HasDensity()`."
+end
 _logdensitymeasure(f, base, ::NoDensity) = DensityMeasure(logfuncdensity(f), base)
 
 basemeasure(μ::DensityMeasure) = μ.base

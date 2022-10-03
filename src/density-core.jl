@@ -33,7 +33,7 @@ To compute a log-density relative to a specific base-measure, see
     _checksupport(insupport(μ, x), result)
 end
 
-_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf)) 
+_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 
 import ChainRulesCore
 @inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
