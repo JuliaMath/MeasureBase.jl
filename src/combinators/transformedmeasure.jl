@@ -179,7 +179,6 @@ function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = With
     pushfwd(setinverse(finv, f), μ, volcorr)
 end
 
-# TODO: implement pushfwd-of-a-pushforward
 function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
     _pushfwd(f, μ, μ.volcorr, volcorr)
 end
