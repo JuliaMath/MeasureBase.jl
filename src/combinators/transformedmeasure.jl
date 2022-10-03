@@ -36,7 +36,7 @@ function transport_def(ν::PushforwardMeasure{F,M}, μ::M, x) where {F,M}
     if μ == parent(ν)
         return ν.f(x)
     else
-        invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, ν, μ, x)
+        invoke(transport_def, Tuple{PushforwardMeasure,Any,Any}, ν, μ, x)
     end
 end
 
@@ -181,7 +181,7 @@ in terms of the inverse function; the "forward" function is not used at all. In
 some cases, we may be focusing on log-density (and not, for example, sampling).
 """
 function pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(inverse(f), f, μ, volcorr)
+    pushfwd(inverse(f), μ, volcorr)
 end
 
 function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
