@@ -24,6 +24,8 @@ macro useproxy(M)
         @inline $MeasureBase.to_origin(μ::$M, y) = to_origin(proxy(μ), y)
         @inline $MeasureBase.from_origin(μ::$M, x) = from_origin(proxy(μ), x)
 
+        @inline $MeasureBase.massof(μ::$M) = massof(proxy(μ))
+        @inline $MeasureBase.massof(μ::$M, s) = massof(proxy(μ), s)
         (μ::$M)(s) = proxy(μ)(s)
     end
 end
