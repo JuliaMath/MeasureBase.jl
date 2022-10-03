@@ -189,3 +189,15 @@ function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = With
 end
 
 # TODO: implement pushfwd-of-a-pushforward
+function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    _pushfwd(f, μ, μ.volcorr, volcorr)
+end
+
+# Either both WithVolCorr or both NoVolCorr, so we can merge them
+function _pushfwd(f, μ, ::V, v::V) where {V}
+    pushfwd(f ∘ μ.f, μ.origin, v)
+end
+
+function _pushfwd(f, μ, _, v)
+    PushforwardMeasure(f, μ, v)
+end
