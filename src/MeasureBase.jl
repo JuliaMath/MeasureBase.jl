@@ -17,6 +17,7 @@ using IntervalSets: Interval, width
 import DensityInterface: logdensityof
 import DensityInterface: densityof
 import DensityInterface: DensityKind
+using DensityInterface: FuncDensity, LogFuncDensity
 using DensityInterface
 
 using InverseFunctions
@@ -114,6 +115,7 @@ using Compat
 
 using IrrationalConstants
 
+include("density-core.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")

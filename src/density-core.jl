@@ -1,3 +1,14 @@
+export logdensityof
+export logdensity_rel
+export logdensity_def
+
+export unsafe_logdensityof
+export unsafe_logdensity_rel
+
+export densityof
+export density_rel
+export density_def
+
 """
     logdensityof(m::AbstractMeasure, x) 
 
@@ -22,7 +33,7 @@ To compute a log-density relative to a specific base-measure, see
     _checksupport(insupport(μ, x), result)
 end
 
-_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf)) 
+_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 
 import ChainRulesCore
 @inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
@@ -60,12 +71,6 @@ See also `logdensityof`.
     end
     return ℓ_10
 end
-
-export density_rel
-
-@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
-
-export logdensity_rel
 
 """
     logdensity_rel(m1, m2, x)
@@ -165,10 +170,8 @@ end
     return q
 end
 
-export densityof
-export logdensityof
+@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
-export density_def
-
+# TODO: Do we need this method?
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 density_def(μ, x) = exp(logdensity_def(μ, x))

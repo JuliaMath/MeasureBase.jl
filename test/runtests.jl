@@ -146,8 +146,9 @@ end
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
 
+Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+
 @testset "Half" begin
-    Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     HalfNormal() = Half(Normal())
     @test logdensityof(HalfNormal(), -0.2) == -Inf
     @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
@@ -233,19 +234,15 @@ end
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test logdensityof(𝒹(∫exp(f, Lebesgue()), Lebesgue()), x) ≈ f(x)
+    @test log(𝒹(∫exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
     let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
-        @test logdensityof(f, x) ≈ x^2
+        @test log(f(x)) ≈ x^2
     end
 
-    #     let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
-    #         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
-    #     end
-
-    #     let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
-    #         @test f(x) ≈ x^2
-    #     end
+    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+        @test f(x) ≈ x^2
+    end
 end
 
 include("getdof.jl")
