@@ -63,7 +63,7 @@ end
 # TODO: Reduce code duplication
 @inline function logdensityof(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
-    finv = inverse(f)
+    finv = ν.finv
     x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
     μ = ν.origin
     logd_orig = unsafe_logdensityof(ν.origin, x_orig)
