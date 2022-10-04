@@ -5,6 +5,8 @@ abstract type AbstractDensity <: Function end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
+import DensityInterface
+
 ####################################################################################
 # Density
 
@@ -44,6 +46,8 @@ density_rel(μ, base) = Density(μ, base)
 
 (f::Density)(x) = density_rel(f.μ, f.base, x)
 
+DensityInterface.logfuncdensity(d::Density) = throw(MethodError(logfuncdensity, (d,)))
+
 ####################################################################################
 # LogDensity
 
@@ -82,6 +86,8 @@ log𝒹(μ, base) = logdensity_rel(μ, base)
 logdensity_rel(μ, base) = LogDensity(μ, base)
 
 (f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
+
+DensityInterface.funcdensity(d::LogDensity) = throw(MethodError(funcdensity, (d,)))
 
 #######################################################################################
 # DensityMeasure
