@@ -112,18 +112,18 @@ end
 end
 
 @inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:NoVolCorr}, y) where {F,I,M}
-    x_orig = to_origin(ν, y)
-    return unsafe_logdensityof(ν.origin, x_orig)
+    x = ν.finv(y)
+    return unsafe_logdensityof(ν.origin, x)
 end
 
-insupport(ν::PushforwardMeasure, y) = insupport(transport_origin(ν), to_origin(ν, y))
+insupport(ν::PushforwardMeasure, y) = insupport(ν.origin, ν.finv(y))
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
-    from_origin(ν, testvalue(T, transport_origin(ν)))
+    ν.f(testvalue(T, parent(ν)))
 end
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    pushfwd(ν.f, basemeasure(transport_origin(ν)), NoVolCorr())
+    pushfwd(ν.f, basemeasure(parent(ν)), NoVolCorr())
 end
 
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
