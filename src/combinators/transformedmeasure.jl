@@ -1,5 +1,7 @@
 # TODO: Compare with ChangesOfVariables.jl
 
+using InverseFunctions: FunctionWithInverse
+
 abstract type AbstractTransformedMeasure <: AbstractMeasure end
 
 abstract type AbstractPushforward <: AbstractTransformedMeasure end
@@ -17,22 +19,28 @@ function parent(::AbstractTransformedMeasure) end
 export PushforwardMeasure
 
 """
-    struct PushforwardMeasure{F,MU,VC<:TransformVolCorr} <: AbstractPushforward
+    struct PushforwardMeasure{F,I,MU,VC<:TransformVolCorr} <: AbstractPushforward
         f :: F
+        finv :: I
         origin :: MU
         volcorr :: VC
     end
 """
-struct PushforwardMeasure{F,M,VC<:TransformVolCorr} <: AbstractPushforward
+struct PushforwardMeasure{F,I,M,VC<:TransformVolCorr} <: AbstractPushforward
     f::F
+    finv::I
     origin::M
     volcorr::VC
+end
+
+function pushfwd(f::FunctionWithInverse, μ, volcorr::WithVolCorr)
+    PushforwardMeasure(f.f, f.invf, μ, volcorr)
 end
 
 gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
-function transport_def(ν::PushforwardMeasure{F,M}, μ::M, x) where {F,M}
+function transport_def(ν::PushforwardMeasure{F,I,M}, μ::M, x) where {F,I,M}
     if μ == parent(ν)
         return ν.f(x)
     else
@@ -40,7 +48,7 @@ function transport_def(ν::PushforwardMeasure{F,M}, μ::M, x) where {F,M}
     end
 end
 
-function transport_def(μ::M, ν::PushforwardMeasure{F,M}, y) where {F,M}
+function transport_def(μ::M, ν::PushforwardMeasure{F,I,M}, y) where {F,I,M}
     if μ == parent(ν)
         return inverse(ν.f)(y)
     else
@@ -53,7 +61,7 @@ function Pretty.tile(ν::PushforwardMeasure)
 end
 
 # TODO: Reduce code duplication
-@inline function logdensityof(ν::PushforwardMeasure{F,M,<:WithVolCorr}, y) where {F,M}
+@inline function logdensityof(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
     finv = inverse(f)
     x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
@@ -85,7 +93,7 @@ end
 #     logdensity_rel(pushfwd(f, inv_f, ν.origin, WithVolCorr()), β.origin, x)
 # end
 
-@inline function logdensity_def(ν::PushforwardMeasure{F,M,<:WithVolCorr}, y) where {F,M}
+@inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
     finv = inverse(f)
     x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
@@ -103,7 +111,7 @@ end
     )
 end
 
-@inline function logdensity_def(ν::PushforwardMeasure{F,M,<:NoVolCorr}, y) where {F,M}
+@inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:NoVolCorr}, y) where {F,I,M}
     x_orig = to_origin(ν, y)
     return unsafe_logdensityof(ν.origin, x_orig)
 end
@@ -115,7 +123,7 @@ function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
 end
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    PushforwardMeasure(ν.f, basemeasure(transport_origin(ν)), NoVolCorr())
+    pushfwd(ν.f, basemeasure(transport_origin(ν)), NoVolCorr())
 end
 
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
@@ -133,7 +141,7 @@ end
 
 @inline transport_origin(ν::PushforwardMeasure) = ν.origin
 @inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-@inline to_origin(ν::PushforwardMeasure, y) = inverse(ν.f)(y)
+@inline to_origin(ν::PushforwardMeasure, y) = ν.finv(y)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return ν.f(rand(rng, T, parent(ν)))
@@ -142,25 +150,21 @@ end
 export pushfwd
 
 """
-    pushfwd(f, [f_inverse,] μ, volcorr = WithVolCorr())
+    pushfwd(f, μ, volcorr = WithVolCorr())
 
 Return the [pushforward
 measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
 [measurable function](https://en.wikipedia.org/wiki/Measurable_function) `f`.
 
-If `f_inverse` is specified, it must be a valid inverse of the function given by
-restricting `f` to the support of `μ`.
+To manually specify an inverse, call 
+`pushfwd(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
-function pushfwd(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    PushforwardMeasure(f, μ, volcorr)
-end
-
-function pushfwd(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(setinverse(f, finv), μ, volcorr)
+function pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+    pushfwd(setinverse(f, inverse(f)), μ, volcorr)
 end
 
 """
-    pullback(f, [f_inverse,] μ, volcorr = WithVolCorr())
+    pullback(f, μ, volcorr = WithVolCorr())
 
 A _pullback_ is a dual concept to a _pushforward_. While a pushforward needs a
 map _from_ the support of a measure, a pullback requires a map _into_ the
@@ -170,13 +174,12 @@ composition, together with a volume correction as needed.
 This can be useful, since the log-density of a `PushforwardMeasure` is computing
 in terms of the inverse function; the "forward" function is not used at all. In
 some cases, we may be focusing on log-density (and not, for example, sampling).
-"""
-function pullback(f, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(inverse(f), μ, volcorr)
-end
 
-function pullback(f, finv, μ::AbstractMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(setinverse(finv, f), μ, volcorr)
+To manually specify an inverse, call 
+`pullback(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
+"""
+function pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+    pushfwd(setinverse(inverse(f), f), μ, volcorr)
 end
 
 function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
@@ -185,9 +188,17 @@ end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
 function _pushfwd(f, μ, ::V, v::V) where {V}
-    pushfwd(f ∘ μ.f, μ.origin, v)
+    pushfwd(setinverse(f ∘ μ.f, μ.finv ∘ inverse(f)), μ.origin, v)
+end
+
+function _pushfwd(f::FunctionWithInverse, μ, ::V, v::V) where {V}
+    pushfwd(setinverse(f.f ∘ μ.f, μ.finv ∘ f.invf), μ.origin, v)
 end
 
 function _pushfwd(f, μ, _, v)
-    PushforwardMeasure(f, μ, v)
+    PushforwardMeasure(f, inverse(f), μ, v)
+end
+
+function _pushfwd(f::FunctionWithInverse, μ, _, v)
+    PushforwardMeasure(f.f, f.invf, μ, v)
 end
