@@ -61,7 +61,7 @@ function Pretty.tile(ν::PushforwardMeasure)
 end
 
 # TODO: Reduce code duplication
-@inline function logdensityof(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
+@inline function unsafe_logdensityof(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
     finv = ν.finv
     x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
@@ -184,6 +184,10 @@ end
 
 function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
     _pushfwd(f, μ, μ.volcorr, volcorr)
+end
+
+function pushfwd(f, μ::PushforwardMeasure, ::WithVolCorr)
+    _pushfwd(f, μ, μ.volcorr, WithVolCorr())
 end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
