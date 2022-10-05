@@ -33,8 +33,8 @@ struct PushforwardMeasure{F,I,M,VC<:TransformVolCorr} <: AbstractPushforward
     volcorr::VC
 end
 
-function pushfwd(f::FunctionWithInverse, μ, volcorr::WithVolCorr)
-    PushforwardMeasure(f.f, f.invf, μ, volcorr)
+function pushfwd(f, μ, volcorr::WithVolCorr)
+    PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
 gettransform(ν::PushforwardMeasure) = ν.f
