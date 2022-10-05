@@ -198,7 +198,3 @@ end
 function _pushfwd(f, μ, _, v)
     PushforwardMeasure(f, inverse(f), μ, v)
 end
-
-function _pushfwd(f::FunctionWithInverse, μ, _, v)
-    PushforwardMeasure(f.f, f.invf, μ, v)
-end
