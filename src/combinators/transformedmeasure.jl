@@ -60,25 +60,8 @@ function Pretty.tile(ν::PushforwardMeasure)
     Pretty.list_layout(Pretty.tile.([ν.f, ν.origin]); prefix = :PushforwardMeasure)
 end
 
-# TODO: Reduce code duplication
 @inline function unsafe_logdensityof(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
-    f = ν.f
-    finv = ν.finv
-    x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
-    μ = ν.origin
-    logd_orig = unsafe_logdensityof(ν.origin, x_orig)
-    logd = float(logd_orig + inv_ladj)
-    neginf = oftype(logd, -Inf)
-    insupport(μ, x_orig) || return oftype(logd, -Inf)
-    return ifelse(
-        # Zero density wins against infinite volume:
-        (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
-        # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
-        # Return constant -Inf to prevent problems with ForwardDiff:
-        (isfinite(logd_orig) && (inv_ladj == -Inf)),
-        neginf,
-        logd,
-    )
+    logdensity_def(ν, y)
 end
 
 # TODO: THIS IS ALMOST CERTAINLY WRONG 
@@ -123,7 +106,7 @@ function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
 end
 
 @inline function basemeasure(ν::PushforwardMeasure)
-    pushfwd(ν.f, basemeasure(parent(ν)), NoVolCorr())
+    pushfwd(ν.f, rootmeasure(parent(ν)), NoVolCorr())
 end
 
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
