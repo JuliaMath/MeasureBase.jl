@@ -45,7 +45,8 @@ function test_pushfwd(f, μ, ν_ref)
 end
 
 @testset "transformedmeasure.jl" begin
-    for (f, μ, ν_ref) in [
+    # (f, μ, ν_ref), so that pushfwd(f, μ) ≅ ν_ref
+    triples = [
         ((-) ∘ log1p ∘ (-), StdUniform(), StdExponential())
         ((-) ∘ log, StdUniform(), StdExponential())
         (exp ∘ (-), StdExponential(), StdUniform())
@@ -53,13 +54,15 @@ end
         (logistic, StdLogistic(), StdUniform())
         (Φ, StdNormal(), StdUniform())
         (Φinv, StdUniform(), StdNormal())
-        ]
-        
-        finv = inverse(f)
+    ]
+    
+    for (f, μ, ν_ref) in triples
         test_pushfwd(f, μ, ν_ref)
+    end
 
-        # broken
-        @testset "Pushforward-of-pushforward" begin
+    @testset "Pushforward-of-pushforward" begin
+        for (f, μ, ν_ref) in triples
+            finv = inverse(f)
             # test_pushfwd(finv, pushfwd(f, μ), μ)
         end
     end
