@@ -36,7 +36,7 @@ gettransform(ν::PushforwardMeasure) = ν.f
 parent(ν::PushforwardMeasure) = ν.origin
 
 function transport_def(ν::PushforwardMeasure{F,I,M}, μ::M, x) where {F,I,M}
-    if μ == parent(ν)
+    if μ === parent(ν)
         return ν.f(x)
     else
         invoke(transport_def, Tuple{PushforwardMeasure,Any,Any}, ν, μ, x)
@@ -44,8 +44,8 @@ function transport_def(ν::PushforwardMeasure{F,I,M}, μ::M, x) where {F,I,M}
 end
 
 function transport_def(μ::M, ν::PushforwardMeasure{F,I,M}, y) where {F,I,M}
-    if μ == parent(ν)
-        return inverse(ν.f)(y)
+    if μ === parent(ν)
+        return ν.finv(y)
     else
         invoke(transport_def, Tuple{Any,PushforwardMeasure,Any}, μ, ν, y)
     end
