@@ -1,5 +1,6 @@
 using Test
 
+using MeasureBase
 using MeasureBase: pushfwd, StdUniform, StdExponential, StdLogistic
 using MeasureBase: pushfwd, PushforwardMeasure
 using MeasureBase: transport_to, unsafe_logdensityof
@@ -7,12 +8,14 @@ import Statistics: var
 using DensityInterface: logdensityof
 using LogExpFunctions
 using SpecialFunctions: erfc, erfcinv
-import InverseFunctions: inverse
+import InverseFunctions: inverse, FunctionWithInverse
 using IrrationalConstants: invsqrt2, sqrt2
 import ChangesOfVariables: with_logabsdet_jacobian
 
 Φ(z) = erfc(-z * invsqrt2)/2
 Φinv(p) = -erfcinv(2*p) * sqrt2
+
+with_logabsdet_jacobian(f::FunctionWithInverse, x) = with_logabsdet_jacobian(f.f, x)
 
 with_logabsdet_jacobian(::typeof(Φ), z) = (Φ(z), logdensityof(StdNormal(), z))
 
@@ -63,7 +66,7 @@ end
     @testset "Pushforward-of-pushforward" begin
         for (f, μ, ν_ref) in triples
             finv = inverse(f)
-            # test_pushfwd(finv, pushfwd(f, μ), μ)
+            test_pushfwd(finv, pushfwd(f, μ), μ)
         end
     end
 end
