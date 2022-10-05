@@ -59,6 +59,8 @@ end
         test_pushfwd(f, μ, ν_ref)
 
         # broken
-        # test_pushfwd(finv, pushfwd(f, μ), μ)
+        @testset "Pushforward-of-pushforward" begin
+            # test_pushfwd(finv, pushfwd(f, μ), μ)
+        end
     end
 end
