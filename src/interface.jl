@@ -71,16 +71,19 @@ function test_interface(μ::M) where {M}
     end
 end
 
-
 function test_transport(ν, μ)
     supertype(x) = Any
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where {N} = AbstractArray{<:Real,N}
 
     structisapprox(a, b) = isapprox(a, b)
-    structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where N = all(map(structisapprox, a, b))
-    structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where names = all(map(structisapprox, values(a), values(b)))
-    
+    function structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where {N}
+        all(map(structisapprox, a, b))
+    end
+    function structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where {names}
+        all(map(structisapprox, values(a), values(b)))
+    end
+
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
         @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)
@@ -93,7 +96,7 @@ function test_transport(ν, μ)
         x2, ladj_inv = with_logabsdet_jacobian(inverse(f), y)
         @test structisapprox(x, x2)
         @test structisapprox(y, y2)
-        @test ladj_fwd ≈ -ladj_inv
+        @test isapprox(ladj_fwd, -ladj_inv, atol=1e-10)
         @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
     end
 end
