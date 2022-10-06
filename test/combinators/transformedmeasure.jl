@@ -53,7 +53,6 @@ end
 @testset "transformedmeasure.jl" begin
     # (f, μ, ν_ref), so that pushfwd(f, μ) ≅ ν_ref
     triples = [
-        ((-) ∘ log1p ∘ (-), StdUniform(), StdExponential())
         ((-) ∘ log, StdUniform(), StdExponential())
         (exp ∘ (-), StdExponential(), StdUniform())
         (logit, StdUniform(), StdLogistic())
