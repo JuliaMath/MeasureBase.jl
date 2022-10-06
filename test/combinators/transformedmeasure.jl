@@ -39,10 +39,10 @@ function test_pushfwd(f, μ, ν_ref)
 
         test_transport(ν, ν_ref)
         test_transport(ν_ref, ν)
-        
+
         y = rand(ν_ref)
-        @test @inferred(logdensityof(ν, y)) ≈ logdensityof(ν_ref, y)
-        @test @inferred(unsafe_logdensityof(ν, y)) ≈ unsafe_logdensityof(ν_ref, y)
+        @test @inferred(isapprox(logdensityof(ν, y)), logdensityof(ν_ref, y), atol=1e-10)
+        @test @inferred(isapprox(unsafe_logdensityof(ν, y)), unsafe_logdensityof(ν_ref, y), atol=1e-10)
 
         @test isapprox(var(rand(ν^(10^5))), var(ν_ref), rtol = 0.05)
 
