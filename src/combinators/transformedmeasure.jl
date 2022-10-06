@@ -165,6 +165,8 @@ function _pushfwd(f, μ, _, v)
     pushfwd(setinverse(f, inverse(f)), μ, v)
 end
 
+getdof(μ::PushforwardMeasure) = getdof(transport_origin(μ))
+
 ###############################################################################
 # pullback
 
