@@ -115,7 +115,7 @@ using Compat
 
 using IrrationalConstants
 
-include("density-core.jl")
+include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
