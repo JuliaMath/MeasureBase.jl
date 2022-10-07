@@ -76,3 +76,11 @@ function massof(μ::Lebesgue{<:BoundedReals}, s::Interval)
     w = right - left
     max(w, zero(w))
 end
+
+function smf(μ::Lebesgue{<:BoundedReals}, x)
+    clamp(x, μ.support.lower, μ.support.upper)
+end
+
+smf(::Lebesgue{RealNumbers}, x) = x
+
+smf(::LebesgueBase, x) = x
