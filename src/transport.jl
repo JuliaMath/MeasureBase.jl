@@ -93,6 +93,13 @@ distribution itself or a power of it (e.g. `StdUniform()` or
 function transport_to end
 
 """
+    transport_to(ν, μ, x)
+
+Transport `x` from the measure `μ` to the measure `ν`
+"""
+transport_to(ν, μ, x) = transport_to(ν, μ)(x)
+
+"""
     transport_def(ν, μ, x)
 
 Transforms a value `x` distributed according to `μ` to a value `y` distributed
