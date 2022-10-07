@@ -13,3 +13,5 @@ export StdLogistic
 @inline function Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdLogistic) where {T}
     logit(rand(rng, T))
 end
+
+smf(::StdLogistic, x) = logistic(x)

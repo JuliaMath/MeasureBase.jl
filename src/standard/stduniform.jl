@@ -10,3 +10,5 @@ insupport(d::StdUniform, x) = zero(x) ≤ x ≤ one(x)
 Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = rand(rng, T)
 
 massof(::StdUniform, s::Interval) = massof(Lebesgue(𝕀), s::Interval)
+
+smf(::StdUniform, x) = clamp(x, zero(x), one(x))
