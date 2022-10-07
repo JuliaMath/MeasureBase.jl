@@ -21,3 +21,5 @@ avoid complex control flow by adding a method `smf(μ::M, ::StaticFloat64{-Inf})
 Users who pronounce `sinh` as "sinch" are advised to pronounce `smf` as "smurf".
 """
 function smf end
+
+export smf

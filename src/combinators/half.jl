@@ -29,3 +29,8 @@ end
 testvalue(::Type{T}, ::Half) where {T} = one(T)
 
 massof(μ::Half) = massof(unhalf(μ))
+
+
+function smf(μ::Half, x)
+    2 * smf(μ.parent, max(x, zero(x)))
+end
