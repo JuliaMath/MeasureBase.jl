@@ -17,7 +17,7 @@ export StdNormal
 
 @inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)
 
-Φ(z) = erfc(-z * invsqrt2)/2
-Φinv(p) = -erfcinv(2*p) * sqrt2
+Φ(z) = erfc(-z * invsqrt2) / 2
+Φinv(p) = -erfcinv(2 * p) * sqrt2
 
 smf(::StdNormal, x) = Φ(x)

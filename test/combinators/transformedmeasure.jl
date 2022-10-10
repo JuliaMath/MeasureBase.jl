@@ -12,8 +12,8 @@ import InverseFunctions: inverse, FunctionWithInverse
 using IrrationalConstants: invsqrt2, sqrt2
 import ChangesOfVariables: with_logabsdet_jacobian
 
-Φ(z) = erfc(-z * invsqrt2)/2
-Φinv(p) = -erfcinv(2*p) * sqrt2
+Φ(z) = erfc(-z * invsqrt2) / 2
+Φinv(p) = -erfcinv(2 * p) * sqrt2
 
 with_logabsdet_jacobian(f::FunctionWithInverse, x) = with_logabsdet_jacobian(f.f, x)
 
@@ -29,8 +29,8 @@ inverse(::typeof(Φinv)) = Φ
 
 var(::StdNormal) = 1.0
 var(::StdExponential) = 1.0
-var(::StdUniform) = 1/12
-var(::StdLogistic) = π^2/3
+var(::StdUniform) = 1 / 12
+var(::StdLogistic) = π^2 / 3
 
 function test_pushfwd(f, μ, ν_ref)
     @testset "pushfwd($f, $μ)" begin
@@ -41,12 +41,17 @@ function test_pushfwd(f, μ, ν_ref)
         test_transport(ν_ref, ν)
 
         y = rand(ν_ref)
-        @test isapprox(@inferred(logdensityof(ν, y)), logdensityof(ν_ref, y), atol=1e-10)
-        @test isapprox(@inferred(unsafe_logdensityof(ν, y)), unsafe_logdensityof(ν_ref, y), atol=1e-10)
+        @test isapprox(@inferred(logdensityof(ν, y)), logdensityof(ν_ref, y), atol = 1e-10)
+        @test isapprox(
+            @inferred(unsafe_logdensityof(ν, y)),
+            unsafe_logdensityof(ν_ref, y),
+            atol = 1e-10,
+        )
 
         @test isapprox(var(rand(ν^(10^5))), var(ν_ref), rtol = 0.05)
 
-        @test abs(transport_to(StdLogistic(), ν)(y)) ≈ abs(transport_to(StdLogistic(), ν_ref)(y))
+        @test abs(transport_to(StdLogistic(), ν)(y)) ≈
+              abs(transport_to(StdLogistic(), ν_ref)(y))
     end
 end
 
@@ -60,7 +65,7 @@ end
         (Φ, StdNormal(), StdUniform())
         (Φinv, StdUniform(), StdNormal())
     ]
-    
+
     for (f, μ, ν_ref) in triples
         test_pushfwd(f, μ, ν_ref)
     end

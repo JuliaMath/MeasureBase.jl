@@ -96,7 +96,7 @@ function test_transport(ν, μ)
         x2, ladj_inv = with_logabsdet_jacobian(inverse(f), y)
         @test structisapprox(x, x2)
         @test structisapprox(y, y2)
-        @test isapprox(ladj_fwd, -ladj_inv, atol=1e-10)
+        @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
         @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
     end
 end
