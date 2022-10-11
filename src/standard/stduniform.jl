@@ -13,7 +13,7 @@ massof(::StdUniform, s::Interval) = massof(Lebesgue(𝕀), s::Interval)
 
 smf(::StdUniform, x) = clamp(x, zero(x), one(x))
 
-function smfinv(::StdUniform, x)
-    @assert zero(x) ≤ x ≤ one(x)
+function smfinv(::StdUniform, p)
+    @assert zero(p) ≤ p ≤ one(p)
     x
 end
