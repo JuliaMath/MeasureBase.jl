@@ -11,6 +11,7 @@ using SpecialFunctions: erfc, erfcinv
 import InverseFunctions: inverse, FunctionWithInverse
 using IrrationalConstants: invsqrt2, sqrt2
 import ChangesOfVariables: with_logabsdet_jacobian
+using MeasureBase.Interface: transport_to, test_transport
 
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2

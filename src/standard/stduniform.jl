@@ -12,3 +12,8 @@ Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = rand(rng
 massof(::StdUniform, s::Interval) = massof(Lebesgue(𝕀), s::Interval)
 
 smf(::StdUniform, x) = clamp(x, zero(x), one(x))
+
+function smfinv(::StdUniform, x)
+    @assert zero(x) ≤ x ≤ one(x)
+    x
+end
