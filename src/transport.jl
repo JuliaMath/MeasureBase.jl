@@ -189,7 +189,7 @@ end
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
-_call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
+_call_transport_def(ν, μ, x) = transport_to(ν, μ, x)
 _call_transport_def(::Any, ::Any, x::NoTransportOrigin) = x
 _call_transport_def(::Any, ::Any, x::NoTransport) = x
 
