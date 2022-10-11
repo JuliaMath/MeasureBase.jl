@@ -174,7 +174,7 @@ end
     x_im = Symbol(:x, n_μ)
     ν_im = Symbol(:ν, n_ν)
     y_im = Symbol(:y, n_ν)
-    push!(prog.args, :($y_im = transport_def($ν_im, $μ_im, $x_im)))
+    push!(prog.args, :($y_im = transport_to($ν_im, $μ_im, $x_im)))
     for i in (n_ν-1):-1:0
         y_i = Symbol(:y, i)
         y_last = Symbol(:y, i + 1)

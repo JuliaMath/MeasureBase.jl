@@ -9,11 +9,11 @@ StdMeasure(::typeof(randn)) = StdNormal()
 @inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
 
 function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
-    return transport_def(ν, μ.parent, only(x))
+    return transport_to(ν, μ.parent, only(x))
 end
 
 function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
-    return Fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes)...)
+    return Fill(transport_to(ν.parent, μ, only(x)), map(length, ν.axes)...)
 end
 
 function transport_def(
