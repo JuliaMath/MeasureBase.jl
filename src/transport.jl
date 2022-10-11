@@ -116,8 +116,8 @@ function transport_def end
 function transport_to(ν::NU, μ::MU, x::X) where {MU,NU,X}
     if static_hasmethod(transport_def, Tuple{NU,MU,X})
         transport_def(ν, μ, x)
-    elseif static_hasmethod(smfinv, Tuple{MU,X}) && static_hasmethod(smf, Tuple{NU,Real})
-        smf(ν, smfinv(μ, x))
+    elseif static_hasmethod(smf, Tuple{MU,X}) && static_hasmethod(smfinv, Tuple{NU,Real})
+        smfinv(ν, smf(μ, x))
     else
         _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
     end
