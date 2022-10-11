@@ -23,3 +23,7 @@ Users who pronounce `sinh` as "sinch" are advised to pronounce `smf` as "smurf".
 function smf end
 
 export smf
+
+function smfinv end
+
+export smfinv
