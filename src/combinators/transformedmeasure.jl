@@ -103,12 +103,7 @@ end
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
 _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 
-# Assume that DOF are preserved if with_logabsdet_jacobian is functional:
-@inline function getdof(ν::MU) where {MU<:PushforwardMeasure}
-    T = Core.Compiler.return_type(testvalue, Tuple{typeof(ν.origin)})
-    R = Core.Compiler.return_type(with_logabsdet_jacobian, Tuple{typeof(ν.f),T})
-    _pushfwd_dof(MU, R, getdof(ν.origin))
-end
+@inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
 
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
