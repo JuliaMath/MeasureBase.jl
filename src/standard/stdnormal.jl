@@ -18,4 +18,7 @@ export StdNormal
 Φinv(p) = -erfcinv(2 * p) * sqrt2
 
 smf(::StdNormal, x) = Φ(x)
-smfinv(::StdNormal, x) = Φinv(x)
+smfinv(::StdNormal, p) = Φinv(p)
+
+transport_def(::StdNormal, ::StdUniform, p) = smfinv(StdNormal(), p)
+transport_def(::StdUniform, ::StdNormal, x) = smf(StdNormal(), x)
