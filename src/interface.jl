@@ -15,6 +15,7 @@ using Tricks: static_hasmethod
 
 export test_interface
 export test_transport
+export test_smf
 export basemeasure_depth
 export proxy
 export insupport
@@ -99,6 +100,20 @@ function test_transport(ν, μ)
         @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
         @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
     end
+end
+
+function test_smf(μ, n=100)
+    # Get `n` sorted uniforms in O(n) time
+    p = rand(n)
+    p .+= 0:n-1
+    p .*= inv(n)
+
+    @assert issorted(p)
+    x = smfinv.(μ, p)
+    @test issorted(x)
+    @test all(insupport(μ), x)
+
+    @test all(smfinv.(μ, smf.(μ, x)) .≈ x)
 end
 
 end # module Interface
