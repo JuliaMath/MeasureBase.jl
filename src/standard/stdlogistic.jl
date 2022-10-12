@@ -17,4 +17,3 @@ end
 smf(::StdLogistic, x) = logistic(x)
 
 smfinv(::StdLogistic, p) = logit(p)
-
