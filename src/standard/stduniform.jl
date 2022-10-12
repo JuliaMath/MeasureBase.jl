@@ -15,5 +15,5 @@ smf(::StdUniform, x) = clamp(x, zero(x), one(x))
 
 function smfinv(::StdUniform, p)
     @assert zero(p) ≤ p ≤ one(p)
-    x
+    p
 end

@@ -69,7 +69,7 @@ struct LogDensity{M,B} <: AbstractDensity
     base::B
 end
 
-Base.:∘(::typeof(exp), d::LogDensity) = density(d.μ, d.base)
+Base.:∘(::typeof(exp), d::LogDensity) = density_rel(d.μ, d.base)
 
 Base.exp(d::LogDensity) = exp ∘ d
 
