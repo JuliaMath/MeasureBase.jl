@@ -121,7 +121,7 @@ See [`transport_to`](@ref).
 function transport_def end
 
 function transport_def(ν::NU, μ::MU, x::X) where {MU,NU,X}
-        _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
+    _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
 end
 
 @inline function _origin_depth(ν::NU) where {NU}
