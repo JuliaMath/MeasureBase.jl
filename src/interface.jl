@@ -123,7 +123,7 @@ function test_smf(μ, n=100)
         a = rand(); b = rand()
         a, b = minmax(a, b)
         x = Finv(a); y = Finv(b)
-        @test μ(Interval{:open, :closed}(x, y)) ≈ F(b) - F(a)
+        @test μ(Interval{:open, :closed}(x, y)) ≈ (F(y) - F(x))
     end
 end
 

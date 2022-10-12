@@ -26,6 +26,7 @@ using ChangesOfVariables
 import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
+using IntervalSets
 
 using PrettyPrinting
 const Pretty = PrettyPrinting

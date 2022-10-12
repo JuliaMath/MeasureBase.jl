@@ -115,3 +115,5 @@ Convenience method for `massof(m, s)`. To make a user-defined measure callable
 in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
+
+massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
