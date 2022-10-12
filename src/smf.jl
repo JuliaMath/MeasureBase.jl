@@ -27,3 +27,11 @@ export smf
 function smfinv end
 
 export smfinv
+
+struct NoSMF end
+
+struct NoSMFInverse end
+
+smf(μ, x) = NoSMF()
+
+smfinv(μ, p) = NoSMFInverse()
