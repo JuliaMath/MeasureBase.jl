@@ -12,6 +12,7 @@ using DensityInterface: logdensityof
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
 using Tricks: static_hasmethod
+using IntervalSets: Interval
 
 export test_interface
 export test_transport
@@ -108,12 +109,22 @@ function test_smf(μ, n=100)
     p .+= 0:n-1
     p .*= inv(n)
 
+    F(x) = smf(μ, x)
+    Finv(p) = smfinv(μ, p)
+
     @assert issorted(p)
     x = smfinv.(μ, p)
     @test issorted(x)
     @test all(insupport(μ), x)
 
-    @test all(smfinv.(μ, smf.(μ, x)) .≈ x)
+    @test all((Finv ∘ F).(x) .≈ x)
+
+    for j in 1:n
+        a = rand(); b = rand()
+        a, b = minmax(a, b)
+        x = Finv(a); y = Finv(b)
+        @test μ(Interval{:open, :closed}(x, y)) ≈ F(b) - F(a)
+    end
 end
 
 end # module Interface
