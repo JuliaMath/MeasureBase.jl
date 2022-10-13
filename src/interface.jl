@@ -110,10 +110,10 @@ function test_smf(μ, n = 100)
     p .*= inv(n)
 
     F(x) = smf(μ, x)
-    Finv(p) = smfinv(μ, p)
+    Finv(p) = invsmf(μ, p)
 
     @assert issorted(p)
-    x = smfinv.(μ, p)
+    x = invsmf.(μ, p)
     @test issorted(x)
     @test all(insupport(μ), x)
 

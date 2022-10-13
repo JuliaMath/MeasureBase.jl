@@ -34,10 +34,10 @@ function smf(μ::Half, x)
     2 * smf(μ.parent, max(x, zero(x))) - 1
 end
 
-function smfinv(μ::Half, p)
+function invsmf(μ::Half, p)
     @assert zero(p) ≤ p ≤ one(p)
-    smfinv(μ.parent, (p + 1) / 2)
+    invsmf(μ.parent, (p + 1) / 2)
 end
 
-transport_def(μ::Half, ::StdUniform, p) = smfinv(μ, p)
+transport_def(μ::Half, ::StdUniform, p) = invsmf(μ, p)
 transport_def(::StdUniform, μ::Half, x) = smf(μ, x)

@@ -24,9 +24,9 @@ function smf end
 
 export smf
 
-function smfinv end
+function invsmf end
 
-export smfinv
+export invsmf
 
 struct NoSMF end
 
@@ -34,4 +34,4 @@ struct NoSMFInverse end
 
 smf(μ, x) = NoSMF()
 
-smfinv(μ, p) = NoSMFInverse()
+invsmf(μ, p) = NoSMFInverse()
