@@ -35,3 +35,6 @@ struct NoSMFInverse end
 smf(μ, x) = NoSMF()
 
 invsmf(μ, p) = NoSMFInverse()
+
+smf(μ) = Base.Fix1(smf, μ)
+invsmf(μ) = Base.Fix1(invsmf, μ)
