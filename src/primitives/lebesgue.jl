@@ -82,5 +82,11 @@ function smf(μ::Lebesgue{<:BoundedReals}, x)
 end
 
 smf(::Lebesgue{RealNumbers}, x) = x
+smf(::Lebesgue{RealNumbers}) = identity
+invsmf(::Lebesgue{RealNumbers}, x) = x
+invsmf(::Lebesgue{RealNumbers}) = identity
 
 smf(::LebesgueBase, x) = x
+smf(::LebesgueBase) = identity
+invsmf(::LebesgueBase, x) = x
+invsmf(::LebesgueBase) = identity

@@ -15,5 +15,7 @@ export StdLogistic
 end
 
 smf(::StdLogistic, x) = logistic(x)
+smf(::StdLogistic) = logistic
 
 invsmf(::StdLogistic, p) = logit(p)
+invsmf(::StdLogistic) = logit

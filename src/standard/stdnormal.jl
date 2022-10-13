@@ -23,5 +23,8 @@ InverseFunctions.inverse(::typeof(Φinv)) = Φ
 smf(::StdNormal, x) = Φ(x)
 invsmf(::StdNormal, p) = Φinv(p)
 
+smf(::StdNormal) = Φ
+invsmf(::StdNormal) = Φinv
+
 transport_def(::StdNormal, ::StdUniform, p) = invsmf(StdNormal(), p)
 transport_def(::StdUniform, ::StdNormal, x) = smf(StdNormal(), x)
