@@ -17,6 +17,9 @@ export StdNormal
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2
 
+InverseFunctions.inverse(::typeof(Φ)) = Φinv
+InverseFunctions.inverse(::typeof(Φinv)) = Φ
+
 smf(::StdNormal, x) = Φ(x)
 invsmf(::StdNormal, p) = Φinv(p)
 
