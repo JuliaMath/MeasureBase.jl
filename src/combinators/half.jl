@@ -29,3 +29,15 @@ end
 testvalue(::Type{T}, ::Half) where {T} = one(T)
 
 massof(μ::Half) = massof(unhalf(μ))
+
+function smf(μ::Half, x)
+    2 * smf(μ.parent, max(x, zero(x))) - 1
+end
+
+function invsmf(μ::Half, p)
+    @assert zero(p) ≤ p ≤ one(p)
+    invsmf(μ.parent, (p + 1) / 2)
+end
+
+transport_def(μ::Half, ::StdUniform, p) = invsmf(μ, p)
+transport_def(::StdUniform, μ::Half, x) = smf(μ, x)

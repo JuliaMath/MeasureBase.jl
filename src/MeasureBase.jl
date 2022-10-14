@@ -26,6 +26,7 @@ using ChangesOfVariables
 import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
+using IntervalSets
 
 using PrettyPrinting
 const Pretty = PrettyPrinting
@@ -115,6 +116,7 @@ using Compat
 
 using IrrationalConstants
 
+include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
@@ -122,7 +124,6 @@ include("splat.jl")
 include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
-include("combinators/half.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
@@ -153,6 +154,7 @@ include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
+include("combinators/half.jl")
 
 include("rand.jl")
 include("fixedrng.jl")

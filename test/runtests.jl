@@ -5,7 +5,7 @@ using LinearAlgebra
 import LogarithmicNumbers
 
 using MeasureBase
-using MeasureBase: test_interface
+using MeasureBase: test_interface, test_smf
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false)
@@ -247,6 +247,7 @@ end
 
 include("getdof.jl")
 include("transport.jl")
+include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")

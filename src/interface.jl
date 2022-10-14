@@ -12,9 +12,11 @@ using DensityInterface: logdensityof
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
 using Tricks: static_hasmethod
+using IntervalSets: Interval
 
 export test_interface
 export test_transport
+export test_smf
 export basemeasure_depth
 export proxy
 export insupport
@@ -96,8 +98,34 @@ function test_transport(ν, μ)
         x2, ladj_inv = with_logabsdet_jacobian(inverse(f), y)
         @test structisapprox(x, x2)
         @test structisapprox(y, y2)
-        @test isapprox(ladj_fwd, -ladj_inv, atol=1e-10)
+        @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
         @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
+    end
+end
+
+function test_smf(μ, n = 100)
+    # Get `n` sorted uniforms in O(n) time
+    p = rand(n)
+    p .+= 0:n-1
+    p .*= inv(n)
+
+    F(x) = smf(μ, x)
+    Finv(p) = invsmf(μ, p)
+
+    @assert issorted(p)
+    x = invsmf.(μ, p)
+    @test issorted(x)
+    @test all(insupport(μ), x)
+
+    @test all((Finv ∘ F).(x) .≈ x)
+
+    for j in 1:n
+        a = rand()
+        b = rand()
+        a, b = minmax(a, b)
+        x = Finv(a)
+        y = Finv(b)
+        @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))
     end
 end
 
