@@ -26,5 +26,5 @@ invsmf(::StdNormal, p) = Φinv(p)
 smf(::StdNormal) = Φ
 invsmf(::StdNormal) = Φinv
 
-transport_def(::StdNormal, ::StdUniform, p) = invsmf(StdNormal(), p)
-transport_def(::StdUniform, ::StdNormal, x) = smf(StdNormal(), x)
+transport_def(::StdNormal, ::StdUniform, p) = Φinv(p)
+transport_def(::StdUniform, ::StdNormal, x) = Φ(x)
