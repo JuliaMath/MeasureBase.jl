@@ -34,6 +34,7 @@ const Pretty = PrettyPrinting
 using ChainRulesCore
 using FillArrays
 using Static
+using FunctionChains
 
 export ≪
 export gentype
