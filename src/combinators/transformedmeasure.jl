@@ -130,11 +130,11 @@ function pushfwd(f, μ::PushforwardMeasure, ::WithVolCorr)
 end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
-function _pushfwd_of_pushfwd(f, μ, ::V, v::V) where {V}
+function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, ::V, v::V) where {V}
     pushfwd(f ∘ μ.f, μ.origin, v)
 end
 
-function _pushfwd_of_pushfwd(f, μ, _, v)
+function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, _, v)
     PushforwardMeasure(f, inverse(f), μ, v)
 end
 
