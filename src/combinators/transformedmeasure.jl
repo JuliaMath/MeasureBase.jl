@@ -105,8 +105,6 @@ end
 
 export pushfwd
 
-
-
 """
     pushfwd(f, μ, volcorr = WithVolCorr())
 
