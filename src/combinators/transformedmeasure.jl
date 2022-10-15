@@ -127,10 +127,6 @@ function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolC
     _pushfwd_of_pushfwd(f, μ, μ.volcorr, volcorr)
 end
 
-function pushfwd(f, μ::PushforwardMeasure, ::WithVolCorr)
-    _pushfwd_of_pushfwd(f, μ, μ.volcorr, WithVolCorr())
-end
-
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
 function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, ::V, v::V) where {V}
     pushfwd(fchain((μ.f, f)), μ.origin, v)
