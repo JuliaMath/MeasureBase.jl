@@ -32,9 +32,9 @@ Base.maximum(b::BoundedReals) = b.upper
 Base.show(io::IO, ::typeof(ℝ₊)) = print(io, "ℝ₊")
 Base.show(io::IO, ::typeof(𝕀)) = print(io, "𝕀")
 
-testvalue(::typeof(ℝ)) = 0.0
-testvalue(::typeof(ℝ₊)) = 1.0
-testvalue(::typeof(𝕀)) = 0.5
+testvalue(::Type{T}, ::typeof(ℝ)) where {T} = zero(T)
+testvalue(::Type{T}, ::typeof(ℝ₊)) where {T} = one(T)
+testvalue(::Type{T}, ::typeof(𝕀)) where {T} = one(T) / 2
 
 abstract type IntegerDomain <: AbstractDomain end
 

@@ -1,12 +1,12 @@
 """
-    struct MeasureBase.NoTransformOrigin{NU}
+    struct MeasureBase.NoTransportOrigin{NU}
 
 Indicates that no (default) pullback measure is available for measures of
 type `NU`.
 
 See [`MeasureBase.transport_origin`](@ref).
 """
-struct NoTransformOrigin{NU} end
+struct NoTransportOrigin{NU} end
 
 """
     MeasureBase.transport_origin(ν)
@@ -16,7 +16,7 @@ between `ν` and another measure.
 """
 function transport_origin end
 
-transport_origin(ν::NU) where {NU} = NoTransformOrigin{NU}()
+transport_origin(ν::NU) where {NU} = NoTransportOrigin{NU}()
 
 """
     MeasureBase.from_origin(ν, x)
@@ -25,7 +25,7 @@ Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
 """
 function from_origin end
 
-from_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}()
+from_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
 
 """
     MeasureBase.to_origin(ν, y)
@@ -34,7 +34,7 @@ Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
 """
 function to_origin end
 
-to_origin(ν::NU, ::Any) where {NU} = NoTransformOrigin{NU}(ν)
+to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
 
 """
     struct MeasureBase.NoTransport{NU,MU} end
@@ -62,7 +62,7 @@ The resulting function `f` should support
 so that densities of `ν` can be derived from densities of `μ` via `f` (using
 appropriate base measures).
 
-Returns NoTransformOrigin{typeof(ν),typeof(μ)} if no transformation from
+Returns NoTransportOrigin{typeof(ν),typeof(μ)} if no transformation from
 `μ` to `ν` can be found.
 
 To add transformation rules for a measure type `MyMeasure`, specialize
@@ -93,6 +93,13 @@ distribution itself or a power of it (e.g. `StdUniform()` or
 function transport_to end
 
 """
+    transport_to(ν, μ, x)
+
+Transport `x` from the measure `μ` to the measure `ν`
+"""
+transport_to(ν, μ, x) = transport_to(ν, μ)(x)
+
+"""
     transport_def(ν, μ, x)
 
 Transforms a value `x` distributed according to `μ` to a value `y` distributed
@@ -113,61 +120,83 @@ See [`transport_to`](@ref).
 """
 function transport_def end
 
-transport_def(::Any, ::Any, x::NoTransformOrigin) = x
-transport_def(::Any, ::Any, x::NoTransport) = x
-
 function transport_def(ν, μ, x)
-    _transport_with_intermediate(
-        ν,
-        _checked_transport_origin(ν),
-        _checked_transport_origin(μ),
-        μ,
-        x,
-    )
+    _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
 end
 
-@inline _origin_must_have_separate_type(::Type{MU}, μ_o) where {MU} = μ_o
-function _origin_must_have_separate_type(::Type{MU}, μ_o::MU) where {MU}
-    throw(ArgumentError("Measure of type $MU and its origin must have separate types"))
+@inline function _origin_depth(ν::NU) where {NU}
+    ν_0 = ν
+    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
+        ν_{i} = transport_origin(ν_{i - 1})
+        if ν_{i} isa NoTransportOrigin
+            return static(i - 1)
+        end
+    end
+    return static(10)
 end
 
-@inline function _checked_transport_origin(μ::MU) where {MU}
-    μ_o = transport_origin(μ)
-    _origin_must_have_separate_type(MU, μ_o)
-end
+_origin_depth_pullback(ΔΩ) = NoTangent(), NoTangent()
+ChainRulesCore.rrule(::typeof(_origin_depth), ν) = _origin_depth(ν), _origin_depth_pullback
 
-function _transport_with_intermediate(ν, ν_o, μ_o, μ, x)
-    x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
-    y_o = transport_def(ν_o, μ_o, checked_arg(μ_o, x_o))
-    y = from_origin(ν, y_o)
-    return y
-end
-
-function _transport_with_intermediate(ν, ν_o, ::NoTransformOrigin, μ, x)
-    y_o = transport_def(ν_o, μ, x)
-    y = from_origin(ν, y_o)
-    return y
-end
-
-function _transport_with_intermediate(ν, ::NoTransformOrigin, μ_o, μ, x)
-    x_o = to_origin(μ, x)
-    # If μ is a pushforward then checked_arg may have been bypassed, so check now:
-    y = transport_def(ν, μ_o, checked_arg(μ_o, x_o))
-    return y
-end
-
-function _transport_with_intermediate(ν, ::NoTransformOrigin, ::NoTransformOrigin, μ, x)
+# If both both measures have no origin:
+function _transport_between_origins(ν, ::StaticInt{0}, ::StaticInt{0}, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
+end
+
+@generated function _transport_between_origins(
+    ν,
+    ::StaticInt{n_ν},
+    ::StaticInt{n_μ},
+    μ,
+    x,
+) where {n_ν,n_μ}
+    prog = quote
+        μ0 = μ
+        x0 = x
+        ν0 = ν
+    end
+    for i in 1:n_μ
+        μ_i = Symbol(:μ, i)
+        μ_last = Symbol(:μ, i - 1)
+        push!(prog.args, :($μ_i = transport_origin($μ_last)))
+    end
+    for i in 1:n_μ
+        x_i = Symbol(:x, i)
+        x_last = Symbol(:x, i - 1)
+        μ_last = Symbol(:μ, i - 1)
+        push!(prog.args, :($x_i = to_origin($μ_last, $x_last)))
+    end
+    for i in 1:(n_ν)
+        ν_i = Symbol(:ν, i)
+        ν_last = Symbol(:ν, i - 1)
+        push!(prog.args, :($ν_i = transport_origin($ν_last)))
+    end
+    μ_im = Symbol(:μ, n_μ)
+    x_im = Symbol(:x, n_μ)
+    ν_im = Symbol(:ν, n_ν)
+    y_im = Symbol(:y, n_ν)
+    push!(prog.args, :($y_im = transport_def($ν_im, $μ_im, $x_im)))
+    for i in (n_ν-1):-1:0
+        y_i = Symbol(:y, i)
+        y_last = Symbol(:y, i + 1)
+        ν_last = Symbol(:ν, i)
+        push!(prog.args, :($y_i = from_origin($ν_last, $y_last)))
+    end
+    push!(prog.args, :(return y0))
+    return prog
 end
 
 @inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
 
+_call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
+_call_transport_def(::Any, ::Any, x::NoTransportOrigin) = x
+_call_transport_def(::Any, ::Any, x::NoTransport) = x
+
 function _transport_with_intermediate(ν, m, μ, x)
-    z = transport_def(m, μ, x)
-    y = transport_def(ν, m, z)
+    z = _call_transport_def(m, μ, x)
+    y = _call_transport_def(ν, m, z)
     return y
 end
 
@@ -208,7 +237,7 @@ function Base.:(==)(a::TransportFunction, b::TransportFunction)
 end
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
+    return _call_transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}

@@ -16,6 +16,8 @@ function Pretty.tile(μ::AbstractProductMeasure)
     result *= Pretty.literal(")")
 end
 
+massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
+
 export marginals
 
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
@@ -159,9 +161,11 @@ marginals(μ::ProductMeasure) = μ.marginals
 
 # TODO: Better `map` support in MappedArrays
 _map(f, args...) = map(f, args...)
-_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(f ∘ x.f, x.data)
+_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
 
-testvalue(d::AbstractProductMeasure) = _map(testvalue, marginals(d))
+function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
+    _map(m -> testvalue(T, m), marginals(d))
+end
 
 export ⊗
 
@@ -219,4 +223,17 @@ end
         dynamic(insupport(mj, xj)) || return false
     end
     return true
+end
+
+getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
+
+function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
+    map(checked_arg, marginals(μ), x)
+end
+
+function checked_arg(
+    μ::ProductMeasure{<:NamedTuple{names}},
+    x::NamedTuple{names},
+) where {names}
+    NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end

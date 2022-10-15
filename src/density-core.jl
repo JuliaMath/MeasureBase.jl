@@ -1,3 +1,13 @@
+export logdensityof
+export logdensity_rel
+export logdensity_def
+
+export unsafe_logdensityof
+export unsafe_logdensity_rel
+
+export densityof
+export density_rel
+export density_def
 
 """
     logdensityof(m::AbstractMeasure, x) 
@@ -20,7 +30,18 @@ To compute a log-density relative to a specific base-measure, see
 """
 @inline function logdensityof(μ::AbstractMeasure, x)
     result = dynamic(unsafe_logdensityof(μ, x))
-    ifelse(insupport(μ, x) == true, result, oftype(result, -Inf))
+    _checksupport(insupport(μ, x), result)
+end
+
+_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
+
+import ChainRulesCore
+@inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
+    y = _checksupport(cond, result)
+    function _checksupport_pullback(ȳ)
+        return NoTangent(), ZeroTangent(), one(ȳ)
+    end
+    y, _checksupport_pullback
 end
 
 export unsafe_logdensityof
@@ -39,21 +60,17 @@ See also `logdensityof`.
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
         b_{i} = basemeasure(b_{i - 1}, x)
-        if b_{i} isa typeof(b_{i - 1})
-            return ℓ_{i - 1}
-        end
+
+        # The below makes the evaluated code shorter, but screws up Zygote
+        # if b_{i} isa typeof(b_{i - 1})
+        #     return ℓ_{i - 1}
+        # end
         ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
             ℓ_{i - 1} + Δℓ_{i}
         end
     end
     return ℓ_10
 end
-
-export density_rel
-
-@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
-
-export logdensity_rel
 
 """
     logdensity_rel(m1, m2, x)
@@ -117,7 +134,9 @@ function logdensity_def(μ::T, ν::T, x) where {T}
     if μ === ν
         return zero(logdensity_def(μ, x))
     else
-        return logdensity_def(μ, x) - logdensity_def(ν, x)
+        α = basemeasure(μ)
+        β = basemeasure(ν)
+        return logdensity_def(μ, x) - logdensity_def(ν, x) + logdensity_rel(α, β, x)
     end
 end
 
@@ -151,10 +170,8 @@ end
     return q
 end
 
-export densityof
-export logdensityof
+@inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
-export density_def
-
+# TODO: Do we need this method?
 density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 density_def(μ, x) = exp(logdensity_def(μ, x))

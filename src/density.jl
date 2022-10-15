@@ -1,53 +1,122 @@
-abstract type AbstractDensity end
+###################################################################
+# Abstract types and methods
+
+abstract type AbstractDensity <: Function end
 
 @inline DensityKind(::AbstractDensity) = IsDensity()
 
+import DensityInterface
+
+####################################################################################
+# Density
+
 """
-    struct Density{M,B}
+    struct Density{M,B} <: AbstractDensity
         μ::M
         base::B
     end
 
-For measures μ and ν with μ≪ν, the density of μ with respect to ν (also called
-the Radon-Nikodym derivative dμ/dν) is a function f defined on the support of ν
-with the property that for any measurable a ⊂ supp(ν), μ(a) = ∫ₐ f dν.
-    
-Because this function is often difficult to express in closed form, there are
-many different ways of computing it. We therefore provide a formal
-representation to allow comptuational flexibilty.
+For measures `μ` and `ν`, `Density(μ,ν)` represents the _density function_
+`dμ/dν`, also called the _Radom-Nikodym derivative_:
+https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
+
+Instead of calling this directly, users should call `density_rel(μ, ν)` or
+its abbreviated form, `𝒹(μ,ν)`.
 """
 struct Density{M,B} <: AbstractDensity
     μ::M
     base::B
 end
 
+Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
+
+Base.log(d::Density) = log ∘ d
+
 export 𝒹
 
 """
-    𝒹(μ::AbstractMeasure, base::AbstractMeasure)
+    𝒹(μ, base)
 
-Compute the Radom-Nikodym derivative of μ with respect to `base`.
+Compute the density (Radom-Nikodym derivative) of μ with respect to `base`. This
+is a shorthand form for `density_rel(μ, base)`.
 """
-function 𝒹(μ::AbstractMeasure, base::AbstractMeasure)
-    return Density(μ, base)
+𝒹(μ, base) = density_rel(μ, base)
+
+density_rel(μ, base) = Density(μ, base)
+
+(f::Density)(x) = density_rel(f.μ, f.base, x)
+
+DensityInterface.logfuncdensity(d::Density) = throw(MethodError(logfuncdensity, (d,)))
+
+####################################################################################
+# LogDensity
+
+"""
+    struct LogDensity{M,B} <: AbstractDensity
+        μ::M
+        base::B
+    end
+
+For measures `μ` and `ν`, `LogDensity(μ,ν)` represents the _log-density function_
+`log(dμ/dν)`, also called the _Radom-Nikodym derivative_:
+https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
+
+Instead of calling this directly, users should call `logdensity_rel(μ, ν)` or
+its abbreviated form, `log𝒹(μ,ν)`.
+"""
+struct LogDensity{M,B} <: AbstractDensity
+    μ::M
+    base::B
 end
 
-logdensityof(d::Density, x) = logdensity_rel(d.μ, d.base, x)
+Base.:∘(::typeof(exp), d::LogDensity) = density_rel(d.μ, d.base)
 
-logdensity_def(d::Density, x) = logdensityof(d, x)
+Base.exp(d::LogDensity) = exp ∘ d
+
+export log𝒹
 
 """
-    struct DensityMeasure{F,B} <: AbstractMeasure
+    log𝒹(μ, base)
+
+Compute the log-density (Radom-Nikodym derivative) of μ with respect to `base`.
+This is a shorthand form for `logdensity_rel(μ, base)`
+"""
+log𝒹(μ, base) = logdensity_rel(μ, base)
+
+logdensity_rel(μ, base) = LogDensity(μ, base)
+
+(f::LogDensity)(x) = logdensity_rel(f.μ, f.base, x)
+
+DensityInterface.funcdensity(d::LogDensity) = throw(MethodError(funcdensity, (d,)))
+
+#######################################################################################
+# DensityMeasure
+
+"""
+    struct DensityMeasure{F,B} <: AbstractDensityMeasure
         density :: F
         base    :: B
     end
 
-A `DensityMeasure` is a measure defined by a density with respect to some other
-"base" measure 
+A `DensityMeasure` is a measure defined by a density or log-density with respect
+to some other "base" measure.
+
+Users should not call `DensityMeasure` directly, but should instead call `∫(f,
+base)` (if `f` is a density function or `DensityInterface.IsDensity` object) or
+`∫exp(f, base)` (if `f` is a log-density function).
 """
 struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
     base::B
+
+    function DensityMeasure(f::F, base::B) where {F,B}
+        @assert DensityKind(f) isa IsDensity
+        new{F,B}(f, base)
+    end
+end
+
+@inline function insupport(d::DensityMeasure, x)
+    insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
@@ -56,28 +125,6 @@ function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result *= Pretty.literal(")")
 end
 
-densitymeasure(f, base) = _densitymeasure(f, base, DensityKind(f))
-
-_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-
-function _densitymeasure(f, base, _)
-    @error """
-    The first argument of `DensityMeasure`" must be `::IsDensity`. To pass a
-    function, first wrap it in `DensityInterface.funcdensity` or
-    `DensityInterface.logfuncdensity`. 
-    """
-end
-
-@inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(d.f, x))
-end
-
-basemeasure(μ::DensityMeasure) = μ.base
-
-logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
-
-density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
-
 export ∫
 
 """
@@ -85,11 +132,13 @@ export ∫
 
 Define a new measure in terms of a density `f` over some measure `base`.
 """
-∫(f::Function, base::AbstractMeasure) = DensityMeasure(funcdensity(f), base)
+∫(f, base) = _densitymeasure(f, base, DensityKind(f))
 
-∫(f, base::AbstractMeasure) = _densitymeasure(f, base, DensityKind(f))
-
-# ∫(μ::AbstractMeasure, base::AbstractMeasure) = ∫(𝒹(μ, base), base)
+_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
+function _densitymeasure(f, base, ::HasDensity)
+    @error "`∫(f, base)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."
+end
+_densitymeasure(f, base, ::NoDensity) = DensityMeasure(funcdensity(f), base)
 
 export ∫exp
 
@@ -98,8 +147,21 @@ export ∫exp
 
 Define a new measure in terms of a log-density `f` over some measure `base`.
 """
-∫exp(f::Function, μ) = ∫(logfuncdensity(f), μ)
+∫exp(f, base) = _logdensitymeasure(f, base, DensityKind(f))
 
+function _logdensitymeasure(f, base, ::IsDensity)
+    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == IsDensity()`. Use `∫(f, base)` instead."
+end
+function _logdensitymeasure(f, base, ::HasDensity)
+    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == HasDensity()`."
+end
+_logdensitymeasure(f, base, ::NoDensity) = DensityMeasure(logfuncdensity(f), base)
+
+basemeasure(μ::DensityMeasure) = μ.base
+
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
+
+density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
 """
     rebase(μ, ν)

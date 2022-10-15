@@ -16,7 +16,9 @@ function (μ::Dirac{X})(s) where {X}
     return 0
 end
 
-basemeasure(d::Dirac) = CountingMeasure()
+basemeasure(d::Dirac) = CountingBase()
+
+massof(::Dirac) = static(1.0)
 
 logdensity_def(μ::Dirac, x) = 0.0
 
@@ -25,8 +27,6 @@ Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
 export dirac
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
-
-testvalue(d::Dirac) = d.x
 
 insupport(d::Dirac, x) = x == d.x
 

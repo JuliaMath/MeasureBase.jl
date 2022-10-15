@@ -5,7 +5,7 @@ using LinearAlgebra
 import LogarithmicNumbers
 
 using MeasureBase
-using MeasureBase: test_interface
+using MeasureBase: test_interface, test_smf
 
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false)
@@ -76,7 +76,7 @@ test_measures = [
 testbroken_measures = [
     # InverseGamma(2) # Not defined yet
     # MvNormal(I(3)) # Entirely broken for now
-    CountingMeasure()
+    CountingBase()
     Likelihood
     TrivialMeasure()
 ]
@@ -138,7 +138,7 @@ end
 # end
 
 @testset "broadcasting" begin
-    @test logdensityof.(Dirac(2), [1,2,3]) isa Vector{Float64}
+    @test logdensityof.(Dirac(2), [1, 2, 3]) isa Vector{Float64}
 end
 
 @testset "powers" begin
@@ -146,8 +146,9 @@ end
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
 
+Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+
 @testset "Half" begin
-    Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
     HalfNormal() = Half(Normal())
     @test logdensityof(HalfNormal(), -0.2) == -Inf
     @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
@@ -233,23 +234,20 @@ end
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test logdensityof(𝒹(∫exp(f, Lebesgue()), Lebesgue()), x) ≈ f(x)
+    @test log(𝒹(∫exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
     let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
-        @test logdensityof(f, x) ≈ x^2
+        @test log(f(x)) ≈ x^2
     end
 
-    #     let d = ∫exp(log𝒹(Cauchy(), Normal()), Normal())
-    #         @test logdensity_def(d, x) ≈ logdensity_def(Cauchy(), x) 
-    #     end
-
-    #     let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
-    #         @test f(x) ≈ x^2
-    #     end
+    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+        @test f(x) ≈ x^2
+    end
 end
 
 include("getdof.jl")
 include("transport.jl")
+include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
