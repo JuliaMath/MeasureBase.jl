@@ -54,7 +54,7 @@ end
 @inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
     finv = ν.finv
-    x_orig, inv_ladj = with_logabsdet_jacobian(finv.f, y)
+    x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
     logd_orig = logdensity_def(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
@@ -105,9 +105,7 @@ end
 
 export pushfwd
 
-function pushfwd(f::FunctionWithInverse, μ, volcorr::TransformVolCorr)
-    PushforwardMeasure(f, inverse(f), μ, volcorr)
-end
+
 
 """
     pushfwd(f, μ, volcorr = WithVolCorr())
@@ -120,7 +118,7 @@ To manually specify an inverse, call
 `pushfwd(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
 function pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(setinverse(f, inverse(f)), μ, volcorr)
+    PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
 function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
@@ -133,15 +131,11 @@ end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
 function _pushfwd(f, μ, ::V, v::V) where {V}
-    pushfwd(setinverse(f ∘ μ.f, μ.finv ∘ inverse(f)), μ.origin, v)
-end
-
-function _pushfwd(f::FunctionWithInverse, μ, ::V, v::V) where {V}
-    pushfwd(setinverse(f.f ∘ μ.f, μ.finv ∘ f.invf), μ.origin, v)
+    pushfwd(f ∘ μ.f, μ.origin, v)
 end
 
 function _pushfwd(f, μ, _, v)
-    pushfwd(setinverse(f, inverse(f)), μ, v)
+    PushforwardMeasure(f, inverse(f), μ, v)
 end
 
 ###############################################################################
