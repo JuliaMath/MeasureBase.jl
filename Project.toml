@@ -1,7 +1,7 @@
 name = "MeasureBase"
 uuid = "fa1605e6-acd5-459c-a1e6-7e635759db14"
 authors = ["Chad Scherrer <chad.scherrer@gmail.com> and contributors"]
-version = "0.14.0"
+version = "0.14.1"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
