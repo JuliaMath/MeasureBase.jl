@@ -160,5 +160,7 @@ insupport(m::AbstractMeasure) = Base.Fix1(insupport, m)
 unstatic(::Type{T}) where {T} = T
 unstatic(::Type{StaticFloat64{X}}) where {X} = Float64
 
+using InverseFunctions: FunctionWithInverse
+
 unwrap(f) = f
 unwrap(f::FunctionWithInverse) = f.f
