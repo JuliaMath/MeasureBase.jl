@@ -8,7 +8,7 @@ import Statistics: var
 using DensityInterface: logdensityof
 using LogExpFunctions
 using SpecialFunctions: erfc, erfcinv
-import InverseFunctions: inverse, FunctionWithInverse
+import InverseFunctions: inverse, FunctionWithInverse, setinverse
 using IrrationalConstants: invsqrt2, sqrt2
 import ChangesOfVariables: with_logabsdet_jacobian
 using MeasureBase.Interface: transport_to, test_transport
@@ -69,6 +69,7 @@ end
 
     for (f, μ, ν_ref) in triples
         test_pushfwd(f, μ, ν_ref)
+        test_pushfwd(setinverse(f, inverse(f)), μ, ν_ref)
     end
 
     @testset "Pushforward-of-pushforward" begin

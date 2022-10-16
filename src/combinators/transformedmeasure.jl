@@ -58,7 +58,7 @@ end
 @inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
     f = ν.f
     finv = ν.finv
-    x_orig, inv_ladj = with_logabsdet_jacobian(finv, y)
+    x_orig, inv_ladj = with_logabsdet_jacobian(unwrap(finv), y)
     logd_orig = logdensity_def(ν.origin, x_orig)
     logd = float(logd_orig + inv_ladj)
     neginf = oftype(logd, -Inf)
