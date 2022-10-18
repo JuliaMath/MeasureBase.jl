@@ -27,7 +27,10 @@ using Test
 
 function dynamic_basemeasure_depth(μ::M) where {M}
     if static_hasmethod(proxy, Tuple{M})
-        return dynamic_basemeasure_depth(proxy(μ))
+        π = proxy(μ)
+        if static_hasmethod(basemeasure, Tuple{typeof(π)})
+            basemeasure(π) == basemeasure(μ) && return dynamic_basemeasure_depth(π)
+        end        
     end
     β = basemeasure(μ)
     depth = 0
