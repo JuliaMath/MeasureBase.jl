@@ -107,28 +107,30 @@ function test_transport(ν, μ)
 end
 
 function test_smf(μ, n = 100)
-    # Get `n` sorted uniforms in O(n) time
-    p = rand(n)
-    p .+= 0:n-1
-    p .*= inv(n)
-
-    F(x) = smf(μ, x)
-    Finv(p) = invsmf(μ, p)
-
-    @assert issorted(p)
-    x = invsmf.(μ, p)
-    @test issorted(x)
-    @test all(insupport(μ), x)
-
-    @test all((Finv ∘ F).(x) .≈ x)
-
-    for j in 1:n
-        a = rand()
-        b = rand()
-        a, b = minmax(a, b)
-        x = Finv(a)
-        y = Finv(b)
-        @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))
+    @testset "smf($μ)" begin
+        # Get `n` sorted uniforms in O(n) time
+        p = rand(n)
+        p .+= 0:n-1
+        p .*= inv(n)
+        
+        F(x) = smf(μ, x)
+        Finv(p) = invsmf(μ, p)
+        
+        @assert issorted(p)
+        x = invsmf.(μ, p)
+        @test issorted(x)
+        @test all(insupport(μ), x)
+        
+        @test all((Finv ∘ F).(x) .≈ x)
+        
+        for j in 1:n
+            a = rand()
+            b = rand()
+            a, b = minmax(a, b)
+            x = Finv(a)
+            y = Finv(b)
+            @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))
+        end
     end
 end
 
