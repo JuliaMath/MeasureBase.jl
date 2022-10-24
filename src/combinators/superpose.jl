@@ -70,8 +70,8 @@ oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
 @inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
     (μ, ν) = s.components
 
-    insupport(μ, x) || return exp(ULogarithmic, logdensity_def(ν, x))
-    insupport(ν, x) || return exp(ULogarithmic, logdensity_def(μ, x))
+    istrue(insupport(μ, x)) || return exp(ULogarithmic, logdensity_def(ν, x))
+    istrue(insupport(ν, x)) || return exp(ULogarithmic, logdensity_def(μ, x))
 
     α = basemeasure(μ)
     β = basemeasure(ν)
@@ -110,8 +110,8 @@ end
 ) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
     (μ, ν) = s.components
 
-    insupport(μ, x) == true || return logdensity_rel(ν, β, x)
-    insupport(ν, x) == true || return logdensity_rel(μ, β, x)
+    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
+    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
@@ -121,8 +121,8 @@ end
     x,
 ) where {A,B}
     (μ, ν) = s.components
-    insupport(μ, x) == true || return logdensity_rel(ν, β, x)
-    insupport(ν, x) == true || return logdensity_rel(μ, β, x)
+    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
+    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
     return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
 end
 
