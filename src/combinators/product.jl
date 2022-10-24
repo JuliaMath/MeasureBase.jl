@@ -212,10 +212,11 @@ end
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     mar = marginals(d)
-    for (j, mj) in enumerate(mar)
-        dynamic(insupport(mj, x[j])) || return false
+    # We might get lucky and know statically that everything is inbounds
+    T = Core.Compiler.return_type(insupport, Tuple{eltype(mar),eltype(x)})
+    T <: True || all(zip(x, mar)) do (xj, mj)
+        insupport(mj, xj) == true
     end
-    return true
 end
 
 @inline function insupport(d::AbstractProductMeasure, x)

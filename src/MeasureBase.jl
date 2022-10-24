@@ -90,6 +90,9 @@ using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
 
+# Mostly useful for StaticBools
+istrue(p) = p == true
+
 """
 `logdensity_def` is the standard way to define a log-density for a new measure.
 Note that this definition does not include checking for membership in the

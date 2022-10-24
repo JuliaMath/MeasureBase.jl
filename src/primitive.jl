@@ -19,7 +19,7 @@ basemeasure(μ::PrimitiveMeasure) = μ
 
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
 
-logdensity_def(μ::PrimitiveMeasure, x) = static(0.0)
+logdensity_def(::PrimitiveMeasure, x) = static(0.0)
 
 logdensity_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
 
