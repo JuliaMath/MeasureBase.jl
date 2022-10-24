@@ -214,7 +214,7 @@ end
     mar = marginals(d)
     # We might get lucky and know statically that everything is inbounds
     T = Core.Compiler.return_type(insupport, Tuple{eltype(mar),eltype(x)})
-    T == True || all(zip(x, mar)) do (xj, mj)
+    T <: True || all(zip(x, mar)) do (xj, mj)
         insupport(mj, xj) == true
     end
 end
