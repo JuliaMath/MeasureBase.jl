@@ -4,7 +4,7 @@ using Reexport
 
 @reexport using MeasureBase
 
-using MeasureBase: basemeasure_depth, proxy
+using MeasureBase: basemeasure_depth, proxy, istrue
 using MeasureBase: insupport, basemeasure_sequence, commonbase
 using MeasureBase: transport_to, NoTransport
 
@@ -119,7 +119,7 @@ function test_smf(μ, n = 100)
         @assert issorted(p)
         x = invsmf.(μ, p)
         @test issorted(x)
-        @test all(insupport(μ), x)
+        @test all(istrue ∘ insupport(μ), x)
 
         @test all((Finv ∘ F).(x) .≈ x)
 
