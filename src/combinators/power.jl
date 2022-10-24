@@ -130,3 +130,5 @@ function checked_arg(μ::PowerMeasure, x::Any)
 end
 
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
+
+logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
