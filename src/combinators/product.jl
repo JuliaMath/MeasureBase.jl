@@ -213,7 +213,7 @@ end
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     mar = marginals(d)
     # We might get lucky and know statically that everything is inbounds
-    T = Core.Compiler.return_type(insupport, Tuple{eltype(mar), eltype(x)})
+    T = Core.Compiler.return_type(insupport, Tuple{eltype(mar),eltype(x)})
     T == True || all(zip(x, mar)) do (xj, mj)
         @inbounds insupport(mj, xj) == true
     end

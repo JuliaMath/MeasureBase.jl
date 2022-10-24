@@ -30,7 +30,7 @@ function dynamic_basemeasure_depth(μ::M) where {M}
         π = proxy(μ)
         if static_hasmethod(basemeasure, Tuple{typeof(π)})
             basemeasure(π) == basemeasure(μ) && return dynamic_basemeasure_depth(π)
-        end        
+        end
     end
     β = basemeasure(μ)
     depth = 0
@@ -112,17 +112,17 @@ function test_smf(μ, n = 100)
         p = rand(n)
         p .+= 0:n-1
         p .*= inv(n)
-        
+
         F(x) = smf(μ, x)
         Finv(p) = invsmf(μ, p)
-        
+
         @assert issorted(p)
         x = invsmf.(μ, p)
         @test issorted(x)
         @test all(insupport(μ), x)
-        
+
         @test all((Finv ∘ F).(x) .≈ x)
-        
+
         for j in 1:n
             a = rand()
             b = rand()

@@ -133,6 +133,9 @@ massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
 logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
-function logdensity_def(::PowerMeasure{P, Tuple{Vararg{Base.OneTo{Static.StaticInt{0}}, N}}}, x) where {P<:PrimitiveMeasure, N}
+function logdensity_def(
+    ::PowerMeasure{P,Tuple{Vararg{Base.OneTo{Static.StaticInt{0}},N}}},
+    x,
+) where {P<:PrimitiveMeasure,N}
     static(0.0)
 end
