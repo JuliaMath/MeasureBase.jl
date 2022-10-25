@@ -17,16 +17,16 @@ function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
 end
 
 function transport_def(
-    ν::PowerMeasure{<:StdMeasure,<:NTuple{1,Base.OneTo}},
-    μ::PowerMeasure{<:StdMeasure,<:NTuple{1,Base.OneTo}},
+    ν::PowerMeasure{<:StdMeasure,1,<:NTuple{1,Base.OneTo}},
+    μ::PowerMeasure{<:StdMeasure,1,<:NTuple{1,Base.OneTo}},
     x,
 )
     return transport_to(ν.parent, μ.parent).(x)
 end
 
 function transport_def(
-    ν::PowerMeasure{<:StdMeasure,<:NTuple{N,Base.OneTo}},
-    μ::PowerMeasure{<:StdMeasure,<:NTuple{M,Base.OneTo}},
+    ν::PowerMeasure{<:StdMeasure,N,<:NTuple{N,Base.OneTo}},
+    μ::PowerMeasure{<:StdMeasure,M,<:NTuple{M,Base.OneTo}},
     x,
 ) where {N,M}
     return reshape(transport_to(ν.parent, μ.parent).(x), map(length, ν.axes)...)
