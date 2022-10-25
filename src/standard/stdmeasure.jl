@@ -72,7 +72,7 @@ end
 
 function transport_def(
     ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:Tuple},
+    μ::AbstractProductMeasure{<:Tuple},
     x,
 ) where {NU<:StdMeasure}
     _tuple_transport_def(ν, marginals(μ), x)
@@ -80,7 +80,7 @@ end
 
 function transport_def(
     ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:NamedTuple{names}},
+    μ::AbstractProductMeasure{<:NamedTuple{names}},
     x,
 ) where {NU<:StdMeasure,names}
     _tuple_transport_def(ν, values(marginals(μ)), values(x))
@@ -107,7 +107,7 @@ function _tuple_transport_def(
 end
 
 function transport_def(
-    ν::ProductMeasure{<:Tuple},
+    ν::AbstractProductMeasure{<:Tuple},
     μ::PowerMeasure{MU},
     x,
 ) where {MU<:StdMeasure}
@@ -115,7 +115,7 @@ function transport_def(
 end
 
 function transport_def(
-    ν::ProductMeasure{<:NamedTuple{names}},
+    ν::AbstractProductMeasure{<:NamedTuple{names}},
     μ::PowerMeasure{MU},
     x,
 ) where {MU<:StdMeasure,names}
