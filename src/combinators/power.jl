@@ -80,6 +80,13 @@ end
 end
 
 @inline function logdensity_def(
+    d::PowerMeasure{M,1,Tuple{Base.OneTo{StaticInt{0}}}},
+    x,
+) where {M}
+   static(0.0)
+end
+
+@inline function logdensity_def(
     d::PowerMeasure{M,1,Tuple{Base.OneTo{StaticInt{N}}}},
     x,
 ) where {M,N}
