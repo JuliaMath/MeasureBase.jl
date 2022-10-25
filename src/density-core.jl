@@ -89,8 +89,8 @@ known to be in the support of both, it can be more efficient to call
     )
     inμ = insupport(μ, x)
     inν = insupport(ν, x)
-    inμ || return convert(T, ifelse(inν, -Inf, NaN))
-    inν || return convert(T, Inf)
+    istrue(inμ) || return convert(T, ifelse(inν, -Inf, NaN))
+    istrue(inν) || return convert(T, Inf)
 
     return unsafe_logdensity_rel(μ, ν, x)
 end
