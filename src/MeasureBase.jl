@@ -48,18 +48,6 @@ export basemeasure
 export basekernel
 export productmeasure
 
-"""
-    inssupport(m, x)
-    insupport(m)
-
-`insupport(m,x)` computes whether `x` is in the support of `m`.
-
-`insupport(m)` returns a function, and satisfies
-
-    insupport(m)(x) == insupport(m, x)
-"""
-function insupport end
-
 export insupport
 export getdof
 export transport_to
@@ -69,8 +57,6 @@ include("insupport.jl")
 abstract type AbstractMeasure end
 
 AbstractMeasure(m::AbstractMeasure) = m
-
-using Static: @constprop
 
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
