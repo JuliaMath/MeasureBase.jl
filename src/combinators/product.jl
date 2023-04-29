@@ -8,7 +8,7 @@ using FillArrays
 
 export AbstractProductMeasure
 
-abstract type AbstractProductMeasure <: AbstractMeasure end
+abstract type AbstractProductMeasure{M} <: AbstractMeasure end
 
 function Pretty.tile(μ::AbstractProductMeasure)
     result = Pretty.literal("ProductMeasure(")
@@ -76,7 +76,7 @@ end
     mapreduce(logdensity_def, +, marginals(d), x)
 end
 
-struct ProductMeasure{M} <: AbstractProductMeasure
+struct ProductMeasure{M} <: AbstractProductMeasure{M}
     marginals::M
 end
 

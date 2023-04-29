@@ -12,9 +12,14 @@ using FillArrays: Fill
 
 export PowerMeasure
 
-struct PowerMeasure{M,A} <: AbstractProductMeasure
+struct PowerMeasure{M,N,A} <: AbstractProductMeasure{Fill{M,N,A}}
     parent::M
     axes::A
+
+    function PowerMeasure(parent::M, axes::A) where {M,A}
+        N = length(axes)
+        new{M,N,A}(parent, axes)
+    end
 end
 
 function Pretty.tile(μ::PowerMeasure)
@@ -42,8 +47,7 @@ end
 
 @inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
     a = axes(Fill{T,N}(x, sz))
-    A = typeof(a)
-    PowerMeasure{T,A}(x, a)
+    PowerMeasure(x, a)
 end
 
 marginals(d::PowerMeasure) = Fill(d.parent, d.axes)
@@ -76,7 +80,14 @@ end
 end
 
 @inline function logdensity_def(
-    d::PowerMeasure{M,Tuple{Base.OneTo{StaticInt{N}}}},
+    d::PowerMeasure{M,1,Tuple{Base.OneTo{StaticInt{0}}}},
+    x,
+) where {M}
+   static(0.0)
+end
+
+@inline function logdensity_def(
+    d::PowerMeasure{M,1,Tuple{Base.OneTo{StaticInt{N}}}},
     x,
 ) where {M,N}
     parent = d.parent
@@ -86,7 +97,7 @@ end
 end
 
 @inline function logdensity_def(
-    d::PowerMeasure{M,NTuple{N,Base.OneTo{StaticInt{0}}}},
+    d::PowerMeasure{M,N,NTuple{N,Base.OneTo{StaticInt{0}}}},
     x,
 ) where {M,N}
     static(0.0)
@@ -108,7 +119,8 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
+# `prod` isn't static-friendly
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * (*(map(length, μ.axes)...))
 
 @inline function getdof(::PowerMeasure{<:Any,NTuple{N,Base.OneTo{StaticInt{0}}}}) where {N}
     static(0)
