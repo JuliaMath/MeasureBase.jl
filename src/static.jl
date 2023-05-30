@@ -43,19 +43,19 @@ end
 end
 
 """
-    MeasureBase.dslength(x)::IntegerLike
+    MeasureBase.maybestatic_length(x)::IntegerLike
 
 Returns the length of `x` as a dynamic or static integer.
 """
-dslength(x) = length(x)
-dslength(x::AbstractUnitRange) = length(x)
-function dslength(::Static.OptionallyStaticUnitRange{StaticInt{A},StaticInt{B}}) where {A,B}
+maybestatic_length(x) = length(x)
+maybestatic_length(x::AbstractUnitRange) = length(x)
+function maybestatic_length(::Static.OptionallyStaticUnitRange{StaticInt{A},StaticInt{B}}) where {A,B}
     StaticInt{B - A + 1}()
 end
 
 """
-    MeasureBase.dssize(x)::Tuple{Vararg{IntegerLike}}
+    MeasureBase.maybestatic_size(x)::Tuple{Vararg{IntegerLike}}
 
 Returns the size of `x` as a tuple of dynamic or static integers.
 """
-dssize(x) = size(x)
+maybestatic_size(x) = size(x)

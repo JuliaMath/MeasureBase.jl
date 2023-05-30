@@ -17,8 +17,8 @@ struct PowerMeasure{M,A} <: AbstractProductMeasure
     axes::A
 end
 
-dslength(μ::PowerMeasure) = prod(dssize(μ))
-dssize(μ::PowerMeasure) = map(dslength, μ.axes)
+maybestatic_length(μ::PowerMeasure) = prod(maybestatic_size(μ))
+maybestatic_size(μ::PowerMeasure) = map(maybestatic_length, μ.axes)
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
