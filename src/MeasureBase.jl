@@ -34,6 +34,7 @@ const Pretty = PrettyPrinting
 using ChainRulesCore
 import FillArrays
 using Static
+using Static: StaticInteger
 using FunctionChains
 
 export ≪

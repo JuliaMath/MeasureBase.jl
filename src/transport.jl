@@ -139,14 +139,14 @@ _origin_depth_pullback(ΔΩ) = NoTangent(), NoTangent()
 ChainRulesCore.rrule(::typeof(_origin_depth), ν) = _origin_depth(ν), _origin_depth_pullback
 
 # If both both measures have no origin:
-function _transport_between_origins(ν, ::StaticInt{0}, ::StaticInt{0}, μ, x)
+function _transport_between_origins(ν, ::StaticInteger{0}, ::StaticInteger{0}, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
 end
 
 @generated function _transport_between_origins(
     ν,
-    ::StaticInt{n_ν},
-    ::StaticInt{n_μ},
+    ::StaticInteger{n_ν},
+    ::StaticInteger{n_μ},
     μ,
     x,
 ) where {n_ν,n_μ}
@@ -188,7 +188,7 @@ end
 
 @inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
-@inline _transport_intermediate(::StaticInt{1}, ::StaticInt{1}) = StdUniform()
+@inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
 
 _call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
 _call_transport_def(::Any, ::Any, x::NoTransportOrigin) = x

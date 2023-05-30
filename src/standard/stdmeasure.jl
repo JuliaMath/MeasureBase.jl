@@ -34,7 +34,7 @@ end
 
 # Implement transport_to(NU::Type{<:StdMeasure}, μ) and transport_to(ν, MU::Type{<:StdMeasure}):
 
-_std_measure(::Type{M}, ::StaticInt{1}) where {M<:StdMeasure} = M()
+_std_measure(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
 _std_measure(::Type{M}, dof::IntegerLike) where {M<:StdMeasure} = M()^dof
 _std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
 
