@@ -10,7 +10,7 @@ the product determines the dimensionality of the resulting support.
 
 Note that power measures are only well-defined for integer powers.
 
-The nth power of a measure μ can be written μ^x.
+The nth power of a measure μ can be written μ^n.
 """
 struct PowerMeasure{M,A} <: AbstractProductMeasure
     parent::M
