@@ -37,7 +37,7 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(mar::Fill) = powermeasure(mar.value, mar.axes)
+productmeasure(mar::FillArrays.Fill) = powermeasure(mar.value, mar.axes)
 
 function productmeasure(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
