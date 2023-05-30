@@ -1,21 +1,24 @@
 import Base
-using FillArrays: Fill
-# """
-# A power measure is a product of a measure with itself. The number of elements in
-# the product determines the dimensionality of the resulting support.
-
-# Note that power measures are only well-defined for integer powers.
-
-# The nth power of a measure μ can be written μ^x.
-# """
-# PowerMeasure{M,N,D} = ProductMeasure{Fill{M,N,D}}
 
 export PowerMeasure
 
+"""
+    struct PowerMeasure{M,...} <: AbstractProductMeasure
+
+A power measure is a product of a measure with itself. The number of elements in
+the product determines the dimensionality of the resulting support.
+
+Note that power measures are only well-defined for integer powers.
+
+The nth power of a measure μ can be written μ^x.
+"""
 struct PowerMeasure{M,A} <: AbstractProductMeasure
     parent::M
     axes::A
 end
+
+dslength(μ::PowerMeasure) = prod(dssize(μ))
+dssize(μ::PowerMeasure) = map(dslength, μ.axes)
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
@@ -24,35 +27,41 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
+# ToDo: Make rand return static arrays for statically-sized power measures.
+
+_cartidxs(axs::Tuple{Vararg{<:AbstractUnitRange,N}}) where {N} = CartesianIndices(map(_dynamic, axs))
+
 function Base.rand(
     rng::AbstractRNG,
     ::Type{T},
     d::PowerMeasure{M},
 ) where {T,M<:AbstractMeasure}
-    map(CartesianIndices(d.axes)) do _
+    map(_cartidxs(d.axes)) do _
         rand(rng, T, d.parent)
     end
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
-    map(CartesianIndices(d.axes)) do _
+    map(_cartidxs(d.axes)) do _
         rand(rng, d.parent)
     end
 end
 
+@inline _pm_axes(sz::Tuple{Vararg{<:IntegerLike,N}}) where N = map(one_to, sz)
+@inline _pm_axes(axs::Tuple{Vararg{<:AbstractUnitRange,N}}) where N = axs
+
 @inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
-    a = axes(Fill{T,N}(x, sz))
-    A = typeof(a)
-    PowerMeasure{T,A}(x, a)
+    PowerMeasure(x, _pm_axes(sz))
 end
 
-marginals(d::PowerMeasure) = Fill(d.parent, d.axes)
+
+marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{<:AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
 end
 
-Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, Base.OneTo.(dims))
+Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, one_to.(dims))
 Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
 # Base.show(io::IO, d::PowerMeasure) = print(io, d.parent, " ^ ", size(d.xs))
@@ -76,7 +85,7 @@ end
 end
 
 @inline function logdensity_def(
-    d::PowerMeasure{M,Tuple{Base.OneTo{StaticInt{N}}}},
+    d::PowerMeasure{M,Tuple{Static.SOneTo{N}}},
     x,
 ) where {M,N}
     parent = d.parent
@@ -86,7 +95,7 @@ end
 end
 
 @inline function logdensity_def(
-    d::PowerMeasure{M,NTuple{N,Base.OneTo{StaticInt{0}}}},
+    d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
     x,
 ) where {M,N}
     static(0.0)
@@ -110,7 +119,7 @@ end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
 
-@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Base.OneTo{StaticInt{0}}}}) where {N}
+@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
     static(0)
 end
 
@@ -135,7 +144,7 @@ logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
 # To avoid ambiguities
 function logdensity_def(
-    ::PowerMeasure{P,Tuple{Vararg{Base.OneTo{Static.StaticInt{0}},N}}},
+    ::PowerMeasure{P,Tuple{Vararg{Static.SOneTo{0},N}}},
     x,
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)

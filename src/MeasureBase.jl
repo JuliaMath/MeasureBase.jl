@@ -32,7 +32,7 @@ using PrettyPrinting
 const Pretty = PrettyPrinting
 
 using ChainRulesCore
-using FillArrays
+import FillArrays
 using Static
 using FunctionChains
 
@@ -106,6 +106,7 @@ using Compat
 
 using IrrationalConstants
 
+include("static.jl")
 include("smf.jl")
 include("getdof.jl")
 include("transport.jl")

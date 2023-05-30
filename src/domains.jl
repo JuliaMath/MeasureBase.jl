@@ -116,7 +116,7 @@ struct Simplex <: CodimOne end
 
 function zeroset(::Simplex)
     f(x::AbstractArray{T}) where {T} = sum(x) - one(T)
-    ∇f(x::AbstractArray{T}) where {T} = Fill(one(T), size(x))
+    ∇f(x::AbstractArray{T}) where {T} = fill_with(one(T), size(x))
     ZeroSet(f, ∇f)
 end
 

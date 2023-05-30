@@ -8,7 +8,7 @@ using LogExpFunctions: logit
 using ChainRulesTestUtils
 
 @testset "transport_to" begin
-    test_rrule(MeasureBase._origin_depth, pushfwd(exp, StdUniform()))
+    test_rrule(MeasureBase._origin_depth, pushfwd(exp, StdUniform()), output_tangent = static(0))
 
     for (f, μ) in [
         (logit, StdUniform())

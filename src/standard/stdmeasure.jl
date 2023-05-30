@@ -13,7 +13,7 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
 end
 
 function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
-    return Fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes)...)
+    return fill_with(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
 end
 
 function transport_def(
@@ -35,7 +35,7 @@ end
 # Implement transport_to(NU::Type{<:StdMeasure}, μ) and transport_to(ν, MU::Type{<:StdMeasure}):
 
 _std_measure(::Type{M}, ::StaticInt{1}) where {M<:StdMeasure} = M()
-_std_measure(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
+_std_measure(::Type{M}, dof::IntegerLike) where {M<:StdMeasure} = M()^dof
 _std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
 
 function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
@@ -90,7 +90,7 @@ end
 @inline _offset_cumsum(s, x) = (s,)
 @inline _offset_cumsum(s) = ()
 
-function _stdvar_viewranges(μs::Tuple, startidx::Integer)
+function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
     N = map(getdof, μs)
     offs = _offset_cumsum(startidx, N...)
     map((o, n) -> o:o+n-1, offs, N)
