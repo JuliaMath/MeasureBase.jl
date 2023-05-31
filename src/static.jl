@@ -1,9 +1,9 @@
 """
     MeasureBase.IntegerLike
 
-Equivalent to `Union{Integer,Static.StaticInt}`.
+Equivalent to `Union{Integer,Static.StaticInteger}`.
 """
-const IntegerLike = Union{Integer,Static.StaticInt}
+const IntegerLike = Union{Integer,Static.StaticInteger}
 
 """
     MeasureBase.one_to(n::IntegerLike)
@@ -14,7 +14,7 @@ Returns an instance of `Base.OneTo` or `Static.SOneTo`, depending
 on the type of `n`.
 """
 @inline one_to(n::Integer) = Base.OneTo(n)
-@inline one_to(::Static.StaticInt{N}) where {N} = Static.SOneTo{N}()
+@inline one_to(::Static.StaticInteger{N}) where {N} = Static.SOneTo{N}()
 
 _dynamic(x::Number) = dynamic(x)
 _dynamic(::Static.SOneTo{N}) where {N} = Base.OneTo(N)
@@ -49,7 +49,7 @@ Returns the length of `x` as a dynamic or static integer.
 """
 maybestatic_length(x) = length(x)
 maybestatic_length(x::AbstractUnitRange) = length(x)
-function maybestatic_length(::Static.OptionallyStaticUnitRange{StaticInt{A},StaticInt{B}}) where {A,B}
+function maybestatic_length(::Static.OptionallyStaticUnitRange{<:StaticInteger{A},<:StaticInteger{B}}) where {A,B}
     StaticInt{B - A + 1}()
 end
 

@@ -10,6 +10,8 @@ using MeasureBase: test_interface, test_smf
 using Aqua
 Aqua.test_all(MeasureBase; ambiguities = false)
 
+include("static.jl")
+
 # Aqua._test_ambiguities(
 #     Aqua.aspkgids(MeasureBase);
 #     exclude = [LogarithmicNumbers.Logarithmic],

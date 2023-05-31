@@ -143,7 +143,7 @@ end
 @generated function _logdensity_rel(
     μs::Tμ,
     νs::Tν,
-    ::Tuple{StaticInt{M},StaticInt{N}},
+    ::Tuple{<:StaticInteger{M},<:StaticInteger{N}},
     x::X,
 ) where {Tμ,Tν,M,N,X}
     sμ = schema(Tμ)

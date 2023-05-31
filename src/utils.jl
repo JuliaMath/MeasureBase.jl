@@ -33,7 +33,7 @@ repeatedly until there's no change. That's what this does.
     _rootmeasure(μ, static(n))
 end
 
-@generated function _rootmeasure(μ, ::StaticInt{n}) where {n}
+@generated function _rootmeasure(μ, ::StaticInteger{n}) where {n}
     q = quote end
     foreach(1:n) do _
         push!(q.args, :(μ = basemeasure(μ)))
