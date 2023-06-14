@@ -55,6 +55,7 @@ To compute a log-density relative to a specific base-measure, see
 end
 
 _checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
+@inline _checksupport(::NoFastInsupport, result) = result
 
 import ChainRulesCore
 @inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
@@ -77,6 +78,12 @@ This is "unsafe" because it does not check `insupport(m, x)`.
 See also `logdensityof`.
 """
 @inline function unsafe_logdensityof(μ::M, x) where {M}
+    μ_local = localmeasure(μ, x)
+    # Extra dispatch boundary to reduce number of required specializations of implementation:
+    return _unsafe_logdensityof_local(μ_local, x)
+end
+
+@inline function _unsafe_logdensityof_local(μ::M, x) where {M}
     ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
@@ -119,7 +126,7 @@ known to be in the support of both, it can be more efficient to call
 end
 
 
-function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, inν::Bool) where {M,N,X}
+@inline function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, inν::Bool) where {M,N,X}
     T = unstatic(
         promote_type(
             logdensity_type(μ, X),
@@ -134,16 +141,16 @@ function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, inν::Bool) where 
 end
 
 
-function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), @nospecialize(::NoFastInsupport)) where {M,N,X}
+@inline function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), @nospecialize(::NoFastInsupport)) where {M,N,X}
     unsafe_logdensity_rel(μ, ν, x)
 end
 
-function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, @nospecialize(::NoFastInsupport)) where {M,N,X}
+@inline function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, @nospecialize(::NoFastInsupport)) where {M,N,X}
     logd = unsafe_logdensity_rel(μ, ν, x)
     return istrue(inμ) ? logd  : logd * oftypeof(logd, -Inf)
 end
 
-function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), inν::Bool) where {M,N,X}
+@inline function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), inν::Bool) where {M,N,X}
     logd = unsafe_logdensity_rel(μ, ν, x)
     return istrue(inν) ? logd  : logd * oftypeof(logd, +Inf)
 end
@@ -160,6 +167,7 @@ See also `logdensity_rel`.
 @inline function unsafe_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     μ_local = localmeasure(μ, x)
     ν_local = localmeasure(ν, x)
+    # Extra dispatch boundary to reduce number of required specializations of implementation:
     return _unsafe_logdensity_rel_local(μ_local, ν_local, x)
 end
 
