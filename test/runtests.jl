@@ -234,13 +234,13 @@ end
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test log(𝒹(mintegrate_exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
+    @test log(density_rel(mintegrate_exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
-    let f = 𝒹(mintegrate_exp(x -> x^2, Lebesgue()), Lebesgue())
+    let f = density_rel(mintegrate_exp(x -> x^2, Lebesgue()), Lebesgue())
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(mintegrate_exp(x -> x^2, Normal()), Normal())
+    let f = logdensity_rel(mintegrate_exp(x -> x^2, Normal()), Normal())
         @test f(x) ≈ x^2
     end
 end
