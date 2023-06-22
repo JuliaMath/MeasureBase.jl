@@ -152,6 +152,8 @@ include("density-core.jl")
 
 include("interface.jl")
 
+include("measure_operators.jl")
+
 using .Interface
 
 end # module MeasureBase

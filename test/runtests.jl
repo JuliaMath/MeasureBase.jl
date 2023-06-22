@@ -251,3 +251,5 @@ include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
+
+include("measure_operators.jl")
