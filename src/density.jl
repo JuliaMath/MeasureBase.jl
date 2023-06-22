@@ -20,8 +20,7 @@ For measures `μ` and `ν`, `Density(μ,ν)` represents the _density function_
 `dμ/dν`, also called the _Radom-Nikodym derivative_:
 https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
 
-Instead of calling this directly, users should call `density_rel(μ, ν)` or
-its abbreviated form, `𝒹(μ,ν)`.
+Instead of calling this directly, users should call `density_rel(μ, ν)`.
 """
 struct Density{M,B} <: AbstractDensity
     μ::M
@@ -32,15 +31,6 @@ Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
 
 Base.log(d::Density) = log ∘ d
 
-export 𝒹
-
-"""
-    𝒹(μ, base)
-
-Compute the density (Radom-Nikodym derivative) of μ with respect to `base`. This
-is a shorthand form for `density_rel(μ, base)`.
-"""
-𝒹(μ, base) = density_rel(μ, base)
 
 density_rel(μ, base) = Density(μ, base)
 
@@ -72,16 +62,6 @@ end
 Base.:∘(::typeof(exp), d::LogDensity) = density_rel(d.μ, d.base)
 
 Base.exp(d::LogDensity) = exp ∘ d
-
-export log𝒹
-
-"""
-    log𝒹(μ, base)
-
-Compute the log-density (Radom-Nikodym derivative) of μ with respect to `base`.
-This is a shorthand form for `logdensity_rel(μ, base)`
-"""
-log𝒹(μ, base) = logdensity_rel(μ, base)
 
 logdensity_rel(μ, base) = LogDensity(μ, base)
 
