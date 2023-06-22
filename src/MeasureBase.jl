@@ -37,7 +37,6 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
-export ≪
 export gentype
 
 export AbstractMeasure
