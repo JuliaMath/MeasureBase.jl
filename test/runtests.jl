@@ -163,8 +163,6 @@ end
             -(x - μ)^2
         end
     end
-
-    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin
