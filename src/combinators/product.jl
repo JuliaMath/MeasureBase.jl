@@ -167,7 +167,6 @@ function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))
 end
 
-
 ###############################################################################
 # I <: Base.Generator
 

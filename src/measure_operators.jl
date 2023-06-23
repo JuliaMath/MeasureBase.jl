@@ -15,7 +15,6 @@ using MeasureBase: mintegrate, mintegrate_exp, density_rel, logdensity_rel
 using InverseFunctions: inverse
 using Reexport: @reexport
 
-
 @doc raw"""
     ⋄(f, μ::AbstractMeasure) = pushfwd(f, μ)
 
@@ -32,7 +31,6 @@ Also see [`ν ⊙ f`](@ref), the pullback operator.
 """
 ⋄(f, μ::AbstractMeasure) = pushfwd(f, μ)
 export ⋄
-
 
 @doc raw"""
     ⊙(ν::AbstractMeasure, f) = pullbck(f, ν)
@@ -55,7 +53,6 @@ Also see [f ⋄ μ](@ref), the pushforward operator.
 ⊙(ν::AbstractMeasure, f) = pullbck(f, ν)
 export ⊙
 
-
 """
     μ ▷ k = mbind(k, μ)
 
@@ -71,9 +68,8 @@ passing functions as the first argument. `▷`, on the other hand, takes
 its arguments in the order common for monadic binds in functional
 programming (like the Haskell `>>=` operator) and mathematics.
 """
-▷(μ::AbstractMeasure,k) = mbind(k, μ)
+▷(μ::AbstractMeasure, k) = mbind(k, μ)
 export ▷
-
 
 # ToDo: Use `⨂` instead of `⊗` for better readability?
 """
@@ -86,7 +82,6 @@ See [`productmeasure(μs)`](@ref) for details.
 ⊗(μs::AbstractMeasure...) = productmeasure(μs)
 export ⊗
 
-
 """
     ∫(f, μ::AbstractMeasure) = mintegrate(f, μ)
 
@@ -98,7 +93,6 @@ See [`mintegrate(f, μ)`](@ref) for details.
 ∫(f, μ::AbstractMeasure) = mintegrate(f, μ)
 export ∫
 
-
 """
     ∫exp(f, μ::AbstractMeasure) = mintegrate_exp(f, μ)
 
@@ -109,7 +103,6 @@ See [`mintegrate_exp(f, μ)`](@ref) for details.
 """
 ∫exp(f, μ::AbstractMeasure) = mintegrate_exp(f, μ)
 export ∫exp
-
 
 """
     𝒹(ν, μ) = density_rel(ν, μ)
@@ -123,8 +116,6 @@ For details, see [`density_rel(ν, μ)`}(@ref).
 𝒹(ν, μ::AbstractMeasure) = density_rel(ν, μ)
 export 𝒹
 
-
-
 """
     log𝒹(ν, μ) = logdensity_rel(ν, μ)
 
@@ -136,6 +127,5 @@ For details, see [`logdensity_rel(ν, μ)`}(@ref).
 """
 log𝒹(ν, μ::AbstractMeasure) = logdensity_rel(ν, μ)
 export log𝒹
-
 
 end # module MeasureOperators

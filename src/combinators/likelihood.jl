@@ -64,31 +64,6 @@ With several parameters, things work as expected:
 
 ---------
 
-    Likelihood(M<:ParameterizedMeasure, constraint::NamedTuple, x)
-
-In some cases the measure might have several parameters, and we may want the
-(log-)likelihood with respect to some subset of them. In this case, we can use
-the three-argument form, where the second argument is a constraint. For example,
-
-    julia> ℓ = Likelihood(Normal{(:μ,:σ)}, (σ=3.0,), 2.0)
-    Likelihood(Normal{(:μ, :σ), T} where T, (σ = 3.0,), 2.0)
-
-Similarly to the above, we have
-
-    julia> density_def(ℓ, (μ=2.0,))
-    0.3333333333333333
-
-    julia> logdensity_def(ℓ, (μ=2.0,))
-    -1.0986122886681098
-
-    julia> density_def(ℓ, 2.0)
-    0.3333333333333333
-
-    julia> logdensity_def(ℓ, 2.0)
-    -1.0986122886681098
-
------------------------
-
 Finally, let's return to the expression for Bayes's Law, 
 
 ``P(θ|x) ∝ P(x|θ) P(θ)``
@@ -118,7 +93,7 @@ struct Likelihood{K,X} <: AbstractLikelihood
     x::X
 
     Likelihood(k::K, x::X) where {K,X} = new{K,X}(k, x)
-#!!!!!!!!!!!    # For type stability if `K isa UnionAll (e.g. a parameterized MeasureType)`
+    #!!!!!!!!!!!    # For type stability if `K isa UnionAll (e.g. a parameterized MeasureType)`
     Likelihood(::Type{K}, x::X) where {K<:AbstractMeasure,X} = new{K,X}(K, x)
 end
 
@@ -190,7 +165,6 @@ By default, an instance of [`MeasureBase.Likelihood`](@ref) is returned.
 function likelihoodof end
 
 likelihoodof(k, x) = Likelihood(k, x)
-
 
 ###############################################################################
 # At the least, we need to think through in some more detail whether
