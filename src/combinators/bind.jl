@@ -17,7 +17,6 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
     return y
 end
 
-
 """
     mbind(k, μ)::AbstractMeasure
     

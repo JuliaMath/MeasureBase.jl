@@ -31,7 +31,6 @@ Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
 
 Base.log(d::Density) = log ∘ d
 
-
 density_rel(μ, base) = Density(μ, base)
 
 (f::Density)(x) = density_rel(f.μ, f.base, x)
@@ -112,8 +111,6 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-
-
 @doc raw"""
     mintegrate(f, μ::AbstractMeasure)::AbstractMeasure
 
@@ -135,10 +132,13 @@ mintegrate(f, μ::AbstractMeasure) = _mintegrate_impl(f, μ, DensityKind(f))
 
 _mintegrate_impl(f, μ, ::IsDensity) = DensityMeasure(f, μ)
 function _mintegrate_impl(f, μ, ::HasDensity)
-    throw(ArgumentError( "`mintegrate(f, mu)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."))
+    throw(
+        ArgumentError(
+            "`mintegrate(f, mu)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`.",
+        ),
+    )
 end
 _mintegrate_impl(f, μ, ::NoDensity) = DensityMeasure(funcdensity(f), μ)
-
 
 @doc raw"""
     mintegrate_exp(log_f, μ::AbstractMeasure)
@@ -162,12 +162,22 @@ internally.
 function mintegrate_exp end
 export mintegrate_exp
 
-mintegrate_exp(log_f, μ::AbstractMeasure) = _mintegrate_exp_impl(log_f, μ, DensityKind(log_f))
+function mintegrate_exp(log_f, μ::AbstractMeasure)
+    _mintegrate_exp_impl(log_f, μ, DensityKind(log_f))
+end
 
 function _mintegrate_exp_impl(log_f, μ, ::IsDensity)
-    throw(ArgumentError("`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `mintegral(log_f, μ)` instead."))
+    throw(
+        ArgumentError(
+            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `mintegral(log_f, μ)` instead.",
+        ),
+    )
 end
 function _mintegrate_exp_impl(log_f, μ, ::HasDensity)
-    throw(ArgumentError("`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == HasDensity()`."))
+    throw(
+        ArgumentError(
+            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == HasDensity()`.",
+        ),
+    )
 end
 _mintegrate_exp_impl(log_f, μ, ::NoDensity) = DensityMeasure(logfuncdensity(log_f), μ)

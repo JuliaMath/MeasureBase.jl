@@ -49,7 +49,9 @@ Returns the length of `x` as a dynamic or static integer.
 """
 maybestatic_length(x) = length(x)
 maybestatic_length(x::AbstractUnitRange) = length(x)
-function maybestatic_length(::Static.OptionallyStaticUnitRange{<:StaticInteger{A},<:StaticInteger{B}}) where {A,B}
+function maybestatic_length(
+    ::Static.OptionallyStaticUnitRange{<:StaticInteger{A},<:StaticInteger{B}},
+) where {A,B}
     StaticInt{B - A + 1}()
 end
 
