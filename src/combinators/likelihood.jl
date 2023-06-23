@@ -93,7 +93,7 @@ Finally, let's return to the expression for Bayes's Law,
 
 ``P(θ|x) ∝ P(x|θ) P(θ)``
 
-In measure theory, the product on the right side is actually the Lebesgue integral,
+In measure theory, the product on the right side is the Lebesgue integral
 of the likelihood with respect to the prior.
 
 For example, say we have
