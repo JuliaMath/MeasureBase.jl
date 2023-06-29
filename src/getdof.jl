@@ -7,6 +7,12 @@ a global property of the measure.
 """
 struct NoDOF{MU} end
 
+_add_dof(dof_a::Real, dof_b::Real) = dof_a + dof_b
+_add_dof(dof_a::NoDOF, ::Real) = dof_a
+_add_dof(::Real, dof_b::NoDOF) = dof_b
+_add_dof(dof_a::NoDOF, ::NoDOF) = dof_a
+
+
 """
     getdof(μ)
 

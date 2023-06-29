@@ -1,20 +1,3 @@
-export Bind
-
-"""
-    struct MeasureBase.Bind{F,M<:AbstractMeasure,G} <: AbstractMeasure
-
-Represents a monatic bind resp. a mbind in general.
-
-User code should not create instances of `Bind` directly, but should call
-[`mbind`](@ref) instead.
-"""
-struct Bind{FK,M<:AbstractMeasure,FC} <: AbstractMeasure
-    f_kernel::FK
-    m_primary::M
-    f_combine::FC
-end
-
-
 @doc raw"""
     mbind(f_β, α::AbstractMeasure, f_c = second)
 
@@ -24,7 +7,7 @@ function `f_c`.
 
 `f_β` must be a function that maps a point `a` from the space of the primary
 measure `α` to a dependent secondary measure `β_a = f_β(a)`.
-`ab = f_combine(a, b)` must map such a point `a` and a point `b` from the
+`ab = f_c(a, b)` must map such a point `a` and a point `b` from the
 space of measure `β_a` to a combined value `ab = f_c(a, b)`.
 
 The resulting measure
@@ -33,7 +16,7 @@ The resulting measure
 μ = mbind(f_c, α, f_β)
 ```
 
-has the mathethematical interpretation
+has the mathethematical interpretation (on sets $$A$$ and $$B$$)
 
 ```math
 \mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
@@ -53,7 +36,7 @@ Computationally, `ab = rand(μ)` is equivalent to
 a = rand(μ_primary)
 β_a = f_β(a)
 b = rand(β_a)
-ab = f_combine(a, b)
+ab = f_c(a, b)
 ```
 
 Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
@@ -100,83 +83,42 @@ export mbind
 
 @inline function mbind(f_β, α::AbstractMeasure, f_c = second)
     F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
-    HierarchicalProductMeasure{F,M,G}(f_β, α, f_c)
+    Bind{F,M,G}(f_β, α, f_c)
 end
 
 
 """
-    MeasureBase.split_combined(f_c, α::AbstractMeasure, ab)
+    struct MeasureBase.Bind <: AbstractMeasure
 
-Splits a combined value `ab` that originated from combining a point `a_orig`
-from the space of a measure `α` with a point `b_orig` from the space of
-another measure `β` via `ab = f_c(a_orig, b_orig)`.
+Represents a monatic bind resp. a mbind in general.
 
-So with `a_orig = rand(α)`, `b_orig = rand(β)` and
-`ab = f_c(a_orig, b_orig)`, the following must hold true:
-
-```julia
-a, b2 = split_combined(f_c, α, ab)
-a ≈ a_orig && b ≈ b_orig
-```
+User code should not create instances of `Bind` directly, but should call
+[`mbind`](@ref) instead.
 """
-function split_combined end
-
-@inline split_combined(::typeof(tuple), @nospecialize(α::AbstractMeasure), x::Tuple{T,U}) where T,U = ab
-@inline split_combined(::Type{Pair}, @nospecialize(α::AbstractMeasure), ab::Pair) = (ab...,)
-
-function split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
-    _split_variate_byvalue(f_combine, testvalue(μ), x)
-end
-
-_split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) = _split_after(ab, length(test_a))
-
-_split_variate_byvalue(::typeof(vcat), ::Tuple{N}, ab::Tuple) where N = _split_after(ab, Val{N}())
-
-function _split_variate_byvalue(::typeof(merge), ::NamedTuple{names_a}, ab::NamedTuple) where names_a
-    _split_after(ab, Val{names_a})
+struct Bind{FK,M<:AbstractMeasure,FC} <: AbstractMeasure
+    f_β::FK
+    α::M
+    f_c::FC
 end
 
 
-
-_combine_variates(::NoFlatten, a::Any, b::Any) = (a, b)
-
-
-_combine_variates(::AutoFlatten, a::Any, b::Any) = _autoflat_combine_variates(a, b)
-
-_autoflat_combine_variates(a::Any, b::Any) = (a, b)
-
-_autoflat_combine_variates(a::AbstractVector, b::AbstractVector) = vcat(a, b)
-
-_autoflat_combine_variates(a::Tuple, b::Tuple) = (a, b)
-
-# TODO: Check that names don't overlap:
-_autoflat_combine_variates(a::NamedTuple, b::NamedTuple) = merge(a, b)
-
-
-_local_productmeasure(::NoFlatten, μ1, μ2) = productmeasure(μ1, μ2)
+_local_productmeasure(fc, α, \) = productmeasure(fc(marginals(μ1), marginals(μ2)))
 
 # TODO: _local_productmeasure(::AutoFlatten, μ1, μ2) = productmeasure(μ1, μ2)
 # Needs a FlatProductMeasure type.
 
-function _localmeasure_with_rest(μ::HierarchicalProductMeasure, x)
-    μ_primary = μ.m
-    local_primary, x_secondary = _localmeasure_with_rest(μ_primary, x)
-    μ_secondary = μ.f(x_secondary)
-    local_secondary, x_rest = _localmeasure_with_rest(μ_secondary, x_secondary)
-    return _local_productmeasure(μ.flatten_mode, local_primary, local_secondary), x_rest
+function _local_split_combined(f_c, μ::Bind, x)
+    local_α, a, b_withrest = _local_split_combined(μ.α, x)
+    β_a = μ.f_β(a)
+    local_β_a, b, rest = _localmeasure_with_rest(β_a, b_withrest)
+    local_μ = productmeasure(μ.f_c(marginals(local_α), marginals(local_β_a)))
+    local_ab, rest = split_combined(μ.f_c, local_μ, ab)
+    return local_μ, local_ab, rest
 end
 
-function _localmeasure_with_rest(μ::AbstractMeasure, x)
-    x_checked = checked_arg(μ, x)
-    return localmeasure(μ, x_checked), Fill(zero(eltype(x)), 0)
-end
-
-function localmeasure(μ::HierarchicalProductMeasure, x)
-    h_local, x_rest = _localmeasure_with_rest(μ, x)
-    if !isempty(x_rest)
-        throw(ArgumentError("Variate too long while computing localmeasure of Bind"))
-    end
-    return h_local
+function _local_split_combined(f_c, μ::AbstractMeasure, x_withrest)
+    x, rest = split_combined(f_c, μ, x_withrest)
+    return localmeasure(μ, x), x, rest
 end
 
 
