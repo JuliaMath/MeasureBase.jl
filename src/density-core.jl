@@ -1,3 +1,5 @@
+export local_measure
+
 export logdensityof
 export logdensity_rel
 export logdensity_def
@@ -8,6 +10,25 @@ export unsafe_logdensity_rel
 export densityof
 export density_rel
 export density_def
+
+
+"""
+    local_measure(m::AbstractMeasure, x)::AbstractMeasure
+
+Return a local measure of `m` at `x` which will be `m` itself for many
+measures.
+
+A local measure of `m` is defined here as a measure that behaves like `m` in
+the infinitesimal neighborhood of `x`.
+
+Note that the resulting measure may not be well defined outside of such a
+neighborhood of `x`.
+
+See [`HierarchicalMeasure`](@ref) as an example of a measure where
+`local_measure` returns different measures depending on `x`.
+"""
+local_measure(m::AbstractMeasure, x) = m
+
 
 """
     logdensityof(m::AbstractMeasure, x) 
@@ -72,6 +93,17 @@ See also `logdensityof`.
     return ℓ_10
 end
 
+
+"""
+    logdensity_type(m::AbstractMeasure}, ::Type{T}) where T
+
+Compute the return type of `logdensity_of(m, ::T)`.
+"""
+function logdensity_type(m::M,T) where {M<:AbstractMeasure}
+    Core.Compiler.return_type(logdensity_def, Tuple{M, T})
+end
+
+
 """
     logdensity_rel(m1, m2, x)
 
@@ -83,8 +115,8 @@ known to be in the support of both, it can be more efficient to call
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     T = unstatic(
         promote_type(
-            return_type(logdensity_def, (μ, x)),
-            return_type(logdensity_def, (ν, x)),
+            logdensity_type(μ, X),
+            logdensity_type(ν, X),
         ),
     )
     inμ = insupport(μ, x)
@@ -92,7 +124,10 @@ known to be in the support of both, it can be more efficient to call
     istrue(inμ) || return convert(T, ifelse(inν, -Inf, NaN))
     istrue(inν) || return convert(T, Inf)
 
-    return unsafe_logdensity_rel(μ, ν, x)
+    μ_local = localmeasure(μ, x)
+    ν_local = localmeasure(ν, x)
+
+    return unsafe_logdensity_rel(μ_local, ν_local, x)
 end
 
 """

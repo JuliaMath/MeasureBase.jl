@@ -38,6 +38,10 @@ function check_dof end
 function check_dof(ν, μ)
     n_ν = getdof(ν)
     n_μ = getdof(μ)
+    # TODO: How to handle this better if DOF is unclear e.g. for HierarchicalMeasures?
+    if n_ν isa NoDOF || n_μ isa NoDOF
+        return true
+    end
     if n_ν != n_μ
         throw(
             ArgumentError(
