@@ -1,5 +1,11 @@
 abstract type StdMeasure <: AbstractMeasure end
 
+
+const _PowerStdMeasure{N,M<:StdMeasure} = PowerMeasure{M,<:NTuple{N,Base.OneTo}}
+
+_get_inner_stdmeasure(μ::_PowerStdMeasure{N,M}) where {N,M} = M()
+
+
 StdMeasure(::typeof(rand)) = StdUniform()
 StdMeasure(::typeof(randexp)) = StdExponential()
 StdMeasure(::typeof(randn)) = StdNormal()
