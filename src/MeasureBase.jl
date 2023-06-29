@@ -57,6 +57,21 @@ abstract type AbstractMeasure end
 
 AbstractMeasure(m::AbstractMeasure) = m
 
+
+"""
+    asmeasure(m)
+
+Turns a measure-like object `m` into an `AbstractMeasure`.
+
+Calls `convert(AbstractMeasure, m)` by default
+"""
+function asmeasure end
+
+@inline asmeasure(m::AbstractMeasure) = m
+asmeasure(m) = convert(AbstractMeasure, m)
+export asmeasure
+
+
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
     :($M($([getfield(d, n) for n in the_names]...)))
