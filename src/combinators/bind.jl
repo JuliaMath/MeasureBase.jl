@@ -119,15 +119,15 @@ end
 localmeasure(μ::Bind, x) = transportmeasure(μ, x)
 
 
-tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_lsc(f_c, μ::Bind, xy)
+tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tsc(f_c, μ::Bind, xy)
 
-function _bind_lsc(f_c::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
+function _bind_tsc(f_c::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
     x, y = x[1], y[1]
     tpm_μ = transportmeasure(μ, x)
     return tpm_μ, x, y
 end
 
-function _bind_lsc(f_c::Type{Pair}, μ::Bind, xy::Pair)
+function _bind_tsc(f_c::Type{Pair}, μ::Bind, xy::Pair)
     x, y = x.first, y.second
     tpm_μ = transportmeasure(μ, x)
     return tpm_μ, x, y
@@ -135,10 +135,10 @@ end
 
 const _CatBind{FC} = _BindBy{<:Any,<:Any,FC}
 
-_bind_lsc(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector) = _bind_lsc_cat(f_c, μ, xy)
-_bind_lsc(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple) = _bind_lsc_cat(f_c, μ, xy)
+_bind_tsc(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector) = _bind_tsc_cat(f_c, μ, xy)
+_bind_tsc(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple) = _bind_tsc_cat(f_c, μ, xy)
 
-function _bind_lsc_cat_lμabyxy(f_c, μ, xy)
+function _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
     β_a = μ.f_β(a)
     tpm_β_a, b, y = tpmeasure_split_combined(f_c, β_a, by)
@@ -146,15 +146,15 @@ function _bind_lsc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, a, b, y, xy
 end
 
-function _bind_lsc_cat(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector)
-    tpm_μ, a, b, y, xy = _bind_lsc_cat_lμabyxy(f_c, μ, xy)
+function _bind_tsc_cat(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector)
+    tpm_μ, a, b, y, xy = _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
     x, y = _split_after(xy, length(a) + length(b))
     return tpm_μ, x, y
 end
 
-function _bind_lsc_cat(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple)
-    tpm_μ, a, b, y, xy = _bind_lsc_cat_lμabyxy(f_c, μ, xy)
+function _bind_tsc_cat(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple)
+    tpm_μ, a, b, y, xy = _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, f_c(a, b), y
 end
 
@@ -210,11 +210,13 @@ function _from_std_with_rest(ν::Bind, μ_inner::StdMeasure, x)
     return ν.f_c(a, b), x_rest
 end
 
-# !!!!!!!!!!!!! TODO How to handle PushforwardMeasure, WeightedMeasure and
-# so on that contain a Bind?
-
 function _from_std_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
     dof_ν = getdof(ν)
+    origin = transport_origin(ν)
+    return _from_std_with_rest_withdof(ν, getdof(ν), μ_inner, x, dof_ν, origin)
+end
+
+function _from_std_with_rest_withdof(ν::AbstractMeasure, dof_ν, μ_inner::StdMeasure, x)
     len_x = length(eachindex(x))
 
     # Since we can't check DOF of original Bind, we could "run out x" if
@@ -224,9 +226,22 @@ function _from_std_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
         throw(ArgumentError("Variate too short during transport involving Bind"))
     end
 
-    y = transport_to(ν, μ_inner^dof_ν, x[begin:begin+dof_ν-1])
-    x_rest = Fill(zero(eltype(x)), dof_ν - len_x)
+    x_inner_dof, x_rest = _split_after(x, dof_ν)
+    y = transport_to(ν, μ_inner^dof_ν, x_inner_dof)
     return y, x_rest
+end
+
+function _from_std_with_rest_withdof(ν::AbstractMeasure, ::NoDOF, μ_inner::StdMeasure, x)
+    _from_std_with_rest_withorigin(ν, transport_origin(ν), μ_inner, x)
+end
+
+function _from_std_with_rest_withorigin(ν::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
+    x_origin, x_rest = _from_std_with_rest(ν_origin, x, μ_inner)
+    from_origin(x_origin), x_rest
+end
+
+function _from_std_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin, μ_inner::StdMeasure, x)
+    throw(ArgumentError("Don't know how to transport value of type $(nameof(typeof(x))) from power of $(nameof(typeof(μ_inner))) to $(nameof(typeof(ν)))"))
 end
 
 function transport_def(ν::Bind, μ::_PowerStdMeasure{1}, x)
