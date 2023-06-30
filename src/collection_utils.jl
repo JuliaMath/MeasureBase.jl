@@ -24,3 +24,9 @@ end
         end
     end
 end
+
+
+Base.@propagate_inbounds function _as_tuple(v::AbstractVector, ::Val{N}) where {N}
+    @boundcheck @assert length(v) == N # ToDo: Throw proper exception
+    ntuple(i -> v[i], Val(N))
+end
