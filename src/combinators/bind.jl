@@ -196,28 +196,18 @@ function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
 end
 
 
-function transport_def(ν::_PowerStdMeasure{1}, μ::Bind, ab)
-    ν_inner = _get_inner_stdmeasure(ν)
-    _to_mvstd(ν_inner, μ, ab)
-end
-
-function _to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
+function transport_to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
     β_a = μ.f_β(a)
-    y1 = _to_mvstd(ν_inner, tpm_α, a)
-    y2 = _to_mvstd(ν_inner, β_a, b)
+    y1 = transport_to_mvstd(ν_inner, tpm_α, a)
+    y2 = transport_to_mvstd(ν_inner, β_a, b)
     return vcat(y1, y2)
 end
 
 
-function transport_def(ν::Bind, μ::_PowerStdMeasure{1}, x)
-    μ_inner = _get_inner_stdmeasure(μ)
-    _from_mvstd(ν, μ_inner, x)
-end
-
-function _from_mvstd_with_rest(ν::Bind, μ_inner::StdMeasure, x)
-    a, x2 = _from_mvstd_with_rest(ν.α, μ_inner, x)
+function transport_from_mvstd_with_rest(ν::Bind, μ_inner::StdMeasure, x)
+    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
     β_a = ν.f_β(a)
-    b, x_rest = _from_mvstd_with_rest(β_a, μ_inner, x2)
+    b, x_rest = transport_from_mvstd_with_rest(β_a, μ_inner, x2)
     return ν.f_c(a, b), x_rest
 end
