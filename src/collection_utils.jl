@@ -1,14 +1,19 @@
-# ToDo: Specialize for StaticArray:
-@inline _getindex_or_view(A, idxs...) = view(A, idxs...)
+# _get_n_at_offs counts it's offset from 0, not from 1!
+
+@inline function _get_n_at_offs(A, n::IntegerLike, offset::IntegerLike)
+    from = firstindex(A) + dynamic(offs)
+    view(A, from:(from+dynamic(n)-1))
+end
+# ToDo: Specialize _get_n_at_offs for StaticArray.
 
 
 # ToDo: Add custom rrules for _split_after?
 
-# ToDo: Use getindex instead of view for certain cases (array types)?
-@inline function _split_after(x::AbstractVector, n)
+# ToDo: Specialize for StaticVector:
+@inline function _split_after(x::AbstractVector, n::IntegerLike)
     i_first = firstindex(x)
     i_last = lastindex(x)
-    _getindex_or_view(x, i_first, i_first+n-1), _getindex_or_view(x, n, i_last)
+    _get_n_at_offs(x, n, zero(n)), _getindex_or_view(x, n, i_last)
 end
 
 @inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
@@ -32,7 +37,8 @@ end
 
 Base.@propagate_inbounds function _as_tuple(v::AbstractVector, ::Val{N}) where {N}
     @boundcheck @assert length(v) == N # ToDo: Throw proper exception
-    ntuple(i -> v[i], Val(N))
+    i_offs = firstindex(v) - 1
+    ntuple(i -> v[i_offs + i], Val(N))
 end
 
 

@@ -238,20 +238,22 @@ end
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
     marginals_μ = marginals(μ)
     marg_dof = _marginals_dof(marginals_μ)
-    marg_offs = _marginal_offsets(marg_dof)
      _marginals_from_mvstd_with_rest(marginals_ν, marg_dof, μ_inner, x)
 end
 
+@generated function _split_x_by_marginals_with_rest(marg_dof::Tuple{Vararg{IntegerLike,N}}, x::AbstractVector{<:Real}) where N
+    expr = ()
+end
 
-function _marginals_dof(marginals_μ::Tuple{Vararg{AbstractMeasure,N}}) where N
+function _marginals_dof(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}) where N
     map(fast_getdof, marginals_μ)
 end
 
 
 # ToDo: Use static array for result:
-_marginals_to_mvstd(ν_inner::StdMeasure, marginals_μ::Tuple, x)
+_marginals_from_mvstd_with_rest(ν_inner::StdMeasure, marginals_μ::Tuple, x)
 
-function _marginals_to_mvstd_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
+function _marginals_from_mvstd_with_rest_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
 end
 
 function _marginal_offsets(marg_dof::Tuple{Vararg{StaticInteger,N}}) where N
