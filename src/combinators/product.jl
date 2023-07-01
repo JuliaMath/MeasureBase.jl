@@ -4,9 +4,16 @@ using Base: @propagate_inbounds
 import Base
 using FillArrays
 
-export AbstractProductMeasure
+"""
+    abstract type AbstractProductMeasure
 
+Abstact type for products of measures.
+
+[`marginals(μ::AbstractProductMeasure)`](@ref) returns the collection of
+measures that `μ` is the product of.
+"""
 abstract type AbstractProductMeasure <: AbstractMeasure end
+export AbstractProductMeasure
 
 function Pretty.tile(μ::AbstractProductMeasure)
     result = Pretty.literal("ProductMeasure(")
@@ -16,15 +23,11 @@ end
 
 massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
 
-export marginals
-
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
     marginals(a) == marginals(b)
 end
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
-
-basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     mar = marginals(d)
@@ -106,6 +109,35 @@ end
 end
 
 
+@inline basemeasure(μ::AbstractProductMeasure) =_marginals_basemeasure(marginals(μ))
+
+_marginals_basemeasure(marginals_μ) = productmeasure(map(basemeasure, marginals_μ))
+
+function _marginals_basemeasure(marginals_μ::Base.Generator{I,F}) where {I,F}
+    T = Core.Compiler.return_type(marginals_μ.f, Tuple{eltype(marginals_μ.iter)})
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _marginals_basemeasure_impl(μ, B, static(Base.issingletontype(B)))
+end
+
+function _marginals_basemeasure(marginals_μ::AbstractMappedArray{T}) where {T}
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _marginals_basemeasure_impl(marginals_μ, B, static(Base.issingletontype(B)))
+end
+
+function _marginals_basemeasure_impl(marginals_μ, ::Type{B}, ::True) where {B}
+    instance(B)^axes(marginals_μ)
+end
+
+function _marginals_basemeasure_impl(marginals_μ::AbstractMappedArray{T}, ::Type{B}, ::False) where {T,B}
+    productmeasure(mappedarray(basemeasure, marginals_μ))
+end
+
+function _marginals_basemeasure_impl(marginals_μ::Base.Generator{I,F}, ::Type{B}, ::False) where {I,F,B}
+    productmeasure(Base.Generator(basekernel(marginals_μ.f), marginals_μ.iter))
+end
+
+
+
 """
     struct MeasureBase.ProductMeasure{M} <: AbstractProductMeasure
 
@@ -126,54 +158,6 @@ function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
 end
 
 
-
-# @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-#     q = quote
-#         m = marginals(d)
-#     end
-#     for k in N
-#         qk = QuoteNode(k)
-#         push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
-#     end
-
-#     vals = map(x -> Expr(:(=), x,x), N)
-#     push!(q.args, Expr(:tuple, vals...))
-#     return q
-# end
-
-function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
-    mar = marginals(μ)
-    T = Core.Compiler.return_type(mar.f, Tuple{eltype(mar.iter)})
-    B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingletontype(B)))
-end
-
-function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
-    B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingletontype(B)))
-end
-
-function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {B}
-    return instance(B)^axes(marginals(μ))
-end
-
-function _basemeasure(
-    μ::ProductMeasure{A},
-    ::Type{B},
-    ::False,
-) where {T,A<:AbstractMappedArray{T},B}
-    mar = marginals(μ)
-    productmeasure(mappedarray(basemeasure, mar))
-end
-
-function _basemeasure(
-    μ::ProductMeasure{Base.Generator{I,F}},
-    ::Type{B},
-    ::False,
-) where {I,F,B}
-    mar = marginals(μ)
-    productmeasure(Base.Generator(basekernel(mar.f), mar.iter))
-end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
