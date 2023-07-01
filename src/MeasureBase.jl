@@ -45,7 +45,6 @@ import IfElse: ifelse
 export logdensity_def
 export basemeasure
 export basekernel
-export productmeasure
 
 export insupport
 export getdof

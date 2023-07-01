@@ -4,6 +4,7 @@ using Base: @propagate_inbounds
 import Base
 using FillArrays
 
+
 """
     abstract type AbstractProductMeasure
 
@@ -169,6 +170,8 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
+proxy(μ::ProductMeasure{<:Fill}) = powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
+
 
 ###############################################################################
 # I <: Base.Generator
@@ -231,129 +234,3 @@ end
 
 
 
-
-function transport_to(ν::Pro)
-end
-
-
-# ToDo - Possible improvement (breaking): For transport between
-# NamedTuple-marginals Match names as far as possible, even if in
-# different order, and transport between the remaining non-matching
-# names in the order given? Direct transport between two
-# non-standard measures will likely not be such a common use case,
-# though, so may not be worth the effort.
-
-
-
-
-
-function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::NamedTuple, x) where names
-    NamedTuple{names}(transport_to.(values(marginals_ν), values(marginals_μ), x))
-end
-
-@inline function _marginal_transport_def(marginals_ν, marginals_μ, x) 
-    marginal_transport_non_ntnt(marginals_ν, marginals_μ, x)
-end
-
-
-
-function _marginal_transport_def(marginals_ν::AbstractVector{<:AbstractMeasure}, marginals_μ::AbstractVector{<:AbstractMeasure}, x)
-    @assert x isa AbstractVector  # Sanity check, should not fail
-    transport_to.(marginals_ν, marginals_μ, x)
-end
-
-function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where N
-    @assert x isa Tuple{Vararg{AbstractMeasure,N}}  # Sanity check, should not fail
-    transport_to.(marginals_ν, marginals_μ, x)
-end
-
-function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where {names,N}
-    _marginal_transport_def(marginals_ν, NamedTuple{names}(marginals_μ), x)
-end
-
-function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::NamedTuple{names}, x) where {names,N}
-    _marginal_transport_def(marginals_ν, values(marginals), x)
-end
-
-function _marginal_transport_def(marginals_ν::AbstractVector{<:AbstractMeasure}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where N
-    _marginal_transport_def(_as_tuple(marginals_ν, Val(N)), marginals_μ, x)
-end
-
-function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::AbstractVector{<:AbstractMeasure}, x) where N
-    _marginal_transport_def(marginals_ν, _as_tuple(marginals_μ, Val(N)), x)
-end
-
-
-
-# Transport for products
-
-
-#!!!!!!!!!!!!!!!!!!!!!! TODO:
-
-# Helpers for product transforms and similar:
-
-struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
-
-struct _TransportFromStd{MU<:StdMeasure} <: Function end
-_TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
-
-function _tuple_transport_def(
-    ν::PowerMeasure{NU},
-    μs::Tuple,
-    xs::Tuple,
-) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
-end
-
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:Tuple},
-    x,
-) where {NU<:StdMeasure}
-    _tuple_transport_def(ν, marginals(μ), x)
-end
-
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:NamedTuple{names}},
-    x,
-) where {NU<:StdMeasure,names}
-    _tuple_transport_def(ν, values(marginals(μ)), values(x))
-end
-
-@inline _offset_cumsum(s, x, y, rest...) = (s, _offset_cumsum(s + x, y, rest...)...)
-@inline _offset_cumsum(s, x) = (s,)
-@inline _offset_cumsum(s) = ()
-
-function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
-    N = map(getdof, μs)
-    offs = _offset_cumsum(startidx, N...)
-    map((o, n) -> o:o+n-1, offs, N)
-end
-
-function _tuple_transport_def(
-    νs::Tuple,
-    μ::PowerMeasure{MU},
-    x::AbstractArray{<:Real},
-) where {MU<:StdMeasure}
-    vrs = _stdvar_viewranges(νs, firstindex(x))
-    xs = map(r -> view(x, r), vrs)
-    map(_TransportFromStd{MU}, νs, xs)
-end
-
-function transport_def(
-    ν::ProductMeasure{<:Tuple},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure}
-    _tuple_transport_def(marginals(ν), μ, x)
-end
-
-function transport_def(
-    ν::ProductMeasure{<:NamedTuple{names}},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure,names}
-    NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
-end
