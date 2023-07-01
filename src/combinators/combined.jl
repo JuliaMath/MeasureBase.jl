@@ -98,9 +98,9 @@ end
 # Bypass `checked_arg`, would require require splitting ab:
 @inline checked_arg(::CombinedMeasure, ab) = ab
 
-rootmeasure(::CombinedMeasure) = mcombine(μ.f_c rootmeasure(μ), rootmeasure(ν))
+rootmeasure(::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ), rootmeasure(ν))
 
-basemeasure(::CombinedMeasure) = mcombine(μ.f_c basemeasure(μ), basemeasure(ν))
+basemeasure(::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ), basemeasure(ν))
 
 function logdensity_def(μ::CombinedMeasure, ab)
     # Use tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):

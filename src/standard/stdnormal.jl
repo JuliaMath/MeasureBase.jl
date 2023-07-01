@@ -1,11 +1,19 @@
 using SpecialFunctions: erfc, erfcinv
 using IrrationalConstants: invsqrt2
 
-struct StdNormal <: StdMeasure end
+"""
+    StdNormal <: StdMeasure
 
+Represents the standard (mean of zero, variance of one)
+[normal](https://en.wikipedia.org/wiki/Normal_distribution) probability measure.
+
+See [`StdMeasure`](@ref) for the semantics of standard measures in the
+context of MeasureBase.
+"""
+struct StdNormal <: StdMeasure end
 export StdNormal
 
-@inline insupport(d::StdNormal, x) = true
+@inline insupport(::StdNormal, x) = true
 
 @inline logdensity_def(::StdNormal, x) = -x^2 / 2
 @inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), LebesgueBase())

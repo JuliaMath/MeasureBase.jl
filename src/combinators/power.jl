@@ -26,6 +26,8 @@ the product determines the dimensionality of the resulting support.
 Note that power measures are only well-defined for integer powers.
 
 The nth power of a measure μ can be written μ^n.
+
+See also [`pwr_base`](@ref), [`pwr_axes`](@ref) and [`pwr_size`](@ref).
 """
 struct PowerMeasure{M,A} <: AbstractProductMeasure
     parent::M
@@ -34,6 +36,31 @@ end
 
 maybestatic_length(μ::PowerMeasure) = prod(maybestatic_size(μ))
 maybestatic_size(μ::PowerMeasure) = map(maybestatic_length, μ.axes)
+
+
+"""
+    MeasureBase.pwr_base(μ::PowerMeasure)
+
+Returns `ν` for `μ = ν^axs`
+"""
+pwr_base(μ::PowerMeasure) = μ.parent
+
+
+"""
+    MeasureBase.pwr_axes(μ::PowerMeasure)
+
+Returns `axs` for `μ = ν^axs`, `axs` being a tuple of integer ranges.
+"""
+pwr_axes(μ::PowerMeasure) = μ.axes
+
+
+"""
+    MeasureBase.pwr_size(μ::PowerMeasure)
+
+Returns `sz` for `μ = ν^sz`, `sz` being a tuple of integers.
+"""
+pwr_size(μ::PowerMeasure) = map(length, μ.axes)
+
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
@@ -130,7 +157,7 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(pwr_size(μ))
 
 @inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
     static(0)
@@ -138,7 +165,7 @@ end
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
-        sz_μ = map(length, μ.axes)
+        sz_μ = pwr_size(μ)
         sz_x = size(x)
         if sz_μ != sz_x
             throw(ArgumentError("Size of variate doesn't match size of power measure"))
@@ -164,26 +191,9 @@ function logdensity_def(
 end
 
 
-# For transport, always pull back to one-dimensional PowerMeasure first:
+"""
+    MeasureBase.StdPowerMeasure{MU<:StdMeasure,N}
 
-transport_origin(μ::PowerMeasure{<:Any,N}) where N = ν.parent^product(map(length, μ.axes))
-
-function from_origin(μ::_PowerStdMeasure{<:Any,N}, x_origin) where N
-    # Sanity check, should never fail:
-    @assert x_origin isa AbstractVector
-    return reshape(x_origin, map(length, μ.axes)...)
-end
-
-
-# One-dimensional PowerMeasure has an origin iff it's parent has an origin:
-
-transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _origin_pwr(::typeof(μ), transport_origin(μ.parent), μ.axes)
-_pwr_origin(::Type{MU}, parent_origin, axes) = parent_origin^axes
-_pwr_origin(::Type{MU}, ::NoTransportOrigin, axes) = NoTransportOrigin{MU}
-
-function from_origin(μ::PowerMeasure{<:AbstractMeasure,1}, x_origin)
-    # Sanity check, should never fail:
-    @assert x_origin isa AbstractVector
-    from_origin.(Ref(μ.parent), x_origin)
-end
-
+Represents and N-dimensional power of the standard measure `MU()`.
+"""
+const StdPowerMeasure{N,MU<:StdMeasure} = PowerMeasure{MU,<:NTuple{N,Base.OneTo}}

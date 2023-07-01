@@ -29,6 +29,16 @@ end
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
+
+# TODO: Better `map` support in MappedArrays
+_map(f, args...) = map(f, args...)
+_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
+
+function testvalue(::Type{T}, μ::AbstractProductMeasure) where {T}
+    _map(m -> testvalue(T, m), marginals(μ))
+end
+
+
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     mar = marginals(d)
     _rand_product(rng, T, mar, eltype(mar))
@@ -157,17 +167,8 @@ function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end
 
-
-
 marginals(μ::ProductMeasure) = μ.marginals
 
-# TODO: Better `map` support in MappedArrays
-_map(f, args...) = map(f, args...)
-_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
-
-function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
-    _map(m -> testvalue(T, m), marginals(d))
-end
 
 ###############################################################################
 # I <: Base.Generator
@@ -227,6 +228,8 @@ function checked_arg(
 ) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
+
+
 
 
 function transport_to(ν::Pro)
