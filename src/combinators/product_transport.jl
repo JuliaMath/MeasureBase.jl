@@ -250,7 +250,8 @@ function _marginals_dof(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}) where N
 end
 
 
-# ToDo: Use static array for result:
+### !!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO ###########################
+
 _marginals_from_mvstd_with_rest(ν_inner::StdMeasure, marginals_μ::Tuple, x)
 
 function _marginals_from_mvstd_with_rest_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
