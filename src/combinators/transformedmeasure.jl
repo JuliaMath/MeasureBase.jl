@@ -88,10 +88,17 @@ end
     pushfwd(ν.f, basemeasure(parent(ν)), NoVolCorr())
 end
 
-_pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
-_pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 
-@inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
+const _NonBijectivePushforward = Union{PushforwardMeasure{<:Any,<:NoInverse},PushforwardMeasure{<:NoInverse,<:Any},PushforwardMeasure{<:NoInverse,<:NoInverse}}
+
+@inline getdof(ν::PushforwardMeasure) = _pushfwd_dof(ν)
+_pushfwd_dof(ν::PushforwardMeasure) = getdof(ν.origin)
+_pushfwd_dof(ν::_NonBijectivePushforward) = NoDOF{typeof(ν)}()
+
+@inline fast_dof(ν::PushforwardMeasure) = _pushfwd_fastdof(ν)
+_pushfwd_fastdof(ν::PushforwardMeasure) = fast_dof(ν.origin)
+_pushfwd_fastdof(ν::_NonBijectivePushforward) = NoDOF{typeof(ν)}()
+
 
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x

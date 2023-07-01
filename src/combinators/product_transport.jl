@@ -45,15 +45,15 @@ function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, ab) where
 end
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
-    return _to_mvstd_withdof(ν_inner, μ, getdof(μ), x, origin)
+    return _to_mvstd_withdof(ν_inner, μ, fast_dof(μ), x, origin)
 end
 
-function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, dof_μ, x)
+function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, dof_μ::IntegerLike, x)
     y = transport_to(ν_inner^dof_μ, μ, x)
     return y
 end
 
-function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, ::NoDOF, x)
+function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, ::AbstractNoDOF, x)
     _to_mvstd_withorigin(ν_inner, μ, transport_origin(μ), x)
 end
 
@@ -75,8 +75,6 @@ function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{MU,1}, x) where 
 end
 
 function _transport_from_mvstd(ν::AbstractMeasure, μ_inner::StdMeasure, x)
-    # Sanity check, should be checked by transport machinery already:
-    @assert getdof(μ) == length(eachindex(x)) && x isa AbstractVector
     y, x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x)
     if !isempty(x_rest)
         throw(ArgumentError("Input value too long during transport"))
@@ -85,12 +83,12 @@ function _transport_from_mvstd(ν::AbstractMeasure, μ_inner::StdMeasure, x)
 end
 
 function transport_from_mvstd_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
-    dof_ν = getdof(ν)
+    dof_ν = fast_dof(ν)
     origin = transport_origin(ν)
-    return _from_mvstd_with_rest_withdof(ν, getdof(ν), μ_inner, x, dof_ν, origin)
+    return _from_mvstd_with_rest_withdof(ν, dof_ν, μ_inner, x, dof_ν, origin)
 end
 
-function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, dof_ν, μ_inner::StdMeasure, x)
+function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, dof_ν::IntegerLike, μ_inner::StdMeasure, x)
     len_x = length(eachindex(x))
 
     # Since we can't check DOF of original Bind, we could "run out x" if
@@ -105,7 +103,7 @@ function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, dof_ν, μ_inner::St
     return y, x_rest
 end
 
-function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, ::NoDOF, μ_inner::StdMeasure, x)
+function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, ::AbstractNoDOF, μ_inner::StdMeasure, x)
     _from_mvstd_with_rest_withorigin(ν, transport_origin(ν), μ_inner, x)
 end
 
@@ -119,16 +117,13 @@ function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin
 end
 
 
-
-
 # Implement transport_to(NU::Type{<:StdMeasure}, μ) and transport_to(ν, MU::Type{<:StdMeasure})
 # for user convenience:
 
-# ToDo: Handle combined/bind measures that don't have a fast getdof!
+_std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure_for_impl(M, some_dof(μ))
+_std_measure_for_impl(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
+_std_measure_for_impl(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
 
-_std_measure(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
-_std_measure(::Type{M}, dof::IntegerLike) where {M<:StdMeasure} = M()^dof
-_std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure(M, getdof(μ))
 
 function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
     transport_to(ν, _std_measure_for(MU, ν))
@@ -137,9 +132,6 @@ end
 function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
     transport_to(_std_measure_for(NU, μ), μ)
 end
-
-
-
 
 
 @inline transport_origin(μ::ProductMeasure) = _marginals_tp_origin(marginals(μ))
