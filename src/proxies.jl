@@ -14,6 +14,8 @@ function proxy end
 macro useproxy(M)
     M = esc(M)
     quote
+        #!!!!!!!!!!! TODO add new API methods like localmeasure, transportmeasure, etc. !!!!!!!!!!!!!
+
         @inline $MeasureBase.logdensity_def(μ::$M, x) = logdensity_def(proxy(μ), x)
 
         @inline $MeasureBase.basemeasure(μ::$M) = basemeasure(proxy(μ))
