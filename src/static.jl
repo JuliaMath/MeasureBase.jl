@@ -61,3 +61,23 @@ end
 Returns the size of `x` as a tuple of dynamic or static integers.
 """
 maybestatic_size(x) = size(x)
+
+
+"""
+    MeasureBase.maybestatic_firstindex(x)::Integer
+
+Returns the first index `x` as a dynamic or static integer.
+"""
+maybestatic_firstindex(x::AbstractVector) = firstindex(x)
+maybestatic_firstindex(::Tuple{Vararg{Any,N}}) where N = static(1)
+maybestatic_firstindex(nt::NamedTuple) = maybestatic_firstindex(values(nt))
+
+
+"""
+    MeasureBase.maybestatic_lastindex(x)::Integer
+
+Returns the first index `x` as a dynamic or static integer.
+"""
+maybestatic_lastindex(x::AbstractVector) = lastindex(x)
+maybestatic_lastindex(::Tuple{Vararg{Any,N}}) where N = static(N)
+maybestatic_lastindex(nt::NamedTuple) = maybestatic_firstindex(values(nt))
