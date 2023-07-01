@@ -77,18 +77,6 @@ and/or
 * `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
 and ensure `MeasureBase.fast_dof(μ::MyMeasure)` is defined correctly.
-
-A standard measure type like `StdUniform`, `StdExponential` or
-`StdLogistic` may also be used as the source or target of the transform:
-
-```julia
-f_to_uniform(StdUniform, μ)
-f_to_uniform(ν, StdUniform)
-```
-
-Depending on [`some_getdof(μ)`](@ref) (resp. `ν`), an instance of the
-standard measure itself or a power of it (e.g. `StdUniform()` or
-`StdUniform()^dof`) will be chosen as the transformation partner.
 """
 function transport_to end
 
