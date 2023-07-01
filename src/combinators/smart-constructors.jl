@@ -7,6 +7,18 @@ half(μ::AbstractMeasure) = Half(μ)
 ###############################################################################
 # PowerMeaure
 
+"""
+    powermeasure(μ, dims)
+    powermeasure(μ, axes)
+
+Constructs a power of a measure `μ`.
+
+`powermeasure(μ, exponent)` is semantically equivalent to
+`productmeasure(Fill(μ, exponent))`, but more efficient.
+"""
+function powermeasure end
+export powermeasure
+
 powermeasure(m::AbstractMeasure, ::Tuple{}) = asmeasure(m)
 
 @inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
