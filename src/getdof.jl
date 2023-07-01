@@ -1,16 +1,24 @@
 """
-    MeasureBase.NoDOF{MU}
+    abstract type MeasureBase.AbstractNoDOF
+
+Abstract supertype for [`NoDOF`](@ref) and [`NoFastDOF`](@ref).
+"""
+abstract type AbstractNoDOF end
+
+_add_dof(dof_a::Real, dof_b::Real) = dof_a + dof_b
+_add_dof(dof_a::AbstractNoDOF, ::Real) = dof_a
+_add_dof(::Real, dof_b::AbstractNoDOF) = dof_b
+_add_dof(dof_a::AbstractNoDOF, ::AbstractNoDOF) = dof_a
+
+
+"""
+    MeasureBase.NoDOF{MU} <: AbstractNoDOF
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
 a global property of the measure.
 """
-struct NoDOF{MU} end
-
-_add_dof(dof_a::Real, dof_b::Real) = dof_a + dof_b
-_add_dof(dof_a::NoDOF, ::Real) = dof_a
-_add_dof(::Real, dof_b::NoDOF) = dof_b
-_add_dof(dof_a::NoDOF, ::NoDOF) = dof_a
+struct NoDOF{MU} <: AbstractNoDOF end
 
 
 """
@@ -26,26 +34,93 @@ is `n - 1`.
 Also see [`check_dof`](@ref).
 """
 function getdof end
+export getdof
 
 # Prevent infinite recursion:
-@inline _default_getdof(::Type{MU}, ::MU) where {MU} = NoDOF{MU}
+@inline _default_getdof(::Type{MU}, ::MU) where {MU} = NoDOF{MU}()
 @inline _default_getdof(::Type{MU}, mu_base) where {MU} = getdof(mu_base)
 
 @inline getdof(μ::MU) where {MU} = _default_getdof(MU, basemeasure(μ))
+
+
+"""
+    MeasureBase.NoFastDOF{MU} <: AbstractNoDOF
+
+Indicates that there is no way to compute degrees of freedom of a measure
+of type `MU` with the given information, e.g. because the DOF are not
+a global property of the measure.
+"""
+struct NoFastDOF{MU} <: AbstractNoDOF end
+
+
+"""
+    fast_dof(μ::MU)
+
+Returns the effective number of degrees of freedom of variates of
+measure `μ`, if it can be computed efficiently, otherwise
+returns [`NoFastDOF{MU}()`](@ref).
+
+Defaults to `getdof(μ)` and should be specialized for measures for
+wich DOF can't be computed instantly.
+
+The effective NDOF my differ from the length of the variates. For example,
+the effective NDOF for a Dirichlet distribution with variates of length `n`
+is `n - 1`.
+
+Also see [`check_dof`](@ref).
+"""
+function fast_dof end
+export fast_dof
+
+fast_dof(μ) = getdof(μ)
+
+# Prevent infinite recursion:
+@inline _default_fastdof(::Type{MU}, ::MU) where {MU} = NoFastDOF{MU}()
+@inline _default_fastdof(::Type{MU}, mu_base) where {MU} = fast_dof(mu_base)
+
+@inline fast_dof(μ::MU) where {MU} = _default_fastdof(MU, basemeasure(μ))
+
+
+"""
+    MeasureBase.some_dof(μ::AbstractMeasure)
+
+Get the DOF at some unspecified point of measure `μ`.
+
+Use with caution!
+
+In general, use [`getdof(μ)`](@ref) instead. `some_dof` is useful
+for measures are expected to have a constant DOF of their whole
+space but for which there is no way to compute it (or prove that
+the DOF is constant of the measurable space).
+"""
+function some_dof end
+
+function some_dof()
+    m = asmeasure(μ)
+    _try_direct_dof(m, getdof(m))
+end
+
+_try_direct_dof(::AbstractMeasure, dof::IntegerLike) = dof
+_try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF) = _try_local_dof(μ::AbstractMeasure, some_dof(some_localmeasure(μ)))
+_try_local_dof(::AbstractMeasure, dof::IntegerLike) = dof
+_try_local_dof(μ::AbstractMeasure, ::AbstractNoDOF) = throw(ArgumentError("Can't determine DOF for measure of type $(nameof(typeof(μ)))"))
+
+_some_localmeasure(μ::AbstractMeasure) = localmeasure(μ, testvalue(μ))
+
 
 """
     MeasureBase.check_dof(ν, μ)::Nothing
 
 Check if `ν` and `μ` have the same effective number of degrees of freedom
-according to [`MeasureBase.getdof`](@ref).
+according to [`MeasureBase.fast_dof`](@ref).
 """
 function check_dof end
 
 function check_dof(ν, μ)
-    n_ν = getdof(ν)
-    n_μ = getdof(μ)
+    n_ν = fast_dof(ν)
+    n_μ = fast_dof(μ)
     # TODO: How to handle this better if DOF is unclear e.g. for HierarchicalMeasures?
-    if n_ν isa NoDOF || n_μ isa NoDOF
+    if n_ν isa AbstractNoDOF || n_μ isa AbstractNoDOF
         return true
     end
     if n_ν != n_μ
@@ -60,6 +135,7 @@ end
 
 _check_dof_pullback(ΔΩ) = NoTangent(), NoTangent(), NoTangent()
 ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_dof_pullback
+
 
 """
     MeasureBase.NoArgCheck{MU,T}
