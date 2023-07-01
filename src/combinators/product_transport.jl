@@ -214,84 +214,46 @@ end
 
 
 
+# Transport from ProductMeasure to StdMeasure type:
 
-function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, ab)
-    _marginals_to_mvstd(ν_inner, marginals(μ), ab)
+function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, x)
+    _marginals_to_mvstd(ν_inner, marginals(μ), x)
 end
+
+struct _TransportToMvStd{NU<:StdMeasure} <: Function end
+(::_TransportToMvStd{NU})(μ, x) where {NU} = transport_to_mvstd(NU(), μ, x)
+
+function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ::Tuple, x::Tuple) where NU
+    _flatten_to_rv(map(_TransportToMvStd{NU}(), marginals_μ, x))
+end
+
+function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ, x) where NU
+    _flatten_to_rv(broadcast(_TransportToMvStd{NU}(), marginals_μ, x))
+end
+
+
+
+# Transport StdMeasure type to ProductMeasure, with rest:
 
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
-    _marginals_from_mvstd_with_rest(marginals(ν), μ_inner, x)
+    marginals_μ = marginals(μ)
+    marg_dof = _marginals_dof(marginals_μ)
+    marg_offs = _marginal_offsets(marg_dof)
+     _marginals_from_mvstd_with_rest(marginals_ν, marg_dof, μ_inner, x)
 end
 
 
-
-
-# Transport for products
-
-# Helpers for product transforms and similar:
-
-struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
-
-struct _TransportFromStd{MU<:StdMeasure} <: Function end
-_TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
-
-function _tuple_transport_def(
-    ν::PowerMeasure{NU},
-    μs::Tuple,
-    xs::Tuple,
-) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
+function _marginals_dof(marginals_μ::Tuple{Vararg{AbstractMeasure,N}}) where N
+    map(fast_getdof, marginals_μ)
 end
 
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:Tuple},
-    x,
-) where {NU<:StdMeasure}
-    _tuple_transport_def(ν, marginals(μ), x)
+
+# ToDo: Use static array for result:
+_marginals_to_mvstd(ν_inner::StdMeasure, marginals_μ::Tuple, x)
+
+function _marginals_to_mvstd_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
 end
 
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:NamedTuple{names}},
-    x,
-) where {NU<:StdMeasure,names}
-    _tuple_transport_def(ν, values(marginals(μ)), values(x))
-end
-
-@inline _offset_cumsum(s, x, y, rest...) = (s, _offset_cumsum(s + x, y, rest...)...)
-@inline _offset_cumsum(s, x) = (s,)
-@inline _offset_cumsum(s) = ()
-
-function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
-    N = map(getdof, μs)
-    offs = _offset_cumsum(startidx, N...)
-    map((o, n) -> o:o+n-1, offs, N)
-end
-
-function _tuple_transport_def(
-    νs::Tuple,
-    μ::PowerMeasure{MU},
-    x::AbstractArray{<:Real},
-) where {MU<:StdMeasure}
-    vrs = _stdvar_viewranges(νs, firstindex(x))
-    xs = map(r -> view(x, r), vrs)
-    map(_TransportFromStd{MU}, νs, xs)
-end
-
-function transport_def(
-    ν::ProductMeasure{<:Tuple},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure}
-    _tuple_transport_def(marginals(ν), μ, x)
-end
-
-function transport_def(
-    ν::ProductMeasure{<:NamedTuple{names}},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure,names}
-    NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
+function _marginal_offsets(marg_dof::Tuple{Vararg{StaticInteger,N}}) where N
+    _offset_cumsum(0, marg_dof...)
 end
