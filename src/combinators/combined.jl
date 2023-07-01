@@ -90,8 +90,7 @@ struct CombinedMeasure{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMe
 end
 
 
-# TODO: Could split `ab`` here, but would be wasteful.
-@inline insupport(::CombinedMeasure, ab) = NoFastInsupport()
+@inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport(typeof(μ))
 
 @inline getdof(μ::CombinedMeasure) = _add_dof(getdof(μ.α), getdof(μ.β))
 @inline fast_dof(μ::CombinedMeasure) =_add_dof(fast_dof(μ.α), fast_dof(μ.β))
