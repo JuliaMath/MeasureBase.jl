@@ -160,7 +160,7 @@ function _bind_tsc_cat(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::Name
 end
 
 
-@inline insupport(::Bind, x) = NoFastInsupport()
+@inline insupport(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
 
 @inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
 
