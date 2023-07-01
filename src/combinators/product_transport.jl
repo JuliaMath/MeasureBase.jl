@@ -223,9 +223,7 @@ function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, ab)
 end
 
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
-    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
-    b, x_rest = transport_from_mvstd_with_rest(ν.β, μ_inner, x2)
-    return ν.f_c(a, b), x_rest
+    _marginals_from_mvstd_with_rest(marginals(ν), μ_inner, x)
 end
 
 
