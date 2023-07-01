@@ -112,12 +112,13 @@ of `x` in respect to density calculation and transport as well.
 """
 function transportmeasure(μ::Bind, x)
     tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
-    tpm_β_a = transportmeasure(μ.f_β(a), b)
+    tpm_β_a = transportmeasure(_get_β_a(μ, a), b)
     mcombine(μ.f_c, tpm_α, tpm_β_a)
 end
 
 localmeasure(μ::Bind, x) = transportmeasure(μ, x)
 
+_get_β_a(μ::Bind, a) = asmeasure(μ.f_β(a))
 
 tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tsc(f_c, μ::Bind, xy)
 
@@ -140,7 +141,7 @@ _bind_tsc(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple) = _bi
 
 function _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
-    β_a = μ.f_β(a)
+    β_a = _get_β_a(μ, a)
     tpm_β_a, b, y = tpmeasure_split_combined(f_c, β_a, by)
     tpm_μ = mcombine(μ.f_c, tpm_α, tpm_β_a)
     return tpm_μ, a, b, y, xy
@@ -177,28 +178,28 @@ logdensity_def(::Bind, x) = throw(ArgumentError("logdensity_def is not available
 # Specialize logdensityof to avoid duplicate calculations:
 function logdensityof(μ::Bind, x)
     tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
-    β_a = μ.f_β(a)
+    β_a = _get_β_a(μ, a)
     logdensityof(tpm_α, a) + logdensityof(β_a, b)
 end
 
 # Specialize unsafe_logdensityof to avoid duplicate calculations:
 function unsafe_logdensityof(μ::Bind, x)
     tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
-    β_a = μ.f_β(a)
+    β_a = _get_β_a(μ, a)
     unsafe_logdensityof(tpm_α, a) + unsafe_logdensityof(β_a, b)
 end
 
 
 function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
     a = rand(rng, T, μ.α)
-    b = rand(rng, T, μ.f_β(a))
+    b = rand(rng, T, _get_β_a(μ, a))
     return μ.f_c(a, b)
 end
 
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    β_a = μ.f_β(a)
+    β_a = _get_β_a(μ, a)
     y1 = transport_to_mvstd(ν_inner, tpm_α, a)
     y2 = transport_to_mvstd(ν_inner, β_a, b)
     return vcat(y1, y2)
