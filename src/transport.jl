@@ -92,12 +92,15 @@ distribution itself or a power of it (e.g. `StdUniform()` or
 """
 function transport_to end
 
+@inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
+
 """
     transport_to(ν, μ, x)
 
 Transport `x` from the measure `μ` to the measure `ν`
 """
 transport_to(ν, μ, x) = transport_to(ν, μ)(x)
+
 
 """
     transport_def(ν, μ, x)
@@ -229,8 +232,6 @@ struct TransportFunction{NU,MU} <: Function
         return new{NU,MU}(ν, μ)
     end
 end
-
-@inline transport_to(ν, μ) = TransportFunction(ν, μ)
 
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
