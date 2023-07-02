@@ -25,8 +25,8 @@ end
 
 
 @inline function _split_after(x::AbstractVector, n::IntegerLike)
-    i_first = _maybestatic_firstindex(x)
-    i_last = _maybestatic_lastindex(x)
+    i_first = maybestatic_firstindex(x)
+    i_last = maybestatic_lastindex(x)
     _get_or_view(x, i_first, i_first + n - static(1)), _get_or_view(x, i_first + n, i_last)
 end
 
