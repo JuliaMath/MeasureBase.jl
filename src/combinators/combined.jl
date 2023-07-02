@@ -27,7 +27,7 @@ end
 @inline _generic_split_combined(::Type{Pair}, ::AbstractMeasure, ab::Pair) = (ab...,)
 
 function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
-    _split_variate_byvalue(f_c, testvalue(μ), x)
+    _split_variate_byvalue(f_c, testvalue(μ), ab)
 end
 
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) = _split_after(ab, length(test_a))
