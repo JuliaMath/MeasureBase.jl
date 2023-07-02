@@ -235,28 +235,60 @@ end
 
 # Transport StdMeasure type to ProductMeasure, with rest:
 
+const _MaybeUnkownDOF = Union{IntegerLike,AbstractNoDOF}
+
+const _KnownDOFs = Union{Tuple{Vararg{IntegerLike,N}} where N, StaticVector{<:IntegerLike}}
+const _MaybeUnkownKnownDOFs = Union{Tuple{Vararg{_MaybeUnkownDOF,N}} where N, StaticVector{<:_MaybeUnkownDOF}}
+
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
-    marginals_μ = marginals(μ)
-    marg_dof = _marginals_dof(marginals_μ)
-     _marginals_from_mvstd_with_rest(marginals_ν, marg_dof, μ_inner, x)
+    νs = marginals(ν)
+    dofs = map(fast_getdof, marginals_μ)
+    return _marginals_from_mvstd_with_rest(νs, dofs, μ_inner, x)
 end
 
-@generated function _split_x_by_marginals_with_rest(marg_dof::Tuple{Vararg{IntegerLike,N}}, x::AbstractVector{<:Real}) where N
-    expr = ()
+function _dof_access_firstidxs(dofs::Tuple{Vararg{IntegerLike,N}}, first_idx) where N
+    cumsum((first_idx, dofs[begin:end-1]...))
 end
 
-function _marginals_dof(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}) where N
-    map(fast_getdof, marginals_μ)
+function _dof_access_firstidxs(dofs::AbstractVector{<:IntegerLike}, first_idx) where N
+    # ToDo: Improve imlementation (reduce memory allocations)
+    cumsum(vcat([eltype(dofs)(first_idx)], dofs[begin:end-1]))
 end
 
-
-### !!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO ###########################
-
-_marginals_from_mvstd_with_rest(ν_inner::StdMeasure, marginals_μ::Tuple, x)
-
-function _marginals_from_mvstd_with_rest_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
+function _split_x_by_marginals_with_rest(dofs::Union{Tuple,AbstractVector}, x::AbstractVector{<:Real})
+    x_idxs = maybestatic_eachindex(x)
+    first_idxs = _dof_access_firstidxs(dofs, maybestatic_first(x_idxs))
+    xs = map((from, n) -> _get_or_view(x, from, from + n - one(n)), first_idxs, dofs)
+    x_rest = _get_or_view(x, first_idxs[end] + dofs[end], maybestatic_last(x_idxs))
+    return xs, r_rest
 end
 
-function _marginal_offsets(marg_dof::Tuple{Vararg{StaticInteger,N}}) where N
-    _offset_cumsum(0, marg_dof...)
+function _marginals_from_mvstd_with_rest(νs, dofs::_KnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
+    xs, x_rest = _split_x_by_marginals_with_rest
+    # ToDo: Is this ideal?
+    μs = map(n -> μ_inner^n, dofs)
+    ys = map(transport_def, νs, μs, xs)
+    return ys, x_rest
+end
+
+function _marginals_from_mvstd_with_rest(νs::Tuple, dofs::_MaybeUnkownKnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
+    _marginals_from_mvstd_with_rest_nodof(νs, μ_inner, x)
+end
+
+function _marginals_from_mvstd_with_rest_nodof(νs::Tuple{Vararg{AbstractMeasure,N}}, μ_inner::StdMeasure, x::AbstractVector{<:Real}) where N
+    # ToDo: Check for type stability, may need generated function
+    y1, x_rest = transport_from_mvstd_with_rest(νs[1], μ_inner, x)
+    y2_end, x_final_rest = _marginals_from_mvstd_with_rest(νs[2:end], μ_inner, x_rest)
+    return (y1, y2_end...), x_final_rest
+end
+
+function _marginals_from_mvstd_with_rest_nodof(νs::AbstractVector{<:AbstractMeasure}, μ_inner::StdMeasure, x::AbstractVector{<:Real})
+    # ToDo: Check for type stability, may need generated function
+    y1, x_rest = transport_from_mvstd_with_rest(νs[1], μ_inner, x)
+    ys = [y1]
+    for ν in νs[begin+1:end]
+        y_i, x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x_rest)
+        ys = vcat(ys, y_i)
+    end
+    return ys, x_rest
 end
