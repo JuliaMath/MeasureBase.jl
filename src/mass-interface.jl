@@ -107,9 +107,6 @@ isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
 isone(::AbstractUnknownMass) = false
 
-function massof(m, s)
-    _massof(m, s, rootmeasure(m))
-end
 
 """
     (m::AbstractMeasure)(s)
@@ -119,4 +116,11 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+function massof(m, s)
+    _default_massof_impl(m, s, rootmeasure(μ))
+end
+
+# # ToDo: Use smf if defined
+#function _default_massof_impl(μ, a_b::AbstractInterval, ::LebesgueBase)
+#    smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+#end

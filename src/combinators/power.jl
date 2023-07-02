@@ -78,6 +78,7 @@ function testvalue(d::PowerMeasure)
 end
 
 
+@inline _pm_axes(::Tuple{}) = ()
 @inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
 @inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
 
