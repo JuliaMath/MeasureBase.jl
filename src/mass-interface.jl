@@ -68,7 +68,7 @@ finite, or we may know nothing at all about it. For these cases, it will return
 `UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
 exists, it defaults to `UnknownMass`.
 """
-massof(m::AbstractMeasure) = UnknownMass(m)
+massof(::AbstractMeasure) = UnknownMass()
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P

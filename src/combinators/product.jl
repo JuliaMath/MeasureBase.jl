@@ -85,13 +85,13 @@ end
 
 
 @inline function logdensity_def(μ::ProductMeasure, x)
-    marginals_density_op(logdensity_def, marginals(μ), x)
+    _marginals_density_op(logdensity_def, marginals(μ), x)
 end
 @inline function unsafe_logdensityof(μ::ProductMeasure, x)
-    marginals_density_op(unsafe_logdensityof, marginals(μ), x)
+    _marginals_density_op(unsafe_logdensityof, marginals(μ), x)
 end
 @inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
-    marginals_density_op(logdensity_rel, marginals(μ), marginals(ν), x)
+    _marginals_density_op(logdensity_rel, marginals(μ), marginals(ν), x)
 end
 
 function _marginals_density_op(density_op::F, marginals_μ, x) where F
@@ -103,7 +103,7 @@ end
 end
 @inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, x::NamedTuple) where {F,names}
     nms = Val{names}()
-    _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(x), nms))
+    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(x, Val(nms))))
 end
 
 function _marginals_density_op(density_op::F, marginals_μ, marginals_ν, x) where F
@@ -115,11 +115,11 @@ end
 end
 @inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, marginals_ν::NamedTuple, x::NamedTuple) where {F,names}
     nms = Val{names}()
-    _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(marginals_ν), nms), _reorder_nt(values(x), nms))
+    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(marginals_ν, nms)), values(_reorder_nt(x, nms)))
 end
 
 
-@inline basemeasure(μ::ProductMeasure) =_marginals_basemeasure(marginals(μ))
+@inline basemeasure(μ::ProductMeasure) = _marginals_basemeasure(marginals(μ))
 
 _marginals_basemeasure(marginals_μ) = productmeasure(map(basemeasure, marginals_μ))
 
@@ -129,7 +129,7 @@ _marginals_basemeasure(marginals_μ) = productmeasure(map(basemeasure, marginals
 function _marginals_basemeasure(marginals_μ::Base.Generator{I,F}) where {I,F}
     T = Core.Compiler.return_type(marginals_μ.f, Tuple{eltype(marginals_μ.iter)})
     B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _marginals_basemeasure_impl(μ, B, static(Base.issingletontype(B)))
+    _marginals_basemeasure_impl(marginals_μ, B, static(Base.issingletontype(B)))
 end
 
 function _marginals_basemeasure(marginals_μ::AbstractMappedArray{T}) where {T}

@@ -39,7 +39,7 @@ end
 
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
-transport_origin(μ::PowerMeasure{<:Any,N}) where N = μ.parent^product(pwr_size(μ))
+transport_origin(μ::PowerMeasure{<:Any,N}) where N = μ.parent^prod(pwr_size(μ))
 
 function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
     # Sanity check, should never fail:
@@ -50,7 +50,7 @@ end
 
 # A one-dimensional PowerMeasure has an origin if it's parent has an origin:
 
-transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _origin_pwr(typeof(μ), transport_origin(μ.parent), μ.axes)
+transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _pwr_origin(typeof(μ), pwr_base(μ), pwr_axes(μ))
 _pwr_origin(::Type{MU}, parent_origin, axes) where MU = parent_origin^axes
 _pwr_origin(::Type{MU}, ::NoTransportOrigin, axes) where MU = NoTransportOrigin{MU}
 
@@ -81,7 +81,7 @@ end
 # Transport to a multivariate standard measure from any measure:
 
 function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, ab) where MU
-    ν_inner = _inner_stdmeasure(ν)
+    ν_inner = pwr_base(ν)
     transport_to_mvstd(ν_inner, μ, ab)
 end
 
@@ -98,9 +98,9 @@ function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, ::Abstract
     _to_mvstd_withorigin(ν_inner, μ, transport_origin(μ), x)
 end
 
-function _to_mvstd_withorigin(ν_inner::StdMeasure, ::AbstractMeasure, μ_origin, x)
+function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, μ_origin, x)
     x_origin = transport_to_mvstd(ν_inner, μ_origin, x)
-    from_origin(x_origin)
+    from_origin(μ, x_origin)
 end
 
 function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, ::NoTransportOrigin, x)
@@ -111,7 +111,7 @@ end
 # Transport from a multivariate standard measure to any measure:
 
 function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{MU,1}, x) where MU
-    μ_inner = _inner_stdmeasure(μ)
+    μ_inner = pwr_base(μ)
     _transport_from_mvstd(ν, μ_inner, x)
 end
 
@@ -125,8 +125,7 @@ end
 
 function transport_from_mvstd_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
     dof_ν = fast_dof(ν)
-    origin = transport_origin(ν)
-    return _from_mvstd_with_rest_withdof(ν, dof_ν, μ_inner, x, dof_ν, origin)
+    return _from_mvstd_with_rest_withdof(ν, dof_ν, μ_inner, x)
 end
 
 function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, dof_ν::IntegerLike, μ_inner::StdMeasure, x)
