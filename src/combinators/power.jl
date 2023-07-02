@@ -55,27 +55,28 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
-# ToDo: Make rand return static arrays for statically-sized power measures.
+# ToDo: Make rand and testvalue return static arrays for statically-sized power measures.
 
 function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
     CartesianIndices(map(_dynamic, axs))
 end
 
-function Base.rand(
-    rng::AbstractRNG,
-    ::Type{T},
-    d::PowerMeasure{M},
-) where {T,M<:AbstractMeasure}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, T, d.parent)
-    end
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+    map(_ -> rand(rng, T, d.parent), _cartidxs(d.axes))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, d.parent)
-    end
+function Base.rand(rng::AbstractRNG, d::PowerMeasure)
+    map(_ -> rand(rng, d.parent), _cartidxs(d.axes))
 end
+
+function testvalue(::Type{T}, d::PowerMeasure) where {T}
+    map(_ -> testvalue(T, d.parent), _cartidxs(d.axes))
+end
+
+function testvalue(d::PowerMeasure)
+    map(_ -> testvalue(d.parent), _cartidxs(d.axes))
+end
+
 
 @inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
 @inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
