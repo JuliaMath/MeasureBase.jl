@@ -111,7 +111,7 @@ The resulting measure behaves like `μ` in the infinitesimal neighborhood
 of `x` in respect to density calculation and transport as well.
 """
 function transportmeasure(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
     tpm_β_a = transportmeasure(_get_β_a(μ, a), b)
     mcombine(μ.f_c, tpm_α, tpm_β_a)
 end

@@ -161,12 +161,12 @@ end
 
 @inline function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, @nospecialize(::NoFastInsupport)) where {M,N,X}
     logd = unsafe_logdensity_rel(μ, ν, x)
-    return istrue(inμ) ? logd  : logd * oftypeof(logd, -Inf)
+    return istrue(inμ) ? logd  : logd * oftype(logd, -Inf)
 end
 
 @inline function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), inν::Bool) where {M,N,X}
     logd = unsafe_logdensity_rel(μ, ν, x)
-    return istrue(inν) ? logd  : logd * oftypeof(logd, +Inf)
+    return istrue(inν) ? logd  : logd * oftype(logd, +Inf)
 end
 
 

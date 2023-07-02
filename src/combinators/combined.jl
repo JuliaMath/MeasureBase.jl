@@ -90,10 +90,10 @@ struct CombinedMeasure{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMe
 end
 
 
-@inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport(typeof(μ))
+@inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
 
-@inline getdof(μ::CombinedMeasure) = _add_dof(getdof(μ.α), getdof(μ.β))
-@inline fast_dof(μ::CombinedMeasure) =_add_dof(fast_dof(μ.α), fast_dof(μ.β))
+@inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
+@inline fast_dof(μ::CombinedMeasure) = fast_dof(μ.α) + fast_dof(μ.β)
 
 # Bypass `checked_arg`, would require require splitting ab:
 @inline checked_arg(::CombinedMeasure, ab) = ab
