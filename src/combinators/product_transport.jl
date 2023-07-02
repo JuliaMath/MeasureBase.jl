@@ -39,7 +39,7 @@ end
 
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
-transport_origin(μ::PowerMeasure{<:Any,N}) where N = ν.parent^product(pwr_size(μ))
+transport_origin(μ::PowerMeasure{<:Any,N}) where N = μ.parent^product(pwr_size(μ))
 
 function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
     # Sanity check, should never fail:
