@@ -1,9 +1,9 @@
 """
-    abstract type MeasureBase.AbstractNoDOF
+    abstract type MeasureBase.AbstractNoDOF{MU}
 
 Abstract supertype for [`NoDOF`](@ref) and [`NoFastDOF`](@ref).
 """
-abstract type AbstractNoDOF end
+abstract type AbstractNoDOF{MU} end
 
 _add_dof(dof_a::Real, dof_b::Real) = dof_a + dof_b
 _add_dof(dof_a::AbstractNoDOF, ::Real) = dof_a
@@ -12,13 +12,13 @@ _add_dof(dof_a::AbstractNoDOF, ::AbstractNoDOF) = dof_a
 
 
 """
-    MeasureBase.NoDOF{MU} <: AbstractNoDOF
+    MeasureBase.NoDOF{MU} <: AbstractNoDOF{MU}
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
 a global property of the measure.
 """
-struct NoDOF{MU} <: AbstractNoDOF end
+struct NoDOF{MU} <: AbstractNoDOF{MU} end
 
 
 """
@@ -44,13 +44,13 @@ export getdof
 
 
 """
-    MeasureBase.NoFastDOF{MU} <: AbstractNoDOF
+    MeasureBase.NoFastDOF{MU} <: AbstractNoDOF{MU}
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
 a global property of the measure.
 """
-struct NoFastDOF{MU} <: AbstractNoDOF end
+struct NoFastDOF{MU} <: AbstractNoDOF{MU} end
 
 
 """
