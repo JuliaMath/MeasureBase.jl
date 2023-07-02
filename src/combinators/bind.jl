@@ -134,10 +134,10 @@ function _bind_tsc(f_c::Type{Pair}, μ::Bind, xy::Pair)
     return tpm_μ, x, y
 end
 
-const _CatBind{FC} = _BindBy{<:Any,<:Any,FC}
+const _BindBy{FC} = Bind{<:Any,<:Any,FC}
 
-_bind_tsc(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector) = _bind_tsc_cat(f_c, μ, xy)
-_bind_tsc(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple) = _bind_tsc_cat(f_c, μ, xy)
+_bind_tsc(f_c::typeof(vcat), μ::_BindBy{typeof{vcat}}, xy::AbstractVector) = _bind_tsc_cat(f_c, μ, xy)
+_bind_tsc(f_c::typeof(merge), μ::_BindBy{typeof{merge}}, xy::NamedTuple) = _bind_tsc_cat(f_c, μ, xy)
 
 function _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
@@ -147,14 +147,14 @@ function _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, a, b, y, xy
 end
 
-function _bind_tsc_cat(f_c::typeof(vcat), μ::_CatBind{typeof{vcat}}, xy::AbstractVector)
+function _bind_tsc_cat(f_c::typeof(vcat), μ::_BindBy{typeof{vcat}}, xy::AbstractVector)
     tpm_μ, a, b, y, xy = _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
     x, y = _split_after(xy, length(a) + length(b))
     return tpm_μ, x, y
 end
 
-function _bind_tsc_cat(f_c::typeof(merge), μ::_CatBind{typeof{merge}}, xy::NamedTuple)
+function _bind_tsc_cat(f_c::typeof(merge), μ::_BindBy{typeof{merge}}, xy::NamedTuple)
     tpm_μ, a, b, y, xy = _bind_tsc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, f_c(a, b), y
 end
