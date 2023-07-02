@@ -21,7 +21,7 @@ export powermeasure
 
 powermeasure(m::AbstractMeasure, ::Tuple{}) = asmeasure(m)
 
-@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
+@inline function powermeasure(x::T, sz::Tuple{Vararg{Any,N}}) where {T,N}
     PowerMeasure(asmeasure(x), _pm_axes(sz))
 end
 
@@ -60,7 +60,7 @@ export productmeasure
 
 productmeasure(mar::Fill) = powermeasure(_fill_value(mar), _fill_axes(mar))
 
-productmeasure(mar::Tuple{Vararg{<:AbstractMeasure}}) = ProductMeasure(mar)
+productmeasure(mar::Tuple{Vararg{AbstractMeasure}}) = ProductMeasure(mar)
 productmeasure(mar::Tuple) = ProductMeasure(map(asmeasure, mar))
 
 productmeasure(mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}}) where names = ProductMeasure(mar)
