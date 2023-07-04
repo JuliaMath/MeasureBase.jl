@@ -70,7 +70,7 @@ end
 function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
     sz_ν = pwr_size(ν)
     @assert prod(sz_ν) == 1
-    return fill_with(transport_def(ν.parent, μ, x), sz_ν)
+    return maybestatic_fill(transport_def(ν.parent, μ, x), sz_ν)
 end
 
 function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{NU,1}, x,) where {MU,NU}

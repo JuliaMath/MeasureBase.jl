@@ -70,9 +70,18 @@ function Base.rand(rng::AbstractRNG, d::PowerMeasure)
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where {T,M}
+    #!!!!!!!!!!!
     sz = pwr_size(d)
     base_d = pwr_base(d)
     _sarray_type(sz)(ntuple(_ -> rand(rng, T, base_d), prod(sz)))
+    0
+end
+
+function Base.rand(rng::AbstractRNG, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where M
+    #!!!!!!!!!!!
+    sz = pwr_size(d)
+    base_d = pwr_base(d)
+    broadcast(_ -> rand(rng, base_d), MeasureBase.maybestatic_fill(nothing, sz))
 end
 
 function testvalue(::Type{T}, d::PowerMeasure) where {T}
@@ -88,7 +97,7 @@ end
 @inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
 @inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
 
-marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
+marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
