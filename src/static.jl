@@ -46,21 +46,21 @@ _dynamic(::Static.SOneTo{N}) where {N} = Base.OneTo(N)
 _dynamic(r::AbstractUnitRange) = minimum(r):maximum(r)
 
 """
-    MeasureBase.fill_with(x, sz::NTuple{N,<:IntegerLike}) where N
+    MeasureBase.maybestatic_fill(x, sz::NTuple{N,<:IntegerLike}) where N
 
 Creates an array of size `sz` filled with `x`.
 
 Returns an instance of `FillArrays.Fill`.
 """
-function fill_with end
+function maybestatic_fill end
 
-@inline fill_with(x::T, ::Tuple{}) where T = FillArrays.Fill(x)
+@inline maybestatic_fill(x::T, ::Tuple{}) where T = FillArrays.Fill(x)
 
-@inline function fill_with(x::T, sz::Tuple{Vararg{IntegerLike,N}}) where {T,N}
-    fill_with(x, map(one_to, sz))
+@inline function maybestatic_fill(x::T, sz::Tuple{Vararg{IntegerLike,N}}) where {T,N}
+    maybestatic_fill(x, map(one_to, sz))
 end
 
-@inline function fill_with(x::T, axs::Tuple{Vararg{AbstractUnitRange,N}}) where {T,N}
+@inline function maybestatic_fill(x::T, axs::Tuple{Vararg{AbstractUnitRange,N}}) where {T,N}
     # While `FillArrays.Fill` (mostly?) works with axes that are static unit
     # ranges, some operations that automatic differentiation requires do fail
     # on such instances of `Fill` (e.g. `reshape` from dynamic to static size).
@@ -69,17 +69,26 @@ end
     FillArrays.Fill(x, dyn_axs)
 end
 
-@inline function  fill_with(x, axs::Tuple{Vararg{StaticOneTo}})
-    fill(x, _sarray_type(map(maybestatic_length, axs)))
+@inline function  maybestatic_fill(x::T, axs::Tuple{Vararg{StaticOneTo}}) where T
+    fill(x, staticarray_type(T, map(maybestatic_length, axs)))
 end
 
-@inline function  fill_with(x, sz::Tuple{Vararg{StaticInteger}})
-    fill(x, _sarray_type(sz))
+@inline function  maybestatic_fill(x::T, sz::Tuple{Vararg{StaticInteger}}) where T
+    fill(x, staticarray_type(T, sz))
 end
 
-@inline @generated function _sarray_type(sz::Tuple{Vararg{StaticInteger}})
-    Ns = map(p -> p.parameters[1], sz.parameters)
-    :(SArray{Tuple{$Ns...}})
+
+"""
+    staticarray_type(T, sz::Tuple{Vararg{StaticInteger}})
+
+Returns the type of a static array with element type `T` and size `sz`.
+"""
+function staticarray_type end
+
+@inline @generated function staticarray_type(::Type{T}, sz::Tuple{Vararg{StaticInteger,N}}) where {T,N}
+    szs = map(p -> p.parameters[1], sz.parameters)
+    len = prod(szs)
+    :(SArray{Tuple{$szs...},T,$N,$len})
 end
 
 
