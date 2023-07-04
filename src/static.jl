@@ -102,7 +102,7 @@ If `A` is a static array and `sz` is static, the result is a static array.
 function maybestatic_reshape end
 
 maybestatic_reshape(A, sz) = reshape(A, sz)
-maybestatic_reshape(A::StaticArray, sz::Tuple{Vararg{StaticInteger}}) = _sarray_type(eltype(A), sz)(Tuple(A))
+maybestatic_reshape(A::StaticArray, sz::Tuple{Vararg{StaticInteger}}) = staticarray_type(eltype(A), sz)(Tuple(A))
 
 
 """
