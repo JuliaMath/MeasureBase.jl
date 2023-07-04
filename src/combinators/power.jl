@@ -69,6 +69,12 @@ function Base.rand(rng::AbstractRNG, d::PowerMeasure)
     map(_ -> rand(rng, d.parent), _cartidxs(d.axes))
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where {T,M}
+    sz = pwr_size(d)
+    base_d = pwr_base(d)
+    _sarray_type(sz)(ntuple(_ -> rand(rng, T, base_d), prod(sz)))
+end
+
 function testvalue(::Type{T}, d::PowerMeasure) where {T}
     map(_ -> testvalue(T, d.parent), _cartidxs(d.axes))
 end
