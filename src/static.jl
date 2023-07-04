@@ -5,6 +5,31 @@ Equivalent to `Union{Integer,Static.StaticInteger}`.
 """
 const IntegerLike = Union{Integer,Static.StaticInteger}
 
+
+"""
+    const UnitRangeFromOne
+
+Alias for unit ranges that start at one.
+"""
+const UnitRangeFromOne = Union{Base.OneTo, Static.OptionallyStaticUnitRange, StaticArrays.SOneTo}
+
+
+"""
+    const StaticOneTo{N}
+
+A static unit range from one to N.
+"""
+const StaticOneTo{N} = Union{Static.OptionallyStaticUnitRange{StaticInt{1},StaticInt{N}}, StaticArrays.SOneTo{N}}
+
+
+"""
+    const StaticUnitRange
+
+A static unit range.
+"""
+const StaticUnitRange = Union{Static.OptionallyStaticUnitRange{<:StaticInt,<:StaticInt}, StaticArrays.SOneTo}
+
+
 """
     MeasureBase.one_to(n::IntegerLike)
 
@@ -57,6 +82,18 @@ end
     :(SArray{Tuple{$Ns...}})
 end
 
+
+"""
+    MeasureBase.maybestatic_reshape(A, sz)
+
+Reshapes array `A` to sizes `sz`.
+
+If `A` is a static array and `sz` is static, the result is a static array.
+"""
+function maybestatic_reshape end
+
+maybestatic_reshape(A, sz) = reshape(A, sz)
+maybestatic_reshape(A::StaticArray, sz::Tuple{Vararg{StaticInteger}}) = _sarray_type(eltype(A), sz)(Tuple(A))
 
 
 """
@@ -116,27 +153,3 @@ Returns the last element of `A` as a dynamic or static value.
 maybestatic_last(A::AbstractArray) = last(A)
 maybestatic_last(::StaticArrays.SOneTo{N}) where N = static(N)
 maybestatic_last(::Static.OptionallyStaticUnitRange{<:Static.StaticInteger,<:Static.StaticInteger{until}}) where until = static(until)
-
-
-"""
-    const UnitRangeFromOne
-
-Alias for unit ranges that start at one.
-"""
-const UnitRangeFromOne = Union{Base.OneTo, Static.OptionallyStaticUnitRange, StaticArrays.SOneTo}
-
-
-"""
-    const StaticOneTo{N}
-
-A static unit range from one to N.
-"""
-const StaticOneTo{N} = Union{Static.OptionallyStaticUnitRange{StaticInt{1},StaticInt{N}}, StaticArrays.SOneTo{N}}
-
-
-"""
-    const StaticUnitRange
-
-A static unit range.
-"""
-const StaticUnitRange = Union{Static.OptionallyStaticUnitRange{<:StaticInt,<:StaticInt}, StaticArrays.SOneTo}
