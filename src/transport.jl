@@ -8,6 +8,9 @@ See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransportOrigin{NU} end
 
+Base.:^(origin::NoTransportOrigin, ::IntegerLike) = origin
+
+
 """
     MeasureBase.transport_origin(ν)
 
@@ -76,21 +79,11 @@ and/or
 * `MeasureBase.from_origin(μ::MyMeasure, x) = y`
 * `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
-and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
-
-A standard measure type like `StdUniform`, `StdExponential` or
-`StdLogistic` may also be used as the source or target of the transform:
-
-```julia
-f_to_uniform(StdUniform, μ)
-f_to_uniform(ν, StdUniform)
-```
-
-Depending on [`getdof(μ)`](@ref) (resp. `ν`), an instance of the standard
-distribution itself or a power of it (e.g. `StdUniform()` or
-`StdUniform()^dof`) will be chosen as the transformation partner.
+and ensure `MeasureBase.fast_dof(μ::MyMeasure)` is defined correctly.
 """
 function transport_to end
+
+@inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
 
 """
     transport_to(ν, μ, x)
@@ -98,6 +91,7 @@ function transport_to end
 Transport `x` from the measure `μ` to the measure `ν`
 """
 transport_to(ν, μ, x) = transport_to(ν, μ)(x)
+
 
 """
     transport_def(ν, μ, x)
@@ -150,6 +144,13 @@ end
     μ,
     x,
 ) where {n_ν,n_μ}
+    if n_ν == 10
+        return :(throw(ArgumentError("Transport to measure of type $(nameof(typeof(ν))) not supported, origin stack too deep.")))
+    end
+    if n_μ == 10
+        return :(throw(ArgumentError("Transport from measure of type $(nameof(typeof(μ))) not supported, origin stack too deep.")))
+    end
+
     prog = quote
         μ0 = μ
         x0 = x
@@ -186,7 +187,7 @@ end
     return prog
 end
 
-@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
+@inline _transport_intermediate(ν, μ) = _transport_intermediate(fast_dof(ν), fast_dof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
 
@@ -229,8 +230,6 @@ struct TransportFunction{NU,MU} <: Function
         return new{NU,MU}(ν, μ)
     end
 end
-
-@inline transport_to(ν, μ) = TransportFunction(ν, μ)
 
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ

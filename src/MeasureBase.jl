@@ -27,15 +27,21 @@ import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
+using OneTwoMany: getsecond
 
 using PrettyPrinting
 const Pretty = PrettyPrinting
+
+using ArraysOfArrays
 
 using ChainRulesCore
 import FillArrays
 using Static
 using Static: StaticInteger
 using FunctionChains
+
+import StaticArrays
+using StaticArrays: StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix
 
 export gentype
 
@@ -45,10 +51,8 @@ import IfElse: ifelse
 export logdensity_def
 export basemeasure
 export basekernel
-export productmeasure
 
 export insupport
-export getdof
 export transport_to
 
 include("insupport.jl")
@@ -56,6 +60,21 @@ include("insupport.jl")
 abstract type AbstractMeasure end
 
 AbstractMeasure(m::AbstractMeasure) = m
+
+
+"""
+    asmeasure(m)
+
+Turns a measure-like object `m` into an `AbstractMeasure`.
+
+Calls `convert(AbstractMeasure, m)` by default
+"""
+function asmeasure end
+
+@inline asmeasure(m::AbstractMeasure) = m
+asmeasure(m) = convert(AbstractMeasure, m)
+export asmeasure
+
 
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
@@ -106,18 +125,22 @@ using Compat
 using IrrationalConstants
 
 include("static.jl")
+include("collection_utils.jl")
 include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
 include("splat.jl")
-include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
 include("mass-interface.jl")
+include("density.jl")
+include("density-core.jl")
+
+include("proxies.jl")
 # include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
@@ -125,30 +148,30 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
-include("combinators/bind.jl")
-include("combinators/transformedmeasure.jl")
-include("combinators/weighted.jl")
-include("combinators/superpose.jl")
-include("combinators/product.jl")
-include("combinators/power.jl")
-include("combinators/spikemixture.jl")
-include("combinators/likelihood.jl")
-include("combinators/restricted.jl")
-include("combinators/smart-constructors.jl")
-include("combinators/conditional.jl")
-
 include("standard/stdmeasure.jl")
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
+
+include("combinators/abstract_product.jl")
+include("combinators/power.jl")
+include("combinators/product.jl")
+include("combinators/product_transport.jl")
+include("combinators/transformedmeasure.jl")
+include("combinators/weighted.jl")
+include("combinators/superpose.jl")
+include("combinators/combined.jl")
+include("combinators/bind.jl")
+include("combinators/spikemixture.jl")
+include("combinators/likelihood.jl")
+include("combinators/restricted.jl")
+include("combinators/smart-constructors.jl")
+include("combinators/conditional.jl")
 include("combinators/half.jl")
 
 include("rand.jl")
 include("fixedrng.jl")
-
-include("density.jl")
-include("density-core.jl")
 
 include("interface.jl")
 

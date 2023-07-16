@@ -1,34 +1,45 @@
-export ProductMeasure
-
 using MappedArrays
 using MappedArrays: ReadonlyMultiMappedArray
 using Base: @propagate_inbounds
 import Base
 using FillArrays
+using Random: rand!, GLOBAL_RNG, AbstractRNG
 
-export AbstractProductMeasure
 
-abstract type AbstractProductMeasure <: AbstractMeasure end
+"""
+    struct MeasureBase.ProductMeasure{M} <: AbstractProductMeasure
 
-function Pretty.tile(μ::AbstractProductMeasure)
-    result = Pretty.literal("ProductMeasure(")
-    result *= Pretty.tile(marginals(μ))
-    result *= Pretty.literal(")")
+Represents a products of measures.
+
+´ProductMeasure` wraps a collection of measures, this collection then
+becomes the collection of the marginal measures of the `ProductMeasure`.
+
+User code should not instantiate `ProductMeasure` directly, but should call
+[`productmeasure`](@ref) instead.
+"""
+struct ProductMeasure{M} <: AbstractProductMeasure
+    marginals::M
 end
 
-massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
-
-export marginals
-
-function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
-    marginals(a) == marginals(b)
+function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
+    Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end
-Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
-Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
-basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
+marginals(μ::ProductMeasure) = μ.marginals
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
+proxy(μ::ProductMeasure{<:Fill}) = powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
+
+
+# TODO: Better `map` support in MappedArrays
+_map(f, args...) = map(f, args...)
+_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
+
+function testvalue(::Type{T}, μ::ProductMeasure) where {T}
+    _map(m -> testvalue(T, m), marginals(μ))
+end
+
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure) where {T}
     mar = marginals(d)
     _rand_product(rng, T, mar, eltype(mar))
 end
@@ -72,106 +83,72 @@ function _rand_product(
     end |> collect
 end
 
-@inline function logdensity_def(d::AbstractProductMeasure, x)
-    mapreduce(logdensity_def, +, marginals(d), x)
-end
 
-struct ProductMeasure{M} <: AbstractProductMeasure
-    marginals::M
+@inline function logdensity_def(μ::ProductMeasure, x)
+    _marginals_density_op(logdensity_def, marginals(μ), x)
 end
-
+@inline function unsafe_logdensityof(μ::ProductMeasure, x)
+    _marginals_density_op(unsafe_logdensityof, marginals(μ), x)
+end
 @inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
-    mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
+    _marginals_density_op(logdensity_rel, marginals(μ), marginals(ν), x)
 end
 
-function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
-    Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
+function _marginals_density_op(density_op::F, marginals_μ, x) where F
+    mapreduce(density_op, +, marginals_μ, x)
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::Tuple, x::Tuple) where F
+    # For tuples, `mapreduce` can have trouble with type inference
+    sum(map(density_op, marginals_μ, x))
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, x::NamedTuple) where {F,names}
+    nms = Val{names}()
+    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(x, Val(nms))))
 end
 
-# For tuples, `mapreduce` has trouble with type inference
-@inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
-    ℓs = map(logdensity_def, marginals(d), x)
-    sum(ℓs)
+function _marginals_density_op(density_op::F, marginals_μ, marginals_ν, x) where F
+    mapreduce(density_op, +, marginals_μ, marginals_ν, x)
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::Tuple, marginals_ν::Tuple, x::Tuple) where F
+    # For tuples, `mapreduce` can have trouble with type inference
+    sum(map(density_op, marginals_μ, marginals_ν, x))
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, marginals_ν::NamedTuple, x::NamedTuple) where {F,names}
+    nms = Val{names}()
+    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(marginals_ν, nms)), values(_reorder_nt(x, nms)))
 end
 
-@generated function logdensity_def(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-    k1 = QuoteNode(first(N))
-    q = quote
-        m = marginals(d)
-        ℓ = logdensity_def(getproperty(m, $k1), getproperty(x, $k1))
-    end
-    for k in Base.tail(N)
-        k = QuoteNode(k)
-        qk = :(ℓ += logdensity_def(getproperty(m, $k), getproperty(x, $k)))
-        push!(q.args, qk)
-    end
 
-    return q
-end
+@inline basemeasure(μ::ProductMeasure) = _marginals_basemeasure(marginals(μ))
 
-# @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-#     q = quote
-#         m = marginals(d)
-#     end
-#     for k in N
-#         qk = QuoteNode(k)
-#         push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
-#     end
+_marginals_basemeasure(marginals_μ) = productmeasure(map(basemeasure, marginals_μ))
 
-#     vals = map(x -> Expr(:(=), x,x), N)
-#     push!(q.args, Expr(:tuple, vals...))
-#     return q
-# end
 
-function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
-    mar = marginals(μ)
-    T = Core.Compiler.return_type(mar.f, Tuple{eltype(mar.iter)})
-    B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingletontype(B)))
-end
-
-function basemeasure(μ::ProductMeasure{A}) where {T,A<:AbstractMappedArray{T}}
-    B = Core.Compiler.return_type(basemeasure, Tuple{T})
-    _basemeasure(μ, B, static(Base.issingletontype(B)))
-end
-
-function _basemeasure(μ::ProductMeasure, ::Type{B}, ::True) where {B}
-    return instance(B)^axes(marginals(μ))
-end
-
-function _basemeasure(
-    μ::ProductMeasure{A},
-    ::Type{B},
-    ::False,
-) where {T,A<:AbstractMappedArray{T},B}
-    mar = marginals(μ)
-    productmeasure(mappedarray(basemeasure, mar))
-end
-
-function _basemeasure(
-    μ::ProductMeasure{Base.Generator{I,F}},
-    ::Type{B},
-    ::False,
-) where {I,F,B}
-    mar = marginals(μ)
-    productmeasure(Base.Generator(basekernel(mar.f), mar.iter))
-end
-
-marginals(μ::ProductMeasure) = μ.marginals
-
-# TODO: Better `map` support in MappedArrays
-_map(f, args...) = map(f, args...)
-_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
-
-function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
-    _map(m -> testvalue(T, m), marginals(d))
-end
-
-###############################################################################
 # I <: Base.Generator
 
-export rand!
-using Random: rand!, GLOBAL_RNG, AbstractRNG
+function _marginals_basemeasure(marginals_μ::Base.Generator{I,F}) where {I,F}
+    T = Core.Compiler.return_type(marginals_μ.f, Tuple{eltype(marginals_μ.iter)})
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _marginals_basemeasure_impl(marginals_μ, B, static(Base.issingletontype(B)))
+end
+
+function _marginals_basemeasure(marginals_μ::AbstractMappedArray{T}) where {T}
+    B = Core.Compiler.return_type(basemeasure, Tuple{T})
+    _marginals_basemeasure_impl(marginals_μ, B, static(Base.issingletontype(B)))
+end
+
+function _marginals_basemeasure_impl(marginals_μ, ::Type{B}, ::True) where {B}
+    instance(B)^axes(marginals_μ)
+end
+
+function _marginals_basemeasure_impl(marginals_μ::AbstractMappedArray{T}, ::Type{B}, ::False) where {T,B}
+    productmeasure(mappedarray(basemeasure, marginals_μ))
+end
+
+function _marginals_basemeasure_impl(marginals_μ::Base.Generator{I,F}, ::Type{B}, ::False) where {I,F,B}
+    productmeasure(Base.Generator(basekernel(marginals_μ.f), marginals_μ.iter))
+end
+
 
 @propagate_inbounds function Random.rand!(
     rng::AbstractRNG,
@@ -186,8 +163,6 @@ using Random: rand!, GLOBAL_RNG, AbstractRNG
     return x
 end
 
-export rand!
-using Random: rand!, GLOBAL_RNG
 
 function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
     elT = typeof(rand(rng, T, first(mar)))
@@ -197,7 +172,7 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
     rand!(rng, d, x)
 end
 
-@inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
+@inline function insupport(d::ProductMeasure, x::AbstractArray)
     mar = marginals(d)
     # We might get lucky and know statically that everything is inbounds
     T = Core.Compiler.return_type(insupport, Tuple{eltype(mar),eltype(x)})
@@ -206,14 +181,15 @@ end
     end
 end
 
-@inline function insupport(d::AbstractProductMeasure, x)
+@inline function insupport(d::ProductMeasure, x)
     for (mj, xj) in zip(marginals(d), x)
         dynamic(insupport(mj, xj)) || return false
     end
     return true
 end
 
-getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
+getdof(d::ProductMeasure) = sum(getdof, marginals(d))
+fast_dof(d::ProductMeasure) = sum(fast_dof, marginals(d))
 
 function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
     map(checked_arg, marginals(μ), x)
@@ -225,3 +201,4 @@ function checked_arg(
 ) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
+

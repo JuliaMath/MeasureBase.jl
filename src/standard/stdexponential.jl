@@ -1,8 +1,17 @@
+"""
+    StdExponential <: StdMeasure
+
+Represents the standard (rate of one)
+[exponential](https://en.wikipedia.org/wiki/Exponential_distribution) probability measure.
+
+See [`StdMeasure`](@ref) for the semantics of standard measures in the
+context of MeasureBase.
+"""
 struct StdExponential <: StdMeasure end
 
 export StdExponential
 
-insupport(d::StdExponential, x) = x ≥ zero(x)
+insupport(::StdExponential, x) = x ≥ zero(x)
 
 @inline logdensity_def(::StdExponential, x) = -x
 @inline basemeasure(::StdExponential) = LebesgueBase()
