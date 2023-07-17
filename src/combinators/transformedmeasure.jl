@@ -147,8 +147,11 @@ function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
     PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
-function _generic_pushfwd_impl(f, μ::DensityMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    mintegrate(fchain(μ.f) ∘ inverse(f), pushfwd(f, μ.base, volcorr))
+function _generic_pushfwd_impl(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,MU}, ::WithVolCorr) where {NU,MU,F}
+    if !(f.μ === μ.base || f.μ === μ.base)
+        throw(ArgumentError("pushfwd on DensityMeasure with TransportFunction of same source measure type as the density base requires base and source to be equal."))
+    end
+    mintegrate(fchain(μ.f) ∘ inverse(f), f.ν)
 end
 
 
@@ -192,6 +195,9 @@ function _pullbck_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
     PushforwardMeasure(inverse(f), f, μ, volcorr)
 end
 
-function _generic_pullbck_impl(f, μ::DensityMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    mintegrate(fchain(μ.f) ∘ f, pullbck(f, μ.base, volcorr))
+function _generic_pullbck_impl(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,NU}, ::WithVolCorr) where {NU,MU,F}
+    if !(f.ν === μ.base || f.ν === μ.base)
+        throw(ArgumentError("pushfwd on DensityMeasure with TransportFunction of same destination measure type as the density base requires base and destination to be equal."))
+    end
+    mintegrate(fchain(μ.f) ∘ f, f.μ)
 end
