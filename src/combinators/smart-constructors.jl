@@ -79,9 +79,8 @@ _generic_procuctmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, ma
 
 @inline _generic_procuctmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
 
-# TODO: These methods don't make sense. What are they supposed to do?
-# _generic_procuctmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.value).(mar))
-# _generic_procuctmeasure_impl(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
+_generic_procuctmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.value).(mar))
+_generic_procuctmeasure_impl(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
 
 @inline function _generic_procuctmeasure_impl(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
