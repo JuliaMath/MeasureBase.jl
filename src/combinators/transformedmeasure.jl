@@ -189,9 +189,10 @@ function _generic_pullbck_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(inverse(f), f, μ, volcorr)
 end
 
-function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
-    _pullbck_of_pushfwd(f, μ, μ.volcorr, volcorr)
-end
+# TODO: Duplicated method - was this supposed to be `_generic_pullbck_impl`?
+# function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+#     _pullbck_of_pushfwd(f, μ, μ.volcorr, volcorr)
+# end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
 function _pullbck_of_pushfwd(f, μ::PushforwardMeasure, ::V, volcorr::V) where {V}
