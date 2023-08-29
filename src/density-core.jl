@@ -101,7 +101,7 @@ end
     ℓ_0 = logdensity_def(μ, x)
     b_0 = μ
     Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        b_{i} = basemeasure(b_{i - 1}, x)
+        b_{i} = basemeasure(b_{i - 1})
 
         # The below makes the evaluated code shorter, but screws up Zygote
         # if b_{i} isa typeof(b_{i - 1})
