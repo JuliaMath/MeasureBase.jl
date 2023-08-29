@@ -24,7 +24,7 @@ Constructs a power of a measure `μ`.
 function powermeasure end
 export powermeasure
 
-@inline powermeasure(μ, exponent) = _generic_powermeasure_impl(asmeasure(μ), _pm_axes(exponent))
+@inline powermeasure(μ, exponent) = _generic_powermeasure_stage1(asmeasure(μ), _pm_axes(exponent))
 
 @inline _generic_powermeasure_stage1(μ::AbstractMeasure, ::Tuple{}) = μ
 
@@ -35,7 +35,7 @@ end
 @inline _generic_powermeasure_stage2(μ::AbstractMeasure, exponent::Tuple) = PowerMeasure(μ, exponent)
 
 @inline function _generic_powermeasure_stage2(μ::Dirac, exponent::Tuple)
-    Dirac(maybestatic_fill(μ.value, exponent))
+    Dirac(maybestatic_fill(μ.x, exponent))
 end
 
 @inline function _generic_powermeasure_stage2(μ::WeightedMeasure, exponent::Tuple)
