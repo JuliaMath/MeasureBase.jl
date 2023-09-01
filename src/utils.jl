@@ -11,9 +11,9 @@ showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
 
-@inline testvalue(μ) = rand(FixedRNG(), μ)
+@inline testvalue(μ) = rand(ConstantRNG(), μ)
 
-@inline testvalue(::Type{T}, μ) where {T} = rand(FixedRNG(), T, μ)
+@inline testvalue(::Type{T}, μ) where {T} = rand(ConstantRNG(), T, μ)
 
 testvalue(::Type{T}) where {T} = zero(T)
 
