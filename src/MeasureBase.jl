@@ -172,7 +172,6 @@ include("combinators/conditional.jl")
 include("combinators/half.jl")
 
 include("rand.jl")
-include("fixedrng.jl")
 
 include("interface.jl")
 
