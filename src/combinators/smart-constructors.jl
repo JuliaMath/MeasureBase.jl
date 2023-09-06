@@ -80,7 +80,15 @@ _generic_productmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, ma
 @inline _generic_productmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
 
 _generic_productmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.value).(mar))
-_generic_productmeasure_impl(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
+
+# TODO: We should be able to further optimize this
+function _generic_productmeasure_impl(mar::AbstractArray{T}) where {T}
+    if Base.issingletontype(T) 
+        first(mar) ^ size(mar)
+    else
+        ProductMeasure(asmeasure.(mar))
+    end
+end
 
 @inline function _generic_productmeasure_impl(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
