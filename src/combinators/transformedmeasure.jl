@@ -132,13 +132,13 @@ export pushfwd
 
 pushfwd(f) = Base.Fix1(pushfwd, f)
 
-pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
+pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _pullbck(f, μ, volcorr)
 
-function _generic_pushfwd_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+function _pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
-function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+function _pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
     _pushfwd_of_pushfwd(f, μ, μ.volcorr, volcorr)
 end
 
@@ -151,7 +151,7 @@ function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
     PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
-function _generic_pushfwd_impl(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,MU}, ::WithVolCorr) where {NU,MU,F}
+function _pushfwd(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,MU}, ::WithVolCorr) where {NU,MU,F}
     if !(f.μ === μ.base || f.μ === μ.base)
         throw(ArgumentError("pushfwd on DensityMeasure with TransportFunction of same source measure type as the density base requires base and source to be equal."))
     end
@@ -183,14 +183,14 @@ export pullbck
 
 pullbck(f) = Base.Fix1(pullbck, f)
 
-pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
+pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _pullbck(f, μ, volcorr)
 
-function _generic_pullbck_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+function _pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(inverse(f), f, μ, volcorr)
 end
 
-# TODO: Duplicated method - was this supposed to be `_generic_pullbck_impl`?
-# function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+# TODO: Duplicated method - was this supposed to be `_pullbck`?
+# function _pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
 #     _pullbck_of_pushfwd(f, μ, μ.volcorr, volcorr)
 # end
 
@@ -203,7 +203,7 @@ function _pullbck_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
     PushforwardMeasure(inverse(f), f, μ, volcorr)
 end
 
-function _generic_pullbck_impl(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,NU}, ::WithVolCorr) where {NU,MU,F}
+function _pullbck(f::TransportFunction{NU,MU}, μ::DensityMeasure{F,NU}, ::WithVolCorr) where {NU,MU,F}
     if !(f.ν === μ.base || f.ν === μ.base)
         throw(ArgumentError("pushfwd on DensityMeasure with TransportFunction of same destination measure type as the density base requires base and destination to be equal."))
     end
