@@ -83,14 +83,14 @@ export mbind
 
 @inline mbind(f_β) = Base.Fix1(mbind, f_β)
 
-@inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _generic_mbind_impl(f_β, α, f_c)
+@inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _mbind(f_β, α, f_c)
 
-@inline function _generic_mbind_impl(f_β, α::AbstractMeasure, f_c)
+@inline function _mbind(f_β, α::AbstractMeasure, f_c)
     F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
     Bind{F,M,G}(f_β, α, f_c)
 end
 
-function _generic_mbind_impl(f_β, α::Dirac, f_c)
+function _mbind(f_β, α::Dirac, f_c)
     mcombine(f_c, α, f_β(α.value))
 end
 
