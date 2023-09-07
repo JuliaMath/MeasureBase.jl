@@ -132,7 +132,7 @@ export pushfwd
 
 pushfwd(f) = Base.Fix1(pushfwd, f)
 
-pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
+pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pushfwd_impl(f, μ, volcorr)
 
 function _generic_pushfwd_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(f, inverse(f), μ, volcorr)
