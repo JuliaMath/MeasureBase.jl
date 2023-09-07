@@ -144,7 +144,7 @@ end
 end
 
 @testset "powers" begin
-    @test productmeasure(fill(Lebesgue(), 5)) isa PowerMeasure
+    @test @inferred productmeasure(fill(Lebesgue(), 5)) isa PowerMeasure
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
