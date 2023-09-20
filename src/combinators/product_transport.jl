@@ -188,7 +188,7 @@ _marginals_from_origin(::Fill, x_origin) = x_origin
 # used with a (power of a) standard measure on one side.
 
 _marginals_tp_origin(marginals_μ::NamedTuple{names}) where names = productmeasure(values(marginals_μ))
-_marginals_from_origin(::NamedTuple{names}, x_origin::NamedTuple) where names = _reorder_nt(x_origin, Val(names))
+_marginals_from_origin(::NamedTuple{names}, x_origin::NamedTuple) where names = NamedTuple{names}(x_origin)
 
 
 # Transport between two instances of ProductMeasure:

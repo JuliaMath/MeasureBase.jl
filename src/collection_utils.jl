@@ -66,22 +66,6 @@ InverseFunctions.inverse(::TupleUnNamer{names}) where names = TupleNamer{names}(
 ChangesOfVariables.with_logabsdet_jacobian(::TupleUnNamer{names}, x::NamedTuple{names}) where names = static(false)
 =#
 
-_reorder_nt(x::NamedTuple{names},::Val{names}) where {names} = x
-
-@generated function _reorder_nt(x::NamedTuple{names},::Val{new_names}) where {names,new_names}
-    if sort([names...]) != sort([new_names...])
-        :(throw(ArgumentError("Can't reorder NamedTuple{$names} to NamedTuple{$new_names}")))
-    else
-        expr = :(())
-        for nm in new_names
-            push!(expr.args, :($nm = x.$nm))
-        end
-        return expr
-    end
-end
-
-# ToDo: Add custom rrule for _reorder_nt?
-
 # Field access functions for Fill:
 _fill_value(x::FillArrays.Fill) = x.value
 _fill_axes(x::FillArrays.Fill) = x.axes
