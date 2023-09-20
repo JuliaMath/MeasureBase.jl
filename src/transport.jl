@@ -188,7 +188,7 @@ end
 end
 
 @inline _transport_intermediate(ν, μ) = _transport_intermediate(fast_dof(ν), fast_dof(μ))
-@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
+@inline _transport_intermediate(::IntegerLike, n_μ::IntegerLike) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
 
 _call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
