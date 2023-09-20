@@ -43,7 +43,14 @@ on the type of `n`.
 
 _dynamic(x::Number) = dynamic(x)
 _dynamic(::Static.SOneTo{N}) where {N} = Base.OneTo(N)
-_dynamic(r::AbstractUnitRange) = minimum(r):maximum(r)
+
+function _dynamic(r::AbstractUnitRange)
+    if isempty(r)
+        Base.OneTo(0)
+    else
+        minimum(r):maximum(r)
+    end
+end
 
 """
     MeasureBase.maybestatic_fill(x, sz::NTuple{N,<:IntegerLike}) where N
