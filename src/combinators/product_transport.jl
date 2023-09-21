@@ -48,7 +48,7 @@ function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
 end
 
 
-# A one-dimensional PowerMeasure has an origin if it's parent has an origin:
+# A one-dimensional PowerMeasure has an origin if its parent has an origin:
 
 transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _pwr_origin(typeof(μ), pwr_base(μ), pwr_axes(μ))
 _pwr_origin(::Type{MU}, parent_origin, axes) where MU = parent_origin^axes
