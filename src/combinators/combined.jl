@@ -62,20 +62,6 @@ export mcombine
 
 @inline mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure) = _generic_mcombine_impl_stage1(f_c, α, β)
 
-@inline function _generic_mcombine_impl_stage1(f_c, α::AbstractMeasure, β::AbstractMeasure)
-    _generic_mcombine_impl_stage2(f_c, α, β)
-end
-
-@inline function _generic_mcombine_impl_stage2(f_c, α::AbstractMeasure, β::AbstractMeasure)
-    FC, MA, MB = Core.Typeof(f_c), Core.Typeof(α), Core.Typeof(β)
-    CombinedMeasure{FC,MA,MB}(f_c, α, β)
-end
-
-@inline function _generic_mcombine_impl_stage2(f_c, α::Dirac, β::Dirac)
-    Dirac(f_c(α.value, β.value))
-end
-
-
 @inline _generic_mcombine_impl_stage1(::typeof(first), α::AbstractMeasure, β::AbstractMeasure) = α
 @inline _generic_mcombine_impl_stage1(::typeof(getsecond), α::AbstractMeasure, β::AbstractMeasure) = β
 @inline _generic_mcombine_impl_stage1(::typeof(last), α::AbstractMeasure, β::AbstractMeasure) = β
@@ -88,6 +74,18 @@ end
     productmeasure(f_c(marginals(α), marginals(β)))
 end
 
+@inline function _generic_mcombine_impl_stage1(f_c, α::AbstractMeasure, β::AbstractMeasure)
+    _generic_mcombine_impl_stage2(f_c, α, β)
+end
+
+@inline function _generic_mcombine_impl_stage2(f_c, α::AbstractMeasure, β::AbstractMeasure)
+    FC, MA, MB = Core.Typeof(f_c), Core.Typeof(α), Core.Typeof(β)
+    CombinedMeasure{FC,MA,MB}(f_c, α, β)
+end
+
+@inline function _generic_mcombine_impl_stage2(f_c, α::Dirac, β::Dirac)
+    Dirac(f_c(α.x, β.x))
+end
 
 """
     struct CombinedMeasure <: AbstractMeasure
