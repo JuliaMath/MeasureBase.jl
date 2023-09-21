@@ -77,5 +77,6 @@ _flatten_to_rv(VV::AbstractVector{<:StaticVector{N,<:Real}}) where N = flatview(
 _flatten_to_rv(VV::VectorOfSimilarVectors{<:Real}) = flatview(VV)
 _flatten_to_rv(VV::VectorOfVectors{<:Real}) = flatview(VV)
 
-_flatten_to_rv(tpl::Tuple{<:AbstractVector{<:Real}}) = vcat(tpl...)
-_flatten_to_rv(tpl::Tuple{<:StaticVector{N,<:Real}}) where N = vcat(tpl...)
+_flatten_to_rv(::Tuple{}) = []
+_flatten_to_rv(tpl::Tuple{Vararg{AbstractVector}}) = vcat(tpl...)
+_flatten_to_rv(tpl::Tuple{Vararg{StaticVector}}) = vcat(tpl...)
