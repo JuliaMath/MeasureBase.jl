@@ -91,7 +91,7 @@ export mbind
 end
 
 function _generic_mbind_impl(f_β, α::Dirac, f_c)
-    mcombine(f_c, α, f_β(α.value))
+    mcombine(f_c, α, f_β(α.x))
 end
 
 
