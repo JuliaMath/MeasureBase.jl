@@ -60,21 +60,39 @@ function from_origin(μ::PowerMeasure{<:AbstractMeasure,1}, x_origin)
     from_origin.(Ref(μ.parent), x_origin)
 end
 
+# Specialize for case of equal bases. Because of StdPowerMeasure methods below
+# specify `,1`, we need extra methods to avoid ambiguity
+
+function transport_def(ν::StdPowerMeasure{MU}, μ::StdPowerMeasure{MU}, x) where MU
+    reshape(x, ν.axes)
+end
+
+function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{MU}, x) where MU
+    reshape(x, ν.axes)
+end
+
+function transport_def(ν::StdPowerMeasure{MU}, μ::StdPowerMeasure{MU,1}, x) where MU
+    reshape(x, ν.axes)
+end
+
+function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{MU,1}, x) where MU
+    reshape(x, ν.axes)
+end
 
 # Transport between univariate standard measures and 1-dim power measures of size one:
 
-function transport_def(ν::StdMeasure, μ::StdPowerMeasure{<:StdMeasure,1}, x)
+function transport_def(ν::StdMeasure, μ::StdPowerMeasure{MU,1}, x) where {MU}
     return transport_def(ν, μ.parent, only(x))
 end
 
-function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
+function transport_def(ν::StdPowerMeasure{NU,1}, μ::StdMeasure, x) where {NU}
     sz_ν = pwr_size(ν)
     @assert prod(sz_ν) == 1
     return maybestatic_fill(transport_def(ν.parent, μ, x), sz_ν)
 end
 
-function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdPowerMeasure{<:StdMeasure,1}, x,)
-    return transport_to(ν.parent, μ.parent).(x)
+function transport_def(ν::StdPowerMeasure{NU,1}, μ::StdPowerMeasure{MU,1}, x) where {NU,MU}
+    reshape(transport_to(ν.parent, μ.parent).(x), ν.axes)
 end
 
 
@@ -110,7 +128,7 @@ end
 
 # Transport from a multivariate standard measure to any measure:
 
-function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{<:StdMeasure,1}, x) 
+function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{MU,1}, x) where {MU}
     μ_inner = pwr_base(μ)
     _transport_from_mvstd(ν, μ_inner, x)
 end
