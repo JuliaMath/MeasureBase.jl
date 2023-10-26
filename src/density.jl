@@ -81,7 +81,7 @@ A `DensityMeasure` is a measure defined by a density or log-density with
 respect to some other "base" measure.
 
 Users should not instantiate `DensityMeasure` directly, but should instead
-call `mintegral_exp(f, base)` (if `f` is a density function or
+call `mintegral(f, base)` (if `f` is a density function or
 `DensityInterface.IsDensity` object) or `mintegral_exp(f, base)` (if `f`
 is a log-density function).
 """
@@ -110,6 +110,8 @@ basemeasure(μ::DensityMeasure) = μ.base
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
+
+localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base, x))
 
 @doc raw"""
     mintegrate(f, μ::AbstractMeasure)::AbstractMeasure
