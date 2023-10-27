@@ -54,11 +54,10 @@ Bayesian example with a correlated prior: Mathematically, let
 position = a1 ~ StdNormal(),
 noise = a2 ~ pushforward(h(a1, .), StdExponential())
 
-where `h(a1,a2) = √(abs(a1) * a2)`. Note that StdNormal() and StdExponential()
-are StdMeasures, but it makes perfect sense to sample from them, as they have
-base measures and therefore densities.
-Because the prior on the space of `A = A1 × A2 = (position, noise)` is a 
-hierarchical measure, we can construct it using mbind by setting merge as f_c:
+where `h(a1,a2) = √(abs(a1) * a2)`.
+Because this prior on the space of `A = A1 × A2 = (position, noise)` is a 
+hierarchical measure (a2 depends on a1), we can construct it using mbind by
+setting merge as f_c:
 
 ```julia
 using MeasureBase, AffineMaps
