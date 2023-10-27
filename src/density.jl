@@ -96,7 +96,8 @@ struct DensityMeasure{F,B} <: AbstractMeasure
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
+    # ToDo: should not evaluate f
+    insupport(d.base, x) != false && isfinite(logdensityof(getfield(d, :f), x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
