@@ -1,8 +1,56 @@
 @doc raw"""
-    mbind(f_β, α::AbstractMeasure, f_c = x -> x[2])
+    mkernel(f_β, f_c = OneTwoMany.secondarg)::Function
+
+Constructs generalized monadic transistion kernel from a primary transition
+kernel function `f_β` and a value combination function `f_c`.
+
+`f_β` must behave like `β = f_β(a)`, taking a value `a` from a primary
+measurable space and return a measure-like object `β`.
+
+`f_c` must behave like `c = f_c(a, b)`, taking a value `a` (like f_β) and a
+value `b` from the measurable space of `β` and return a value `c`.
+
+`f_k = mkernel(f_β, f_c)` then acts like
+
+```julia
+f_k(a) ≡ pushforward(c -> f_c(c[1], c[2]), productmeasure((Dirac(a), f_β(a))))
+```
+
+(`≡` denoting pseudocode-equivalency here). So with the default
+`f_c == OneTwoMany.secondarg`, we just have `f_k(a) ≡ f_β(a)
+
+Also,
+
+```julia
+mbind(mkernel(f_β, f_c), α) == mbind(f_β, α, f_c)
+```
+
+See also [`mbind`](@ref).
+"""
+function mkernel end
+export mkernel
+
+
+"""
+    struct MeasureBase.MKernel <: Function
+
+Represents a generalized monatic transition kernel.
+
+User code should not create instances of `MKernel` directly, but should call
+[`mkernel`](@ref) instead.
+"""
+struct MKernel
+    f_β::FK
+    f_c::FC
+end
+
+
+@doc raw"""
+    mbind(f_β, α::AbstractMeasure, f_c = OneTwoMany.secondarg)
+    mbind(f_β::MeasureBase.MKernel, α::AbstractMeasure)
 
 Constructs a monadic bind, resp. a hierarchical measure, from a transition
-kernel function `f_β`, a primary measure `α` and a variate combination
+kernel function `f_β`, a primary measure `α` and a value combination
 function `f_c`.
 
 `f_β` must be a function that maps a point `a` from the space of the primary
@@ -22,7 +70,7 @@ has the mathethematical interpretation (on sets $$A$$ and $$B$$)
 \mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
 ```
 
-When using the default `fc = x -> x[2]` (so `ab == b`) this simplies to
+When using the default `fc = OneTwoMany.secondarg` (so `ab == b`) this simplies to
 
 ```math
 \mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
@@ -90,6 +138,9 @@ function mbind end
 export mbind
 
 @inline mbind(f_β) = Base.Fix1(mbind, f_β)
+
+# ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
+@inline mbind(f_k::MKernel, α::AbstractMeasure) = mbind(f_k.f_β, α, f_k.f_c)
 
 #@inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _generic_mbind_impl(f_β, α, f_c) --- temporary ---
 @inline mbind(f_β, α::AbstractMeasure, f_c = get_second_tmp) = _generic_mbind_impl(f_β, α, f_c)
