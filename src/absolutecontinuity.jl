@@ -54,3 +54,6 @@
 #     representative(μ) ≪ representative(ν) && return true
 #     return false
 # end
+
+# ≪(::M, ::WeightedMeasure{R,M}) where {R,M} = true
+# ≪(::WeightedMeasure{R,M}, ::M) where {R,M} = true

@@ -37,9 +37,7 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
-export ≪
 export gentype
-export rebase
 
 export AbstractMeasure
 
@@ -112,7 +110,6 @@ include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
-include("splat.jl")
 include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
@@ -135,10 +132,8 @@ include("combinators/product.jl")
 include("combinators/power.jl")
 include("combinators/spikemixture.jl")
 include("combinators/likelihood.jl")
-include("combinators/pointwise.jl")
 include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
-include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
 
 include("standard/stdmeasure.jl")
@@ -155,6 +150,8 @@ include("density.jl")
 include("density-core.jl")
 
 include("interface.jl")
+
+include("measure_operators.jl")
 
 using .Interface
 

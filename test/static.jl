@@ -11,7 +11,7 @@ import FillArrays
     @test static(2) isa MeasureBase.IntegerLike
     @test true isa MeasureBase.IntegerLike
     @test static(true) isa MeasureBase.IntegerLike
-    
+
     @test @inferred(MeasureBase.one_to(7)) isa Base.OneTo
     @test @inferred(MeasureBase.one_to(7)) == 1:7
     @test @inferred(MeasureBase.one_to(static(7))) isa Static.SOneTo
@@ -19,10 +19,13 @@ import FillArrays
 
     @test @inferred(MeasureBase.fill_with(4.2, (7,))) == FillArrays.Fill(4.2, 7)
     @test @inferred(MeasureBase.fill_with(4.2, (static(7),))) == FillArrays.Fill(4.2, 7)
-    @test @inferred(MeasureBase.fill_with(4.2, (3, static(7)))) == FillArrays.Fill(4.2, 3, 7)
+    @test @inferred(MeasureBase.fill_with(4.2, (3, static(7)))) ==
+          FillArrays.Fill(4.2, 3, 7)
     @test @inferred(MeasureBase.fill_with(4.2, (3:7,))) == FillArrays.Fill(4.2, (3:7,))
-    @test @inferred(MeasureBase.fill_with(4.2, (static(3):static(7),))) == FillArrays.Fill(4.2, (3:7,))
-    @test @inferred(MeasureBase.fill_with(4.2, (3:7, static(2):static(5)))) == FillArrays.Fill(4.2, (3:7, 2:5))
+    @test @inferred(MeasureBase.fill_with(4.2, (static(3):static(7),))) ==
+          FillArrays.Fill(4.2, (3:7,))
+    @test @inferred(MeasureBase.fill_with(4.2, (3:7, static(2):static(5)))) ==
+          FillArrays.Fill(4.2, (3:7, 2:5))
 
     @test MeasureBase.maybestatic_length(MeasureBase.one_to(7)) isa Int
     @test MeasureBase.maybestatic_length(MeasureBase.one_to(7)) == 7
