@@ -46,9 +46,6 @@ end
 
 Base.:*(m::AbstractMeasure, k::Real) = k * m
 
-≪(::M, ::WeightedMeasure{R,M}) where {R,M} = true
-≪(::WeightedMeasure{R,M}, ::M) where {R,M} = true
-
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)

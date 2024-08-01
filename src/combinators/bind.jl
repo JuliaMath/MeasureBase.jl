@@ -1,36 +1,45 @@
+"""
+    struct MeasureBase.Bind{M,K} <: AbstractMeasure
+
+Represents a monatic bind. User code should create instances of `Bind`
+directly, but should call `mbind(k, μ)` instead.
+"""
 struct Bind{M,K} <: AbstractMeasure
-    μ::M
     k::K
+    μ::M
 end
 
-export ↣
-
-"""
-If 
-- μ is an `AbstractMeasure` or satisfies the Measure interface, and
-- k is a function taking values from the support of μ and returning a measure
-
-Then `μ ↣ k` is a measure, called a *monadic bind*. In a
-probabilistic programming language like Soss.jl, this could be expressed as
-
-Note that bind is usually written `>>=`, but this symbol is unavailable in Julia.
-
-```
-bind = @model μ,k begin 
-    x ~ μ
-    y ~ k(x)
-    return y
-end
-```
-
-See also `bind` and `Bind`
-"""
-↣(μ, k) = bind(μ, k)
-
-bind(μ, k) = Bind(μ, k)
+getdof(d::Bind) = NoDOF{typeof(d)}()
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
     x = rand(rng, T, d.μ)
     y = rand(rng, T, d.k(x))
     return y
 end
+
+"""
+    mbind(k, μ)::AbstractMeasure
+    
+Given
+
+- a measure μ
+- a kernel function k that takes values from the support of μ and returns a
+  measure
+
+The *monadic bind* operation `mbind(k, μ)` returns is a new measure.
+If `ν == mbind(k, μ)` and all measures involved are sampleable, then 
+samples from `rand(ν)` follow the same distribution as those from `rand(k(rand(μ)))`.
+
+
+A monadic bind ofen written as `>>=` (e.g. in Haskell), but this symbol is
+unavailable in Julia.
+
+```
+μ = StdExponential()
+ν = mbind(μ) do scale
+    pushfwd(Base.Fix1(*, scale), StdNormal())
+end
+```
+"""
+mbind(k, μ) = Bind(k, μ)
+export mbind
