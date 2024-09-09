@@ -23,7 +23,7 @@ powermeasure(m::AbstractMeasure, ::Tuple{}) = m
 
 function powermeasure(
     μ::WeightedMeasure,
-    dims::Tuple{<:AbstractArray,Vararg{<:AbstractArray}},
+    dims::Tuple{<:AbstractArray,Vararg{AbstractArray}},
 )
     k = mapreduce(length, *, dims) * μ.logweight
     return weightedmeasure(k, μ.base^dims)

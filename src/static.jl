@@ -29,11 +29,11 @@ Returns an instance of `FillArrays.Fill`.
 """
 function fill_with end
 
-@inline function fill_with(x::T, sz::Tuple{Vararg{<:IntegerLike,N}}) where {T,N}
+@inline function fill_with(x::T, sz::Tuple{Vararg{IntegerLike,N}}) where {T,N}
     fill_with(x, map(one_to, sz))
 end
 
-@inline function fill_with(x::T, axs::Tuple{Vararg{<:AbstractUnitRange,N}}) where {T,N}
+@inline function fill_with(x::T, axs::Tuple{Vararg{AbstractUnitRange,N}}) where {T,N}
     # While `FillArrays.Fill` (mostly?) works with axes that are static unit
     # ranges, some operations that automatic differentiation requires do fail
     # on such instances of `Fill` (e.g. `reshape` from dynamic to static size).

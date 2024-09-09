@@ -29,7 +29,7 @@ end
 
 # ToDo: Make rand return static arrays for statically-sized power measures.
 
-function _cartidxs(axs::Tuple{Vararg{<:AbstractUnitRange,N}}) where {N}
+function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
     CartesianIndices(map(_dynamic, axs))
 end
 
@@ -49,16 +49,16 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     end
 end
 
-@inline _pm_axes(sz::Tuple{Vararg{<:IntegerLike,N}}) where {N} = map(one_to, sz)
-@inline _pm_axes(axs::Tuple{Vararg{<:AbstractUnitRange,N}}) where {N} = axs
+@inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
+@inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
 
-@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
+@inline function powermeasure(x::T, sz::Tuple{Vararg{Any,N}}) where {T,N}
     PowerMeasure(x, _pm_axes(sz))
 end
 
 marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
 
-function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{<:AbstractArray,N}}) where {N}
+function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
 end
 
