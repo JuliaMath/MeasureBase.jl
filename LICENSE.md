@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2021-2022 Chad Scherrer <chad.scherrer@gmail.com>
+Copyright (c) 2021-present Chad Scherrer <chad.scherrer@gmail.com>,
+Oliver Schulz <oschulz@mpp.mpg.de> and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

@@ -27,7 +27,7 @@ jobs:
         version:
           - '1.6'
           - '1'
-          - 'nightly'
+          - 'pre'
         os:
           - ubuntu-latest
         arch:
@@ -61,4 +61,19 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           file: lcov.info
-
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-docdeploy@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Needed due to https://github.com/JuliaDocs/Documenter.jl/issues/1177
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          GKSwstype: 'nul'
