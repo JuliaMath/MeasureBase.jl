@@ -18,6 +18,8 @@ function parent(::AbstractTransformedMeasure) end
 
 export PushforwardMeasure
 
+# ToDo: Store FunctionWithInverse instead of f and finv in PushforwardMeasure?
+
 """
     struct PushforwardMeasure{F,I,M,VC<:TransformVolCorr} <: AbstractPushforward
         f :: F
@@ -126,22 +128,29 @@ measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
 To manually specify an inverse, call 
 `pushfwd(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
-function pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
+
+function _generic_pushfwd_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
 
-function pushfwd(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
     _pushfwd_of_pushfwd(f, μ, μ.volcorr, volcorr)
 end
 
 # Either both WithVolCorr or both NoVolCorr, so we can merge them
-function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, ::V, v::V) where {V}
-    pushfwd(fchain((μ.f, f)), μ.origin, v)
+function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, ::V, volcorr::V) where {V}
+    pushfwd(f ∘ fchain(μ.f), μ.origin, volcorr)
 end
 
-function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, _, v)
-    PushforwardMeasure(f, inverse(f), μ, v)
+function _pushfwd_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
+    PushforwardMeasure(f, inverse(f), μ, volcorr)
 end
+
+function _generic_pushfwd_impl(f, μ::DensityMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    mintegrate(fchain(μ.f) ∘ inverse(f), pushfwd(f, μ.base, volcorr))
+end
+
 
 ###############################################################################
 # pullback
@@ -161,9 +170,28 @@ some cases, we may be focusing on log-density (and not, for example, sampling).
 To manually specify an inverse, call 
 `pullbck(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
-function pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr())
-    PushforwardMeasure(inverse(f), f, μ, volcorr)
-end
+pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
 export pullbck
 
 @deprecate pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr()) pullbck(f, μ, volcorr)
+
+function _generic_pullbck_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+    PushforwardMeasure(inverse(f), f, μ, volcorr)
+end
+
+function _generic_pushfwd_impl(f, μ::PushforwardMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    _pullbck_of_pushfwd(f, μ, μ.volcorr, volcorr)
+end
+
+# Either both WithVolCorr or both NoVolCorr, so we can merge them
+function _pullbck_of_pushfwd(f, μ::PushforwardMeasure, ::V, volcorr::V) where {V}
+    pullbck(fchain(μ.finv) ∘ f, μ.origin, volcorr)
+end
+
+function _pullbck_of_pushfwd(f, μ::PushforwardMeasure, _, volcorr)
+    PushforwardMeasure(inverse(f), f, μ, volcorr)
+end
+
+function _generic_pullbck_impl(f, μ::DensityMeasure, volcorr::TransformVolCorr = WithVolCorr())
+    mintegrate(fchain(μ.f) ∘ f, pullbck(f, μ.base, volcorr))
+end
