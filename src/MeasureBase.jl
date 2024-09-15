@@ -37,6 +37,8 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
+using StaticArrays: StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix
+
 export gentype
 
 export AbstractMeasure
