@@ -106,7 +106,7 @@ function tangentat(
     one(T) - Statistics.corm(g1, zero(T), g2, zero(T)) < tol
 end
 
-function zeroset(::CodimOne)::ZeroSet end
+function zeroset(::CodimOne) end
 
 ###########################################################
 # Simplex
