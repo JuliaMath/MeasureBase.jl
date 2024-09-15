@@ -60,7 +60,7 @@ sets $$A$$ and $$B$$)
 function mcombine end
 export mcombine
 
-@inline mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure) = _generic_mcombine_impl_stage3(f_c, α, β)
+@inline mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure) = _generic_mcombine_impl_stage1(f_c, α, β)
 
 @inline function _generic_mcombine_impl_stage1(f_c, α::AbstractMeasure, β::AbstractMeasure)
     _generic_mcombine_impl_stage2(f_c, α, β)
