@@ -8,30 +8,29 @@ Represents a monatic bind resp. a mbind in general.
 User code should not create instances of `Bind` directly, but should call
 [`mbind`](@ref) instead.
 """
-struct Bind{F,M<:AbstractMeasure,G} <: AbstractMeasure
-    f_kernel::F
+struct Bind{K,M<:AbstractMeasure,C} <: AbstractMeasure
+    f_kernel::K
     m_primary::M
-    f_combine::G
+    f_combine::C
 end
 
 
 @doc raw"""
     mbind(f_β, α::AbstractMeasure, f_c = second)
 
-Constructs a monadic bind resp. a hierarchical measure from a transition
+Constructs a monadic bind, resp. a hierarchical measure, from a transition
 kernel function `f_β`, a primary measure `α` and a variate combination
 function `f_c`.
 
-`f_β` must be a function that maps a point `a` from the space of measure
-`α` to a dependent measure `β_a = f_β(a)`. `ab = f_combine(a, b)` must
-`a` and e
-primary and a variates `b` of the dependent secondary measure `β_a` to
-a combined value `ab`.
+`f_β` must be a function that maps a point `a` from the space of the primary
+measure `α` to a dependent secondary measure `β_a = f_β(a)`.
+`ab = f_combine(a, b)` must map such a point `a` and a point `b` from the
+space of measure `β_a` to a combined value `ab = f_c(a, b)`.
 
-A measure
+The resulting measure
 
 ```julia
-`μ = mbind(f_c, α, f_β)`
+μ = mbind(f_c, α, f_β)
 ```
 
 has the mathethematical interpretation
@@ -40,15 +39,15 @@ has the mathethematical interpretation
 \mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
 ```
 
-Without the default `fc = second` this becomes
+When using the default `fc = second` (so `ab == b`) this simplies to
 
 ```math
 \mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
 ```
 
-which is equivalent to a monatic bind, when viewing measures as monads.
+which is equivalent to a monatic bind, viewing measures as monads.
 
-Comutationally, `ab = rand(μ)` is equivalent to
+Computationally, `ab = rand(μ)` is equivalent to
 
 ```julia
 a = rand(μ_primary)
@@ -58,14 +57,48 @@ ab = f_combine(a, b)
 ```
 
 Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
-can be unambiguously split into `a` and `b` again. This is currently
-implemented for `f_c` that is either `=>`/`Pair` or `tuple` (these work for
-any combination of variate types), `vcat` (for tuple- or vector-like
+can be unambiguously split into `a` and `b` again, knowing `α`. This is
+currently implemented for `f_c` that is either `=>`/`Pair` or `tuple` (these
+work for any combination of variate types), `vcat` (for tuple- or vector-like
 variates) and `merge` (`NamedTuple` variates).
 [`MeasureBase.split_point(::typeof(f_c), α)`](@ref) can be specialized to
 support other choices for `f_c`.
+
+# Extended help
+
+Bayesian example with a correlated prior, that models the 
+
+```julia
+using MeasureBase
+
+prior = mbind
+    productmeasure((
+        value => StdNormal()
+    )), merge
+) do a
+    productmeasure((
+        noise = pushfwd(sqrt ∘ Mul(abs(a.position)), StdExponential())
+    ))
+end
+
+model = θ -> pushfwd(MulAdd(θ.noise, θ.value), StdNormal())^10
+
+joint_θ_obs = mbind(model, prior, tuple)
+prior_predictive = mbind(model, prior)
+
+observation = rand(prior_predictive)
+likelihood = likelihoodof(model, observation)
+
+posterior = mintegrate(likelihood, prior)
+
+θ = rand(prior)
+logdensityof(posterior, θ)
+```
 """
-@inline function mbind(f, μ::AbstractMeasure, f_combine)
+function mbind end
+export mbind
+
+@inline function mbind(f, μ::AbstractMeasure, f_combine = second)
     F, M, G = Core.Typeof(f), Core.Typeof(m), Core.Typeof(f_combine)
     HierarchicalProductMeasure{F,M,G}(f, μ, f_combine)
 end
