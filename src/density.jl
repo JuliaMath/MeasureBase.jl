@@ -114,12 +114,51 @@ density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
 localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base, x))
 
+
+"""
+    MeasureBase.as_integrand(f)
+    MeasureBase.as_integrand(density)
+
+Make `f` or `density` (more) suitable as an integrand for
+[`mintegrate`](@ref).
+
+`mintegrate(obj, μ::AbstractMeasure)` automatically calls 
+`as_integrand(obj)` internally.
+
+If a density is passed, it must implement the DensityInterface API.
+
+By default just returns `f` resp. `density`, but may be specialized for
+functions and densities that can profit from conversion to a form optimized
+for use in `mintegrate`.
+
+See also [`MeasureBase.as_likelihood`](@ref).
+"""
+function as_integrand end
+
+@inline as_integrand(obj) = _as_integrand_default_impl(obj, DensityKind(obj))
+
+@inline _as_integrand_default_impl(f, ::NoDensity) = funcdensity(f)
+
+@inline _as_integrand_default_impl(density, ::IsDensity) = density
+
+function _as_integrand_default_impl(obj, ::HasDensity)
+    throw(
+        ArgumentError(
+            "`MeasureBase.as_integrand(obj)` requires `DensityKind(obj)` to be `IsDensity()` or `NoDensity()`.",
+        ),
+    )
+end
+
+
 @doc raw"""
     mintegrate(f, μ::AbstractMeasure)::AbstractMeasure
+    mintegrate(density, μ::AbstractMeasure)::AbstractMeasure
 
 Returns a new measure that represents the indefinite
 [integral](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
 of `f` with respect to `μ`.
+
+If a density is passed, it must implement the DensityInterface API.
 
 `ν = mintegrate(f, μ)` generates a measure `ν` that has the mathematical
 interpretation
@@ -131,17 +170,38 @@ math```
 function mintegrate end
 export mintegrate
 
-mintegrate(f, μ::AbstractMeasure) = _mintegrate_impl(f, μ, DensityKind(f))
+@inline function mintegrate(obj, μ::AbstractMeasure) = DensityMeasure(as_integrand(obj), μ)
 
-_mintegrate_impl(f, μ, ::IsDensity) = DensityMeasure(f, μ)
-function _mintegrate_impl(f, μ, ::HasDensity)
+
+"""
+    MeasureBase.as_integrand_exp(log_f)
+
+Convert the logarithms of an integrand to an integrand.
+
+See also [`MeasureBase.as_integrand`](@ref).
+"""
+function as_integrand_exp end
+
+@inline as_integrand_exp(log_f) = _as_integrand_exp_default_impl(log_f, DensityKind(log_f))
+
+@inline _as_integrand_exp_default_impl(log_f, ::NoDensity) = logfuncdensity(log_f)
+
+function _as_integrand_exp_default_impl(log_f, ::IsDensity)
     throw(
         ArgumentError(
-            "`mintegrate(f, mu)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`.",
+            "`as_integrand_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `as_integrand(log_f, μ)` instead.",
         ),
     )
 end
-_mintegrate_impl(f, μ, ::NoDensity) = DensityMeasure(funcdensity(f), μ)
+
+function _as_integrand_exp_default_impl(log_f, ::HasDensity)
+    throw(
+        ArgumentError(
+            "`as_integrand_exp(log_f, μ)` is not valid when `DensityKind(log_f) == HasDensity()`.",
+        ),
+    )
+end
+
 
 @doc raw"""
     mintegrate_exp(log_f, μ::AbstractMeasure)
@@ -165,22 +225,4 @@ internally.
 function mintegrate_exp end
 export mintegrate_exp
 
-function mintegrate_exp(log_f, μ::AbstractMeasure)
-    _mintegrate_exp_impl(log_f, μ, DensityKind(log_f))
-end
-
-function _mintegrate_exp_impl(log_f, μ, ::IsDensity)
-    throw(
-        ArgumentError(
-            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `mintegrate(log_f, μ)` instead.",
-        ),
-    )
-end
-function _mintegrate_exp_impl(log_f, μ, ::HasDensity)
-    throw(
-        ArgumentError(
-            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == HasDensity()`.",
-        ),
-    )
-end
-_mintegrate_exp_impl(log_f, μ, ::NoDensity) = DensityMeasure(logfuncdensity(log_f), μ)
+mintegrate_exp(log_f, μ::AbstractMeasure) = DensityMeasure(as_integrand_exp(log_f), μ)
