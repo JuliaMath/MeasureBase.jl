@@ -191,15 +191,3 @@ function _mintegrate_exp_impl(log_f, μ, ::HasDensity)
     throw(ArgumentError("`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == HasDensity()`."))
 end
 _mintegrate_exp_impl(log_f, μ, ::NoDensity) = DensityMeasure(logfuncdensity(log_f), μ)
-
-
-"""
-    rebase(μ, ν)
-
-Express `μ` in terms of a density over `ν`. Satisfies
-```
-basemeasure(rebase(μ, ν)) == ν
-density(rebase(μ, ν)) == 𝒹(μ,ν)
-``` 
-"""
-rebase(μ, ν) = mintegrate(density_rel(μ, ν), ν)
