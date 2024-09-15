@@ -1,5 +1,20 @@
 import Base
 
+"""
+    marginals(μ::AbstractMeasure)
+
+Returns the marginals measures of `μ` as a collection of measures.
+
+The kind of marginalization implied by `marginals` depends on the
+type of `μ`.
+
+`μ` may be a power of a measure or a product of measures, but other
+types of measures may support `marginals` as well.
+"""
+function marginals end
+export marginals
+
+
 export PowerMeasure
 
 """
