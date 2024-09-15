@@ -13,7 +13,7 @@ space of measure `β_a` to a combined value `ab = f_c(a, b)`.
 The resulting measure
 
 ```julia
-μ = mbind(f_c, α, f_β)
+μ = mbind(f_β, α, f_c)
 ```
 
 has the mathethematical interpretation (on sets $$A$$ and $$B$$)
@@ -52,7 +52,7 @@ support other choices for `f_c`.
 Bayesian example with a correlated prior, that models the 
 
 ```julia
-using MeasureBase
+using MeasureBase, AffineMaps
 
 prior = mbind
     productmeasure((
