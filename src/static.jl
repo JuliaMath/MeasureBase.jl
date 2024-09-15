@@ -69,15 +69,15 @@ end
     FillArrays.Fill(x, dyn_axs)
 end
 
-@inline function  fill_with(x::T, axs::Tuple{Vararg{StaticOneTo}}) where T
-    fill(x, _sarray_type(T, map(maybestatic_length, axs)))
+@inline function  fill_with(x, axs::Tuple{Vararg{StaticOneTo}})
+    fill(x, _sarray_type(map(maybestatic_length, axs)))
 end
 
-@inline function  fill_with(x::T, sz::Tuple{Vararg{StaticInteger}}) where T
-    fill(x, _sarray_type(T, sz))
+@inline function  fill_with(x, sz::Tuple{Vararg{StaticInteger}})
+    fill(x, _sarray_type(sz))
 end
 
-@inline @generated function _sarray_type(::Type{T}, sz::Tuple{Vararg{StaticInteger}}) where T
+@inline @generated function _sarray_type(sz::Tuple{Vararg{StaticInteger}})
     Ns = map(p -> p.parameters[1], sz.parameters)
     :(SArray{Tuple{$Ns...}})
 end
