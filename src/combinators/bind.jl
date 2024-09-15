@@ -197,43 +197,21 @@ end
 
 
 
-
-#!!!!!!!!!!!!!!!!!! TODO:
-
-
-function _to_std_with_rest(flatten_mode::FlattenMode, ν_inner::StdMeasure, μ::Bind, x)
-    
-    μ_primary = μ.m
-    y_primary, x_secondary = _to_std_with_rest(flatten_mode, ν_inner, μ_primary, x)
-    μ_secondary = μ.f(x_secondary)
-    y_secondary, x_rest = _to_std_with_rest(flatten_mode, ν_inner, μ_secondary, x_secondary)
-    return _combine_variates(μ.flatten_mode, y_primary, y_secondary), x_rest
-end
-
-function _to_std_with_rest(flatten_mode::FlattenMode, ν_inner::StdMeasure, μ::AbstractMeasure, x)
-    dof_μ = getdof(μ)
-    x_μ, x_rest = split_combined(flatten_mode, μ, x)
-    y = transport_to(ν_inner^dof_μ, μ, x_μ)
-    return y, x_rest
-end
-
 function transport_def(ν::_PowerStdMeasure{1}, μ::Bind, x)
-    ν_inner = _get_inner_stdmeasure(ν)
-    y, x_rest = _to_std_with_rest(ν_inner, μ, x)
-    if !isempty(x_rest)
-        throw(ArgumentError("Variate too long during transport involving Bind"))
-    end
-    return y
+    tpm_μ = transportmeasure(μ, x)
+    return transport_def(ν, tpm_μ, x)
 end
 
 
 function _from_std_with_rest(ν::Bind, μ_inner::StdMeasure, x)
-    ν_primary = ν.m
-    y_primary, x_secondary = _from_std_with_rest(ν_primary, μ_inner, x)
-    ν_secondary = ν.f(y_primary)
-    y_secondary, x_rest = _from_std_with_rest(ν_secondary, μ_inner, x_secondary)
-    return _combine_variates(ν.flatten_mode, y_primary, y_secondary), x_rest
+    a, x2 = _from_std_with_rest(ν.α, μ_inner, x)
+    β_a = ν.f_β(a)
+    b, x_rest = _from_std_with_rest(β_a, μ_inner, x2)
+    return ν.f_c(a, b), x_rest
 end
+
+# !!!!!!!!!!!!! TODO How to handle PushforwardMeasure, WeightedMeasure and
+# so on that contain a Bind?
 
 function _from_std_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
     dof_ν = getdof(ν)
