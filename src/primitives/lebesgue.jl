@@ -59,6 +59,8 @@ Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueBase()
 
 Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
+Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::Lebesgue) where {T} = rand(rng, T)
+
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
 insupport(::Lebesgue{RealNumbers}, ::Real) = true
