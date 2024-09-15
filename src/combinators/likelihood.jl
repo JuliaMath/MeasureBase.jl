@@ -8,7 +8,7 @@ abstract type AbstractLikelihood end
 #     ifelse(insupport(ℓ, p), t, f)()
 # end
 
-# insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
+# insupport(ℓ::AbstractLikelihood, p) = insupport(_eval_k(ℓ, p), ℓ.x)
 
 @doc raw"""
     Likelihood(k, x)
@@ -98,7 +98,9 @@ end
 # For type stability, in case k is a type (resp. a constructor):
 Likelihood(k, x::X) where {X} = Likelihood{Core.Typeof(k),X}(k, x)
 
-(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
+(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(_eval_k(lik, p), lik.x))
+
+_eval_k(ℓ::AbstractLikelihood, p) = asmeasure(_eval_k(ℓ, p))
 
 DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
 
@@ -113,14 +115,14 @@ function Base.show(io::IO, ℓ::Likelihood)
     Pretty.pprint(io, ℓ)
 end
 
-insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
+insupport(ℓ::AbstractLikelihood, p) = insupport(_eval_k(ℓ, p), ℓ.x)
 
 @inline function logdensityof(ℓ::AbstractLikelihood, p)
-    logdensityof(ℓ.k(p), ℓ.x)
+    logdensityof(_eval_k(ℓ, p), ℓ.x)
 end
 
 @inline function unsafe_logdensityof(ℓ::AbstractLikelihood, p)
-    return unsafe_logdensityof(ℓ.k(p), ℓ.x)
+    return unsafe_logdensityof(_eval_k(ℓ, p), ℓ.x)
 end
 
 # basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
@@ -180,14 +182,14 @@ likelihoodof(k, x) = Likelihood(k, x)
 # Compute the log of the likelihood ratio, in order to compare two choices for
 # parameters. This is computed as
 
-#     logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+#     logdensity_rel(_eval_k(ℓ, p), ℓ.k(q), ℓ.x)
 
 # Since `logdensity_rel` can leave common base measure unevaluated, this can be
 # more efficient than
 
-#     logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
+#     logdensityof(_eval_k(ℓ, p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
 # """
-# log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+# log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(_eval_k(ℓ, p), ℓ.k(q), ℓ.x)
 
 # # likelihoodof(k, x; kwargs...) = likelihoodof(k, x, NamedTuple(kwargs))
 
@@ -199,14 +201,14 @@ likelihoodof(k, x) = Likelihood(k, x)
 # Compute the log of the likelihood ratio, in order to compare two choices for
 # parameters. This is equal to
 
-#     density_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
+#     density_rel(_eval_k(ℓ, p), ℓ.k(q), ℓ.x)
 
 # but is computed using LogarithmicNumbers.jl to avoid underflow and overflow.
 # Since `density_rel` can leave common base measure unevaluated, this can be
 # more efficient than
 
-#     logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
+#     logdensityof(_eval_k(ℓ, p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
 # """
 # function likelihood_ratio(ℓ::Likelihood, p, q)
-#     exp(ULogarithmic, logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x))
+#     exp(ULogarithmic, logdensity_rel(_eval_k(ℓ, p), ℓ.k(q), ℓ.x))
 # end
