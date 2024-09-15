@@ -1,3 +1,42 @@
+"""
+    transport_to(ν, ::Type{MU}) where {NU<:StdMeasure}
+    transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+
+As a user convencience, a standard measure type like [`StdUniform`](@ref),
+[`StdExponential`](@ref), [`StdNormal`](@ref) or [`StdLogistic`](@ref)
+may be used directly as the source or target a measure transport.
+
+Depending on [`some_getdof(μ)`](@ref) (resp. `ν`), an instance of the
+standard measure itself or a power of it will be automatically chosen as
+the transport partner.
+
+Example:
+
+```julia
+transport_to(StdNormal, μ)
+transport_to(ν, StdNormal)
+```
+"""
+function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+    transport_to(ν, _std_tp_partner(MU, ν))
+end
+
+function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+    transport_to(_std_tp_partner(NU, μ), μ)
+end
+
+function transport_to(::Type{NU}, ::Type{MU}) where {NU<:StdMeasure,MU<:StdMeasure}
+    throw(ArgumentError("Can't construct a transport function between the type of two standard measures, need a measure instance on one side"))
+end
+
+_std_tp_partner(::Type{M}, μ) where {M<:StdMeasure} = _std_tp_partner_bydof(M, some_dof(μ))
+_std_tp_partner_bydof(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
+_std_tp_partner_bydof(::Type{M}, dof::IntegerLike) where {M<:StdMeasure} = M()^dof
+function _std_tp_partner_bydof(::Type{M}, dof::AbstractNoDOF{MU}) where {M<:StdMeasure,MU}
+    throw(ArgumentError("Can't determine a standard transport partner for measures of type $(nameof(typeof(MU)))"))
+end
+
+
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
 transport_origin(μ::PowerMeasure{<:Any,N}) where N = ν.parent^product(pwr_size(μ))
@@ -117,21 +156,14 @@ function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin
 end
 
 
-# Implement transport_to(NU::Type{<:StdMeasure}, μ) and transport_to(ν, MU::Type{<:StdMeasure})
-# for user convenience:
+# Transport between a standard measure and Dirac:
 
-_std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure_for_impl(M, some_dof(μ))
-_std_measure_for_impl(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
-_std_measure_for_impl(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
+@inline transport_from_mvstd_with_rest(ν::Dirac, ::StdMeasure, x::Any) = ν.x, x
+
+@inline transport_to_mvstd(::StdMeasure, ::Dirac, ::Any) = Zeros{Bool}(0)
 
 
-function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
-    transport_to(ν, _std_measure_for(MU, ν))
-end
 
-function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
-    transport_to(_std_measure_for(NU, μ), μ)
-end
 
 
 @inline transport_origin(μ::ProductMeasure) = _marginals_tp_origin(marginals(μ))
@@ -182,6 +214,10 @@ end
 
 
 
+
+
+
+
 function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, ab)
     _marginals_to_mvstd(ν_inner, marginals(μ), ab)
 end
@@ -192,12 +228,6 @@ function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure
     return ν.f_c(a, b), x_rest
 end
 
-
-# Transport between a standard measure and Dirac:
-
-@inline transport_from_mvstd_with_rest(ν::Dirac, ::StdMeasure, x::Any) = ν.x, x
-
-@inline transport_to_mvstd(::StdMeasure, ::Dirac, ::Any) = Zeros{Bool}(0)
 
 
 
