@@ -122,32 +122,28 @@ function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::Combined) where {T<:Re
 end
 
 
-function transport_def(ν::_PowerStdMeasure{1}, μ::Combined, ab)
-    ν_inner = _get_inner_stdmeasure(ν)
-    _to_mvstd(ν_inner, μ, ab)
-end
 
-function _to_mvstd(ν_inner::StdMeasure, μ::Combined, ab)
+function transport_to_mvstd(ν_inner::StdMeasure, μ::Combined, ab)
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    y1 = _to_mvstd(ν_inner, tpm_α, a)
-    y2 = _to_mvstd(ν_inner, μ.β, b)
+    y1 = transport_to_mvstd(ν_inner, tpm_α, a)
+    y2 = transport_to_mvstd(ν_inner, μ.β, b)
     return vcat(y1, y2)
 end
 
 
-function transport_def(ν::Combined, μ::_PowerStdMeasure{1}, x)
-    μ_inner = _get_inner_stdmeasure(μ)
-    _from_mvstd(ν, μ_inner, x)
-end
-
-function _from_mvstd_with_rest(ν::Combined, μ_inner::StdMeasure, x)
-    a, x2 = _from_mvstd_with_rest(ν.α, μ_inner, x)
-    b, x_rest = _from_mvstd_with_rest(ν.β, μ_inner, x2)
+function transport_from_mvstd_with_rest(ν::Combined, μ_inner::StdMeasure, x)
+    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
+    b, x_rest = transport_from_mvstd_with_rest(ν.β, μ_inner, x2)
     return ν.f_c(a, b), x_rest
 end
 
 
-function _to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
+function transport_def(ν::_PowerStdMeasure{1}, μ::AbstractMeasure, ab)
+    ν_inner = _get_inner_stdmeasure(ν)
+    transport_to_mvstd(ν_inner, μ, ab)
+end
+
+function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
     return _to_mvstd_withdof(ν_inner, μ, getdof(μ), x, origin)
 end
 
@@ -161,7 +157,7 @@ function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, ::NoDOF, x
 end
 
 function _to_mvstd_withorigin(ν_inner::StdMeasure, ::AbstractMeasure, μ_origin, x)
-    x_origin = _to_mvstd(ν_inner, μ_origin, x)
+    x_origin = transport_to_mvstd(ν_inner, μ_origin, x)
     from_origin(x_origin)
 end
 
@@ -170,17 +166,22 @@ function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, NoTrans
 end
 
 
+function transport_def(ν::AbstractMeasure, μ::_PowerStdMeasure{1}, x)
+    μ_inner = _get_inner_stdmeasure(μ)
+    _from_mvstd(ν, μ_inner, x)
+end
+
 function from_std(ν::AbstractMeasure, μ_inner::StdMeasure, x)
     # Sanity check, should be checked by transport machinery already:
     @assert getdof(μ) == length(eachindex(x)) && x isa AbstractVector
-    y, x_rest = _from_mvstd_with_rest(ν, μ_inner, x)
+    y, x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x)
     if !isempty(x_rest)
         throw(ArgumentError("Input value too long during transport"))
     end
     return y
 end
 
-function _from_mvstd_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
+function transport_from_mvstd_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
     dof_ν = getdof(ν)
     origin = transport_origin(ν)
     return _from_mvstd_with_rest_withdof(ν, getdof(ν), μ_inner, x, dof_ν, origin)
@@ -206,7 +207,7 @@ function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, ::NoDOF, μ_inner::S
 end
 
 function _from_mvstd_with_rest_withorigin(::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
-    x_origin, x_rest = _from_mvstd_with_rest(ν_origin, x, μ_inner)
+    x_origin, x_rest = transport_from_mvstd_with_rest(ν_origin, x, μ_inner)
     from_origin(x_origin), x_rest
 end
 
