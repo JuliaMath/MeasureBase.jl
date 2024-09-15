@@ -30,8 +30,8 @@ macro useproxy(M)
         @inline $MeasureBase.to_origin(μ::$M, y) = to_origin(proxy(μ), y)
         @inline $MeasureBase.from_origin(μ::$M, x) = from_origin(proxy(μ), x)
 
-        @inline $MeasureBase.localmeasure(μ::$M, x) = from_origin(localmeasure(μ), x)
-        @inline $MeasureBase.transportmeasure(μ::$M, x) = from_origin(transportmeasure(μ), x)
+        @inline $MeasureBase.localmeasure(μ::$M, x) = localmeasure(proxy(μ), x)
+        @inline $MeasureBase.transportmeasure(μ::$M, x) = transportmeasure(proxy(μ), x)
 
         @inline $MeasureBase.massof(μ::$M) = massof(proxy(μ))
         @inline $MeasureBase.massof(μ::$M, s) = massof(proxy(μ), s)
