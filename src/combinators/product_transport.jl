@@ -182,10 +182,26 @@ end
 
 
 
+function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, ab)
+    _marginals_to_mvstd(ν_inner, marginals(μ), ab)
+end
+
+function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
+    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
+    b, x_rest = transport_from_mvstd_with_rest(ν.β, μ_inner, x2)
+    return ν.f_c(a, b), x_rest
+end
+
+
+# Transport between a standard measure and Dirac:
+
+@inline transport_from_mvstd_with_rest(ν::Dirac, ::StdMeasure, x::Any) = ν.x, x
+
+@inline transport_to_mvstd(::StdMeasure, ::Dirac, ::Any) = Zeros{Bool}(0)
+
+
+
 # Transport for products
-
-
-#!!!!!!!!!!!!!!!!!!!!!! TODO:
 
 # Helpers for product transforms and similar:
 
