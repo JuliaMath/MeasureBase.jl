@@ -1,8 +1,16 @@
-struct StdLogistic <: StdMeasure end
+"""
+    StdLogistic <: StdMeasure
 
+Represents the standard (centered, scale of one)
+[logistic](https://en.wikipedia.org/wiki/Logistic_distribution) probability measure.
+
+See [`StdMeasure`](@ref) for the semantics of standard measures in the
+context of MeasureBase.
+"""
+struct StdLogistic <: StdMeasure end
 export StdLogistic
 
-@inline insupport(d::StdLogistic, x) = true
+@inline insupport(::StdLogistic, x) = true
 
 @inline logdensity_def(::StdLogistic, x) = (u = -abs(x); u - 2 * log1pexp(u))
 @inline basemeasure(::StdLogistic) = LebesgueBase()

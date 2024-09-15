@@ -1,8 +1,18 @@
-struct StdUniform <: StdMeasure end
+"""
+    StdUniform <: StdMeasure
 
+Represents the standard
+[uniform](https://en.wikipedia.org/wiki/Continuous_uniform_distribution)
+probability measure (from zero to one). It is the
+same as the Lebesgue measure restricted to the unit interval.
+
+See [`StdMeasure`](@ref) for the semantics of standard measures in the
+context of MeasureBase.
+"""
+struct StdUniform <: StdMeasure end
 export StdUniform
 
-insupport(d::StdUniform, x) = zero(x) ≤ x ≤ one(x)
+insupport(::StdUniform, x) = zero(x) ≤ x ≤ one(x)
 
 @inline logdensity_def(::StdUniform, x) = zero(x)
 @inline basemeasure(::StdUniform) = LebesgueBase()

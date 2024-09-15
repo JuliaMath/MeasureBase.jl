@@ -32,6 +32,9 @@ Base.@propagate_inbounds function _as_tuple(v::AbstractVector, ::Val{N}) where {
 end
 
 
+_empty_zero(::AbstractVector{T}) where {T<:Real} = Fill(zero(T), 0)
+
+
 struct _TupleNamer{names} <: Function end
 (::TupleNamer{names})(x::Tuple) where names = NamedTuple{names}(x)
 InverseFunctions.inverse(::TupleNamer{names}) where names = TupleUnNamer{names}()
