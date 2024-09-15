@@ -1,6 +1,20 @@
+"""
+    struct MeasureBase.Bind{M,K} <: AbstractMeasure
+
+Represents a monatic bind. User code should create instances of `Bind`
+directly, but should call `mbind(k, μ)` instead.
+"""
 struct Bind{M,K} <: AbstractMeasure
-    μ::M
     k::K
+    μ::M
+end
+
+getdof(d::Bind) = NoDOF{typeof(d)}()
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
+    x = rand(rng, T, d.μ)
+    y = rand(rng, T, d.k(x))
+    return y
 end
 
 
@@ -25,11 +39,5 @@ unavailable in Julia.
 end
 ```
 """
-mbind(k, μ) = Bind(μ, k)
+mbind(k, μ) = Bind(k, μ)
 export mbind
-
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
-    x = rand(rng, T, d.μ)
-    y = rand(rng, T, d.k(x))
-    return y
-end
