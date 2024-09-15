@@ -2,7 +2,7 @@
     transport_to(ν, ::Type{MU}) where {NU<:StdMeasure}
     transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
 
-As a user convencience, a standard measure type like [`StdUniform`](@ref),
+As a user convenience, a standard measure type like [`StdUniform`](@ref),
 [`StdExponential`](@ref), [`StdNormal`](@ref) or [`StdLogistic`](@ref)
 may be used directly as the source or target a measure transport.
 
