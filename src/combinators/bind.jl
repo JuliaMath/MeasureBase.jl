@@ -30,6 +30,12 @@ See also [`mbind`](@ref).
 function mkernel end
 export mkernel
 
+@inline mkernel(f_β::MKernel) = f_β
+@inline mkernel(f_β, f_c = secondarg) = _generic_mkernel_impl(f_β, f_c)
+
+@inline _generic_mkernel_impl(f_β, f_c) = MKernel(f_β, f_c)
+@inline _generic_mkernel_impl(f_β::MKernel, ::typeof(secondarg)) = f_β
+
 
 """
     struct MeasureBase.MKernel <: Function
@@ -139,7 +145,6 @@ export mbind
 
 @inline mbind(f_β) = Base.Fix1(mbind, f_β)
 
-# ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
 @inline mbind(f_k::MKernel, α::AbstractMeasure) = mbind(f_k.f_β, α, f_k.f_c)
 
 #@inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _generic_mbind_impl(f_β, α, f_c) --- temporary ---
@@ -168,6 +173,9 @@ struct Bind{FK,M<:AbstractMeasure,FC} <: AbstractMeasure
     α::M
     f_c::FC
 end
+
+# ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
+
 
 
 """
