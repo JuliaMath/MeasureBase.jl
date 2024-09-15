@@ -70,11 +70,11 @@ export productmeasure
 @inline _generic_productmeasure_impl(mar::Fill) = powermeasure(_fill_value(mar), _fill_axes(mar))
 
 @inline _generic_productmeasure_impl(mar::Tuple{Vararg{AbstractMeasure}}) = ProductMeasure(mar)
-_generic_productmeasure_impl(mar::Tuple{Vararg{Dirac}}) = Dirac(map(m -> m.x), mar)
+_generic_productmeasure_impl(mar::Tuple{Vararg{Dirac}}) = Dirac(map(m -> m.x, mar))
 _generic_productmeasure_impl(mar::Tuple) = productmeasure(map(asmeasure, mar))
 
 @inline _generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}}) where names = ProductMeasure(mar)
-_generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{Dirac}}}) where names = Dirac(map(m -> m.x), mar)
+_generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{Dirac}}}) where names = Dirac(map(m -> m.x, mar))
 _generic_productmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, mar))
 
 @inline _generic_productmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
@@ -105,7 +105,7 @@ end
 
 # ToDo: Remove or at least refactor this (ProductMeasure shouldn't take a kernel at it's argument).
 
-productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
+productmeasure(f, param_maps, pars) = productmeasure(kernel(f, param_maps), pars)
 
 function productmeasure(k::ParameterizedTransitionKernel, pars)
     productmeasure(k.suff, k.param_maps, pars)
