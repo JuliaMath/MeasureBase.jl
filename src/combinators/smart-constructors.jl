@@ -7,7 +7,11 @@ half(μ::AbstractMeasure) = Half(μ)
 ###############################################################################
 # PowerMeaure
 
-powermeasure(m::AbstractMeasure, ::Tuple{}) = m
+powermeasure(m::AbstractMeasure, ::Tuple{}) = asmeasure(m)
+
+@inline function powermeasure(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T,N}
+    PowerMeasure(asmeasure(x), _pm_axes(sz))
+end
 
 function powermeasure(
     μ::WeightedMeasure,
@@ -25,24 +29,48 @@ end
 ###############################################################################
 # ProductMeasure
 
-productmeasure(mar::FillArrays.Fill) = powermeasure(mar.value, mar.axes)
+"""
+    productmeasure(μs)
+
+Constructs a product over a collection `μs` of measures.
+
+Examples:
+
+```julia
+using MeasureBase, AffineMaps
+productmeasure((StdNormal(), StdExponential()))
+productmeasure(a = StdNormal(), b = StdExponential()))
+productmeasure([pushfwd(Mul(scale), StdExponential()) for scale in 0.1:0.2:2])
+productmeasure((pushfwd(Mul(scale), StdExponential()) for scale in 0.1:0.2:2))
+"""
+function productmeasure end
+export productmeasure
+
+productmeasure(mar::Fill) = powermeasure(_fill_value(mar), _fill_axes(mar))
+
+productmeasure(mar::Tuple{Vararg{<:AbstractMeasure}}) = ProductMeasure(mar)
+productmeasure(mar::Tuple) = ProductMeasure(map(asmeasure, mar))
+
+productmeasure(mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}}) where names = ProductMeasure(mar)
+productmeasure(mar::NamedTuple) = ProductMeasure(map(asmeasure, mar))
+
+productmeasure(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
+productmeasure(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
 
 function productmeasure(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
 end
 
 productmeasure(mar::Base.Generator) = ProductMeasure(mar)
-productmeasure(mar::AbstractArray) = ProductMeasure(mar)
 
 # TODO: Make this static when its length is static
 @inline function productmeasure(
-    mar::AbstractArray{WeightedMeasure{StaticFloat64{W},M}},
+    mar::AbstractArray{<:WeightedMeasure{StaticFloat64{W},M}},
 ) where {W,M}
     return weightedmeasure(W * length(mar), productmeasure(map(basemeasure, mar)))
 end
 
-productmeasure(nt::NamedTuple) = ProductMeasure(nt)
-productmeasure(tup::Tuple) = ProductMeasure(tup)
+# ToDo: Remove or at least refactor this (ProductMeasure shouldn't take a kernel at it's argument).
 
 productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
 

@@ -61,3 +61,7 @@ _reorder_nt(x::NamedTuple{names},::Val{names}) where {names} = x
 end
 
 # ToDo: Add custom rrule for _reorder_nt?
+
+
+_fill_value(x::Fill) = x.value
+_fill_axes(x::Fill) = x.axes
