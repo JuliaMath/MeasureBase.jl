@@ -25,8 +25,9 @@ end
 
 
 @inline function _split_after(x::AbstractVector, n::IntegerLike)
-    i_first = maybestatic_firstindex(x)
-    i_last = maybestatic_lastindex(x)
+    idxs = maybestatic_eachindex(x)
+    i_first = maybestatic_first(idxs)
+    i_last = maybestatic_last(idxs)
     _get_or_view(x, i_first, i_first + n - one(n)), _get_or_view(x, i_first + n, i_last)
 end
 
@@ -35,7 +36,7 @@ end
 
 @generated function _split_after(x::NamedTuple{names}, ::Val{names_a}) where {names, names_a}
     n = length(names_a)
-    if names_after[begin:begin+n-1] == names_a
+    if names[begin:begin+n-1] == names_a
         names_b = names[n:end]
         quote
             a, b = _split_after(x, Val(n))
