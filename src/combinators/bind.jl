@@ -8,10 +8,10 @@ Represents a monatic bind resp. a mbind in general.
 User code should not create instances of `Bind` directly, but should call
 [`mbind`](@ref) instead.
 """
-struct Bind{K,M<:AbstractMeasure,C} <: AbstractMeasure
-    f_kernel::K
+struct Bind{FK,M<:AbstractMeasure,FC} <: AbstractMeasure
+    f_kernel::FK
     m_primary::M
-    f_combine::C
+    f_combine::FC
 end
 
 
@@ -58,7 +58,7 @@ ab = f_combine(a, b)
 
 Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
 can be unambiguously split into `a` and `b` again, knowing `α`. This is
-currently implemented for `f_c` that is either `=>`/`Pair` or `tuple` (these
+currently implemented for `f_c` that is either tuple or `=>`/`Pair` (these
 work for any combination of variate types), `vcat` (for tuple- or vector-like
 variates) and `merge` (`NamedTuple` variates).
 [`MeasureBase.split_point(::typeof(f_c), α)`](@ref) can be specialized to
@@ -98,9 +98,9 @@ logdensityof(posterior, θ)
 function mbind end
 export mbind
 
-@inline function mbind(f, μ::AbstractMeasure, f_combine = second)
-    F, M, G = Core.Typeof(f), Core.Typeof(m), Core.Typeof(f_combine)
-    HierarchicalProductMeasure{F,M,G}(f, μ, f_combine)
+@inline function mbind(f_β, α::AbstractMeasure, f_c = second)
+    F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
+    HierarchicalProductMeasure{F,M,G}(f_β, α, f_c)
 end
 
 
@@ -121,32 +121,19 @@ a ≈ a_orig && b ≈ b_orig
 """
 function split_combined end
 
-function split_combined(::typeof(=>), ::AbstractMeasure, x::Pair)
-    return x.first, x.second
-end
+@inline split_combined(::typeof(tuple), @nospecialize(α::AbstractMeasure), x::Tuple{T,U}) where T,U = ab
+@inline split_combined(::Type{Pair}, @nospecialize(α::AbstractMeasure), ab::Pair) = (ab...,)
 
-function split_combined(f_combine::F, μ_primary::AbstractMeasure, x) where F
+function split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
     _split_variate_byvalue(f_combine, testvalue(μ), x)
 end
 
-# Necessary/helpful for type stability?
-function split_combined(::Type{F}, μ::AbstractMeasure, x) where F
-    _split_variate_byvalue(F, testvalue(μ), x)
-end
+_split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) = _split_after(ab, length(test_a))
 
-function _split_variate_byvalue(test_primary::AbstractVector, x::AbstractVector)
-    n, m = length(eachindex(test_primary)), length(eachindex(x))
-    # TODO: Use getindex or view?
-    return x[begin:begin+n-1], x[begin+n:end]
-end
+_split_variate_byvalue(::typeof(vcat), ::Tuple{N}, ab::Tuple) where N = _split_after(ab, Val{N}())
 
-function _split_variate_byvalue(::Tuple{N}, x::Tuple{M}) where {N,M}
-    return ntuple(i -> x[i], Val(1:N)), ntuple(i -> x[i], Val(N+1:M))
-end
-
-@generated function _split_variate_byvalue(::NamedTuple{names_a}, x::NamedTuple{names}) where {names_a,names}
-    # TODO: implement
-    @assert false
+function _split_variate_byvalue(::typeof(merge), ::NamedTuple{names_a}, ab::NamedTuple) where names_a
+    _split_after(ab, Val{names_a})
 end
 
 
