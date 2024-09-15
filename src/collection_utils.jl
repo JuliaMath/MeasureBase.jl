@@ -1,10 +1,14 @@
+# ToDo: Specialize for StaticArray:
+@inline _getindex_or_view(A, idxs...) = view(A, idxs...)
+
+
 # ToDo: Add custom rrules for _split_after?
 
 # ToDo: Use getindex instead of view for certain cases (array types)?
-@inline function split_after(x::AbstractVector, n)
+@inline function _split_after(x::AbstractVector, n)
     i_first = firstindex(x)
     i_last = lastindex(x)
-    view(x, i_first, i_first+n-1), view(x, n, i_last)
+    _getindex_or_view(x, i_first, i_first+n-1), _getindex_or_view(x, n, i_last)
 end
 
 @inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
@@ -65,3 +69,17 @@ end
 
 _fill_value(x::Fill) = x.value
 _fill_axes(x::Fill) = x.axes
+
+
+# ToDo: Flatten to SVector:
+_flatten_to_rv(tpl::Tuple{Vararg{Number}}) = vcat(x...)
+
+# ToDo:
+#_flatten_to_vector(tpl::Tuple{Vararg{StaticVector}}) = ...
+
+_flatten_to_flatten_to_numvectorvector(tpl::Tuple{AbstractVector{<:Number}}) = vcat(tpl...)
+
+# ToDo: Use faster implementation that handles large numbers of vectors efficiently:
+_flatten_to_rv(V::AbstractVector{<:AbstractVector{<:Number}}) = vcat(V...)
+
+_flatten_to_rv(V::ArrayOfSimilarArray{<:Number}) = flatview(A)
