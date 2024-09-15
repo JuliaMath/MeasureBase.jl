@@ -8,6 +8,7 @@ import Random: gentype
 using Statistics
 using LinearAlgebra
 
+using ConstantRNGs
 import IntervalSets
 # This seems harder than it should be to get `IntervalSets.:(..)`
 @eval (using IntervalSets: $(Symbol(IntervalSets.:(..))))
