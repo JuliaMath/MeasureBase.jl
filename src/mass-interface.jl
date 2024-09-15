@@ -117,7 +117,7 @@ in this way, users should add the corresponding `massof` method.
 (m::AbstractMeasure)(s) = massof(m, s)
 
 function massof(m, s)
-    _default_massof_impl(m, s, rootmeasure(μ))
+    _default_massof_impl(m, s, rootmeasure(m))
 end
 
 # # ToDo: Use smf if defined

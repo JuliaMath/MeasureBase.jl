@@ -61,14 +61,16 @@ function from_origin(μ::PowerMeasure{<:AbstractMeasure,1}, x_origin)
 end
 
 
-# Transport between univariate standard measures and power measures of size one:
+# Transport between univariate standard measures and 1-dim power measures of size one:
 
-function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
+function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure,1}, x)
     return transport_def(ν, μ.parent, only(x))
 end
 
-function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
-    return fill_with(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
+function transport_def(ν::PowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
+    axes_ν = pwr_axes(ν)
+    @assert prod(axes_ν) == 1
+    return fill_with(transport_def(ν.parent, μ, x), map(maybestatic_length, ν.axes))
 end
 
 function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{NU,1}, x,) where {MU,NU}
@@ -264,14 +266,14 @@ function _split_x_by_marginals_with_rest(dofs::Union{Tuple,AbstractVector}, x::A
 end
 
 function _marginals_from_mvstd_with_rest(νs, dofs::_KnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
-    xs, x_rest = _split_x_by_marginals_with_rest
+    xs, x_rest = _split_x_by_marginals_with_rest(dofs, x)
     # ToDo: Is this ideal?
     μs = map(n -> μ_inner^n, dofs)
     ys = map(transport_def, νs, μs, xs)
     return ys, x_rest
 end
 
-function _marginals_from_mvstd_with_rest(νs::Tuple, dofs::_MaybeUnkownKnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
+function _marginals_from_mvstd_with_rest(νs, ::_MaybeUnkownKnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
     _marginals_from_mvstd_with_rest_nodof(νs, μ_inner, x)
 end
 

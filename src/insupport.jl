@@ -37,9 +37,11 @@ function ChainRulesCore.rrule(::typeof(require_insupport), μ, x)
 end
 
 function require_insupport(μ, x)
-    r = insupport(μ, x)
-    if !(r isa NoFastInsupport) || r
-        throw(ArgumentError("x is not within the support of μ"))
+    ins = insupport(μ, x)
+    if !(ins isa NoFastInsupport)
+        if !ins
+            throw(ArgumentError("x is not within the support of μ"))
+        end
     end
     return nothing
 end

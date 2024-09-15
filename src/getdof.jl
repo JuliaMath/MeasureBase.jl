@@ -94,13 +94,13 @@ the DOF is constant of the measurable space).
 """
 function some_dof end
 
-function some_dof()
+function some_dof(μ)
     m = asmeasure(μ)
     _try_direct_dof(m, getdof(m))
 end
 
 _try_direct_dof(::AbstractMeasure, dof::IntegerLike) = dof
-_try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF) = _try_local_dof(μ::AbstractMeasure, some_dof(some_localmeasure(μ)))
+_try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF) = _try_local_dof(μ::AbstractMeasure, some_dof(_some_localmeasure(μ)))
 _try_local_dof(::AbstractMeasure, dof::IntegerLike) = dof
 _try_local_dof(μ::AbstractMeasure, ::AbstractNoDOF) = throw(ArgumentError("Can't determine DOF for measure of type $(nameof(typeof(μ)))"))
 
