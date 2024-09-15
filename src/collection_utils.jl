@@ -32,15 +32,15 @@ end
 end
 
 @inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
-@inline _split_after(x::Tuple, ::Val{N}) where N = x[begin:begin+N-1], x[N:end]
+@inline _split_after(x::Tuple, ::Val{N}) where N = x[begin:begin+N-1], x[begin+N:end]
 
 @generated function _split_after(x::NamedTuple{names}, ::Val{names_a}) where {names, names_a}
     n = length(names_a)
     if names[begin:begin+n-1] == names_a
-        names_b = names[n:end]
+        names_b = names[begin+n:end]
         quote
-            a, b = _split_after(x, Val(n))
-            NamedTuple{names_a}(a), NamedTuple{names_b}(b)
+            a, b = _split_after(values(x), Val($n))
+            NamedTuple{$names_a}(a), NamedTuple{$names_b}(b)
         end
     else
         quote
