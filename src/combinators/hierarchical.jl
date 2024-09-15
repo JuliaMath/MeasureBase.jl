@@ -9,25 +9,58 @@ User code should not instantiate `HierarchicalMeasure` directly, use
 [`hierarchical_measure`](@ref) instead.
 """
 struct HierarchicalMeasure{F,M<:AbstractMeasure,G} <: AbstractMeasure
-    f::F
-    m::M
-    flatten::G
-end
-
-"""
-    hierarchical_measure(f, m::AbstractMeasure, flatten)
-
-Construct a hierarchical measure from a function `f`, measure `m` and
-"""
-@inline function hierarchical_measure(f, m::AbstractMeasure, flatten)
-    F, M, G = Core.Typeof(f), Core.Typeof(m), Core.Typeof(flatten)
-    HierarchicalProductMeasure{F,M,G}(f, m, flatten)
+    f_kernel::F
+    μ_primary::M
+    f_combine::G
 end
 
 
-#!!!!!!
-const HierarchicalProductMeasure{F,M<:AbstractMeasure} = HierarchicalMeasure{F,M,::typeof(=>)}
-const FlatHierarchicalMeasure{F,M<:AbstractMeasure} = HierarchicalMeasure{F,M,::typeof(vcat)}
+@doc raw"""
+    hierarchical_measure(k, μ_primary::AbstractMeasure, f_combine)
+
+Construct a hierarchical measure from a transition kernel function
+`f_kernel`, a measure `μ_primary` and a function `f_combine`.
+
+`f_kernel` must be a function that maps a variate `x_primary` of
+`μ_primary` to a dependent secondary measure `μ_secondary = f(x_primary)).
+`y = f_combine(x_primary, x_secondary)` must map variates from the primary
+and the dependent secondary measure to a combined value.
+
+A measure
+
+```julia
+`μ = hierarchical_measure(f_c, α, f_β)`
+```
+
+has the mathethematical interpretation (using the notation `β_a = f_β(a)`):
+
+```math
+\mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
+```
+
+Comutationally, `x = rand(μ)` is equivalent to
+
+```julia
+x_primary = rand(μ_primary)
+μ_secondary = f_kernel(x_primary)
+x_secondary = rand(μ_secondary)
+x = f_combine(x_primary, x_secondary)
+```
+
+and `mbind(f_β, α)` is equivalent to:
+
+```julia
+pushfwd((a, b) -> b, hierarchical_measure(=>, α, tuple))
+```
+
+Possible choices for `f_combine` are `=>`/`Pair` or `tuple` (these work for
+any combination of variate types), `vcat` (for tuple- or vector-like
+variates) and `merge` (e.g. for `NamedTuple` variates).
+"""
+@inline function hierarchical_measure(f, μ::AbstractMeasure, f_combine)
+    F, M, G = Core.Typeof(f), Core.Typeof(m), Core.Typeof(f_combine)
+    HierarchicalProductMeasure{F,M,G}(f, μ, f_combine)
+end
 
 
 
@@ -35,26 +68,19 @@ function _split_variate(::typeof(=>), ::AbstractMeasure, x::Pair)
     return x.first, x.second
 end
 
-function _split_variate(flatten::F, μ_primary::AbstractMeasure, x) where F
-    test_primary = testvalue(μ_primary)
-    return _split_variate_byvalue(flatten, test_primary, x)
+function _split_variate(f_combine::F, μ_primary::AbstractMeasure, x) where F
+    _split_variate_byvalue(f_combine, testvalue(μ), x)
 end
 
+# Necessary/helpful for type stability?
 function _split_variate(::Type{F}, μ::AbstractMeasure, x) where F
-    test_primary = testvalue(μ)
-    return _split_variate_byvalue(F, test_primary, x)
-end
-
-
-function _split_variate_byvalue(::Any, x)
-    @assert x isa Tuple{2}
-    return x[1], x[2]
+    _split_variate_byvalue(F, testvalue(μ), x)
 end
 
 function _split_variate_byvalue(test_primary::AbstractVector, x::AbstractVector)
     n, m = length(eachindex(test_primary)), length(eachindex(x))
     # TODO: Use getindex or view?
-    return x[begin:n], x[begin+n:m]
+    return x[begin:begin+n-1], x[begin+n:end]
 end
 
 function _split_variate_byvalue(::Tuple{N}, x::Tuple{M}) where {N,M}
