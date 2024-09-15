@@ -31,7 +31,6 @@ using IntervalSets
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
-using ChainRulesCore
 import FillArrays
 using Static
 using Static: StaticInteger

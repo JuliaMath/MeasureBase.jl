@@ -51,6 +51,7 @@ end
 _check_dof_pullback(ΔΩ) = NoTangent(), NoTangent(), NoTangent()
 ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_dof_pullback
 
+
 """
     MeasureBase.NoArgCheck{MU,T}
 
@@ -78,6 +79,3 @@ end
 @propagate_inbounds function checked_arg(mu::MU, x) where {MU}
     _default_checked_arg(MU, basemeasure(mu), x)
 end
-
-_checked_arg_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
-ChainRulesCore.rrule(::typeof(checked_arg), ν, x) = checked_arg(ν, x), _checked_arg_pullback
