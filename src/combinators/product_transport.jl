@@ -215,9 +215,6 @@ end
 
 
 
-
-
-
 function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, ab)
     _marginals_to_mvstd(ν_inner, marginals(μ), ab)
 end
