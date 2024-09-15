@@ -237,6 +237,10 @@ function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::
     NamedTuple{names}(transport_to.(values(marginals_ν), values(marginals_μ), x))
 end
 
+@inline function _marginal_transport_def(marginals_ν, marginals_μ, x) 
+    marginal_transport_non_ntnt(marginals_ν, marginals_μ, x)
+end
+
 
 
 function _marginal_transport_def(marginals_ν::AbstractVector{<:AbstractMeasure}, marginals_μ::AbstractVector{<:AbstractMeasure}, x)
