@@ -170,4 +170,4 @@ massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
 Represents and N-dimensional power of the standard measure `MU()`.
 """
-const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,Base.OneTo}}
+const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,UnitRangeFromOne}}

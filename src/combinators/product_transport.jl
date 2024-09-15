@@ -39,7 +39,7 @@ end
 
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
-transport_origin(μ::PowerMeasure{<:Any,N}) where N = μ.parent^prod(pwr_size(μ))
+transport_origin(μ::PowerMeasure{<:Any,N}) where N = transport_origin(μ.parent)^prod(pwr_size(μ))
 
 function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
     # Sanity check, should never fail:
@@ -67,10 +67,10 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure,1}, x)
     return transport_def(ν, μ.parent, only(x))
 end
 
-function transport_def(ν::PowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
-    axes_ν = pwr_axes(ν)
-    @assert prod(axes_ν) == 1
-    return fill_with(transport_def(ν.parent, μ, x), map(maybestatic_length, ν.axes))
+function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
+    sz_ν = pwr_size(ν)
+    @assert prod(sz_ν) == 1
+    return fill_with(transport_def(ν.parent, μ, x), sz_ν)
 end
 
 function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{NU,1}, x,) where {MU,NU}
@@ -80,9 +80,9 @@ end
 
 # Transport to a multivariate standard measure from any measure:
 
-function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, ab) where MU
+function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, x) where MU
     ν_inner = pwr_base(ν)
-    transport_to_mvstd(ν_inner, μ, ab)
+    transport_to_mvstd(ν_inner, μ, x)
 end
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
@@ -90,7 +90,7 @@ function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
 end
 
 function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, dof_μ::IntegerLike, x)
-    y = transport_to(ν_inner^dof_μ, μ, x)
+    y = transport_def(ν_inner^dof_μ, μ, x)
     return y
 end
 

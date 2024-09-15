@@ -44,6 +44,20 @@ end
     FillArrays.Fill(x, dyn_axs)
 end
 
+@inline function  fill_with(x::T, axs::Tuple{Vararg{StaticOneTo}}) where T
+    fill(x, _sarray_type(T, map(maybestatic_length, axs)))
+end
+
+@inline function  fill_with(x::T, sz::Tuple{Vararg{StaticInteger}}) where T
+    fill(x, _sarray_type(T, sz))
+end
+
+@inline @generated function _sarray_type(::Type{T}, sz::Tuple{Vararg{StaticInteger}}) where T
+    Ns = map(p -> p.parameters[1], sz.parameters)
+    :(SArray{Tuple{$Ns...}})
+end
+
+
 
 """
     MeasureBase.maybestatic_length(x)::IntegerLike
@@ -102,3 +116,27 @@ Returns the last element of `A` as a dynamic or static value.
 maybestatic_last(A::AbstractArray) = last(A)
 maybestatic_last(::StaticArrays.SOneTo{N}) where N = static(N)
 maybestatic_last(::Static.OptionallyStaticUnitRange{<:Static.StaticInteger,<:Static.StaticInteger{until}}) where until = static(until)
+
+
+"""
+    const UnitRangeFromOne
+
+Alias for unit ranges that start at one.
+"""
+const UnitRangeFromOne = Union{Base.OneTo, Static.OptionallyStaticUnitRange, StaticArrays.SOneTo}
+
+
+"""
+    const StaticOneTo{N}
+
+A static unit range from one to N.
+"""
+const StaticOneTo{N} = Union{Static.OptionallyStaticUnitRange{StaticInt{1},StaticInt{N}}, StaticArrays.SOneTo{N}}
+
+
+"""
+    const StaticUnitRange
+
+A static unit range.
+"""
+const StaticUnitRange = Union{Static.OptionallyStaticUnitRange{<:StaticInt,<:StaticInt}, StaticArrays.SOneTo}
