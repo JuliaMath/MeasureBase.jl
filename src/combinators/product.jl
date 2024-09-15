@@ -167,19 +167,6 @@ function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))
 end
 
-export ⊗
-
-"""
-    ⊗(μs::AbstractMeasure...)
-
-`⊗` is a binary operator for building product measures. This satisfies the law
-
-```
-    basemeasure(μ ⊗ ν) == basemeasure(μ) ⊗ basemeasure(ν)
-```
-"""
-⊗(μs::AbstractMeasure...) = productmeasure(μs)
-
 ###############################################################################
 # I <: Base.Generator
 
