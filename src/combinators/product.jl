@@ -188,8 +188,8 @@ end
     return true
 end
 
-getdof(d::ProductMeasure) = mapreduce(getdof, _add_dof, marginals(d))
-fast_dof(d::ProductMeasure) = mapreduce(fast_dof, _add_dof, marginals(d))
+getdof(d::ProductMeasure) = sum(getdof, marginals(d))
+fast_dof(d::ProductMeasure) = sum(fast_dof, marginals(d))
 
 function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
     map(checked_arg, marginals(μ), x)
