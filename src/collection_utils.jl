@@ -1,19 +1,33 @@
-# _get_n_at_offs counts it's offset from 0, not from 1!
+# ToDo: Add custom rrules for the get/view/split/etc. functions defined here.
 
-@inline function _get_n_at_offs(A, n::IntegerLike, offset::IntegerLike)
-    from = firstindex(A) + dynamic(offs)
-    view(A, from:(from+dynamic(n)-1))
+Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tuple(SVector{N}(v))
+
+Base.Base.@propagate_inbounds function _get_or_view(A::AbstractVector, from::IntegerLike, until::IntegerLike)
+    (view(A, from:until))
 end
-# ToDo: Specialize _get_n_at_offs for StaticArray.
+Base.Base.@propagate_inbounds function _get_or_view(A::AbstractVector, ::StaticInteger{from}, ::StaticInteger{until}) where {from,until}
+    SVector{until-from+1}(view(A, from:until))
+end
+
+# ToDo: Specialize for StaticVector instead of SVector?
+Base.Base.@propagate_inbounds function _get_or_view(A::SVector, ::StaticInteger{from}, ::StaticInteger{until}) where {from,until}
+    # ToDo: Improve implementation:
+    SVector(_get_or_view(Tuple(A), from, until))
+end
+
+Base.Base.@propagate_inbounds function _get_or_view(tpl::Tuple, from::IntegerLike, until::IntegerLike)
+    ntuple(i -> tpl[from + i - 1], Val(until - from + 1))
+end
+# ToDo: Is this specialization necessary?
+Base.Base.@propagate_inbounds function _get_or_view(tpl::Tuple, ::StaticInteger{from}, ::StaticInteger{until}) where {from,until}
+    ntuple(i -> tpl[from + i - 1], Val(until - from + 1))
+end
 
 
-# ToDo: Add custom rrules for _split_after?
-
-# ToDo: Specialize for StaticVector:
 @inline function _split_after(x::AbstractVector, n::IntegerLike)
-    i_first = firstindex(x)
-    i_last = lastindex(x)
-    _get_n_at_offs(x, n, zero(n)), _getindex_or_view(x, n, i_last)
+    i_first = _maybestatic_firstindex(x)
+    i_last = _maybestatic_lastindex(x)
+    _get_or_view(x, i_first, i_first + n - static(1)), _get_or_view(x, i_first + n, i_last)
 end
 
 @inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
@@ -32,13 +46,6 @@ end
             throw(ArgumentError("Can't split NamedTuple{$names} after {$names_a}"))
         end
     end
-end
-
-
-Base.@propagate_inbounds function _as_tuple(v::AbstractVector, ::Val{N}) where {N}
-    @boundcheck @assert length(v) == N # ToDo: Throw proper exception
-    i_offs = firstindex(v) - 1
-    ntuple(i -> v[i_offs + i], Val(N))
 end
 
 
