@@ -5,18 +5,6 @@
 half(μ::AbstractMeasure) = Half(μ)
 
 ###############################################################################
-# PointwiseProductMeasure
-
-function pointwiseproduct(μ::AbstractMeasure, ℓ::Likelihood)
-    T = Core.Compiler.return_type(ℓ.k, Tuple{gentype(μ)})
-    return pointwiseproduct(T, μ, ℓ)
-end
-
-function pointwiseproduct(::Type{T}, μ::AbstractMeasure, ℓ::Likelihood) where {T}
-    return PointwiseProductMeasure(μ, ℓ)
-end
-
-###############################################################################
 # PowerMeaure
 
 powermeasure(m::AbstractMeasure, ::Tuple{}) = m
