@@ -46,7 +46,7 @@ _dynamic(::Static.SOneTo{N}) where {N} = Base.OneTo(N)
 
 function _dynamic(r::AbstractUnitRange)
     if isempty(r)
-        Base.OneTo(0)
+        1:0
     else
         minimum(r):maximum(r)
     end
