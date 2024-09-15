@@ -102,8 +102,7 @@ end
     sum(map(density_op, marginals_μ, x))
 end
 @inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, x::NamedTuple) where {F,names}
-    nms = Val{names}()
-    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(x, Val(nms))))
+    _marginals_density_op(density_op, values(marginals_μ), values(NamedTuple{names}(x)))
 end
 
 function _marginals_density_op(density_op::F, marginals_μ, marginals_ν, x) where F
@@ -114,8 +113,7 @@ end
     sum(map(density_op, marginals_μ, marginals_ν, x))
 end
 @inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, marginals_ν::NamedTuple, x::NamedTuple) where {F,names}
-    nms = Val{names}()
-    _marginals_density_op(density_op, values(marginals_μ), values(_reorder_nt(marginals_ν, nms)), values(_reorder_nt(x, nms)))
+    _marginals_density_op(density_op, values(marginals_μ), values(NamedTuple{names}(marginals_ν)), values(NamedTuple{names}(x)))
 end
 
 
