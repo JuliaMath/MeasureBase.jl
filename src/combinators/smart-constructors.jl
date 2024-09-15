@@ -65,31 +65,31 @@ productmeasure((pushfwd(Mul(scale), StdExponential()) for scale in 0.1:0.2:2))
 function productmeasure end
 export productmeasure
 
-@inline productmeasure(mar) = _generic_procuctmeasure_impl(mar)
+@inline productmeasure(mar) = _generic_productmeasure_impl(mar)
 
-@inline _generic_procuctmeasure_impl(mar::Fill) = powermeasure(_fill_value(mar), _fill_axes(mar))
+@inline _generic_productmeasure_impl(mar::Fill) = powermeasure(_fill_value(mar), _fill_axes(mar))
 
-@inline _generic_procuctmeasure_impl(mar::Tuple{Vararg{AbstractMeasure}}) = ProductMeasure(mar)
-_generic_procuctmeasure_impl(mar::Tuple{Vararg{Dirac}}) = Dirac(map(m -> m.x), mar)
-_generic_procuctmeasure_impl(mar::Tuple) = productmeasure(map(asmeasure, mar))
+@inline _generic_productmeasure_impl(mar::Tuple{Vararg{AbstractMeasure}}) = ProductMeasure(mar)
+_generic_productmeasure_impl(mar::Tuple{Vararg{Dirac}}) = Dirac(map(m -> m.x), mar)
+_generic_productmeasure_impl(mar::Tuple) = productmeasure(map(asmeasure, mar))
 
-@inline _generic_procuctmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}}) where names = ProductMeasure(mar)
-_generic_procuctmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{Dirac}}}) where names = Dirac(map(m -> m.x), mar)
-_generic_procuctmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, mar))
+@inline _generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}}) where names = ProductMeasure(mar)
+_generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{Dirac}}}) where names = Dirac(map(m -> m.x), mar)
+_generic_productmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, mar))
 
-@inline _generic_procuctmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
+@inline _generic_productmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) = ProductMeasure(mar)
 
-_generic_procuctmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.value).(mar))
-_generic_procuctmeasure_impl(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
+_generic_productmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.value).(mar))
+_generic_productmeasure_impl(mar::AbstractArray) = ProductMeasure(asmeasure.(mar))
 
-@inline function _generic_procuctmeasure_impl(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
+@inline function _generic_productmeasure_impl(mar::ReadonlyMappedArray{T,N,A,Returns{M}}) where {T,N,A,M}
     return powermeasure(mar.f.value, axes(mar.data))
 end
 
-@inline _generic_procuctmeasure_impl(mar::Base.Generator) = ProductMeasure(mar)
+@inline _generic_productmeasure_impl(mar::Base.Generator) = ProductMeasure(mar)
 
 # TODO: Make this static when its length is static
-@inline function _generic_procuctmeasure_impl(
+@inline function _generic_productmeasure_impl(
     mar::AbstractArray{<:WeightedMeasure{StaticFloat64{W},M}},
 ) where {W,M}
     return weightedmeasure(W * length(mar), productmeasure(map(basemeasure, mar)))
