@@ -1,28 +1,29 @@
 """
-    MeasureBase.local_split_combined(f_c, α::AbstractMeasure, ab)
+    MeasureBase.tpmeasure_split_combined(f_c, α::AbstractMeasure, ab)
 
 Splits a combined value `ab` that originated from combining a point `a`
 from the space of a measure `α` with a point `b` from the space of
 another measure `β` via `ab = f_c(a, b)`.
 
-Returns a semantic equivalent of `(localmeasure(α, a), a, b)`.
+Returns a semantic equivalent of
+`(MeasureBase.transportmeasure(α, a), a, b)`.
 
 With `a_orig = rand(α)`, `b_orig = rand(β)` and
 `ab = f_c(a_orig, b_orig)`, the following must hold true:
 
 ```julia
-local_α, a, b = local_split_combined(f_c, α, ab)
+local_α, a, b = tpmeasure_split_combined(f_c, α, ab)
 a ≈ a_orig && b ≈ b_orig
 ```
 """
-function local_split_combined end
+function tpmeasure_split_combined end
 
-function local_split_combined(f_c, α::AbstractMeasure, ab)
-    a, b = _generic_split_combined(fc, α, ab)
-    return localmeasure(α, a), a, b
+function tpmeasure_split_combined(f_c, α::AbstractMeasure, ab)
+    a, b = _generic_split_combined(f_c, α, ab)
+    return transportmeasure(α, a), a, b
 end
 
-@inline _generic_split_combined(::typeof(tuple), @nospecialize(α::AbstractMeasure), x::Tuple{T,U}) where T,U = ab
+@inline _generic_split_combined(::typeof(tuple), @nospecialize(α::AbstractMeasure), x::Tuple{Vararg{Any,2}})
 @inline _generic_split_combined(::Type{Pair}, @nospecialize(α::AbstractMeasure), ab::Pair) = (ab...,)
 
 function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
@@ -61,39 +62,35 @@ export mcombine
 
 function mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure)
     FC, MA, MB = Core.Typeof(f_c), Core.Typeof(α), Core.Typeof(β)
-    JointMeasure{FC,MA,MB}(f_c, α, β)
+    Combined{FC,MA,MB}(f_c, α, β)
 end
 
 function mcombine(::typeof(tuple), α::AbstractMeasure, β::AbstractMeasure)
     productmeasure((a, b))
 end
 
-function mcombine(::typeof(vcat), α::AbstractProductMeasure, β::AbstractProductMeasure)
-    productmeasure(vcat(marginals(α), marginals(β)))
-end
-
-function mcombine(::typeof(merge), α::AbstractProductMeasure, β::AbstractProductMeasure)
-    productmeasure(merge(marginals(α), marginals(β)))
+function mcombine(f_c::Union{typeof(vcat),typeof(merge)}, α::AbstractProductMeasure, β::AbstractProductMeasure)
+    productmeasure(f_c(marginals(α), marginals(β)))
 end
 
 
 """
-    struct JointMeasure <: AbstractMeasure
+    struct Combined <: AbstractMeasure
 
-Represents a monatic bind resp. a mbind in general.
+Represents a combination of two measures.
 
 User code should not create instances of `Joint` directly, but should call
-[`mbind`](@ref) instead.
+[`mcombine(f_c, α, β)`](@ref) instead.
 """
 
-JointMeasure{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMeasure
+Combined{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMeasure
     f_c::FC
     α::MA
     β::MB
 end
 
 
-# TODO: Could split ab here, but would be wasteful.
+# TODO: Could split `ab`` here, but would be wasteful.
 @inline insupport(::Joint, ab) = NoFastInsupport()
 
 @inline getdof(μ::Joint) = getdof(μ.α) + getdof(μ.β)
@@ -106,34 +103,16 @@ rootmeasure(::Joint) = mcombine(μ.f_c rootmeasure(μ), rootmeasure(ν))
 basemeasure(::Joint) = mcombine(μ.f_c basemeasure(μ), basemeasure(ν))
 
 logdensity_def(::Joint, ab)
-    # Use _local_split_combined to avoid duplicate calculation of localmeasure(α):
-    local_α, a, b = _local_split_combined(μ.f_c, μ.α, ab)
+    # Use _tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
+    local_α, a, b = _tpmeasure_split_combined(μ.f_c, μ.α, ab)
     return logdensity_def(local_α, a) + logdensity_def(μ.β, b)
 end
 
 # Specialize logdensityof directly to avoid creating temporary joint base measures:
 logdensityof(::Joint, ab)
-    # Use _local_split_combined to avoid duplicate calculation of localmeasure(α):
-    local_α, a, b = _local_split_combined(μ.f_c, μ.α, ab)
+    local_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
     return logdensityof(local_α, a) + logdensityof(μ.β, b)
 end
-
-function _local_split_combined(f_c, α::AbstractMeasure, ab)
-    a, b = _generic_split_combined(f_c, α, ab)
-    return localmeasure(α, a), a, b
-end
-
-
-
-# # TODO: Default implementation of unsafe_logdensityof is a bit inefficient
-# # for AutoFlatten, since variate will be split in `localmeasure` and then
-# # split again in log-density evaluation. Maybe add something like
-# function unsafe_logdensityof(h::Joint, x)
-#     local_primary, local_secondary, x_primary, x_secondary = ...
-#     # Need to call full logdensityof for h_secondary since x_secondary hasn't
-#     # been checked yet:
-#     unsafe_logdensityof(local_primary, x_primary) + logdensityof(local_secondary, x_secondary)
-# end
 
 
 function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::Joint) where {T<:Real}
@@ -142,6 +121,7 @@ function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::Joint) where {T<:Real}
     return _combine_variates(h.flatten_mode, x_primary, x_secondary)
 end
 
+#!!!!!!!!!!!!!!!!!!! TODO:
 
 function _to_std_with_rest(flatten_mode::FlattenMode, ν_inner::StdMeasure, μ::Joint, x)
     μ_primary = μ.m

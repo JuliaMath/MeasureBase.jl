@@ -1,5 +1,3 @@
-export localmeasure
-
 export logdensityof
 export logdensity_rel
 export logdensity_def
@@ -15,19 +13,35 @@ export density_def
 """
     localmeasure(m::AbstractMeasure, x)::AbstractMeasure
 
-Return a local measure of `m` at `x` which will be `m` itself for many
-measures.
+Return a measure that behaves like `m` in the infinitesimal neighborhood
+of `x` in respect to density calculation.
 
-A local measure of `m` is defined here as a measure that behaves like `m` in
-the infinitesimal neighborhood of `x`.
+Note that the resulting measure may not be well defined outside of the
+infinitesimal neighborhood of `x`.
 
-Note that the resulting measure may not be well defined outside of such a
-neighborhood of `x`.
-
-See [`HierarchicalMeasure`](@ref) as an example of a measure where
-`localmeasure` returns different measures depending on `x`.
+For most measure types simply returns `m` itself. [`mbind`](@ref),
+for example, generates measures for with `localmeasure(m, x)` depends
+on `x`.
 """
 localmeasure(m::AbstractMeasure, x) = m
+export localmeasure
+
+
+"""
+    MeasureBase.transportmeasure(μ::Bind, x)::AbstractMeasure
+
+Return a measure that behaves like `m` in the infinitesimal neighborhood
+of `x` in respect to both transport and density calculation.
+
+Note that the resulting measure may not be well defined outside of the
+infinitesimal neighborhood of `x`.
+
+For most measure types simply returns `m` itself. [`mbind`](@ref),
+for example, generates measures for with `transportmeasure(m, x)` depends
+on `x`.
+"""
+transportmeasure(m::AbstractMeasure, x) = m
+export localmeasure
 
 
 """
