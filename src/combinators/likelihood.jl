@@ -100,7 +100,7 @@ Likelihood(k, x::X) where {X} = Likelihood{Core.Typeof(k),X}(k, x)
 
 (lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(_eval_k(lik, p), lik.x))
 
-_eval_k(ℓ::AbstractLikelihood, p) = asmeasure(_eval_k(ℓ, p))
+_eval_k(ℓ::AbstractLikelihood, p) = asmeasure(ℓ.k(p))
 
 DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
 
