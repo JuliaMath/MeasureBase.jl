@@ -183,4 +183,4 @@ end
 
 Represents and N-dimensional power of the standard measure `MU()`.
 """
-const StdPowerMeasure{N,MU<:StdMeasure} = PowerMeasure{MU,<:NTuple{N,Base.OneTo}}
+const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,Base.OneTo}}

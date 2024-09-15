@@ -50,9 +50,9 @@ end
 
 # A one-dimensional PowerMeasure has an origin if it's parent has an origin:
 
-transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _origin_pwr(::typeof(μ), transport_origin(μ.parent), μ.axes)
-_pwr_origin(::Type{MU}, parent_origin, axes) = parent_origin^axes
-_pwr_origin(::Type{MU}, ::NoTransportOrigin, axes) = NoTransportOrigin{MU}
+transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _origin_pwr(typeof(μ), transport_origin(μ.parent), μ.axes)
+_pwr_origin(::Type{MU}, parent_origin, axes) where MU = parent_origin^axes
+_pwr_origin(::Type{MU}, ::NoTransportOrigin, axes) where MU = NoTransportOrigin{MU}
 
 function from_origin(μ::PowerMeasure{<:AbstractMeasure,1}, x_origin)
     # Sanity check, should never fail:
@@ -101,7 +101,7 @@ function _to_mvstd_withorigin(ν_inner::StdMeasure, ::AbstractMeasure, μ_origin
     from_origin(x_origin)
 end
 
-function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, NoTransportOrigin, x)
+function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, ::NoTransportOrigin, x)
     throw(ArgumentError("Don't know how to transport values of type $(nameof(typeof(x))) from $(nameof(typeof(μ))) to a power of $(nameof(typeof(ν_inner)))"))
 end
 
@@ -151,7 +151,7 @@ function _from_mvstd_with_rest_withorigin(::AbstractMeasure, ν_origin, μ_inner
     from_origin(x_origin), x_rest
 end
 
-function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin, μ_inner::StdMeasure, x)
+function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, ::NoTransportOrigin, μ_inner::StdMeasure, x)
     throw(ArgumentError("Don't know how to transport value of type $(nameof(typeof(x))) from power of $(nameof(typeof(μ_inner))) to $(nameof(typeof(ν)))"))
 end
 
@@ -223,11 +223,11 @@ end
 struct _TransportToMvStd{NU<:StdMeasure} <: Function end
 (::_TransportToMvStd{NU})(μ, x) where {NU} = transport_to_mvstd(NU(), μ, x)
 
-function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ::Tuple, x::Tuple) where NU
+function _marginals_to_mvstd(::NU, marginals_μ::Tuple, x::Tuple) where {NU<:StdMeasure}
     _flatten_to_rv(map(_TransportToMvStd{NU}(), marginals_μ, x))
 end
 
-function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ, x) where NU
+function _marginals_to_mvstd(::NU, marginals_μ, x) where {NU<:StdMeasure}
     _flatten_to_rv(broadcast(_TransportToMvStd{NU}(), marginals_μ, x))
 end
 
@@ -242,7 +242,7 @@ const _MaybeUnkownKnownDOFs = Union{Tuple{Vararg{_MaybeUnkownDOF,N}} where N, St
 
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
     νs = marginals(ν)
-    dofs = map(fast_getdof, marginals_μ)
+    dofs = map(fast_dof, marginals_μ)
     return _marginals_from_mvstd_with_rest(νs, dofs, μ_inner, x)
 end
 
@@ -250,7 +250,7 @@ function _dof_access_firstidxs(dofs::Tuple{Vararg{IntegerLike,N}}, first_idx) wh
     cumsum((first_idx, dofs[begin:end-1]...))
 end
 
-function _dof_access_firstidxs(dofs::AbstractVector{<:IntegerLike}, first_idx) where N
+function _dof_access_firstidxs(dofs::AbstractVector{<:IntegerLike}, first_idx)
     # ToDo: Improve imlementation (reduce memory allocations)
     cumsum(vcat([eltype(dofs)(first_idx)], dofs[begin:end-1]))
 end

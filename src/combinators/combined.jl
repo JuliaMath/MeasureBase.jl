@@ -23,7 +23,7 @@ function tpmeasure_split_combined(f_c, α::AbstractMeasure, ab)
     return transportmeasure(α, a), a, b
 end
 
-@inline _generic_split_combined(::typeof(tuple), ::AbstractMeasure, x::Tuple{Vararg{Any,2}})
+@inline _generic_split_combined(::typeof(tuple), ::AbstractMeasure, x::Tuple{Vararg{Any,2}}) = x
 @inline _generic_split_combined(::Type{Pair}, ::AbstractMeasure, ab::Pair) = (ab...,)
 
 function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
@@ -39,7 +39,7 @@ function _split_variate_byvalue(::typeof(merge), ::NamedTuple{names_a}, ab::Name
 end
 
 
-"""
+@doc raw"""
     mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure)
 
 Combines two measures `α` and `β` to a combined measure via a point combination

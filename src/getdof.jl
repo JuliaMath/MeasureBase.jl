@@ -74,12 +74,6 @@ export fast_dof
 
 fast_dof(μ) = getdof(μ)
 
-# Prevent infinite recursion:
-@inline _default_fastdof(::Type{MU}, ::MU) where {MU} = NoFastDOF{MU}()
-@inline _default_fastdof(::Type{MU}, mu_base) where {MU} = fast_dof(mu_base)
-
-@inline fast_dof(μ::MU) where {MU} = _default_fastdof(MU, basemeasure(μ))
-
 
 """
     MeasureBase.some_dof(μ::AbstractMeasure)

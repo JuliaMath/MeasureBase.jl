@@ -101,7 +101,7 @@ end
     # For tuples, `mapreduce` can have trouble with type inference
     sum(map(density_op, marginals_μ, x))
 end
-@inline function _marginals_density_op(density_op::F, marginals_μ::NameTuple{names}, x::NameTuple) where {F,names}
+@inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, x::NamedTuple) where {F,names}
     nms = Val{names}()
     _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(x), nms))
 end
@@ -113,7 +113,7 @@ end
     # For tuples, `mapreduce` can have trouble with type inference
     sum(map(density_op, marginals_μ, marginals_ν, x))
 end
-@inline function _marginals_density_op(density_op::F, marginals_μ::NameTuple{names}, marginals_ν::NameTuple, x::NameTuple) where {F,names}
+@inline function _marginals_density_op(density_op::F, marginals_μ::NamedTuple{names}, marginals_ν::NamedTuple, x::NamedTuple) where {F,names}
     nms = Val{names}()
     _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(marginals_ν), nms), _reorder_nt(values(x), nms))
 end
