@@ -43,6 +43,7 @@ on the type of `n`.
 
 _dynamic(x::Number) = dynamic(x)
 _dynamic(::Static.SOneTo{N}) where {N} = Base.OneTo(N)
+_dynamic(r::Base.OneTo) = Base.OneTo(dynamic(r.stop))
 
 function _dynamic(r::AbstractUnitRange)
     if isempty(r)
