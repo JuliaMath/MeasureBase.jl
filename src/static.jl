@@ -29,6 +29,8 @@ Returns an instance of `FillArrays.Fill`.
 """
 function fill_with end
 
+@inline fill_with(x::T, ::Tuple{}) where T = FillArrays.Fill(x)
+
 @inline function fill_with(x::T, sz::Tuple{Vararg{IntegerLike,N}}) where {T,N}
     fill_with(x, map(one_to, sz))
 end
