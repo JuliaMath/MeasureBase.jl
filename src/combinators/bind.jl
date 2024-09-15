@@ -28,7 +28,7 @@ When using the default `fc = x -> x[2]` (so `ab == b`) this simplies to
 \mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
 ```
 
-which is equivalent to a monatic bind, viewing measures as monads.
+which is equivalent to a monadic bind, viewing measures as monads.
 
 Computationally, `ab = rand(μ)` is equivalent to
 
@@ -49,7 +49,16 @@ support other choices for `f_c`.
 
 # Extended help
 
-Bayesian example with a correlated prior, that models the 
+Bayesian example with a correlated prior: Mathematically, let
+
+position = a1 ~ StdNormal(),
+noise = a2 ~ pushforward(h(a1, .), StdExponential())
+
+where `h(a1,a2) = √(abs(a1) * a2)`. Note that StdNormal() and StdExponential()
+are StdMeasures, but it makes perfect sense to sample from them, as they have
+base measures and therefore densities.
+Because the prior on the space of `A = A1 × A2 = (position, noise)` is a 
+hierarchical measure, we can construct it using mbind by setting merge as f_c:
 
 ```julia
 using MeasureBase, AffineMaps
@@ -60,20 +69,9 @@ prior = mbind(
     )), merge
 ) do a
     productmeasure((
-        noise = pushfwd(sqrt ∘ Mul(abs(a.position)), StdExponential())
+        noise = pushfwd(setinverse(sqrt, setladj(x -> x^2, x -> log(2))) ∘ Mul(abs(a.position)), StdExponential()),
     ))
 end
-
-prior = mbind
-    a -> productmeasure((
-        noise = pushfwd(sqrt ∘ Mul(abs(a.position)), StdExponential())
-    )),
-    productmeasure((
-        position = StdNormal(),
-    )),
-    merge
-)
-
 
 model = θ -> pushfwd(MulAdd(θ.noise, θ.position), StdNormal())^10
 
