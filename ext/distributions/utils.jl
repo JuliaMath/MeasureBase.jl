@@ -19,7 +19,7 @@ convert_realtype(::Type{T}, x) where {T<:Real} = fmap(elem -> convert_realtype(T
 
 
 """
-    DistributionMeasures.firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real}
+    firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real}
 
 Return the first type, but as a dual number type if the second one is dual.
 

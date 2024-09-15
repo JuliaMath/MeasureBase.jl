@@ -15,22 +15,6 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 @inline Base.convert(::Type{Distribution{F,S}}, m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
 
 
-@inline DensityInterface.densityof(μ::DistributionMeasure) = DensityInterface.densityof(μ.obj)
-@inline DensityInterface.densityof(μ::DistributionMeasure, x) = DensityInterface.densityof(μ.obj, x)
-@inline DensityInterface.logdensityof(μ::DistributionMeasure) = DensityInterface.logdensityof(μ.obj)
-@inline DensityInterface.logdensityof(μ::DistributionMeasure, x) = DensityInterface.logdensityof(μ.obj, x)
-
-@inline MeasureBase.logdensity_def(μ::DistributionMeasure, x) = MeasureBase.logdensity_def(μ.obj, x)
-@inline MeasureBase.unsafe_logdensityof(μ::DistributionMeasure, x) = MeasureBase.unsafe_logdensityof(μ.obj, x)
-@inline MeasureBase.insupport(μ::DistributionMeasure, x) = MeasureBase.insupport(μ.obj, x)
-@inline MeasureBase.basemeasure(μ::DistributionMeasure) = MeasureBase.basemeasure(μ.obj)
-@inline MeasureBase.paramnames(μ::DistributionMeasure) = MeasureBase.paramnames(μ.obj)
-@inline MeasureBase.params(μ::DistributionMeasure) = MeasureBase.params(μ.obj)
-@inline MeasureBase.transport_origin(ν::DistributionMeasure) = ν.obj
-@inline MeasureBase.to_origin(::DistributionMeasure, y) = y
-@inline MeasureBase.from_origin(::DistributionMeasure, x) = x
-
-
 Base.rand(rng::AbstractRNG, ::Type{T}, m::DistributionMeasure) where {T<:Real} = convert_realtype(T, rand(m.obj))
 
 function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
