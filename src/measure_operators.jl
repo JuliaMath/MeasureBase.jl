@@ -58,7 +58,7 @@ export ⊙
 
 The `\\triangleright` operator denotes a measure monadic bind operation.
 
-A common operator choice for a monadics bind operator is `>>=` (e.g. in
+A common operator choice for a monadic bind operator is `>>=` (e.g. in
 the Haskell programming language), but this has a different meaning in
 Julia and there is no close equivalent, so we use `▷`.
 
