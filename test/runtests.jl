@@ -14,6 +14,7 @@ include("static.jl")
 include("test_basics.jl")
 
 include("getdof.jl")
+include("mspace.jl")
 include("transport.jl")
 include("smf.jl")
 
