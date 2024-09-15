@@ -24,4 +24,6 @@ include("combinators/bind.jl")
 
 include("measure_operators.jl")
 
+include("test_distributions.jl")
+
 include("test_docs.jl")
