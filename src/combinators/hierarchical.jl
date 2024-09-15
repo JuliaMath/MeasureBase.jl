@@ -28,12 +28,12 @@ function _combine_variates(x_primary, x_secondary)
 end
 
 
-function local_measure(h::HierarchicalMeasure, x)
+function localmeasure(h::HierarchicalMeasure, x)
     x_primary, x_secondary = _split_variate(h, x)
     m_primary = h.m
-    m_primary_local = local_measure(m_primary, x_primary)
+    m_primary_local = localmeasure(m_primary, x_primary)
     m_secondary = m.f(x_secondary)
-    m_secondary_local = local_measure(m_secondary, x_secondary)
+    m_secondary_local = localmeasure(m_secondary, x_secondary)
     # TODO: Must optionally return a flattened product measure
     return productmeasure(m_primary_local, m_secondary_local)
 end
