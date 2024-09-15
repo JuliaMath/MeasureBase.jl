@@ -93,6 +93,13 @@ b = rand(β_a)
 ab = f_c(a, b)
 ```
 
+The measure `α` that went into the bind can be retrieved via
+`boundmeasure(mbind(f_β, α, ...)) == α`.
+
+`mbind(f_β, α, f_c)` is equivalent to `mbind(mkernel(f_β, f_c), α)`
+(see [`mkernel`](@ref)) with
+`bindkernel(mbind(mkernel(f_β, f_c), α)) == mbind(mkernel(f_β, f_c)`.
+
 Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
 can be unambiguously split into `a` and `b` again, knowing `α`. This is
 currently implemented for `f_c` that is either tuple or `=>`/`Pair` (these
@@ -176,6 +183,33 @@ end
 
 # ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
 
+
+"""
+    bindkernel(μ::Bind)::MKernel
+
+Returns the monatic transition kernel of a monatic bind, so that
+`bindkernel(mbind(f_k::MKernel, α)) == f_k`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function bindkernel end
+export bindkernel
+
+bindkernel(μ::Bind) = mkernel(μ.f_β, μ.f_c)
+
+
+"""
+    boundmeasure(μ::Bind)::MKernel
+
+Returns the measure that went into a monatic bind, so that
+`boundmeasure(mbind(f_k, α)) == α`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function boundmeasure end
+export boundmeasure
+
+boundmeasure(μ::Bind) = mkernel(μ.f_β, μ.f_c)
 
 
 """
