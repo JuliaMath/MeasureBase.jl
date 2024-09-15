@@ -104,14 +104,13 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-@inline logdensity_def(d::PowerMeasure, x) = _pwr_logdensity_def(d.parent, x, prod(pwr_size(d)))
+@inline logdensity_def(d::PowerMeasure, x) = _pwr_logdensity_def(pwr_base(d), x, prod(pwr_size(d)))
 
-@inline _pwr_logdensity_def(::PowerMeasure, x, ::Integer, ::StaticInteger{0}) = static(false)
+@inline _pwr_logdensity_def(d_base, x, ::Integer, ::StaticInteger{0}) = static(false)
 
-@inline function _pwr_logdensity_def(d::PowerMeasure, x, ::IntegerLike)
-    parent = d.parent
+@inline function _pwr_logdensity_def(d_base, x, ::IntegerLike)
     sum(x) do xj
-        logdensity_def(parent, xj)
+        logdensity_def(d_base, xj)
     end
 end
 
