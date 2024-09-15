@@ -1,4 +1,4 @@
-# This file is a part of DistributionMeasures.jl, licensed under the MIT License (MIT).
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 """
     const StandardNormal{N} = StandardDist{Normal,N}

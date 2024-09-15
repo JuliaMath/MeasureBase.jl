@@ -1,4 +1,4 @@
-# This file is a part of DistributionMeasures.jl, licensed under the MIT License (MIT).
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 using LinearAlgebra: Diagonal, dot, cholesky
 
@@ -9,7 +9,8 @@ import DensityInterface
 using DensityInterface: logdensityof
 
 import MeasureBase
-using MeasureBase: AbstractMeasure, Lebesgue, Counting, ℝ
+using MeasureBase: AbstractMeasure, AsMeasure
+using MeasureBase: Lebesgue, Counting, ℝ
 using MeasureBase: StdMeasure, StdUniform, StdExponential, StdLogistic
 using MeasureBase: PowerMeasure, WeightedMeasure
 using MeasureBase: basemeasure, testvalue
@@ -49,8 +50,6 @@ using ArraysOfArrays: ArrayOfSimilarArrays, flatview
 
 include("utils.jl")
 include("autodiff_utils.jl")
-include("measure_interface.jl")
-include("stdnormal_measure.jl")
 include("standard_dist.jl")
 include("standard_uniform.jl")
 include("standard_normal.jl")

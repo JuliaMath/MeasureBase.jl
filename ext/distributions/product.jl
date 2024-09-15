@@ -1,20 +1,16 @@
-# This file is a part of DistributionMeasures.jl, licensed under the MIT License (MIT).
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
-const _StdPowMeasure1 = PowerMeasure{<:StdMeasure,<:NTuple{1,Base.OneTo}}
-const _UniformProductDist1x{D} = Distributions.Product{Continuous,D,<:AbstractVector{D}}
-
-
-MeasureBase.getdof(d::_UniformProductDist1x) = length(d)
-
-
-function _product_dist_trafo_impl(νs, μs, x)
-    fwddiff(transport_def).(νs, μs, x)
+@static if isdefined(Distributions, :Product)
+    MeasureBase.AbstractMeasure(obj::Distributions.Product) = productmeasure(map(asmeasure, obj.dists))
+    function AsMeasure{D<:Distributions.Product}(obj::D) where D
+        throw(ArgumentError("Don't wrap Distributions.Product into MeasureBase.AsMeasure, use asmeasure to convert instead."))
+    end
 end
 
-function MeasureBase.transport_def(ν::_StdPowMeasure1, μ::_UniformProductDist1x, x)
-    _product_dist_trafo_impl((ν.parent,), μ.v, x)
-end
+@static if isdefined(Distributions, :ProductDistribution)
+    MeasureBase.AbstractMeasure(obj::Distributions.ProductDistribution) = productmeasure(map(asmeasure, obj.dists))
 
-function MeasureBase.transport_def(ν::_UniformProductDist1x, μ::_StdPowMeasure1, x)
-    _product_dist_trafo_impl(ν.v, (μ.parent,), x)
+    function AsMeasure{D<:Distributions.ProductDistribution}(obj::D) where D
+        throw(ArgumentError("Don't wrap Distributions.ProductDistribution into MeasureBase.AsMeasure, use asmeasure to convert instead."))
+    end
 end

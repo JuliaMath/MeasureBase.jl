@@ -1,4 +1,4 @@
-# This file is a part of DistributionMeasures.jl, licensed under the MIT License (MIT).
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 @inline _adignore_call(f) = f()
 @inline _adignore_call_pullback(@nospecialize ΔΩ) = (NoTangent(), NoTangent())
