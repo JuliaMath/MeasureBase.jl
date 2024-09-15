@@ -1,5 +1,3 @@
-export ProductMeasure
-
 using MappedArrays
 using MappedArrays: ReadonlyMultiMappedArray
 using Base: @propagate_inbounds
@@ -72,42 +70,62 @@ function _rand_product(
     end |> collect
 end
 
-@inline function logdensity_def(d::AbstractProductMeasure, x)
-    mapreduce(logdensity_def, +, marginals(d), x)
+
+@inline function logdensity_def(μ::AbstractProductMeasure, x)
+    marginals_density_op(logdensity_def, marginals(μ), x)
+end
+@inline function unsafe_logdensityof(μ::AbstractProductMeasure, x)
+    marginals_density_op(unsafe_logdensityof, marginals(μ), x)
+end
+@inline function logdensity_rel(μ::AbstractProductMeasure, ν::AbstractProductMeasure, x)
+    marginals_density_op(logdensity_rel, marginals(μ), marginals(ν), x)
 end
 
+function _marginals_density_op(density_op::F, marginals_μ, x) where F
+    mapreduce(density_op, +, marginals_μ, x)
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::Tuple, x::Tuple) where F
+    # For tuples, `mapreduce` can have trouble with type inference
+    sum(map(density_op, marginals_μ, x))
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::NameTuple{names}, x::NameTuple) where {F,names}
+    nms = Val{names}()
+    _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(x), nms))
+end
+
+function _marginals_density_op(density_op::F, marginals_μ, marginals_ν, x) where F
+    mapreduce(density_op, +, marginals_μ, marginals_ν, x)
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::Tuple, marginals_ν::Tuple, x::Tuple) where F
+    # For tuples, `mapreduce` can have trouble with type inference
+    sum(map(density_op, marginals_μ, marginals_ν, x))
+end
+@inline function _marginals_density_op(density_op::F, marginals_μ::NameTuple{names}, marginals_ν::NameTuple, x::NameTuple) where {F,names}
+    nms = Val{names}()
+    _marginals_density_op(density_op, marginals_μ, _reorder_nt(values(marginals_ν), nms), _reorder_nt(values(x), nms))
+end
+
+
+"""
+    struct MeasureBase.ProductMeasure{M} <: AbstractProductMeasure
+
+Represents a products of measures.
+
+´ProductMeasure` wraps a collection of measures, this collection then
+becomes the collection of the marginal measures of the `ProductMeasure`.
+
+User code should not instantiate `ProductMeasure` directly, but should call
+[`productmeasure`](@ref) instead.
+"""
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
-end
-
-@inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
-    mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
 end
 
 function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end
 
-# For tuples, `mapreduce` has trouble with type inference
-@inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
-    ℓs = map(logdensity_def, marginals(d), x)
-    sum(ℓs)
-end
 
-@generated function logdensity_def(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-    k1 = QuoteNode(first(N))
-    q = quote
-        m = marginals(d)
-        ℓ = logdensity_def(getproperty(m, $k1), getproperty(x, $k1))
-    end
-    for k in Base.tail(N)
-        k = QuoteNode(k)
-        qk = :(ℓ += logdensity_def(getproperty(m, $k), getproperty(x, $k)))
-        push!(q.args, qk)
-    end
-
-    return q
-end
 
 # @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
 #     q = quote
@@ -231,9 +249,18 @@ function transport_to(ν::Pro)
 end
 
 
+# ToDo - Possible improvement (breaking): For transport between
+# NamedTuple-marginals Match names as far as possible, even if in
+# different order, and transport between the remaining non-matching
+# names in the order given? Direct transport between two
+# non-standard measures will likely not be such a common use case,
+# though, so may not be worth the effort.
+
+
+
+
+
 function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::NamedTuple, x) where names
-    # ToDo - Improvement: Match names as far as possible, even if in different order, and transport between
-    # the rest in the order given.
     NamedTuple{names}(transport_to.(values(marginals_ν), values(marginals_μ), x))
 end
 
