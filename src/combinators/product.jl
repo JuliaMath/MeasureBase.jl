@@ -227,6 +227,45 @@ function checked_arg(
 end
 
 
+function transport_to(ν::Pro)
+end
+
+
+function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::NamedTuple, x) where names
+    # ToDo - Improvement: Match names as far as possible, even if in different order, and transport between
+    # the rest in the order given.
+    NamedTuple{names}(transport_to.(values(marginals_ν), values(marginals_μ), x))
+end
+
+
+
+function _marginal_transport_def(marginals_ν::AbstractVector{<:AbstractMeasure}, marginals_μ::AbstractVector{<:AbstractMeasure}, x)
+    @assert x isa AbstractVector  # Sanity check, should not fail
+    transport_to.(marginals_ν, marginals_μ, x)
+end
+
+function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where N
+    @assert x isa Tuple{Vararg{AbstractMeasure,N}}  # Sanity check, should not fail
+    transport_to.(marginals_ν, marginals_μ, x)
+end
+
+function _marginal_transport_def(marginals_ν::NamedTuple{names}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where {names,N}
+    _marginal_transport_def(marginals_ν, NamedTuple{names}(marginals_μ), x)
+end
+
+function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::NamedTuple{names}, x) where {names,N}
+    _marginal_transport_def(marginals_ν, values(marginals), x)
+end
+
+function _marginal_transport_def(marginals_ν::AbstractVector{<:AbstractMeasure}, marginals_μ::Tuple{Vararg{AbstractMeasure,N}}, x) where N
+    _marginal_transport_def(_as_tuple(marginals_ν, Val(N)), marginals_μ, x)
+end
+
+function _marginal_transport_def(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}, marginals_μ::AbstractVector{<:AbstractMeasure}, x) where N
+    _marginal_transport_def(marginals_ν, _as_tuple(marginals_μ, Val(N)), x)
+end
+
+
 
 # Transport for products
 
