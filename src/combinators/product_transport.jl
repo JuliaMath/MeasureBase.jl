@@ -44,7 +44,7 @@ transport_origin(μ::PowerMeasure{<:Any,N}) where N = transport_origin(μ.parent
 function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
     # Sanity check, should never fail:
     @assert x_origin isa AbstractVector
-    return reshape(x_origin, pwr_size(μ)...)
+    return maybestatic_reshape(x_origin, pwr_size(μ)...)
 end
 
 

@@ -50,9 +50,6 @@ end
 end
 
 
-# ToDo: Add static reshape for static arrays!
-
-
 _empty_zero(::AbstractVector{T}) where {T<:Real} = Fill(zero(T), 0)
 
 
