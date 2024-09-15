@@ -147,3 +147,28 @@ function logdensity_def(
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)
 end
+
+
+# For transport, always pull back to one-dimensional PowerMeasure first:
+
+transport_origin(μ::PowerMeasure{<:Any,N}) where N = ν.parent^product(map(length, μ.axes))
+
+function from_origin(μ::_PowerStdMeasure{<:Any,N}, x_origin) where N
+    # Sanity check, should never fail:
+    @assert x_origin isa AbstractVector
+    return reshape(x_origin, map(length, μ.axes)...)
+end
+
+
+# One-dimensional PowerMeasure has an origin iff it's parent has an origin:
+
+transport_origin(μ::PowerMeasure{<:AbstractMeasure,1}) = _origin_pwr(::typeof(μ), transport_origin(μ.parent), μ.axes)
+_pwr_origin(::Type{MU}, parent_origin, axes) = parent_origin^axes
+_pwr_origin(::Type{MU}, ::NoTransportOrigin, axes) = NoTransportOrigin{MU}
+
+function from_origin(μ::PowerMeasure{<:AbstractMeasure,1}, x_origin)
+    # Sanity check, should never fail:
+    @assert x_origin isa AbstractVector
+    from_origin.(Ref(μ.parent), x_origin)
+end
+
