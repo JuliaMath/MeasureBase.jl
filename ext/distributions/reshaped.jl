@@ -1,9 +1,13 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
-MeasureBase.getdof(μ::ReshapedDistribution) = MeasureBase.getdof(μ.dist)
+function MeasureBase.AbstractMeasure(d::Distributions.ReshapedDistribution)
+    orig_dist = d.dist
+    pushfwd(Reshape(size(d), size(orig_dist)), AbstractMeasure(orig_dist))
+end
 
-MeasureBase.transport_origin(μ::ReshapedDistribution) = μ.dist
+function AsMeasure{D}(::D) where {D<:Distributions.ReshapedDistribution}
+    throw(ArgumentError("Don't wrap Distributions.ReshapedDistribution into MeasureBase.AsMeasure, use asmeasure to convert instead."))
+end
 
-MeasureBase.to_origin(ν::ReshapedDistribution, y) = reshape(y, size(ν.dist))
 
-MeasureBase.from_origin(ν::ReshapedDistribution, x) = reshape(x, ν.dims)
+# ToDo: Conversion back to Distribution

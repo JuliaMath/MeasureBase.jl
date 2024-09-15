@@ -57,6 +57,10 @@ end
 
 @inline MeasureBase.basemeasure(m::DistributionMeasure) = rootmeasure(m)
 
+@inline MeasureBase.mspace_elsize(m::DistributionMeasure{<:ArrayLikeVariate}) = size(m.obj)
+
+@inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = 1
+
 @inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
 @inline MeasureBase.params(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))
 

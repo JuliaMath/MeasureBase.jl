@@ -1,8 +1,11 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
-MeasureBase.getdof(d::Dirichlet) = length(d) - 1
+const DirichletMeasure = AsMeasure{<:Dirichlet}
 
-MeasureBase.transport_origin(ν::Dirichlet) = StdUniform()^getdof(ν)
+MeasureBase.getdof(m::DirichletMeasure) = length(m.obj) - 1
+
+MeasureBase.transport_origin(m::DirichletMeasure) = StdUniform()^getdof(m)
+
 
 
 function _dirichlet_beta_trafo(α::Real, β::Real, x::Real)
