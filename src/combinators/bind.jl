@@ -176,14 +176,14 @@ logdensity_def(::Bind, x) = throw(ArgumentError("logdensity_def is not available
 
 # Specialize logdensityof to avoid duplicate calculations:
 function logdensityof(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
     β_a = _get_β_a(μ, a)
     logdensityof(tpm_α, a) + logdensityof(β_a, b)
 end
 
 # Specialize unsafe_logdensityof to avoid duplicate calculations:
 function unsafe_logdensityof(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
     β_a = _get_β_a(μ, a)
     unsafe_logdensityof(tpm_α, a) + unsafe_logdensityof(β_a, b)
 end
