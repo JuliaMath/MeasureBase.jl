@@ -81,6 +81,8 @@ logdensityof(posterior, θ)
 function mbind end
 export mbind
 
+@inline mbind(f_β) = Base.Fix1(mbind, f_β)
+
 @inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _generic_mbind_impl(f_β, α, f_c)
 
 @inline function _generic_mbind_impl(f_β, α::AbstractMeasure, f_c)
