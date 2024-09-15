@@ -49,6 +49,9 @@ end
 end
 
 
+# ToDo: Add static reshape for static arrays!
+
+
 _empty_zero(::AbstractVector{T}) where {T<:Real} = Fill(zero(T), 0)
 
 
@@ -79,20 +82,16 @@ end
 
 # ToDo: Add custom rrule for _reorder_nt?
 
-
+# Field access functions for Fill:
 _fill_value(x::Fill) = x.value
 _fill_axes(x::Fill) = x.axes
 
 
-# ToDo: Flatten to SVector:
-_flatten_to_rv(tpl::Tuple{Vararg{Number}}) = vcat(x...)
+_flatten_to_rv(VV::AbstractVector{<:AbstractVector{<:Real}}) = flatview(VectorOfArrays(VV))
+_flatten_to_rv(VV::AbstractVector{<:StaticVector{N,<:Real}}) where N = flatview(VectorOfSimilarArrays(VV))
 
-# ToDo:
-#_flatten_to_vector(tpl::Tuple{Vararg{StaticVector}}) = ...
+_flatten_to_rv(VV::VectorOfSimilarVectors{<:Real}) = flatview(VV)
+_flatten_to_rv(VV::VectorOfVectors{<:Real}) = flatview(VV)
 
-_flatten_to_flatten_to_numvectorvector(tpl::Tuple{AbstractVector{<:Number}}) = vcat(tpl...)
-
-# ToDo: Use faster implementation that handles large numbers of vectors efficiently:
-_flatten_to_rv(V::AbstractVector{<:AbstractVector{<:Number}}) = vcat(V...)
-
-_flatten_to_rv(V::ArrayOfSimilarArray{<:Number}) = flatview(A)
+_flatten_to_rv(tpl::Tuple{<:AbstractVector{<:Real}}) = vcat(tpl...)
+_flatten_to_rv(tpl::Tuple{<:StaticVector{N,<:Real}}) where N = vcat(tpl...)
