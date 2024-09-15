@@ -31,11 +31,6 @@ Will not throw an exception if `insupport` returns an instance of
 """
 function require_insupport end
 
-_require_insupport_pullback(ΔΩ) = NoTangent(), ZeroTangent()
-function ChainRulesCore.rrule(::typeof(require_insupport), μ, x)
-    return require_insupport(μ, x), _require_insupport_pullback
-end
-
 function require_insupport(μ, x)
     ins = insupport(μ, x)
     if !(ins isa NoFastInsupport)
