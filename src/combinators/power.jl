@@ -153,9 +153,14 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(pwr_size(μ))
+@inline getdof(μ::PowerMeasure) = _mul_dof(getdof(μ.parent), prod(pwr_size(μ)))
+@inline fast_dof(μ::PowerMeasure) = _mul_dof(fast_dof(μ.parent), prod(pwr_size(μ)))
 
 @inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
+    static(0)
+end
+
+@inline function fast_dof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
     static(0)
 end
 

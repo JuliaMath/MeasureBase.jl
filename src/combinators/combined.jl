@@ -93,7 +93,8 @@ end
 # TODO: Could split `ab`` here, but would be wasteful.
 @inline insupport(::CombinedMeasure, ab) = NoFastInsupport()
 
-@inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
+@inline getdof(μ::CombinedMeasure) = _add_dof(getdof(μ.α), getdof(μ.β))
+@inline fast_dof(μ::CombinedMeasure) =_add_dof(fast_dof(μ.α), fast_dof(μ.β))
 
 # Bypass `checked_arg`, would require require splitting ab:
 @inline checked_arg(::CombinedMeasure, ab) = ab
