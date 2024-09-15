@@ -181,7 +181,10 @@ end
 
 @inline function insupport(d::ProductMeasure, x)
     for (mj, xj) in zip(marginals(d), x)
-        dynamic(insupport(mj, xj)) || return false
+        insup = dynamic(insupport(mj, xj))
+        if insup isa NoFastInsupport || insup == false
+            return insup
+        end
     end
     return true
 end
