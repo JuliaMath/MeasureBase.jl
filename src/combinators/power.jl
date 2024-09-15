@@ -61,6 +61,15 @@ function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
     CartesianIndices(map(_dynamic, axs))
 end
 
+#!!!!!!!!!!
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
+    _pwr_rand(rng, T, d.parent, d.axes)
+end
+
+function Base.rand(rng::AbstractRNG, d::PowerMeasure)
+    _pwr_rand(rng, T, d.parent, d.axes)
+end
+
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     map(_ -> rand(rng, T, d.parent), _cartidxs(d.axes))
 end
@@ -70,15 +79,12 @@ function Base.rand(rng::AbstractRNG, d::PowerMeasure)
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where {T,M}
-    #!!!!!!!!!!!
     sz = pwr_size(d)
     base_d = pwr_base(d)
-    _sarray_type(sz)(ntuple(_ -> rand(rng, T, base_d), prod(sz)))
-    0
+    broadcast(_ -> rand(rng, T, base_d), MeasureBase.maybestatic_fill(nothing, sz))
 end
 
 function Base.rand(rng::AbstractRNG, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where M
-    #!!!!!!!!!!!
     sz = pwr_size(d)
     base_d = pwr_base(d)
     broadcast(_ -> rand(rng, base_d), MeasureBase.maybestatic_fill(nothing, sz))
@@ -186,3 +192,9 @@ massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 Represents and N-dimensional power of the standard measure `MU()`.
 """
 const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,UnitRangeFromOne}}
+
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{<:StdMeasure,<:Tuple{Vararg{StaticOneTo}}}) where {T,M}
+    sz = pwr_size(d)
+    base_d = pwr_base(d)
+    broadcast(_ -> rand(rng, T, base_d), MeasureBase.maybestatic_fill(nothing, sz))
+end
