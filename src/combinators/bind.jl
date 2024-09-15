@@ -196,61 +196,28 @@ function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
 end
 
 
-
-function transport_def(ν::_PowerStdMeasure{1}, μ::Bind, x)
-    tpm_μ = transportmeasure(μ, x)
-    return transport_def(ν, tpm_μ, x)
+function transport_def(ν::_PowerStdMeasure{1}, μ::Bind, ab)
+    ν_inner = _get_inner_stdmeasure(ν)
+    _to_mvstd(ν_inner, μ, ab)
 end
 
-
-function _from_std_with_rest(ν::Bind, μ_inner::StdMeasure, x)
-    a, x2 = _from_std_with_rest(ν.α, μ_inner, x)
-    β_a = ν.f_β(a)
-    b, x_rest = _from_std_with_rest(β_a, μ_inner, x2)
-    return ν.f_c(a, b), x_rest
+function _to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    β_a = μ.f_β(a)
+    y1 = _to_mvstd(ν_inner, tpm_α, a)
+    y2 = _to_mvstd(ν_inner, β_a, b)
+    return vcat(y1, y2)
 end
 
-function _from_std_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
-    dof_ν = getdof(ν)
-    origin = transport_origin(ν)
-    return _from_std_with_rest_withdof(ν, getdof(ν), μ_inner, x, dof_ν, origin)
-end
-
-function _from_std_with_rest_withdof(ν::AbstractMeasure, dof_ν, μ_inner::StdMeasure, x)
-    len_x = length(eachindex(x))
-
-    # Since we can't check DOF of original Bind, we could "run out x" if
-    # the original x was too short. `transport_to` below will detect this, but better
-    # throw a more informative exception here:
-    if len_x < dof_ν
-        throw(ArgumentError("Variate too short during transport involving Bind"))
-    end
-
-    x_inner_dof, x_rest = _split_after(x, dof_ν)
-    y = transport_to(ν, μ_inner^dof_ν, x_inner_dof)
-    return y, x_rest
-end
-
-function _from_std_with_rest_withdof(ν::AbstractMeasure, ::NoDOF, μ_inner::StdMeasure, x)
-    _from_std_with_rest_withorigin(ν, transport_origin(ν), μ_inner, x)
-end
-
-function _from_std_with_rest_withorigin(ν::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
-    x_origin, x_rest = _from_std_with_rest(ν_origin, x, μ_inner)
-    from_origin(x_origin), x_rest
-end
-
-function _from_std_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin, μ_inner::StdMeasure, x)
-    throw(ArgumentError("Don't know how to transport value of type $(nameof(typeof(x))) from power of $(nameof(typeof(μ_inner))) to $(nameof(typeof(ν)))"))
-end
 
 function transport_def(ν::Bind, μ::_PowerStdMeasure{1}, x)
-    # Sanity check, should be checked by transport machinery already:
-    @assert getdof(μ) == length(eachindex(x)) && x isa AbstractVector
     μ_inner = _get_inner_stdmeasure(μ)
-    y, x_rest = _from_std_with_rest(ν, μ_inner, x)
-    if !isempty(x_rest)
-        throw(ArgumentError("Variate too long during transport involving Bind"))
-    end
-    return y
+    _from_mvstd(ν, μ_inner, x)
+end
+
+function _from_mvstd_with_rest(ν::Bind, μ_inner::StdMeasure, x)
+    a, x2 = _from_mvstd_with_rest(ν.α, μ_inner, x)
+    β_a = ν.f_β(a)
+    b, x_rest = _from_mvstd_with_rest(β_a, μ_inner, x2)
+    return ν.f_c(a, b), x_rest
 end

@@ -12,7 +12,7 @@ With `a_orig = rand(α)`, `b_orig = rand(β)` and
 `ab = f_c(a_orig, b_orig)`, the following must hold true:
 
 ```julia
-local_α, a, b = tpmeasure_split_combined(f_c, α, ab)
+tpm_α, a, b = tpmeasure_split_combined(f_c, α, ab)
 a ≈ a_orig && b ≈ b_orig
 ```
 """
@@ -23,8 +23,8 @@ function tpmeasure_split_combined(f_c, α::AbstractMeasure, ab)
     return transportmeasure(α, a), a, b
 end
 
-@inline _generic_split_combined(::typeof(tuple), @nospecialize(α::AbstractMeasure), x::Tuple{Vararg{Any,2}})
-@inline _generic_split_combined(::Type{Pair}, @nospecialize(α::AbstractMeasure), ab::Pair) = (ab...,)
+@inline _generic_split_combined(::typeof(tuple), ::AbstractMeasure, x::Tuple{Vararg{Any,2}})
+@inline _generic_split_combined(::Type{Pair}, ::AbstractMeasure, ab::Pair) = (ab...,)
 
 function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
     _split_variate_byvalue(f_c, testvalue(μ), x)
@@ -42,7 +42,7 @@ end
 """
     mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure)
 
-Combines two measures `α` and `β` to a joint measure via a point combination
+Combines two measures `α` and `β` to a combined measure via a point combination
 function `f_c`.
 
 `f_c` must combine a given point `a` from the space of measure `α` with a
@@ -79,11 +79,11 @@ end
 
 Represents a combination of two measures.
 
-User code should not create instances of `Joint` directly, but should call
+User code should not create instances of `Combined` directly, but should call
 [`mcombine(f_c, α, β)`](@ref) instead.
 """
 
-Combined{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMeasure
+struct Combined{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMeasure
     f_c::FC
     α::MA
     β::MB
@@ -91,94 +91,125 @@ end
 
 
 # TODO: Could split `ab`` here, but would be wasteful.
-@inline insupport(::Joint, ab) = NoFastInsupport()
+@inline insupport(::Combined, ab) = NoFastInsupport()
 
-@inline getdof(μ::Joint) = getdof(μ.α) + getdof(μ.β)
+@inline getdof(μ::Combined) = getdof(μ.α) + getdof(μ.β)
 
 # Bypass `checked_arg`, would require require splitting ab:
-@inline checked_arg(::Joint, ab) = ab
+@inline checked_arg(::Combined, ab) = ab
 
-rootmeasure(::Joint) = mcombine(μ.f_c rootmeasure(μ), rootmeasure(ν))
+rootmeasure(::Combined) = mcombine(μ.f_c rootmeasure(μ), rootmeasure(ν))
 
-basemeasure(::Joint) = mcombine(μ.f_c basemeasure(μ), basemeasure(ν))
+basemeasure(::Combined) = mcombine(μ.f_c basemeasure(μ), basemeasure(ν))
 
-logdensity_def(::Joint, ab)
-    # Use _tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
-    local_α, a, b = _tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    return logdensity_def(local_α, a) + logdensity_def(μ.β, b)
+function logdensity_def(μ::Combined, ab)
+    # Use tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    return logdensity_def(tpm_α, a) + logdensity_def(μ.β, b)
 end
 
-# Specialize logdensityof directly to avoid creating temporary joint base measures:
-logdensityof(::Joint, ab)
-    local_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    return logdensityof(local_α, a) + logdensityof(μ.β, b)
+# Specialize logdensityof directly to avoid creating temporary combined base measures:
+function logdensityof(μ::Combined, ab)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    return logdensityof(tpm_α, a) + logdensityof(μ.β, b)
 end
 
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::Joint) where {T<:Real}
+function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::Combined) where {T<:Real}
     x_primary = rand(rng, T, h.m)
     x_secondary = rand(rng, T, h.f(x_primary))
     return _combine_variates(h.flatten_mode, x_primary, x_secondary)
 end
 
-#!!!!!!!!!!!!!!!!!!! TODO:
 
-function _to_std_with_rest(flatten_mode::FlattenMode, ν_inner::StdMeasure, μ::Joint, x)
-    μ_primary = μ.m
-    y_primary, x_secondary = _to_std_with_rest(flatten_mode, ν_inner, μ_primary, x)
-    μ_secondary = μ.f(x_secondary)
-    y_secondary, x_rest = _to_std_with_rest(flatten_mode, ν_inner, μ_secondary, x_secondary)
-    return _combine_variates(μ.flatten_mode, y_primary, y_secondary), x_rest
-end
-
-function _to_std_with_rest(flatten_mode::FlattenMode, ν_inner::StdMeasure, μ::AbstractMeasure, x)
-    dof_μ = getdof(μ)
-    x_μ, x_rest = _generic_split_combined(flatten_mode, μ, x)
-    y = transport_to(ν_inner^dof_μ, μ, x_μ)
-    return y, x_rest
-end
-
-function transport_def(ν::_PowerStdMeasure{1}, μ::Joint, x)
+function transport_def(ν::_PowerStdMeasure{1}, μ::Combined, ab)
     ν_inner = _get_inner_stdmeasure(ν)
-    y, x_rest = _to_std_with_rest(ν_inner, μ, x)
+    _to_mvstd(ν_inner, μ, ab)
+end
+
+function _to_mvstd(ν_inner::StdMeasure, μ::Combined, ab)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    y1 = _to_mvstd(ν_inner, tpm_α, a)
+    y2 = _to_mvstd(ν_inner, μ.β, b)
+    return vcat(y1, y2)
+end
+
+
+function transport_def(ν::Combined, μ::_PowerStdMeasure{1}, x)
+    μ_inner = _get_inner_stdmeasure(μ)
+    _from_mvstd(ν, μ_inner, x)
+end
+
+function _from_mvstd_with_rest(ν::Combined, μ_inner::StdMeasure, x)
+    a, x2 = _from_mvstd_with_rest(ν.α, μ_inner, x)
+    b, x_rest = _from_mvstd_with_rest(ν.β, μ_inner, x2)
+    return ν.f_c(a, b), x_rest
+end
+
+
+function _to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
+    return _to_mvstd_withdof(ν_inner, μ, getdof(μ), x, origin)
+end
+
+function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, dof_μ, x)
+    y = transport_to(ν_inner^dof_μ, μ, x)
+    return y
+end
+
+function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, ::NoDOF, x)
+    _to_mvstd_withorigin(ν_inner, μ, transport_origin(μ), x)
+end
+
+function _to_mvstd_withorigin(ν_inner::StdMeasure, ::AbstractMeasure, μ_origin, x)
+    x_origin = _to_mvstd(ν_inner, μ_origin, x)
+    from_origin(x_origin)
+end
+
+function _to_mvstd_withorigin(ν_inner::StdMeasure, μ::AbstractMeasure, NoTransportOrigin, x)
+    throw(ArgumentError("Don't know how to transport values of type $(nameof(typeof(x))) from $(nameof(typeof(μ))) to a power of $(nameof(typeof(ν_inner)))"))
+end
+
+
+function from_std(ν::AbstractMeasure, μ_inner::StdMeasure, x)
+    # Sanity check, should be checked by transport machinery already:
+    @assert getdof(μ) == length(eachindex(x)) && x isa AbstractVector
+    y, x_rest = _from_mvstd_with_rest(ν, μ_inner, x)
     if !isempty(x_rest)
-        throw(ArgumentError("Variate too long during transport involving Joint"))
+        throw(ArgumentError("Input value too long during transport"))
     end
     return y
 end
 
-
-function _from_std_with_rest(ν::Joint, μ_inner::StdMeasure, x)
-    ν_primary = ν.m
-    y_primary, x_secondary = _from_std_with_rest(ν_primary, μ_inner, x)
-    ν_secondary = ν.f(y_primary)
-    y_secondary, x_rest = _from_std_with_rest(ν_secondary, μ_inner, x_secondary)
-    return _combine_variates(ν.flatten_mode, y_primary, y_secondary), x_rest
+function _from_mvstd_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
+    dof_ν = getdof(ν)
+    origin = transport_origin(ν)
+    return _from_mvstd_with_rest_withdof(ν, getdof(ν), μ_inner, x, dof_ν, origin)
 end
 
-function _from_std_with_rest(ν::AbstractMeasure, μ_inner::StdMeasure, x)
-    dof_ν = getdof(ν)
+function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, dof_ν, μ_inner::StdMeasure, x)
     len_x = length(eachindex(x))
 
-    # Since we can't check DOF of original Joint, we could "run out x" if
+    # Since we can't check DOF of original Bind, we could "run out x" if
     # the original x was too short. `transport_to` below will detect this, but better
     # throw a more informative exception here:
     if len_x < dof_ν
-        throw(ArgumentError("Variate too short during transport involving Joint"))
+        throw(ArgumentError("Variate too short during transport involving Bind"))
     end
 
-    y = transport_to(ν, μ_inner^dof_ν, x[begin:begin+dof_ν-1])
-    x_rest = Fill(zero(eltype(x)), dof_ν - len_x)
+    x_inner_dof, x_rest = _split_after(x, dof_ν)
+    y = transport_to(ν, μ_inner^dof_ν, x_inner_dof)
     return y, x_rest
 end
 
-function transport_def(ν::Joint, μ::_PowerStdMeasure{1}, x)
-    # Sanity check, should be checked by transport machinery already:
-    @assert getdof(μ) == length(eachindex(x)) && x isa AbstractVector
-    μ_inner = _get_inner_stdmeasure(μ)
-    y, x_rest = _from_std_with_rest(ν, μ_inner, x)
-    if !isempty(x_rest)
-        throw(ArgumentError("Variate too long during transport involving Joint"))
-    end
-    return y
+function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, ::NoDOF, μ_inner::StdMeasure, x)
+    _from_mvstd_with_rest_withorigin(ν, transport_origin(ν), μ_inner, x)
+end
+
+function _from_mvstd_with_rest_withorigin(::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
+    x_origin, x_rest = _from_mvstd_with_rest(ν_origin, x, μ_inner)
+    from_origin(x_origin), x_rest
+end
+
+function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin, μ_inner::StdMeasure, x)
+    throw(ArgumentError("Don't know how to transport value of type $(nameof(typeof(x))) from power of $(nameof(typeof(μ_inner))) to $(nameof(typeof(ν)))"))
 end
