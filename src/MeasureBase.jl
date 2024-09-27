@@ -37,7 +37,6 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
-export ≪
 export gentype
 export rebase
 
@@ -120,7 +119,6 @@ include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
 include("mass-interface.jl")
-# include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
