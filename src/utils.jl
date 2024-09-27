@@ -13,7 +13,7 @@ export testvalue
 
 @inline testvalue(μ) = testvalue(Float64, μ)
 
-@inline testvalue(::Type{T}, μ) where {T} = rand(FixedRNG(), T, μ)
+@inline testvalue(::Type{T}, μ) where {T} = rand(ConstantRNG(), T, μ)
 
 testvalue(::Type{T}) where {T} = zero(T)
 
