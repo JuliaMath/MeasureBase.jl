@@ -22,6 +22,7 @@ using DensityInterface
 
 using InverseFunctions
 using ChangesOfVariables
+using ConstantRNGs
 
 import Base.iterate
 import ConstructionBase
@@ -147,7 +148,6 @@ include("standard/stdnormal.jl")
 include("combinators/half.jl")
 
 include("rand.jl")
-include("fixedrng.jl")
 
 include("density.jl")
 include("density-core.jl")
