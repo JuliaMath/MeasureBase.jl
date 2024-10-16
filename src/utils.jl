@@ -164,3 +164,12 @@ using InverseFunctions: FunctionWithInverse
 
 unwrap(f) = f
 unwrap(f::FunctionWithInverse) = f.f
+
+import Statistics
+import StatsBase
+
+StatsBase.entropy(m::AbstractMeasure, b::Real) = entropy(proxy(m), b)
+Statistics.mean(m::AbstractMeasure) = mean(proxy(m))
+Statistics.std(m::AbstractMeasure) = std(proxy(m))
+Statistics.var(m::AbstractMeasure) = var(proxy(m))
+Statistics.quantile(m::AbstractMeasure, q) = quantile(proxy(m), q)

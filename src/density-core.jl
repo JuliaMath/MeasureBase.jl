@@ -173,5 +173,4 @@ end
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
 # TODO: Do we need this method?
-density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
 density_def(μ, x) = exp(logdensity_def(μ, x))
