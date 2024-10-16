@@ -5,7 +5,7 @@ Base.rand(d::AbstractMeasure) = rand(Random.GLOBAL_RNG, Float64, d)
 Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.GLOBAL_RNG, T, μ)
 
 @nospecialize
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::M) where {T, M<:AbstractMeasure}
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::M) where {T,M<:AbstractMeasure}
     @error "No method defined for rand(::AbstractRNG, ::Type{T}, $M)"
 end
 @specialize

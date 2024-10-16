@@ -8,6 +8,6 @@ Documenter.DocMeta.setdocmeta!(
     MeasureBase,
     :DocTestSetup,
     :(using MeasureBase);
-    recursive=true,
+    recursive = true,
 )
 Documenter.doctest(MeasureBase)
