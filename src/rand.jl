@@ -20,8 +20,6 @@ Base.rand(rng::AbstractRNG, d::AbstractMeasure) = rand(rng, Float64, d)
     d::ProductMeasure{A},
 ) where {T,A<:AbstractArray}
     mar = marginals(d)
-
-    # Distributions doens't (yet) have the three-argument form
     elT = typeof(rand(rng, T, first(mar)))
 
     sz = size(mar)
