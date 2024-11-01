@@ -54,9 +54,9 @@ Bayesian example with a correlated prior, that models the
 ```julia
 using MeasureBase, AffineMaps
 
-prior = mbind
+prior = mbind(
     productmeasure((
-        value => StdNormal()
+        position = StdNormal(),
     )), merge
 ) do a
     productmeasure((
@@ -64,7 +64,18 @@ prior = mbind
     ))
 end
 
-model = θ -> pushfwd(MulAdd(θ.noise, θ.value), StdNormal())^10
+prior = mbind
+    a -> productmeasure((
+        noise = pushfwd(sqrt ∘ Mul(abs(a.position)), StdExponential())
+    )),
+    productmeasure((
+        position = StdNormal(),
+    )),
+    merge
+)
+
+
+model = θ -> pushfwd(MulAdd(θ.noise, θ.position), StdNormal())^10
 
 joint_θ_obs = mbind(model, prior, tuple)
 prior_predictive = mbind(model, prior)
