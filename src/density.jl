@@ -180,14 +180,3 @@ function logdensityof(μ::DensityMeasure, x::Any)
         convert(R, integrand_logval + base_logval)::R
     end
 end
-
-"""
-    rebase(μ, ν)
-
-Express `μ` in terms of a density over `ν`. Satisfies
-```
-basemeasure(rebase(μ, ν)) == ν
-density(rebase(μ, ν)) == 𝒹(μ,ν)
-``` 
-"""
-rebase(μ, ν) = ∫(𝒹(μ, ν), ν)

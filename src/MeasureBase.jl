@@ -61,7 +61,6 @@ import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
 
 export gentype
-export rebase
 
 export AbstractMeasure
 
