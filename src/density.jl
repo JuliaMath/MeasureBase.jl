@@ -169,7 +169,7 @@ end
 function _mintegrate_exp_impl(log_f, μ, ::IsDensity)
     throw(
         ArgumentError(
-            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `mintegral(log_f, μ)` instead.",
+            "`mintegrate_exp(log_f, μ)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `mintegrate(log_f, μ)` instead.",
         ),
     )
 end
