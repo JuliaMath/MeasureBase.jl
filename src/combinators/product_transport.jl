@@ -39,12 +39,12 @@ end
 
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
-transport_origin(μ::PowerMeasure{<:Any,N}) where N = μ.parent^prod(pwr_size(μ))
+transport_origin(μ::PowerMeasure{<:Any,N}) where N = transport_origin(μ.parent)^prod(pwr_size(μ))
 
 function from_origin(μ::PowerMeasure{<:Any,N}, x_origin) where N
     # Sanity check, should never fail:
     @assert x_origin isa AbstractVector
-    return reshape(x_origin, pwr_size(μ)...)
+    return maybestatic_reshape(x_origin, pwr_size(μ)...)
 end
 
 
@@ -67,10 +67,10 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure,1}, x)
     return transport_def(ν, μ.parent, only(x))
 end
 
-function transport_def(ν::PowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
-    axes_ν = pwr_axes(ν)
-    @assert prod(axes_ν) == 1
-    return fill_with(transport_def(ν.parent, μ, x), map(maybestatic_length, ν.axes))
+function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
+    sz_ν = pwr_size(ν)
+    @assert prod(sz_ν) == 1
+    return maybestatic_fill(transport_def(ν.parent, μ, x), sz_ν)
 end
 
 function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{NU,1}, x,) where {MU,NU}
@@ -80,17 +80,17 @@ end
 
 # Transport to a multivariate standard measure from any measure:
 
-function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, ab) where MU
+function transport_def(ν::StdPowerMeasure{MU,1}, μ::AbstractMeasure, x) where MU
     ν_inner = pwr_base(ν)
-    transport_to_mvstd(ν_inner, μ, ab)
+    transport_to_mvstd(ν_inner, μ, x)
 end
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)
-    return _to_mvstd_withdof(ν_inner, μ, fast_dof(μ), x, origin)
+    return _to_mvstd_withdof(ν_inner, μ, fast_dof(μ), x)
 end
 
 function _to_mvstd_withdof(ν_inner::StdMeasure, μ::AbstractMeasure, dof_μ::IntegerLike, x)
-    y = transport_to(ν_inner^dof_μ, μ, x)
+    y = transport_def(ν_inner^dof_μ, μ, x)
     return y
 end
 
@@ -147,9 +147,9 @@ function _from_mvstd_with_rest_withdof(ν::AbstractMeasure, ::AbstractNoDOF, μ_
     _from_mvstd_with_rest_withorigin(ν, transport_origin(ν), μ_inner, x)
 end
 
-function _from_mvstd_with_rest_withorigin(::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
+function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, ν_origin, μ_inner::StdMeasure, x)
     x_origin, x_rest = transport_from_mvstd_with_rest(ν_origin, x, μ_inner)
-    from_origin(x_origin), x_rest
+    from_origin(ν, x_origin), x_rest
 end
 
 function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, ::NoTransportOrigin, μ_inner::StdMeasure, x)
@@ -170,7 +170,7 @@ end
 @inline transport_origin(μ::ProductMeasure) = _marginals_tp_origin(marginals(μ))
 @inline from_origin(μ::ProductMeasure, x_origin) = _marginals_from_origin(marginals(μ), x_origin)
 
-_marginals_tp_origin(::Ms) where Ms = NoTransportOrigin{PowerMeasure{M}}()
+_marginals_tp_origin(::Ms) where Ms = NoTransportOrigin{ProductMeasure{Ms}}()
 
 
 # Pull back from a product over a Fill to a power measure:
@@ -243,7 +243,7 @@ const _MaybeUnkownKnownDOFs = Union{Tuple{Vararg{_MaybeUnkownDOF,N}} where N, St
 
 function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
     νs = marginals(ν)
-    dofs = map(fast_dof, marginals_μ)
+    dofs = map(fast_dof, νs)
     return _marginals_from_mvstd_with_rest(νs, dofs, μ_inner, x)
 end
 
@@ -261,7 +261,7 @@ function _split_x_by_marginals_with_rest(dofs::Union{Tuple,AbstractVector}, x::A
     first_idxs = _dof_access_firstidxs(dofs, maybestatic_first(x_idxs))
     xs = map((from, n) -> _get_or_view(x, from, from + n - one(n)), first_idxs, dofs)
     x_rest = _get_or_view(x, first_idxs[end] + dofs[end], maybestatic_last(x_idxs))
-    return xs, r_rest
+    return xs, x_rest
 end
 
 function _marginals_from_mvstd_with_rest(νs, dofs::_KnownDOFs, μ_inner::StdMeasure, x::AbstractVector{<:Real})
@@ -279,7 +279,7 @@ end
 function _marginals_from_mvstd_with_rest_nodof(νs::Tuple{Vararg{AbstractMeasure,N}}, μ_inner::StdMeasure, x::AbstractVector{<:Real}) where N
     # ToDo: Check for type stability, may need generated function
     y1, x_rest = transport_from_mvstd_with_rest(νs[1], μ_inner, x)
-    y2_end, x_final_rest = _marginals_from_mvstd_with_rest(νs[2:end], μ_inner, x_rest)
+    y2_end, x_final_rest = _marginals_from_mvstd_with_rest_nodof(νs[2:end], μ_inner, x_rest)
     return (y1, y2_end...), x_final_rest
 end
 
@@ -288,7 +288,7 @@ function _marginals_from_mvstd_with_rest_nodof(νs::AbstractVector{<:AbstractMea
     y1, x_rest = transport_from_mvstd_with_rest(νs[1], μ_inner, x)
     ys = [y1]
     for ν in νs[begin+1:end]
-        y_i, x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x_rest)
+        y_i, x_rest = _marginals_from_mvstd_with_rest_nodof(ν, μ_inner, x_rest)
         ys = vcat(ys, y_i)
     end
     return ys, x_rest

@@ -8,6 +8,9 @@ See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransportOrigin{NU} end
 
+Base.:^(origin::NoTransportOrigin, ::IntegerLike) = origin
+
+
 """
     MeasureBase.transport_origin(ν)
 
@@ -138,6 +141,13 @@ end
     μ,
     x,
 ) where {n_ν,n_μ}
+    if n_ν == 10
+        return :(throw(ArgumentError("Transport to measure of type $(nameof(typeof(ν))) not supported, origin stack too deep.")))
+    end
+    if n_μ == 10
+        return :(throw(ArgumentError("Transport from measure of type $(nameof(typeof(μ))) not supported, origin stack too deep.")))
+    end
+
     prog = quote
         μ0 = μ
         x0 = x
@@ -150,7 +160,7 @@ end
     end
     for i in 1:n_μ
         x_i = Symbol(:x, i)
-        x_last = Symbol(:x, i - 1)
+        x_last = Symbol(:x, i - 1)_origin_depth(ν)(ν)(ν)
         μ_last = Symbol(:μ, i - 1)
         push!(prog.args, :($x_i = to_origin($μ_last, $x_last)))
     end

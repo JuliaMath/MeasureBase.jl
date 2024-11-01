@@ -69,6 +69,21 @@ function Base.rand(rng::AbstractRNG, d::PowerMeasure)
     map(_ -> rand(rng, d.parent), _cartidxs(d.axes))
 end
 
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where {T,M}
+    #!!!!!!!!!!!
+    sz = pwr_size(d)
+    base_d = pwr_base(d)
+    _sarray_type(sz)(ntuple(_ -> rand(rng, T, base_d), prod(sz)))
+    0
+end
+
+function Base.rand(rng::AbstractRNG, d::PowerMeasure{M,<:Tuple{Vararg{StaticOneTo}}}) where M
+    #!!!!!!!!!!!
+    sz = pwr_size(d)
+    base_d = pwr_base(d)
+    broadcast(_ -> rand(rng, base_d), MeasureBase.maybestatic_fill(nothing, sz))
+end
+
 function testvalue(::Type{T}, d::PowerMeasure) where {T}
     map(_ -> testvalue(T, d.parent), _cartidxs(d.axes))
 end
@@ -82,7 +97,7 @@ end
 @inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
 @inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
 
-marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
+marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
@@ -104,14 +119,13 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-@inline logdensity_def(d::PowerMeasure, x) = _pwr_logdensity_def(d.parent, x, prod(pwr_size(d)))
+@inline logdensity_def(d::PowerMeasure, x) = _pwr_logdensity_def(pwr_base(d), x, prod(pwr_size(d)))
 
-@inline _pwr_logdensity_def(::PowerMeasure, x, ::Integer, ::StaticInteger{0}) = static(false)
+@inline _pwr_logdensity_def(d_base, x, ::Integer, ::StaticInteger{0}) = static(false)
 
-@inline function _pwr_logdensity_def(d::PowerMeasure, x, ::IntegerLike)
-    parent = d.parent
+@inline function _pwr_logdensity_def(d_base, x, ::IntegerLike)
     sum(x) do xj
-        logdensity_def(parent, xj)
+        logdensity_def(d_base, xj)
     end
 end
 
@@ -171,4 +185,4 @@ massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
 Represents and N-dimensional power of the standard measure `MU()`.
 """
-const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,Base.OneTo}}
+const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,UnitRangeFromOne}}
