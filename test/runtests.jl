@@ -23,4 +23,6 @@ include("combinators/reshape.jl")
 
 include("test_distributions.jl")
 
+include("measure_operators.jl")
+
 include("test_docs.jl")
