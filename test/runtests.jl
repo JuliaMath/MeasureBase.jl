@@ -23,7 +23,6 @@ include("combinators/transformedmeasure.jl")
 include("combinators/reshape.jl")
 include("combinators/combined.jl")
 include("combinators/bind.jl")
-include("combinators/reshape.jl")
 
 include("measure_operators.jl")
 
