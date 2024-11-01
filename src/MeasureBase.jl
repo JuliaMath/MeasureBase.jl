@@ -31,6 +31,8 @@ using IntervalSets
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
+using ArraysOfArrays
+
 import FillArrays
 using Static
 using Static: StaticInteger
