@@ -2,7 +2,6 @@
 
 module MeasureBaseDistributionsExt
 
-using MeasureBase
-import Distributions
+include "distributions/distributions.jl"
 
 end # module MeasureBaseDistributionsExt
