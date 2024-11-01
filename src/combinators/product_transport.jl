@@ -63,7 +63,7 @@ end
 
 # Transport between univariate standard measures and 1-dim power measures of size one:
 
-function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure,1}, x)
+function transport_def(ν::StdMeasure, μ::StdPowerMeasure{<:StdMeasure,1}, x)
     return transport_def(ν, μ.parent, only(x))
 end
 
@@ -73,7 +73,7 @@ function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdMeasure, x)
     return maybestatic_fill(transport_def(ν.parent, μ, x), sz_ν)
 end
 
-function transport_def(ν::StdPowerMeasure{MU,1}, μ::StdPowerMeasure{NU,1}, x,) where {MU,NU}
+function transport_def(ν::StdPowerMeasure{<:StdMeasure,1}, μ::StdPowerMeasure{<:StdMeasure,1}, x,)
     return transport_to(ν.parent, μ.parent).(x)
 end
 
@@ -110,7 +110,7 @@ end
 
 # Transport from a multivariate standard measure to any measure:
 
-function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{MU,1}, x) where MU
+function transport_def(ν::AbstractMeasure, μ::StdPowerMeasure{<:StdMeasure,1}, x) 
     μ_inner = pwr_base(μ)
     _transport_from_mvstd(ν, μ_inner, x)
 end
