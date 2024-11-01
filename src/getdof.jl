@@ -132,9 +132,6 @@ function check_dof(ν, μ)
     return nothing
 end
 
-_check_dof_pullback(ΔΩ) = NoTangent(), NoTangent(), NoTangent()
-ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_dof_pullback
-
 
 """
     MeasureBase.NoArgCheck{MU,T}
