@@ -1,4 +1,4 @@
-export local_measure
+export localmeasure
 
 export logdensityof
 export logdensity_rel
@@ -13,7 +13,7 @@ export density_def
 
 
 """
-    local_measure(m::AbstractMeasure, x)::AbstractMeasure
+    localmeasure(m::AbstractMeasure, x)::AbstractMeasure
 
 Return a local measure of `m` at `x` which will be `m` itself for many
 measures.
@@ -25,9 +25,9 @@ Note that the resulting measure may not be well defined outside of such a
 neighborhood of `x`.
 
 See [`HierarchicalMeasure`](@ref) as an example of a measure where
-`local_measure` returns different measures depending on `x`.
+`localmeasure` returns different measures depending on `x`.
 """
-local_measure(m::AbstractMeasure, x) = m
+localmeasure(m::AbstractMeasure, x) = m
 
 
 """
@@ -105,22 +105,41 @@ known to be in the support of both, it can be more efficient to call
 `unsafe_logdensity_rel`. 
 """
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    inμ = insupport(μ, x)
+    inν = insupport(ν, x)
+    return unsafe_logdensity_rel(μ, ν, x, inμ, inν)
+end
+
+
+function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, inν::Bool) where {M,N,X}
     T = unstatic(
         promote_type(
             logdensity_type(μ, X),
             logdensity_type(ν, X),
         ),
     )
-    inμ = insupport(μ, x)
-    inν = insupport(ν, x)
+
     istrue(inμ) || return convert(T, ifelse(inν, -Inf, NaN))
     istrue(inν) || return convert(T, Inf)
 
-    μ_local = localmeasure(μ, x)
-    ν_local = localmeasure(ν, x)
-
-    return unsafe_logdensity_rel(μ_local, ν_local, x)
+    return unsafe_logdensity_rel(μ, ν, x)
 end
+
+
+function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), @nospecialize(::NoFastInsupport)) where {M,N,X}
+    unsafe_logdensity_rel(μ, ν, x)
+end
+
+function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, @nospecialize(::NoFastInsupport)) where {M,N,X}
+    logd = unsafe_logdensity_rel(μ, ν, x)
+    return istrue(inμ) ? logd  : logd * oftypeof(logd, -Inf)
+end
+
+function _logdensity_rel_impl(μ::M, ν::N, x::X, @nospecialize(::NoFastInsupport), inν::Bool) where {M,N,X}
+    logd = unsafe_logdensity_rel(μ, ν, x)
+    return istrue(inν) ? logd  : logd * oftypeof(logd, +Inf)
+end
+
 
 """
     unsafe_logdensity_rel(m1, m2, x)
@@ -131,6 +150,12 @@ known to be in the support of both `m1` and `m2`.
 See also `logdensity_rel`.
 """
 @inline function unsafe_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+    μ_local = localmeasure(μ, x)
+    ν_local = localmeasure(ν, x)
+    return _unsafe_logdensity_rel_local(μ_local, ν_local, x)
+end
+
+@inline function _unsafe_logdensity_rel_local(μ::M, ν::N, x::X) where {M,N,X}
     if static_hasmethod(logdensity_def, Tuple{M,N,X})
         return logdensity_def(μ, ν, x)
     end
