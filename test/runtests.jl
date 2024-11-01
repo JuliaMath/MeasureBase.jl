@@ -19,5 +19,6 @@ include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
+include("combinators/reshape.jl")
 
 include("test_docs.jl")

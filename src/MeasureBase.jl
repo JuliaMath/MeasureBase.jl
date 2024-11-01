@@ -166,6 +166,7 @@ include("primitives/trivial.jl")
 
 include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
+include("combinators/reshape.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
