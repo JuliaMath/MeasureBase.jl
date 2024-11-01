@@ -140,12 +140,17 @@ end
     end
 end
 
+_all(A) = all(A)
+_all(::AbstractArray{NoFastInsupport{T}}) where T = NoFastInsupport{T}()
+
+
 @inline function insupport(μ::PowerMeasure, x::AbstractArray)
     p = μ.parent
-    all(x) do xj
+    insupp = broadcast(x) do xj
         # https://github.com/SciML/Static.jl/issues/36
         dynamic(insupport(p, xj))
     end
+    _all(insupp)
 end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(pwr_size(μ))
