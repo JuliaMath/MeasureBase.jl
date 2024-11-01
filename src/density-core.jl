@@ -128,7 +128,7 @@ known to be in the support of both, it can be more efficient to call
 @inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     inμ = insupport(μ, x)
     inν = insupport(ν, x)
-    return unsafe_logdensity_rel(μ, ν, x, inμ, inν)
+    return _logdensity_rel_impl(μ, ν, x, inμ, inν)
 end
 
 
