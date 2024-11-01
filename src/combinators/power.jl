@@ -45,7 +45,7 @@ pwr_axes(μ::PowerMeasure) = μ.axes
 
 Returns `sz` for `μ = ν^sz`, `sz` being a tuple of integers.
 """
-pwr_size(μ::PowerMeasure) = map(length, μ.axes)
+pwr_size(μ::PowerMeasure) = map(maybestatic_length, μ.axes)
 
 
 function Pretty.tile(μ::PowerMeasure)
@@ -78,6 +78,7 @@ function testvalue(d::PowerMeasure)
 end
 
 
+@inline _pm_axes(::Tuple{}) = ()
 @inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
 @inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
 
@@ -103,26 +104,22 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-@inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
+@inline logdensity_def(d::PowerMeasure, x) = _pwr_logdensity_def(d.parent, x, prod(pwr_size(d)))
+
+@inline _pwr_logdensity_def(::PowerMeasure, x, ::Integer, ::StaticInteger{0}) = static(false)
+
+@inline function _pwr_logdensity_def(d::PowerMeasure, x, ::IntegerLike)
     parent = d.parent
     sum(x) do xj
         logdensity_def(parent, xj)
     end
 end
 
-@inline function logdensity_def(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
-    parent = d.parent
-    sum(1:N) do j
-        @inbounds logdensity_def(parent, x[j])
-    end
-end
+# ToDo: Specialized version of _pwr_logdensity_def for statically-sized power measures
 
-@inline function logdensity_def(
-    d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
-    x,
-) where {M,N}
-    static(0.0)
-end
+# ToDo: Re-enable this?
+# _pwr_logdensity_def(::PowerMeasure{P}, x, ::IntegerLike) where {P<:PrimitiveMeasure} = static(0.0)
+
 
 @inline function insupport(μ::PowerMeasure, x)
     p = μ.parent
@@ -140,8 +137,8 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = _mul_dof(getdof(μ.parent), prod(pwr_size(μ)))
-@inline fast_dof(μ::PowerMeasure) = _mul_dof(fast_dof(μ.parent), prod(pwr_size(μ)))
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(pwr_size(μ))
+@inline fast_dof(μ::PowerMeasure) = fast_dof(μ.parent) * prod(pwr_size(μ))
 
 @inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
     static(0)
@@ -167,16 +164,6 @@ function checked_arg(μ::PowerMeasure, x::Any)
 end
 
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
-
-logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
-
-# To avoid ambiguities
-function logdensity_def(
-    ::PowerMeasure{P,Tuple{Vararg{Static.SOneTo{0},N}}},
-    x,
-) where {P<:PrimitiveMeasure,N}
-    static(0.0)
-end
 
 
 """

@@ -5,14 +5,15 @@ Abstract supertype for [`NoDOF`](@ref) and [`NoFastDOF`](@ref).
 """
 abstract type AbstractNoDOF{MU} end
 
-_add_dof(dof_a::Real) = dof_a
-_add_dof(dof_a::Real, dof_b::IntegerLike) = dof_a + dof_b
-_add_dof(dof_a::AbstractNoDOF, ::IntegerLike) = dof_a
-_add_dof(::IntegerLike, dof_b::AbstractNoDOF) = dof_b
-_add_dof(dof_a::AbstractNoDOF, ::AbstractNoDOF) = dof_a
+Base.:+(nodof::AbstractNoDOF) = nodof
+Base.:+(::IntegerLike, nodof::AbstractNoDOF) = nodof
+Base.:+(nodof::AbstractNoDOF, ::IntegerLike) = nodof
+Base.:+(nodof::AbstractNoDOF, ::AbstractNoDOF) = nodof
 
-_mul_dof(dof_a::IntegerLike, n::IntegerLike) = dof_a * n
-_mul_dof(dof_a::AbstractNoDOF, ::IntegerLike) = dof_a
+Base.:*(nodof::AbstractNoDOF) = nodof
+Base.:*(::IntegerLike, nodof::AbstractNoDOF) = nodof
+Base.:*(nodof::AbstractNoDOF, ::IntegerLike) = nodof
+Base.:*(nodof::AbstractNoDOF, ::AbstractNoDOF) = nodof
 
 
 """

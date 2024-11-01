@@ -22,7 +22,10 @@ for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
         Base.:*(::$T, ::$T) = $T()
-        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
+        # Disambiguation:
+        Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Rational) = isfinite(k) ? $T() : UnknownMass()
     end
 end
 
@@ -104,9 +107,6 @@ isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
 isone(::AbstractUnknownMass) = false
 
-function massof(m, s)
-    _massof(m, s, rootmeasure(m))
-end
 
 """
     (m::AbstractMeasure)(s)
@@ -116,4 +116,11 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+function massof(m, s)
+    _default_massof_impl(m, s, rootmeasure(μ))
+end
+
+# # ToDo: Use smf if defined
+#function _default_massof_impl(μ, a_b::AbstractInterval, ::LebesgueBase)
+#    smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+#end
