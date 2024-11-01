@@ -80,7 +80,8 @@ end
     return logdensity_def(ν.origin, x)
 end
 
-insupport(ν::PushforwardMeasure, y) = insupport(ν.origin, ν.finv(y))
+# ToDo: How to handle this better?
+insupport(ν::PushforwardMeasure, y) = NoFastInsupport{typeof(ν)}()
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))
