@@ -116,8 +116,6 @@ end
 ###############################################################################
 # pushfwd
 
-export pushfwd
-
 """
     pushfwd(f, μ, volcorr = WithVolCorr())
 
@@ -128,6 +126,11 @@ measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
 To manually specify an inverse, call 
 `pushfwd(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
+function pushfwd end
+export pushfwd
+
+pushfwd(f) = Base.Fix1(pushfwd, f)
+
 pushfwd(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
 
 function _generic_pushfwd_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
@@ -173,10 +176,13 @@ some cases, we may be focusing on log-density (and not, for example, sampling).
 To manually specify an inverse, call 
 `pullbck(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
-pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
+
+function pullbck end
 export pullbck
 
-@deprecate pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr()) pullbck(f, μ, volcorr)
+pullbck(f) = Base.Fix1(pullbck, f)
+
+pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr()) = _generic_pullbck_impl(f, μ, volcorr)
 
 function _generic_pullbck_impl(f, μ, volcorr::TransformVolCorr = WithVolCorr())
     PushforwardMeasure(inverse(f), f, μ, volcorr)
@@ -201,3 +207,6 @@ function _generic_pullbck_impl(f::TransportFunction{NU,MU}, μ::DensityMeasure{F
     end
     mintegrate(fchain(μ.f) ∘ f, f.μ)
 end
+
+
+@deprecate pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr()) pullbck(f, μ, volcorr)
