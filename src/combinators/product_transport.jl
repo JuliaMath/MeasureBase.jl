@@ -1,3 +1,42 @@
+"""
+    transport_to(ν, ::Type{MU}) where {NU<:StdMeasure}
+    transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+
+As a user convencience, a standard measure type like [`StdUniform`](@ref),
+[`StdExponential`](@ref), [`StdNormal`](@ref) or [`StdLogistic`](@ref)
+may be used directly as the source or target a measure transport.
+
+Depending on [`some_getdof(μ)`](@ref) (resp. `ν`), an instance of the
+standard measure itself or a power of it will be automatically chosen as
+the transport partner.
+
+Example:
+
+```julia
+transport_to(StdNormal, μ)
+transport_to(ν, StdNormal)
+```
+"""
+function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+    transport_to(ν, _std_tp_partner(MU, ν))
+end
+
+function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+    transport_to(_std_tp_partner(NU, μ), μ)
+end
+
+function transport_to(::Type{NU}, ::Type{MU}) where {NU<:StdMeasure,MU<:StdMeasure}
+    throw(ArgumentError("Can't construct a transport function between the type of two standard measures, need a measure instance on one side"))
+end
+
+_std_tp_partner(::Type{M}, μ) where {M<:StdMeasure} = _std_tp_partner_bydof(M, some_dof(μ))
+_std_tp_partner_bydof(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
+_std_tp_partner_bydof(::Type{M}, dof::IntegerLike) where {M<:StdMeasure} = M()^dof
+function _std_tp_partner_bydof(::Type{M}, dof::AbstractNoDOF{MU}) where {M<:StdMeasure,MU}
+    throw(ArgumentError("Can't determine a standard transport partner for measures of type $(nameof(typeof(MU)))"))
+end
+
+
 # For transport, always pull a PowerMeasure back to one-dimensional PowerMeasure first:
 
 transport_origin(μ::PowerMeasure{<:Any,N}) where N = ν.parent^product(pwr_size(μ))
@@ -117,21 +156,14 @@ function _from_mvstd_with_rest_withorigin(ν::AbstractMeasure, NoTransportOrigin
 end
 
 
-# Implement transport_to(NU::Type{<:StdMeasure}, μ) and transport_to(ν, MU::Type{<:StdMeasure})
-# for user convenience:
+# Transport between a standard measure and Dirac:
 
-_std_measure_for(::Type{M}, μ::Any) where {M<:StdMeasure} = _std_measure_for_impl(M, some_dof(μ))
-_std_measure_for_impl(::Type{M}, ::StaticInteger{1}) where {M<:StdMeasure} = M()
-_std_measure_for_impl(::Type{M}, dof::Integer) where {M<:StdMeasure} = M()^dof
+@inline transport_from_mvstd_with_rest(ν::Dirac, ::StdMeasure, x::Any) = ν.x, x
+
+@inline transport_to_mvstd(::StdMeasure, ::Dirac, ::Any) = Zeros{Bool}(0)
 
 
-function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
-    transport_to(ν, _std_measure_for(MU, ν))
-end
 
-function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
-    transport_to(_std_measure_for(NU, μ), μ)
-end
 
 
 @inline transport_origin(μ::ProductMeasure) = _marginals_tp_origin(marginals(μ))
@@ -182,75 +214,48 @@ end
 
 
 
-# Transport for products
+# Transport from ProductMeasure to StdMeasure type:
 
-
-#!!!!!!!!!!!!!!!!!!!!!! TODO:
-
-# Helpers for product transforms and similar:
-
-struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
-
-struct _TransportFromStd{MU<:StdMeasure} <: Function end
-_TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
-
-function _tuple_transport_def(
-    ν::PowerMeasure{NU},
-    μs::Tuple,
-    xs::Tuple,
-) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
+function transport_to_mvstd(ν_inner::StdMeasure, μ::ProductMeasure, x)
+    _marginals_to_mvstd(ν_inner, marginals(μ), x)
 end
 
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:Tuple},
-    x,
-) where {NU<:StdMeasure}
-    _tuple_transport_def(ν, marginals(μ), x)
+struct _TransportToMvStd{NU<:StdMeasure} <: Function end
+(::_TransportToMvStd{NU})(μ, x) where {NU} = transport_to_mvstd(NU(), μ, x)
+
+function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ::Tuple, x::Tuple) where NU
+    _flatten_to_rv(map(_TransportToMvStd{NU}(), marginals_μ, x))
 end
 
-function transport_def(
-    ν::PowerMeasure{NU},
-    μ::ProductMeasure{<:NamedTuple{names}},
-    x,
-) where {NU<:StdMeasure,names}
-    _tuple_transport_def(ν, values(marginals(μ)), values(x))
+function _marginals_to_mvstd(::StdMeasure{NU}, marginals_μ, x) where NU
+    _flatten_to_rv(broadcast(_TransportToMvStd{NU}(), marginals_μ, x))
 end
 
-@inline _offset_cumsum(s, x, y, rest...) = (s, _offset_cumsum(s + x, y, rest...)...)
-@inline _offset_cumsum(s, x) = (s,)
-@inline _offset_cumsum(s) = ()
 
-function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
-    N = map(getdof, μs)
-    offs = _offset_cumsum(startidx, N...)
-    map((o, n) -> o:o+n-1, offs, N)
+
+# Transport StdMeasure type to ProductMeasure, with rest:
+
+function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure, x)
+    marginals_μ = marginals(μ)
+    marg_dof = _marginals_dof(marginals_μ)
+     _marginals_from_mvstd_with_rest(marginals_ν, marg_dof, μ_inner, x)
 end
 
-function _tuple_transport_def(
-    νs::Tuple,
-    μ::PowerMeasure{MU},
-    x::AbstractArray{<:Real},
-) where {MU<:StdMeasure}
-    vrs = _stdvar_viewranges(νs, firstindex(x))
-    xs = map(r -> view(x, r), vrs)
-    map(_TransportFromStd{MU}, νs, xs)
+@generated function _split_x_by_marginals_with_rest(marg_dof::Tuple{Vararg{IntegerLike,N}}, x::AbstractVector{<:Real}) where N
+    expr = ()
 end
 
-function transport_def(
-    ν::ProductMeasure{<:Tuple},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure}
-    _tuple_transport_def(marginals(ν), μ, x)
+function _marginals_dof(marginals_ν::Tuple{Vararg{AbstractMeasure,N}}) where N
+    map(fast_getdof, marginals_μ)
 end
 
-function transport_def(
-    ν::ProductMeasure{<:NamedTuple{names}},
-    μ::PowerMeasure{MU},
-    x,
-) where {MU<:StdMeasure,names}
-    NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
+
+# ToDo: Use static array for result:
+_marginals_from_mvstd_with_rest(ν_inner::StdMeasure, marginals_μ::Tuple, x)
+
+function _marginals_from_mvstd_with_rest_split_x(marg_dof::Tuple{Vararg{StaticInteger,N}}, x::Tuple{Vararg{Any,N}}) where N
+end
+
+function _marginal_offsets(marg_dof::Tuple{Vararg{StaticInteger,N}}) where N
+    _offset_cumsum(0, marg_dof...)
 end

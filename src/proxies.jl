@@ -14,17 +14,24 @@ function proxy end
 macro useproxy(M)
     M = esc(M)
     quote
-        #!!!!!!!!!!! TODO add new API methods like localmeasure, transportmeasure, etc. !!!!!!!!!!!!!
-
         @inline $MeasureBase.logdensity_def(μ::$M, x) = logdensity_def(proxy(μ), x)
+        @inline $MeasureBase.unsafe_logdensityof(μ::$M, x) = unsafe_logdensityof(proxy(μ), x)
 
         @inline $MeasureBase.basemeasure(μ::$M) = basemeasure(proxy(μ))
-
         @inline $MeasureBase.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
+
+        @inline $MeasureBase.rootmeasure(μ::$M) = rootmeasure(proxy(μ))
+        @inline $MeasureBase.insupport(μ::$M) = insupport(proxy(μ))
+
+        @inline $MeasureBase.getdof(μ::$M) = getdof(proxy(μ))
+        @inline $MeasureBase.fast_getdof(μ::$M) = fast_getdof(proxy(μ))
 
         @inline $MeasureBase.transport_origin(μ::$M) = transport_origin(proxy(μ))
         @inline $MeasureBase.to_origin(μ::$M, y) = to_origin(proxy(μ), y)
         @inline $MeasureBase.from_origin(μ::$M, x) = from_origin(proxy(μ), x)
+
+        @inline $MeasureBase.localmeasure(μ::$M, x) = from_origin(localmeasure(μ), x)
+        @inline $MeasureBase.transportmeasure(μ::$M, x) = from_origin(transportmeasure(μ), x)
 
         @inline $MeasureBase.massof(μ::$M) = massof(proxy(μ))
         @inline $MeasureBase.massof(μ::$M, s) = massof(proxy(μ), s)
