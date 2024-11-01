@@ -195,6 +195,12 @@ function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
     return μ.f_c(a, b)
 end
 
+function Base.rand(rng::Random.AbstractRNG, μ::Bind)
+    a = rand(rng, μ.α)
+    b = rand(rng, _get_β_a(μ, a))
+    return μ.f_c(a, b)
+end
+
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)

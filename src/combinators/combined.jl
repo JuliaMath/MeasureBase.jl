@@ -27,7 +27,7 @@ end
 @inline _generic_split_combined(::Type{Pair}, ::AbstractMeasure, ab::Pair) = (ab...,)
 
 function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where FC
-    _split_variate_byvalue(f_c, testvalue(μ), ab)
+    _split_variate_byvalue(f_c, testvalue(α), ab)
 end
 
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) = _split_after(ab, length(test_a))
@@ -35,7 +35,7 @@ _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVecto
 _split_variate_byvalue(::typeof(vcat), ::Tuple{N}, ab::Tuple) where N = _split_after(ab, Val{N}())
 
 function _split_variate_byvalue(::typeof(merge), ::NamedTuple{names_a}, ab::NamedTuple) where names_a
-    _split_after(ab, Val{names_a})
+    _split_after(ab, Val(names_a))
 end
 
 
@@ -66,7 +66,7 @@ function mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure)
 end
 
 function mcombine(::typeof(tuple), α::AbstractMeasure, β::AbstractMeasure)
-    productmeasure((a, b))
+    productmeasure((α, β))
 end
 
 function mcombine(f_c::Union{typeof(vcat),typeof(merge)}, α::AbstractProductMeasure, β::AbstractProductMeasure)
@@ -98,9 +98,9 @@ end
 # Bypass `checked_arg`, would require require splitting ab:
 @inline checked_arg(::CombinedMeasure, ab) = ab
 
-rootmeasure(::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ), rootmeasure(ν))
+rootmeasure(μ::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ.α), rootmeasure(μ.β))
 
-basemeasure(::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ), basemeasure(ν))
+basemeasure(μ::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ.α), basemeasure(μ.β))
 
 function logdensity_def(μ::CombinedMeasure, ab)
     # Use tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
@@ -115,12 +115,17 @@ function logdensityof(μ::CombinedMeasure, ab)
 end
 
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, h::CombinedMeasure) where {T<:Real}
-    x_primary = rand(rng, T, h.m)
-    x_secondary = rand(rng, T, h.f(x_primary))
-    return _combine_variates(h.flatten_mode, x_primary, x_secondary)
+function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::CombinedMeasure) where {T<:Real}
+    a = rand(rng, T, μ.α)
+    b = rand(rng, T, μ.β)
+    return μ.f_c(a, b)
 end
 
+function Base.rand(rng::Random.AbstractRNG, μ::CombinedMeasure)
+    a = rand(rng, μ.α)
+    b = rand(rng, μ.β)
+    return μ.f_c(a, b)
+end
 
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::CombinedMeasure, ab)
