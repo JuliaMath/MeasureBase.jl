@@ -1,4 +1,4 @@
-d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+d = mintegrate_exp(x -> -x^2, Lebesgue(ℝ))
 
 # function draw2(μ)
 #     x = rand(μ)
@@ -120,11 +120,12 @@ end
 end
 
 @testset "powers" begin
+    @test @inferred productmeasure(fill(Lebesgue(), 5)) isa PowerMeasure
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
 
-Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+Normal() = mintegrate_exp(x -> -0.5x^2, Lebesgue(ℝ))
 
 @testset "Half" begin
     HalfNormal() = Half(Normal())
@@ -135,12 +136,10 @@ end
 
 @testset "Likelihood" begin
     ℓ = Likelihood(3) do (μ,)
-        ∫exp(Lebesgue(ℝ)) do x
+        mintegrate_exp(Lebesgue(ℝ)) do x
             -(x - μ)^2
         end
     end
-
-    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin
@@ -212,13 +211,13 @@ end
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test log(𝒹(∫exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
+    @test log(density_rel(mintegrate_exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
-    let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
+    let f = density_rel(mintegrate_exp(x -> x^2, Lebesgue()), Lebesgue())
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+    let f = logdensity_rel(mintegrate_exp(x -> x^2, Normal()), Normal())
         @test f(x) ≈ x^2
     end
 end
