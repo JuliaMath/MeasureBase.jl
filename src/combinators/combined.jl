@@ -62,9 +62,8 @@ export mcombine
 
 @inline mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure) = _generic_mcombine_impl_stage1(f_c, α, β)
 
-@inline _generic_mcombine_impl_stage1(::typeof(first), α::AbstractMeasure, β::AbstractMeasure) = α
-@inline _generic_mcombine_impl_stage1(::typeof(getsecond), α::AbstractMeasure, β::AbstractMeasure) = β
-@inline _generic_mcombine_impl_stage1(::typeof(last), α::AbstractMeasure, β::AbstractMeasure) = β
+@inline _generic_mcombine_impl_stage1(::typeof(firstarg), α::AbstractMeasure, β::AbstractMeasure) = α
+@inline _generic_mcombine_impl_stage1(::typeof(secondarg), α::AbstractMeasure, β::AbstractMeasure) = β
 
 @inline function _generic_mcombine_impl_stage1(::typeof(tuple), α::AbstractMeasure, β::AbstractMeasure)
     productmeasure((α, β))
