@@ -28,6 +28,9 @@ Given
   measure
 
 The *monadic bind* operation `mbind(k, μ)` returns is a new measure.
+If `ν == mbind(k, μ)` and all measures involved are sampleable, then 
+samples from `rand(ν)` follow the same distribution as those from `rand(k(rand(μ)))`.
+
 
 A monadic bind ofen written as `>>=` (e.g. in Haskell), but this symbol is
 unavailable in Julia.
