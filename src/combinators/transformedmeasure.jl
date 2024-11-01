@@ -140,7 +140,7 @@ end
 # pullback
 
 """
-    pullback(f, μ, volcorr = WithVolCorr())
+    pullbck(f, μ, volcorr = WithVolCorr())
 
 A _pullback_ is a dual concept to a _pushforward_. While a pushforward needs a
 map _from_ the support of a measure, a pullback requires a map _into_ the
@@ -152,8 +152,11 @@ in terms of the inverse function; the "forward" function is not used at all. In
 some cases, we may be focusing on log-density (and not, for example, sampling).
 
 To manually specify an inverse, call 
-`pullback(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
+`pullbck(InverseFunctions.setinverse(f, finv), μ, volcorr)`.
 """
-function pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr())
-    pushfwd(setinverse(inverse(f), f), μ, volcorr)
+function pullbck(f, μ, volcorr::TransformVolCorr = WithVolCorr())
+    PushforwardMeasure(inverse(f), f, μ, volcorr)
 end
+export pullbck
+
+@deprecate pullback(f, μ, volcorr::TransformVolCorr = WithVolCorr()) pullbck(f, μ, volcorr)
