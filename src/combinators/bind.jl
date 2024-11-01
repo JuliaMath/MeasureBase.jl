@@ -143,7 +143,7 @@ export mbind
 @inline mbind(f_k::MKernel, α::AbstractMeasure) = mbind(f_k.f_β, α, f_k.f_c)
 
 #@inline mbind(f_β, α::AbstractMeasure, f_c = getsecond) = _generic_mbind_impl(f_β, α, f_c) --- temporary ---
-@inline mbind(f_β, α::AbstractMeasure, f_c = get_second_tmp) = _generic_mbind_impl(f_β, α, f_c)
+@inline mbind(f_β, α::AbstractMeasure, f_c = secondarg) = _generic_mbind_impl(f_β, α, f_c)
 
 @inline function _generic_mbind_impl(f_β, α::AbstractMeasure, f_c)
     F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
@@ -285,13 +285,3 @@ function transport_from_mvstd_with_rest(ν::Bind, μ_inner::StdMeasure, x)
     b, x_rest = transport_from_mvstd_with_rest(β_a, μ_inner, x2)
     return ν.f_c(a, b), x_rest
 end
-
-#temporary (getsecond does not satisfy condition on f_c as described in docstring) ---
-function get_first_tmp(a, b)
-    return a
-end
-
-function get_second_tmp(a, b)
-    return b
-end
-#---
