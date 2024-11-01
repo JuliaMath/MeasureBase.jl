@@ -25,8 +25,8 @@ include("combinators/combined.jl")
 include("combinators/bind.jl")
 include("combinators/reshape.jl")
 
-include("test_distributions.jl")
-
 include("measure_operators.jl")
+
+include("test_distributions.jl")
 
 include("test_docs.jl")

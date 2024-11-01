@@ -202,4 +202,3 @@ function checked_arg(
 ) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
-
