@@ -46,7 +46,6 @@ export basemeasure
 export basekernel
 
 export insupport
-export getdof
 export transport_to
 
 include("insupport.jl")

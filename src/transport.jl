@@ -76,7 +76,7 @@ and/or
 * `MeasureBase.from_origin(μ::MyMeasure, x) = y`
 * `MeasureBase.to_origin(μ::MyMeasure, y) = x`
 
-and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
+and ensure `MeasureBase.fast_dof(μ::MyMeasure)` is defined correctly.
 
 A standard measure type like `StdUniform`, `StdExponential` or
 `StdLogistic` may also be used as the source or target of the transform:
@@ -86,8 +86,8 @@ f_to_uniform(StdUniform, μ)
 f_to_uniform(ν, StdUniform)
 ```
 
-Depending on [`getdof(μ)`](@ref) (resp. `ν`), an instance of the standard
-distribution itself or a power of it (e.g. `StdUniform()` or
+Depending on [`some_getdof(μ)`](@ref) (resp. `ν`), an instance of the
+standard measure itself or a power of it (e.g. `StdUniform()` or
 `StdUniform()^dof`) will be chosen as the transformation partner.
 """
 function transport_to end
@@ -186,7 +186,7 @@ end
     return prog
 end
 
-@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
+@inline _transport_intermediate(ν, μ) = _transport_intermediate(fast_dof(ν), fast_dof(μ))
 @inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
 
