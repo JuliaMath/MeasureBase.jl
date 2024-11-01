@@ -1,5 +1,5 @@
 @doc raw"""
-    mbind(f_β, α::AbstractMeasure, f_c = second)
+    mbind(f_β, α::AbstractMeasure, f_c = x -> x[2])
 
 Constructs a monadic bind, resp. a hierarchical measure, from a transition
 kernel function `f_β`, a primary measure `α` and a variate combination
@@ -22,7 +22,7 @@ has the mathethematical interpretation (on sets $$A$$ and $$B$$)
 \mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
 ```
 
-When using the default `fc = second` (so `ab == b`) this simplies to
+When using the default `fc = x -> x[2]` (so `ab == b`) this simplies to
 
 ```math
 \mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a) 
@@ -81,7 +81,7 @@ logdensityof(posterior, θ)
 function mbind end
 export mbind
 
-@inline function mbind(f_β, α::AbstractMeasure, f_c = second)
+@inline function mbind(f_β, α::AbstractMeasure, f_c = x -> x[2])
     F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
     Bind{F,M,G}(f_β, α, f_c)
 end
@@ -111,7 +111,7 @@ The resulting measure behaves like `μ` in the infinitesimal neighborhood
 of `x` in respect to density calculation and transport as well.
 """
 function transportmeasure(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.α, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
     tpm_β_a = transportmeasure(_get_β_a(μ, a), b)
     mcombine(μ.f_c, tpm_α, tpm_β_a)
 end
