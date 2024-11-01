@@ -160,7 +160,7 @@ end
     end
     for i in 1:n_μ
         x_i = Symbol(:x, i)
-        x_last = Symbol(:x, i - 1)_origin_depth(ν)(ν)(ν)
+        x_last = Symbol(:x, i - 1)
         μ_last = Symbol(:μ, i - 1)
         push!(prog.args, :($x_i = to_origin($μ_last, $x_last)))
     end
