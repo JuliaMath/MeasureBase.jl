@@ -40,6 +40,8 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
+import HeterogeneousComputing
+
 import StaticArrays
 using StaticArrays: StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix
 
