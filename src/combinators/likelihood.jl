@@ -92,10 +92,11 @@ struct Likelihood{K,X} <: AbstractLikelihood
     k::K
     x::X
 
-    Likelihood(k::K, x::X) where {K,X} = new{K,X}(k, x)
-    #!!!!!!!!!!!    # For type stability if `K isa UnionAll (e.g. a parameterized MeasureType)`
-    Likelihood(::Type{K}, x::X) where {K<:AbstractMeasure,X} = new{K,X}(K, x)
+    Likelihood{K,X}(k, x) where {K,X} = new{K,X}(k, x)
 end
+
+# For type stability, in case k is a type (resp. a constructor):
+Likelihood(k, x::X) where {X} = Likelihood{Core.Typeof(k),X}(k, x)
 
 (lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
 
