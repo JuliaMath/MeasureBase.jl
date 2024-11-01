@@ -42,6 +42,7 @@ end
     FillArrays.Fill(x, dyn_axs)
 end
 
+
 """
     MeasureBase.maybestatic_length(x)::IntegerLike
 
@@ -49,35 +50,53 @@ Returns the length of `x` as a dynamic or static integer.
 """
 maybestatic_length(x) = length(x)
 maybestatic_length(x::AbstractUnitRange) = length(x)
+maybestatic_length(::Tuple{Vararg{Any,N}}) where N = static(N)
+maybestatic_length(nt::NamedTuple) = maybestatic_length(values(nt))
+maybestatic_length(x::StaticArray) = maybestatic_length(maybestatic_eachindex(x))
+maybestatic_length(::StaticArrays.SOneTo{N}) where {N} = static(N)
 function maybestatic_length(
     ::Static.OptionallyStaticUnitRange{<:StaticInteger{A},<:StaticInteger{B}},
 ) where {A,B}
     StaticInt{B - A + 1}()
 end
 
+
 """
     MeasureBase.maybestatic_size(x)::Tuple{Vararg{IntegerLike}}
 
 Returns the size of `x` as a tuple of dynamic or static integers.
 """
-maybestatic_size(x) = size(x)
+maybestatic_size(x) = map(maybestatic_length, axes(x))
 
 
 """
-    MeasureBase.maybestatic_firstindex(x)::Integer
+    MeasureBase.maybestatic_eachindex(x)
 
-Returns the first index `x` as a dynamic or static integer.
+Returns the the index range of `x` as a dynamic or static integer range
 """
-maybestatic_firstindex(x::AbstractVector) = firstindex(x)
-maybestatic_firstindex(::Tuple{Vararg{Any,N}}) where N = static(1)
-maybestatic_firstindex(nt::NamedTuple) = maybestatic_firstindex(values(nt))
+maybestatic_eachindex(x::AbstractArray) = _conv_static_eachindex(eachindex(x))
+maybestatic_eachindex(::Tuple{Vararg{Any,N}}) where N = static(1):static(N)
+maybestatic_eachindex(nt::NamedTuple) = maybestatic_eachindex(values(nt))
+
+_conv_static_eachindex(idxs) = idxs
+_conv_static_eachindex(::Static.SOneTo{N}) where {N} = static(1):static(N)
 
 
 """
-    MeasureBase.maybestatic_lastindex(x)::Integer
+    MeasureBase.maybestatic_first(A)
 
-Returns the first index `x` as a dynamic or static integer.
+Returns the first element of `A` as a dynamic or static value.
 """
-maybestatic_lastindex(x::AbstractVector) = lastindex(x)
-maybestatic_lastindex(::Tuple{Vararg{Any,N}}) where N = static(N)
-maybestatic_lastindex(nt::NamedTuple) = maybestatic_firstindex(values(nt))
+maybestatic_first(A::AbstractArray) = first(A)
+maybestatic_first(::StaticArrays.SOneTo{N}) where N = static(1)
+maybestatic_first(::Static.OptionallyStaticUnitRange{<:Static.StaticInteger{from},<:Static.StaticInteger}) where from = static(from)
+
+
+"""
+    MeasureBase.maybestatic_last(A)
+
+Returns the last element of `A` as a dynamic or static value.
+"""
+maybestatic_last(A::AbstractArray) = last(A)
+maybestatic_last(::StaticArrays.SOneTo{N}) where N = static(N)
+maybestatic_last(::Static.OptionallyStaticUnitRange{<:Static.StaticInteger,<:Static.StaticInteger{until}}) where until = static(until)
