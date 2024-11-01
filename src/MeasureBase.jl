@@ -28,7 +28,7 @@ import Base.iterate
 import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
-using OneTwoMany: getsecond
+using OneTwoMany: secondarg
 
 using PrettyPrinting
 const Pretty = PrettyPrinting
