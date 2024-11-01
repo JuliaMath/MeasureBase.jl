@@ -38,7 +38,6 @@ using FunctionChains
 
 export ≪
 export gentype
-export rebase
 
 export AbstractMeasure
 
