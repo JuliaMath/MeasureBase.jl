@@ -36,6 +36,7 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 
+import StaticArrays
 using StaticArrays: StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix
 
 export gentype
@@ -148,13 +149,16 @@ include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
 include("splat.jl")
-include("proxies.jl")
 include("kernel.jl")
 include("parameterized.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
 include("mass-interface.jl")
+include("density.jl")
+include("density-core.jl")
+
+include("proxies.jl")
 # include("absolutecontinuity.jl")
 
 include("primitives/counting.jl")
@@ -187,9 +191,6 @@ include("combinators/half.jl")
 
 include("rand.jl")
 include("fixedrng.jl")
-
-include("density.jl")
-include("density-core.jl")
 
 include("interface.jl")
 
