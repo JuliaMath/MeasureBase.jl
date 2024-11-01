@@ -181,6 +181,7 @@ include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
 include("combinators/half.jl")
+include("combinators/hierarchical.jl")
 
 include("rand.jl")
 include("fixedrng.jl")
