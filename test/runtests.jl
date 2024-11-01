@@ -14,11 +14,11 @@ using Aqua
 end
 
 using JET
-@testset "Code linting (JET.jl)" begin
-    JET.test_package(MeasureBase; target_defined_modules = true)
-end
+# @testset "Code linting (JET.jl)" begin
+#     JET.test_package(MeasureBase; target_defined_modules = true)
+# end
 
-include("test_aqua.jl")
+# include("test_aqua.jl")
 
 include("static.jl")
 

@@ -19,7 +19,7 @@ testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
 
-basemeasure(μ, x) = basemeasure(μ)
+@inline basemeasure(μ, x) = basemeasure(μ)
 
 """
     rootmeasure(μ::AbstractMeasure)
@@ -167,6 +167,9 @@ unwrap(f::FunctionWithInverse) = f.f
 
 import Statistics
 import StatsBase
+
+using Statistics
+using StatsBase: entropy
 
 StatsBase.entropy(m::AbstractMeasure, b::Real) = entropy(proxy(m), b)
 Statistics.mean(m::AbstractMeasure) = mean(proxy(m))
