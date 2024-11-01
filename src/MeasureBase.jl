@@ -3,6 +3,7 @@ module MeasureBase
 using Base: @propagate_inbounds
 
 using Random
+using Random: AbstractRNG
 import Random: rand!
 import Random: gentype
 using Statistics
