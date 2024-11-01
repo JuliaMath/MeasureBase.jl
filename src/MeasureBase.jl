@@ -73,6 +73,28 @@ asmeasure(m) = convert(AbstractMeasure, m)
 export asmeasure
 
 
+"""
+    struct AsMeasure{T}
+
+Wrapes a measure-like object into an `AbstractMeasure`.
+
+Constructor:
+
+```
+AsMeasure{T}(obj::T)
+```
+
+User code should not create instances of `AsMeasure` directly, but should
+call `asmeasure(obj)` instead.
+"""
+struct AsMeasure{T}
+    obj::T
+
+    AsMeasure{T}(obj::T) = new(obj)
+end
+
+
+
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
     :($M($([getfield(d, n) for n in the_names]...)))
