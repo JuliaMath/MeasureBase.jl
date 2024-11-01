@@ -33,17 +33,3 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
     y = rand(rng, T, d.k(x))
     return y
 end
-
-
-# ToDo: Remove `bind` (breaking).
-@noinline function bind(μ, k)
-    Base.depwarn("`foo(μ, k)` is deprecated, use `mbind(k, μ)` instead.", :bind)
-    mbind(k, μ)
-end
-
-
-# ToDo: Remove `↣` (breaking): It looks too similar to the `>=>` "fish"
-# operator (e.g. in Haskell) that is typically understood to take two monadic
-# functions as an argument, while a bind take a monad and a monadic functions.
-@deprecate ↣(μ, k) mbind(μ, k)
-export ↣
