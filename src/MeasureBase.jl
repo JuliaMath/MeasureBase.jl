@@ -4,6 +4,7 @@ using Base: @propagate_inbounds
 using Base: OneTo
 
 using Random
+using Random: AbstractRNG
 import Random: rand!
 import Random: gentype
 using Statistics
