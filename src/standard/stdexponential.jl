@@ -2,7 +2,12 @@ struct StdExponential <: StdMeasure end
 
 export StdExponential
 
-insupport(d::StdExponential, x) = x ≥ zero(x)
+insupport(::StdExponential, x) = x ≥ zero(x)
+
+@inline function logdensityof(::StdExponential, x)
+    R = float(typeof(x))
+    x ≥ zero(R) ? convert(R, -x) : R(-Inf)
+end
 
 @inline logdensity_def(::StdExponential, x) = -x
 @inline basemeasure(::StdExponential) = LebesgueBase()

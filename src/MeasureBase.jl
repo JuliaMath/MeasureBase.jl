@@ -1,6 +1,7 @@
 module MeasureBase
 
 using Base: @propagate_inbounds
+using Base: OneTo
 
 using Random
 import Random: rand!
@@ -21,6 +22,7 @@ using DensityInterface: FuncDensity, LogFuncDensity
 using DensityInterface
 
 using InverseFunctions
+using InverseFunctions: FunctionWithInverse
 using ChangesOfVariables
 using ConstantRNGs
 
@@ -29,14 +31,17 @@ import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
 
+using StaticArrays:
+    StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix, SOneTo
+
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
-using ChainRulesCore
 import FillArrays
 using Static
 using Static: StaticInteger
 using FunctionChains
+using PropertyFunctions: PropSelFunction
 
 export gentype
 export rebase
@@ -106,6 +111,7 @@ function logdensity_def end
 using Compat
 
 using IrrationalConstants
+using IrrationalConstants: loghalf
 
 include("static.jl")
 include("smf.jl")
@@ -138,6 +144,7 @@ include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
+include("combinators/implicitlymapped.jl")
 
 include("standard/stdmeasure.jl")
 include("standard/stduniform.jl")
@@ -145,6 +152,8 @@ include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
 include("combinators/half.jl")
+
+#include("implicitmaps.jl")
 
 include("rand.jl")
 

@@ -124,13 +124,13 @@ end
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
 
-Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
 
 @testset "Half" begin
-    HalfNormal() = Half(Normal())
+    HalfNormal() = Half(NormalMeasure())
     @test logdensityof(HalfNormal(), -0.2) == -Inf
-    @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
-    @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(Normal(), 0.2)
+    @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(NormalMeasure(), 0.2)
+    @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(NormalMeasure(), 0.2)
 end
 
 @testset "Likelihood" begin
@@ -189,6 +189,22 @@ end
     end
 end
 
+@testset "logdensityof" begin
+    f1 = let A = randn(Float32, 3, 3)
+        x -> sum(A * x)
+    end
+    f2 = x -> sqrt(abs(sum(x)))
+    f3 = x -> 2 * sum(x)
+    f4 = x -> sum(sqrt.(abs.(x)))
+    m = @inferred ∫exp(f1, ∫exp(f2, ∫exp(f3, ∫exp(f4, StdUniform()^3))))
+
+    for x in [Float32[0.7, 0.2, 0.5], Float32[-0.7, 0.2, 0.5]]
+        @test @inferred(logdensityof(m, x)) isa Float32
+        @test logdensityof(m, x) ≈
+              f1(x) + f2(x) + f3(x) + f4(x) + logdensityof(StdUniform()^3, x)
+    end
+end
+
 @testset "logdensity_rel" begin
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 0.0) == Inf
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 1.0) == -Inf
@@ -218,7 +234,7 @@ end
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+    let f = log𝒹(∫exp(x -> x^2, NormalMeasure()), NormalMeasure())
         @test f(x) ≈ x^2
     end
 end

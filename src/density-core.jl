@@ -34,16 +34,11 @@ To compute a log-density relative to a specific base-measure, see
     result
 end
 
-_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
-
-import ChainRulesCore
-@inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
-    y = _checksupport(cond, result)
-    function _checksupport_pullback(ȳ)
-        return NoTangent(), ZeroTangent(), one(ȳ)
-    end
-    y, _checksupport_pullback
+@inline function logdensityof_rt(::T, ::U) where {T,U}
+    Core.Compiler.return_type(logdensityof, Tuple{T,U})
 end
+
+_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 
 export unsafe_logdensityof
 

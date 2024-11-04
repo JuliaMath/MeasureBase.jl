@@ -18,11 +18,6 @@ Checks if `x` is in the support of distribution/measure `μ`, throws an
 """
 function require_insupport end
 
-_require_insupport_pullback(ΔΩ) = NoTangent(), ZeroTangent()
-function ChainRulesCore.rrule(::typeof(require_insupport), μ, x)
-    return require_insupport(μ, x), _require_insupport_pullback
-end
-
 function require_insupport(μ, x)
     if !insupport(μ, x)
         throw(ArgumentError("x is not within the support of μ"))

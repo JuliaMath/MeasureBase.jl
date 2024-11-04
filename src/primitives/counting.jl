@@ -12,9 +12,14 @@ struct Counting{T} <: AbstractMeasure
     Counting(supp) = new{Core.Typeof(supp)}(supp)
 end
 
-function logdensity_def(μ::Counting, x)
-    insupport(μ, x) ? 0.0 : -Inf
+@inline function logdensityof(μ::Counting, x::Real)
+    R = float(typeof(x))
+    insupport(μ, x) ? zero(R) : R(-Inf)
 end
+
+@inline logdensityof(μ::Counting, x) = insupport(μ, x) ? 0.0 : -Inf
+
+@inline logdensity_def(μ::Counting, x) = logdensityof(μ, x)
 
 basemeasure(::Counting) = CountingBase()
 

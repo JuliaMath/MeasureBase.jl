@@ -135,9 +135,6 @@ end
     return static(10)
 end
 
-_origin_depth_pullback(ΔΩ) = NoTangent(), NoTangent()
-ChainRulesCore.rrule(::typeof(_origin_depth), ν) = _origin_depth(ν), _origin_depth_pullback
-
 # If both both measures have no origin:
 function _transport_between_origins(ν, ::StaticInteger{0}, ::StaticInteger{0}, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
@@ -277,30 +274,3 @@ function Base.show(io::IO, f::TransportFunction)
 end
 
 Base.show(io::IO, M::MIME"text/plain", f::TransportFunction) = show(io, f)
-
-"""
-    abstract type TransformVolCorr
-
-Provides control over density correction by transform volume element.
-Either [`NoVolCorr()`](@ref) or [`WithVolCorr()`](@ref)
-"""
-abstract type TransformVolCorr end
-
-"""
-    NoVolCorr()
-
-Indicate that density calculations should ignore the volume element of
-variate transformations. Should only be used in special cases in which
-the volume element has already been taken into account in a different
-way.
-"""
-struct NoVolCorr <: TransformVolCorr end
-
-"""
-    WithVolCorr()
-
-Indicate that density calculations should take the volume element of
-variate transformations into account (typically via the
-log-abs-det-Jacobian of the transform).
-"""
-struct WithVolCorr <: TransformVolCorr end
