@@ -109,6 +109,7 @@ function logdensity_def end
 using Compat
 
 using IrrationalConstants
+using IrrationalConstants: loghalf
 
 include("static.jl")
 include("smf.jl")

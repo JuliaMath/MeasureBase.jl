@@ -72,8 +72,10 @@ function _rand_product(
     end |> collect
 end
 
-@inline function logdensity_def(d::AbstractProductMeasure, x)
-    mapreduce(logdensity_def, +, marginals(d), x)
+for func in [:logdensityof, :logdensity_def]
+    @eval @inline function $func(d::AbstractProductMeasure, x)
+        mapreduce($func, +, marginals(d), x)
+    end
 end
 
 struct ProductMeasure{M} <: AbstractProductMeasure
@@ -88,25 +90,35 @@ function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end
 
-# For tuples, `mapreduce` has trouble with type inference
-@inline function logdensity_def(d::ProductMeasure{T}, x) where {T<:Tuple}
-    ℓs = map(logdensity_def, marginals(d), x)
-    sum(ℓs)
-end
-
-@generated function logdensity_def(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+@eval @generated function _product_gen_impl(
+    ::Val{func},
+    d::ProductMeasure{NamedTuple{N,T}},
+    x,
+) where {func,N,T}
     k1 = QuoteNode(first(N))
     q = quote
         m = marginals(d)
-        ℓ = logdensity_def(getproperty(m, $k1), getproperty(x, $k1))
+        ℓ = $func(getproperty(m, $k1), getproperty(x, $k1))
     end
     for k in Base.tail(N)
         k = QuoteNode(k)
-        qk = :(ℓ += logdensity_def(getproperty(m, $k), getproperty(x, $k)))
+        qk = :(ℓ += $func(getproperty(m, $k), getproperty(x, $k)))
         push!(q.args, qk)
     end
 
     return q
+end
+
+for func in [:logdensityof, :logdensity_def]
+    # For tuples, `mapreduce` has trouble with type inference
+    @eval @inline function $func(d::ProductMeasure{T}, x) where {T<:Tuple}
+        ℓs = map($func, marginals(d), x)
+        sum(ℓs)
+    end
+
+    @eval function $func(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
+        _product_gen_impl(Val($func), d, x)
+    end
 end
 
 # @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}

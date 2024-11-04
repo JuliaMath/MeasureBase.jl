@@ -19,6 +19,11 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
     return abs(rand(rng, T, unhalf(μ)))
 end
 
+function logdensityof(μ::Half, x)
+    ld = logdensityof(unhalf(μ), x) - loghalf
+    return x ≥ 0 ? ld : oftype(ld, -Inf)
+end
+
 logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
 
 @inline function insupport(d::Half, x)

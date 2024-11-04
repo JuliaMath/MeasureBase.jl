@@ -55,27 +55,29 @@ end
 #     logdensity_rel(pushfwd(f, inv_f, ν.origin, WithVolCorr()), β.origin, x)
 # end
 
-@inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
-    f = ν.f
-    finv = ν.finv
-    x_orig, inv_ladj = with_logabsdet_jacobian(unwrap(finv), y)
-    logd_orig = logdensity_def(ν.origin, x_orig)
-    logd = float(logd_orig + inv_ladj)
-    neginf = oftype(logd, -Inf)
-    return ifelse(
-        # Zero density wins against infinite volume:
-        (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
-        # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
-        # Return constant -Inf to prevent problems with ForwardDiff:
-        (isfinite(logd_orig) && (inv_ladj == -Inf)),
-        neginf,
-        logd,
-    )
-end
+for func in [:logdensityof, :logdensity_def]
+    @eval @inline function $func(ν::PushforwardMeasure{F,I,M,<:WithVolCorr}, y) where {F,I,M}
+        f = ν.f
+        finv = ν.finv
+        x_orig, inv_ladj = with_logabsdet_jacobian(unwrap(finv), y)
+        logd_orig = $func(ν.origin, x_orig)
+        logd = float(logd_orig + inv_ladj)
+        neginf = oftype(logd, -Inf)
+        return ifelse(
+            # Zero density wins against infinite volume:
+            (isnan(logd) && logd_orig == -Inf && inv_ladj == +Inf) ||
+            # Maybe  also for (logd_orig == -Inf) && isfinite(inv_ladj) ?
+            # Return constant -Inf to prevent problems with ForwardDiff:
+            (isfinite(logd_orig) && (inv_ladj == -Inf)),
+            neginf,
+            logd,
+        )
+    end
 
-@inline function logdensity_def(ν::PushforwardMeasure{F,I,M,<:NoVolCorr}, y) where {F,I,M}
-    x = ν.finv(y)
-    return logdensity_def(ν.origin, x)
+    @eval @inline function $func(ν::PushforwardMeasure{F,I,M,<:NoVolCorr}, y) where {F,I,M}
+        x = ν.finv(y)
+        return $func(ν.origin, x)
+    end
 end
 
 insupport(ν::PushforwardMeasure, y) = insupport(ν.origin, ν.finv(y))

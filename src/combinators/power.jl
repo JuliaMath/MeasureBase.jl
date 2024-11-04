@@ -78,25 +78,27 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-@inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
-    parent = d.parent
-    sum(x) do xj
-        logdensity_def(parent, xj)
+for func in [:logdensityof, :logdensity_def]
+    @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
+        parent = d.parent
+        sum(x) do xj
+            $func(parent, xj)
+        end
     end
-end
 
-@inline function logdensity_def(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
-    parent = d.parent
-    sum(1:N) do j
-        @inbounds logdensity_def(parent, x[j])
+    @eval @inline function $func(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
+        parent = d.parent
+        sum(1:N) do j
+            @inbounds $func(parent, x[j])
+        end
     end
-end
 
-@inline function logdensity_def(
-    d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
-    x,
-) where {M,N}
-    static(0.0)
+    @eval @inline function $func(
+        d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
+        x,
+    ) where {M,N}
+        static(0.0)
+    end
 end
 
 @inline function insupport(μ::PowerMeasure, x)
