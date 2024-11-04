@@ -29,6 +29,9 @@ import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
 
+using StaticArrays:
+    StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix, SOneTo
+
 using PrettyPrinting
 const Pretty = PrettyPrinting
 
