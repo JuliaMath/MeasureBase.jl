@@ -164,3 +164,21 @@ using InverseFunctions: FunctionWithInverse
 
 unwrap(f) = f
 unwrap(f::FunctionWithInverse) = f.f
+
+
+fcomp(f, g) = fchain(g, f)
+fcomp(::typeof(identity), g) = g
+fcomp(f, ::typeof(identity)) = f
+fcomp(::typeof(identity), ::typeof(identity)) = identity
+
+
+near_neg_inf(::Type{T}) where T<:Real = T(-1E38) # Still fits into Float32
+
+isneginf(x) = isinf(x) && x < 0 
+isposinf(x) = isinf(x) && x > 0 
+
+isapproxzero(x::T) where T<:Real = x ≈ zero(T)
+isapproxzero(A::AbstractArray) = all(isapproxzero, A)
+
+isapproxone(x::T) where T<:Real = x ≈ one(T)
+isapproxone(A::AbstractArray) = all(isapproxone, A)

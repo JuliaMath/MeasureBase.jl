@@ -21,6 +21,7 @@ using DensityInterface: FuncDensity, LogFuncDensity
 using DensityInterface
 
 using InverseFunctions
+using InverseFunctions: FunctionWithInverse
 using ChangesOfVariables
 using ConstantRNGs
 
