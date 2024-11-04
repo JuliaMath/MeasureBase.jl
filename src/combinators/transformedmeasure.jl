@@ -13,8 +13,8 @@ const TransformVolCorr = PushFwdStyle
 """
     AdaptRootMeasure()
 
-Indicates that when applying a pushforward to a measure, it's
-[`rootmeasure`](@ref) not not be pushed forward. Instead, the root measure
+Indicates that when applying a pushforward to a measure, its
+[`rootmeasure`](@ref) need not be pushed forward. Instead, the root measure
 should be kept just "reshaped" to the new measurable space if necessary.
 
 Density calculations for pushforward measures constructed with
@@ -30,7 +30,7 @@ const WithVolCorr = AdaptRootMeasure
 """
     PushfwdRootMeasure()
 
-Indicates than when applying a pushforward to a measure, it's
+Indicates that when applying a pushforward to a measure, its
 [`rootmeasure`](@ref) should be pushed forward with the same function.
 
 Density calculations for pushforward measures constructed with

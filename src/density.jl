@@ -17,7 +17,7 @@ import DensityInterface
     end
 
 For measures `μ` and `ν`, `Density(μ,ν)` represents the _density function_
-`dμ/dν`, also called the _Radom-Nikodym derivative_:
+`dμ/dν`, also called the _Radon-Nikodym derivative_:
 https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
 
 Instead of calling this directly, users should call `density_rel(μ, ν)` or
@@ -37,7 +37,7 @@ export 𝒹
 """
     𝒹(μ, base)
 
-Compute the density (Radom-Nikodym derivative) of μ with respect to `base`. This
+Compute the density (Radon-Nikodym derivative) of μ with respect to `base`. This
 is a shorthand form for `density_rel(μ, base)`.
 """
 𝒹(μ, base) = density_rel(μ, base)
@@ -58,7 +58,7 @@ DensityInterface.logfuncdensity(d::Density) = throw(MethodError(logfuncdensity, 
     end
 
 For measures `μ` and `ν`, `LogDensity(μ,ν)` represents the _log-density function_
-`log(dμ/dν)`, also called the _Radom-Nikodym derivative_:
+`log(dμ/dν)`, also called the _Radon-Nikodym derivative_:
 https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
 
 Instead of calling this directly, users should call `logdensity_rel(μ, ν)` or
@@ -78,7 +78,7 @@ export log𝒹
 """
     log𝒹(μ, base)
 
-Compute the log-density (Radom-Nikodym derivative) of μ with respect to `base`.
+Compute the log-density (Radon-Nikodym derivative) of μ with respect to `base`.
 This is a shorthand form for `logdensity_rel(μ, base)`
 """
 log𝒹(μ, base) = logdensity_rel(μ, base)
