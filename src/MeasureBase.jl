@@ -39,6 +39,7 @@ import FillArrays
 using Static
 using Static: StaticInteger
 using FunctionChains
+using PropertyFunctions: PropSelFunction
 
 export gentype
 export rebase
