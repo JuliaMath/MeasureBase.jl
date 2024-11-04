@@ -124,13 +124,13 @@ end
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
 end
 
-Normal() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
 
 @testset "Half" begin
-    HalfNormal() = Half(Normal())
+    HalfNormal() = Half(NormalMeasure())
     @test logdensityof(HalfNormal(), -0.2) == -Inf
-    @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(Normal(), 0.2)
-    @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(Normal(), 0.2)
+    @test logdensity_def(HalfNormal(), 0.2) == logdensity_def(NormalMeasure(), 0.2)
+    @test densityof(HalfNormal(), 0.2) ≈ 2 * densityof(NormalMeasure(), 0.2)
 end
 
 @testset "Likelihood" begin
@@ -218,7 +218,7 @@ end
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(∫exp(x -> x^2, Normal()), Normal())
+    let f = log𝒹(∫exp(x -> x^2, NormalMeasure()), NormalMeasure())
         @test f(x) ≈ x^2
     end
 end

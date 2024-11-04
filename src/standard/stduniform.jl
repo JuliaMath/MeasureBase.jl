@@ -2,7 +2,12 @@ struct StdUniform <: StdMeasure end
 
 export StdUniform
 
-insupport(d::StdUniform, x) = zero(x) ≤ x ≤ one(x)
+insupport(::StdUniform, x) = zero(x) ≤ x ≤ one(x)
+
+@inline function logdensityof(::StdUniform, x)
+    R = float(typeof(x))
+    zero(x) ≤ x ≤ one(x) ? zero(R) : R(-Inf)
+end
 
 @inline logdensity_def(::StdUniform, x) = zero(x)
 @inline basemeasure(::StdUniform) = LebesgueBase()

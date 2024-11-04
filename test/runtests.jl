@@ -11,6 +11,7 @@ include("test_aqua.jl")
 
 include("static.jl")
 
+include("test_standard.jl")
 include("test_basics.jl")
 
 include("getdof.jl")
