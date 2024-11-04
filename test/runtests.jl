@@ -21,5 +21,6 @@ include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
+include("combinators/implicitlymapped.jl")
 
 include("test_docs.jl")

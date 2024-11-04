@@ -1,6 +1,7 @@
 module MeasureBase
 
 using Base: @propagate_inbounds
+using Base: OneTo
 
 using Random
 import Random: rand!
@@ -144,6 +145,7 @@ include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
+include("combinators/implicitlymapped.jl")
 
 include("standard/stdmeasure.jl")
 include("standard/stduniform.jl")
@@ -151,6 +153,8 @@ include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
 include("combinators/half.jl")
+
+#include("implicitmaps.jl")
 
 include("rand.jl")
 

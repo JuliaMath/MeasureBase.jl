@@ -1,4 +1,5 @@
 [deps]
+AffineMaps = "2c83c9a8-abf5-4329-a0d7-deffaf474661"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ChainRulesTestUtils = "cdddcdb0-9152-4a09-a978-84456f9df70a"
 ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
