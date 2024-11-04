@@ -268,7 +268,7 @@ export pullbck
 @inline pullbck(f, μ, style::PushfwdRootMeasure) = _pullback_impl(f, μ, style)
 
 function _pullback_impl(f, μ, style = AdaptRootMeasure())
-    pushfwd(setinverse(inverse(f), f), μ, style)
+    pushfwd(inverse(f), μ, style)
 end
 
 @deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
