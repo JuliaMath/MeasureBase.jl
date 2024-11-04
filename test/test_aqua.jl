@@ -9,8 +9,5 @@ import MeasureBase
 #end # testset
 
 Test.@testset "Aqua tests" begin
-    Aqua.test_all(
-        MeasureBase,
-        ambiguities = false
-    )
+    Aqua.test_all(MeasureBase, ambiguities = false)
 end # testset
