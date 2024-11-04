@@ -33,6 +33,10 @@ To compute a log-density relative to a specific base-measure, see
     _checksupport(insupport(μ, x), result)
 end
 
+@inline function logdensityof_rt(::T, ::U) where {T,U}
+    Core.Compiler.return_type(logdensityof, Tuple{T,U})
+end
+
 _checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 
 export unsafe_logdensityof

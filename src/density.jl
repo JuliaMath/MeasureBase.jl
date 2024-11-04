@@ -163,6 +163,24 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
+function logdensityof(μ::DensityMeasure, x::Any)
+    integrand, μ_base = μ.f, μ.base
+
+    base_logval = logdensityof(μ_base, x)
+
+    T = typeof(base_logval)
+    U = logdensityof_rt(integrand, x)
+    R = promote_type(T, U)
+
+    # Don't evaluate base measure if integrand is zero or NaN
+    if isneginf(base_logval)
+        R(-Inf)
+    else
+        integrand_logval = logdensityof(integrand, x)
+        convert(R, integrand_logval + base_logval)::R
+    end
+end
+
 """
     rebase(μ, ν)
 

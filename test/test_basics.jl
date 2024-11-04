@@ -189,6 +189,22 @@ end
     end
 end
 
+@testset "logdensityof" begin
+    f1 = let A = randn(Float32, 3, 3)
+        x -> sum(A * x)
+    end
+    f2 = x -> sqrt(abs(sum(x)))
+    f3 = x -> 2 * sum(x)
+    f4 = x -> sum(sqrt.(abs.(x)))
+    m = @inferred ∫exp(f1, ∫exp(f2, ∫exp(f3, ∫exp(f4, StdUniform()^3))))
+
+    for x in [Float32[0.7, 0.2, 0.5], Float32[-0.7, 0.2, 0.5]]
+        @test @inferred(logdensityof(m, x)) isa Float32
+        @test logdensityof(m, x) ≈
+              f1(x) + f2(x) + f3(x) + f4(x) + logdensityof(StdUniform()^3, x)
+    end
+end
+
 @testset "logdensity_rel" begin
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 0.0) == Inf
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 1.0) == -Inf
