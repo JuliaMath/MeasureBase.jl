@@ -26,3 +26,25 @@ using Distributions: Normal, Exponential, Logistic, Uniform
         end
     end
 end
+
+using LogExpFunctions: log1pexp
+using IrrationalConstants: log2π
+
+@testset "Standard measure logdensityof" begin
+    # StdNormal
+    @test logdensityof(StdNormal(), 0.0) ≈ -log2π / 2
+    @test logdensityof(StdNormal(), 1.0) ≈ (-1 - log2π) / 2
+
+    # StdUniform
+    @test logdensityof(StdUniform(), 0.5) == 0.0
+    @test logdensityof(StdUniform(), 1.5) == -Inf
+    @test logdensityof(StdUniform(), -0.5) == -Inf
+
+    # StdLogistic
+    x = 1.0
+    @test logdensityof(StdLogistic(), x) ≈ -abs(x) - 2 * log1pexp(-abs(x))
+
+    # StdExponential
+    @test logdensityof(StdExponential(), 1.0) ≈ -1.0
+    @test logdensityof(StdExponential(), -1.0) == -Inf
+end
