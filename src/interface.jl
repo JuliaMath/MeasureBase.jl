@@ -65,6 +65,7 @@ function test_interface(μ::M, f = identity) where {M}
             # testvalue, logdensityof
 
             x = @inferred testvalue(Float64, μ)
+            x = f(x)
             β = @inferred basemeasure(μ, x)
 
             ℓμ = @inferred logdensityof(μ, x)
@@ -72,7 +73,7 @@ function test_interface(μ::M, f = identity) where {M}
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
-            @test logdensity_def(μ, f(testvalue(Float64, μ))) isa Real
+            @test logdensity_def(μ, x) isa Real
         end
     end
 end
