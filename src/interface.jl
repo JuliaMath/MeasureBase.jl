@@ -41,7 +41,7 @@ function dynamic_basemeasure_depth(μ::M) where {M}
     return depth
 end
 
-function test_interface(μ::M) where {M}
+function test_interface(μ::M, f = identity) where {M}
     @eval begin
         μ = $μ
         @testset "$μ" begin
@@ -71,7 +71,7 @@ function test_interface(μ::M) where {M}
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
-            @test logdensity_def(μ, testvalue(Float64, μ)) isa Real
+            @test logdensity_def(μ, f(testvalue(Float64, μ))) isa Real
         end
     end
 end
