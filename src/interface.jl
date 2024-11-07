@@ -71,7 +71,7 @@ function test_interface(μ::M, f = identity) where {M}
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
-            @test logdensity_def(μ, f(testvalue(Float64, μ))) isa Real
+            @test logdensity_def(μ, $f(testvalue(Float64, μ))) isa Real
         end
     end
 end
