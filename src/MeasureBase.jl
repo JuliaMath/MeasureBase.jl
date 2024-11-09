@@ -144,7 +144,6 @@ include("combinators/restricted.jl")
 include("combinators/smart-constructors.jl")
 include("combinators/powerweighted.jl")
 include("combinators/conditional.jl")
-include("combinators/implicitlymapped.jl")
 include("combinators/likelihood.jl")
 
 include("standard/stdmeasure.jl")
@@ -158,6 +157,7 @@ include("combinators/half.jl")
 
 include("rand.jl")
 
+include("mapped_data.jl")
 include("density.jl")
 include("density-core.jl")
 
