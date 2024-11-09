@@ -123,6 +123,7 @@ struct Likelihood{K,X} <: AbstractLikelihood
     x::X
 
     Likelihood(k::K, x::X) where {K<:AbstractTransitionKernel,X} = new{K,X}(k, x)
+    Likelihood(::Type{K}, x::X) where {K,X} = new{Type{K},X}(K, x)
     Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k, x)
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
