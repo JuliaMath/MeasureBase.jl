@@ -222,25 +222,52 @@ To manually specify an inverse, call
 function pushfwd end
 export pushfwd
 
-@inline pushfwd(f, μ) = _pushfwd_impl(f, μ, AdaptRootMeasure())
-@inline pushfwd(f, μ, style::AdaptRootMeasure) = _pushfwd_impl(f, μ, style)
-@inline pushfwd(f, μ, style::PushfwdRootMeasure) = _pushfwd_impl(f, μ, style)
+@inline pushfwd(f, μ) = _pushfwd_impl1(f, μ, AdaptRootMeasure())
+@inline pushfwd(f, μ, style::AdaptRootMeasure) = _pushfwd_impl1(f, μ, style)
+@inline pushfwd(f, μ, style::PushfwdRootMeasure) = _pushfwd_impl1(f, μ, style)
 
-_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style)
+_pushfwd_impl1(f, μ, style::PushFwdStyle) = _pushfwd_impl2(f, inverse(f), μ, style)
+_pushfwd_impl1(::typeof(identity), μ, ::AdaptRootMeasure) = μ
+_pushfwd_impl1(::typeof(identity), μ, ::PushfwdRootMeasure) = μ
 
-function _pushfwd_impl(
+_pushfwd_impl2(f, finv, μ, style::PushFwdStyle) = PushforwardMeasure(f, finv, μ, style)
+
+function _pushfwd_impl2(
     f,
+    finv,
     μ::PushforwardMeasure{F,I,M,S},
     style::S,
 ) where {F,I,M,S<:PushFwdStyle}
     orig_μ = μ.origin
     new_f = fcomp(f, μ.f)
-    new_f_inv = fcomp(μ.finv, inverse(f))
+    new_f_inv = fcomp(μ.finv, finv)
     PushforwardMeasure(new_f, new_f_inv, orig_μ, style)
 end
 
-_pushfwd_impl(::typeof(identity), μ, ::AdaptRootMeasure) = μ
-_pushfwd_impl(::typeof(identity), μ, ::PushfwdRootMeasure) = μ
+struct _CurriedPushfwd{F,I,S<:PushFwdStyle} <: Function
+    f::F
+    finv::I
+    style::S
+
+    function _CurriedPushfwd{F,I,S}(f::F, finv::I, style::S) where {F,I,S<:PushFwdStyle}
+        new{F,I,S}(f, finv, style)
+    end
+
+    function _CurriedPushfwd(f, finv, style::S) where {S<:PushFwdStyle}
+        new{Core.Typeof(f),Core.Typeof(finv),S}(f, finv, style)
+    end
+end
+
+@inline (cf::_CurriedPushfwd{F,FI})(μ) where {F,FI} =
+    _pushfwd_impl2(cf.f, cf.finv, μ, cf.style)
+
+@inline pushfwd(f) = _curried_pushfwd_impl(f, AdaptRootMeasure())
+@inline pushfwd(f, style::AdaptRootMeasure) = _curried_pushfwd_impl(f, style)
+@inline pushfwd(f, style::PushfwdRootMeasure) = _curried_pushfwd_impl(f, style)
+
+_curried_pushfwd_impl(f, style::PushFwdStyle) = _CurriedPushfwd(f, inverse(f), style)
+@inline _curried_pushfwd_impl(::typeof(identity), ::AdaptRootMeasure) = identity
+@inline _curried_pushfwd_impl(::typeof(identity), ::PushfwdRootMeasure) = identity
 
 ###############################################################################
 # pullback
@@ -267,8 +294,16 @@ export pullbck
 @inline pullbck(f, μ, style::AdaptRootMeasure) = _pullback_impl(f, μ, style)
 @inline pullbck(f, μ, style::PushfwdRootMeasure) = _pullback_impl(f, μ, style)
 
-function _pullback_impl(f, μ, style = AdaptRootMeasure())
-    pushfwd(inverse(f), μ, style)
-end
+_pullback_impl(f, μ, style::PushFwdStyle) = _pushfwd_impl2(inverse(f), f, μ, style)
+_pullback_impl(::typeof(identity), μ, ::AdaptRootMeasure) = μ
+_pullback_impl(::typeof(identity), μ, ::PushfwdRootMeasure) = μ
+
+@inline pullbck(f) = _curried_pullbck_impl(f, AdaptRootMeasure())
+@inline pullbck(f, style::AdaptRootMeasure) = _curried_pullbck_impl(f, style)
+@inline pullbck(f, style::PushfwdRootMeasure) = _curried_pullbck_impl(f, style)
+
+_curried_pullbck_impl(f, style::PushFwdStyle) = _CurriedPushfwd(inverse(f), f, style)
+@inline _curried_pullbck_impl(::typeof(identity), ::AdaptRootMeasure) = identity
+@inline _curried_pullbck_impl(::typeof(identity), ::PushfwdRootMeasure) = identity
 
 @deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
