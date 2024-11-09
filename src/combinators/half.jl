@@ -19,8 +19,8 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
     return abs(rand(rng, T, unhalf(μ)))
 end
 
-function logdensityof(μ::Half, x)
-    ld = logdensityof(unhalf(μ), x) - loghalf
+function strict_logdensityof(μ::Half, x)
+    ld = strict_logdensityof(unhalf(μ), x) - loghalf
     return x ≥ 0 ? ld : oftype(ld, -Inf)
 end
 

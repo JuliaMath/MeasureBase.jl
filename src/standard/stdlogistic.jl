@@ -4,9 +4,9 @@ export StdLogistic
 
 @inline insupport(d::StdLogistic, x) = true
 
-@inline logdensityof(::StdLogistic, x) = (u = -abs(x); u - 2 * log1pexp(u))
+@inline strict_logdensityof(::StdLogistic, x) = (u = -abs(x); u - 2 * log1pexp(u))
 
-@inline logdensity_def(::StdLogistic, x) = logdensityof(StdLogistic(), x)
+@inline logdensity_def(::StdLogistic, x) = strict_logdensityof(StdLogistic(), x)
 @inline basemeasure(::StdLogistic) = LebesgueBase()
 
 @inline transport_def(::StdUniform, μ::StdLogistic, x) = logistic(x)

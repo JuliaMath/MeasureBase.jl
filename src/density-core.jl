@@ -26,11 +26,15 @@ To compute log-density relative to `basemeasure(m)` or *define* a log-density
 `logdensity_def`. 
 
 To compute a log-density relative to a specific base-measure, see
-`logdensity_rel`. 
+`logdensity_rel`.
+
+# Implementation
+
+Do not specialize `logdensityof` directly for subtypes of `AbstractMeasure`,
+specialize `MeasureBase.logdensity_def` and `MeasureBase.strict_logdensityof` instead.
 """
-@inline function logdensityof(μ::AbstractMeasure, x)
-    result = dynamic(unsafe_logdensityof(μ, x))
-    _checksupport(insupport(μ, x), result)
+@inline function logdensityof(μ::AbstractMeasure, x) #!!!!!!!!!!!!!!!!!
+    strict_logdensityof(μ, x)
 end
 
 @inline function logdensityof_rt(::T, ::U) where {T,U}
@@ -40,6 +44,24 @@ end
 _checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 
 export unsafe_logdensityof
+
+"""
+    MeasureBase.strict_logdensityof(μ, x)
+
+Compute the log-density of the measure `μ` at `x` relative to `rootmeasure(m)`.
+In contrast to [`logdensityof(μ, x)`](@ref), this will not take implicit pushforwards
+of `μ` (depending on the type of `x`) into account.
+"""
+function strict_logdensityof end
+
+@inline function strict_logdensityof(μ, x)
+    result = dynamic(unsafe_logdensityof(μ, x))
+    _checksupport(insupport(μ, x), result)
+end
+
+@inline function strict_logdensityof_rt(::T, ::U) where {T,U}
+    Core.Compiler.return_type(strict_logdensityof, Tuple{T,U})
+end
 
 # https://discourse.julialang.org/t/counting-iterations-to-a-type-fixpoint/75876/10?u=cscherrer
 """
@@ -68,14 +90,27 @@ See also `logdensityof`.
 end
 
 """
-    logdensity_rel(m1, m2, x)
+    logdensity_rel(μ, ν, x)
 
-Compute the log-density of `m1` relative to `m2` at `x`. This function checks
-whether `x` is in the support of `m1` or `m2` (or both, or neither). If `x` is
+Compute the log-density of `μ` relative to `ν` at `x`. This function checks
+whether `x` is in the support of `μ` or `ν` (or both, or neither). If `x` is
 known to be in the support of both, it can be more efficient to call
-`unsafe_logdensity_rel`. 
+`unsafe_logdensity_rel`.
 """
-@inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
+function logdensity_rel(μ, ν, x)
+    strict_logdensity_rel(μ, ν, x)
+end
+
+"""
+    MeasureBase.strict_logdensity_rel(μ, ν, x)
+
+Compute the log-density of `μ` relative to `ν` at `x`. In contrast to
+[`logdensity_rel(μ, ν, x)`](@ref), this will not take implicit pushforwards
+of `μ` and `ν` (depending on the type of `x`) into account.
+"""
+function strict_logdensity_rel end
+
+@inline function strict_logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
     T = unstatic(
         promote_type(
             return_type(logdensity_def, (μ, x)),

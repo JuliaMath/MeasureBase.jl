@@ -72,7 +72,7 @@ function _rand_product(
     end |> collect
 end
 
-for func in [:logdensityof, :logdensity_def]
+for func in [:strict_logdensityof, :logdensity_def]
     @eval @inline function $func(d::AbstractProductMeasure, x)
         mapreduce($func, +, marginals(d), x)
     end
@@ -82,7 +82,7 @@ struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
 
-@inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
+@inline function strict_logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
     mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
 end
 
@@ -109,7 +109,7 @@ end
     return q
 end
 
-for func in [:logdensityof, :logdensity_def]
+for func in [:strict_logdensityof, :logdensity_def]
     # For tuples, `mapreduce` has trouble with type inference
     @eval @inline function $func(d::ProductMeasure{T}, x) where {T<:Tuple}
         ℓs = map($func, marginals(d), x)
