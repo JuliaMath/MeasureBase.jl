@@ -14,6 +14,7 @@ include("static.jl")
 include("test_primitive.jl")
 include("test_standard.jl")
 include("test_basics.jl")
+include("test_mapped_data.jl")
 
 include("getdof.jl")
 include("transport.jl")
@@ -21,6 +22,5 @@ include("smf.jl")
 
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
-include("combinators/implicitlymapped.jl")
 
 include("test_docs.jl")
