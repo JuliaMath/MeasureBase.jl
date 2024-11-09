@@ -16,6 +16,7 @@ Base.:∘(::typeof(log), lik::AbstractLikelihood) = logdensityof(lik)
 # insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @doc raw"""
+    Likelihood(k::Base.Callable, x)
     Likelihood(k::AbstractTransitionKernel, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
