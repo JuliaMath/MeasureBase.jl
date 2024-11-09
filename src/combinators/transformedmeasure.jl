@@ -103,7 +103,7 @@ function Pretty.tile(ν::PushforwardMeasure)
 end
 
 # TODO: THIS IS ALMOST CERTAINLY WRONG 
-# @inline function logdensity_rel(
+# @inline function strict_logdensity_rel(
 #     ν::PushforwardMeasure{FF1,IF1,M1,<:AdaptRootMeasure},
 #     β::PushforwardMeasure{FF2,IF2,M2,<:AdaptRootMeasure},
 #     y,
@@ -111,7 +111,7 @@ end
 #     x = β.inv_f(y)
 #     f = ν.inv_f ∘ β.f
 #     inv_f = β.inv_f ∘ ν.f
-#     logdensity_rel(pushfwd(f, inv_f, ν.origin, AdaptRootMeasure()), β.origin, x)
+#     strict_logdensity_rel(pushfwd(f, inv_f, ν.origin, AdaptRootMeasure()), β.origin, x)
 # end
 
 # TODO: Would profit from custom pullback:
@@ -132,7 +132,7 @@ function _combine_logd_with_ladj(logd_orig::Real, ladj::Real)
     end
 end
 
-function logdensityof(
+function strict_logdensityof(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:PushfwdRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -143,7 +143,7 @@ function logdensityof(
     )
 end
 
-function logdensityof(
+function strict_logdensityof(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:AdaptRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -154,7 +154,7 @@ function logdensityof(
     )
 end
 
-for func in [:logdensityof, :logdensity_def]
+for func in [:strict_logdensityof, :logdensity_def]
     @eval function $func(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
         f_inv = unwrap(ν.finv)
         x, inv_ladj = with_logabsdet_jacobian(f_inv, y)
