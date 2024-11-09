@@ -1,6 +1,11 @@
 export AbstractLikelihood, Likelihood
 
 abstract type AbstractLikelihood end
+(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
+
+DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
+
+Base.:∘(::typeof(log), lik::AbstractLikelihood) = logdensityof(lik)
 
 # @inline function logdensityof(ℓ::AbstractLikelihood, p)
 #     t() = dynamic(unsafe_logdensityof(ℓ, p))
@@ -120,10 +125,6 @@ struct Likelihood{K,X} <: AbstractLikelihood
     Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k, x)
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
-
-(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
-
-DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
