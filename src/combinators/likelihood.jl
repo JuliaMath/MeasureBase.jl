@@ -170,6 +170,19 @@ likelihoodof(k, x, pars::NamedTuple) = likelihoodof(kernel(k, pars), x)
 
 likelihoodof(k::AbstractTransitionKernel, x) = Likelihood(k, x)
 
+function likelihoodof(k::Function, x)
+    f_map, x_unwrapped = map_result_and_func(x)
+    mapped_k = _map_kernel(f_map, k)
+
+    return Likelihood(mapped_k, x_unwrapped)
+end
+
+struct _MappedKernel{FM,FK} end
+
+#!!!!!!!! make an object for this instead of using an anonymous function:
+_map_kernel(f_map, f_kernel) = pushfwd(f_map, PushfwdRootMeasure()) ∘ f_kernel
+_map_kernel(::typeof(identity), f_kernel) = f_kernel
+
 export log_likelihood_ratio
 
 """

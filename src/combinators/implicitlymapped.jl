@@ -1,21 +1,22 @@
 
 """
-    abstract type ImplicitlyMapped
+    abstract type MappedObservation
 
-Supertype for objects that have been mapped in an implicit way.
+Supertype for observation/data that has been mapped, and so implies a
+pushforward on measures in the context of `logdensityof` and `likelihoodof`.
 
 The explicit map/function can only be determined given some kind of observed
 result `obs` using
 
 ```julia
-f_map = explicit_mapfunc(mapped::ImplicitlyMapped, obs)
+f_map = explicit_mapfunc(mapped::MappedObservation, obs)
 ```
 
 The original object that has been implicitly mapped
 may be retrieved via
 
 ```julia
-obj = explicit_mapfunc(mapped::ImplicitlyMapped, obs)
+obj = explicit_mapfunc(mapped::MappedObservation, obs)
 ```
 
 Note that `obs` is typically *not* the directly result of `f_map(ob)`. Instead,
@@ -26,14 +27,14 @@ the relationship between `obj`, `f_map`, and `obs` depends on what `obj` is:
   element of the measurable space of `mu`. Implicitly mapped measures support
 
   ```julia
-  DensityInterface.DensityKind(mapped_mu::ImplicitlyMapped)
-  DensityInterface.logdensityof(mapped_mu::ImplicitlyMapped, obs)
+  DensityInterface.DensityKind(mapped_mu::MappedObservation)
+  DensityInterface.logdensityof(mapped_mu::MappedObservation, obs)
   ```
 
   and the explicitly mapped measure can be generated via
 
   ```julia
-  explicit_measure(mapped_mu::ImplicitlyMapped, obs)
+  explicit_measure(mapped_mu::MappedObservation, obs)
   ```
 
 * A transition/Markov kernel `f_kernel = obj`, i.e. a function that maps
@@ -44,18 +45,18 @@ the relationship between `obj`, `f_map`, and `obs` depends on what `obj` is:
   by the mapped kernel. Implicitly mapped transition/Markov kernels support
 
   ```julia
-  Likelihood(mapped_f_kernel::ImplicitlyMapped, obs)
+  Likelihood(mapped_f_kernel::MappedObservation, obs)
   ```
 
   and the explicitly mapped kernel can be generated via
 
   ```julia
-  explicit_measure(mapped_mu::ImplicitlyMapped, obs)
+  explicit_measure(mapped_mu::MappedObservation, obs)
   ```
 
 # Implementation
 
-Subtypes of `ImplicitlyMapped` that should support origin measures of
+Subtypes of `MappedObservation` that should support origin measures of
 type `SomeRelevantMeasure` and observations of type `SomeRelevantObs`,
 resulting in explicit maps/functions of type `SomeMapFunc`, must
 implement/specialize
@@ -72,75 +73,72 @@ and (except if functions of type `SomeMapFunc` are invertible via
 MeasureBase.pushfwd(f::SomeMapFunc, mu::SomeRelevantMeasure, ::PushfwdRootMeasure)
 ```
 
-Subtypes of `ImplicitlyMapped` may support multiple combinations of
+Subtypes of `MappedObservation` may support multiple combinations of
 observation and measure types.
 """
-abstract type ImplicitlyMapped end
-export ImplicitlyMapped
+abstract type MappedObservation end
+export MappedObservation
 
 """
-    implicit_origin(mapped::ImplicitlyMapped)
+    map_result_and_func(tagged_y)
 
-Get the original object (a measure or transition/Markov kernel) that was
-implicitly mapped.
+Get the map function associated with the a mapped observation and the
+result of the maps.
 
-See [ImplicitlyMapped](@ref) for detailed semantics.
+Assuming `y` the result of a function `f(y)` and `tagged_y` provides enough
+information to determine `f` any `y`, then
 
-# Implementation
+```
+(f, y) == map_result_and_func(tagged_y)
+```
 
-`implicit_origin` must be implemented for subtypes of `ImplicitlyMapped`,
-there is no default implementation.
+`tagged_y` may be identical to y - if so, then `f` must be idempotent.
+
+For example, with
+mu = productmeasure((a = StdUniform(), b = StdNormal(), c = StdExponential()))
+
+```julia
+f, y == map_result_and_func(was_marginalized((a = 0.7, c = 1.2)))
+x = (a = 0.7, b = something, c = 1.2, d = something_else)
+````
+
+will result in
+
+```julia
+y == (a = 0.7, c = 1.2)
+y == f(x)
+```
 """
-function implicit_origin end
-export implicit_origin
+function map_result_and_func end
+export map_result_and_func
 
-"""
-    explicit_mapfunc(mapped::ImplicitlyMapped, obs)
+function DensityInterface.logdensityof(f_kernel::Base.Callable, x)
+    f_map, x_unwrapped = map_result_and_func(x)
+    mapped_kernel = _map_kernel(f_map, f_kernel)
 
-Get an explicit map/function based on an implicitly mapped object and an
-observation.
-
-See [ImplicitlyMapped](@ref) for detailed semantics.
-
-# Implementation
-
-`explicit_mapfunc` must be implemented for subtypes of `ImplicitlyMapped`,
-there is no default implementation.
-"""
-function explicit_mapfunc end
-export explicit_mapfunc
-
-"""
-    explicit_measure(mapped::ImplicitlyMapped, obs)
-
-Get an explicitly mapped measure based on an implicitly mapped measure and an
-observation that provides context on which pushforward to use on the onmapped
-original measure `implicit_origin(mapped)`.
-
-Used [`explicit_mapfunc`](@ref) to get the function to use in the pushforward.
-
-# Implementation
-
-`explicit_measure` does not need to be specialized for subtypes of
-`ImplicitlyMapped`.
-"""
-function explicit_measure(mapped_measure::ImplicitlyMapped, obs)
-    f_map = explicit_mapfunc(mapped_measure, obs)
-    mu = implicit_origin(mapped_measure)
-    return pushfwd(f_map, mu, PushfwdRootMeasure())
-end
-export explicit_measure
-
-function DensityInterface.logdensityof(mapped_measure::ImplicitlyMapped, obs)
-    return logdensityof(explicit_measure(mapped_measure, obs), obs)
+    return (mapped_kernel, x_unwrapped)
 end
 
-function DensityInterface.DensityKind(mapped::ImplicitlyMapped)
+function likelihoodof(f_kernel::Base.Callable, x)
+    f_map, x_unwrapped = map_result_and_func(x)
+    mapped_kernel = _map_kernel(f_map, f_kernel)
+
+    return Likelihood{Base.Typeof(mapped_kernel),Base.Typeof(x_unwrapped)}(
+        mapped_kernel,
+        x_unwrapped,
+    )
+end
+
+#!!!!!!!! make an object for this instead of using an anonymous function:
+_map_kernel(f_map, f_kernel) = (p -> pushfwd(f_map, f_kernel(p), PushfwdRootMeasure()))
+_map_kernel(::typeof(identity), f_kernel) = f_kernel
+
+function DensityInterface.DensityKind(mapped::MappedObservation)
     DensityKind(implicit_origin(mapped))
 end
 
 """
-    explicit_kernel(mapped::ImplicitlyMapped, obs)
+    explicit_kernel(mapped::MappedObservation, obs)
 
 Get an expliclity mapped transition/Markov kernel, based on an implicitly
 mapped kernel and an observation that provides context on which pushforward
@@ -151,16 +149,16 @@ Used [`explicit_mapfunc`](@ref) to get the function to use in the pushforward.
 # Implementation
 
 `explicit_kernel` does not need to be specialized for subtypes of
-`ImplicitlyMapped`.
+`MappedObservation`.
 """
-function explicit_kernel(mapped_kernel::ImplicitlyMapped, obs)
+function explicit_kernel(mapped_kernel::MappedObservation, obs)
     f_map = explicit_mapfunc(mapped_kernel, obs)
     f_kernel = implicit_origin(mapped_kernel)
     return (p -> pushfwd(f_map, f_kernel(p), PushfwdRootMeasure()))
 end
 export explicit_kernel
 
-function Likelihood(mapped_kernel::ImplicitlyMapped, obs)
+function Likelihood(mapped_kernel::MappedObservation, obs)
     return Likelihood(explicit_kernel(mapped_kernel, obs), obs)
 end
 
@@ -197,7 +195,7 @@ function (f::TakeAny)(xs)
 end
 
 """
-    struct Marginalized{T} <: ImplicitlyMapped
+    struct Marginalized{T} <: MappedObservation
 
 Represents an implicitly marginalized measure or transition kernel.
 
@@ -206,7 +204,7 @@ Constructors:
 * `Marginalized(mu)`
 * `Marginalized(f_kernel)`
 
-See [ImplicitlyMapped](@ref) for detailed semantics.
+See [MappedObservation](@ref) for detailed semantics.
 
 Example:
 
@@ -219,7 +217,7 @@ marg_mu_equiv = productmeasure((a = StdUniform(), c = StdExponential()))
 logdensityof(Marginalized(mu), obs) ≈ logdensityof(marg_mu_equiv, obs)
 ```
 """
-struct Marginalized{T} <: ImplicitlyMapped
+struct Marginalized{T} <: MappedObservation
     obj::T
 end
 export Marginalized
