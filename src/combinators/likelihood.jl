@@ -179,7 +179,6 @@ end
 
 struct _MappedKernel{FM,FK} end
 
-#!!!!!!!! make an object for this instead of using an anonymous function:
 _map_kernel(f_map, f_kernel) = pushfwd(f_map, PushfwdRootMeasure()) ∘ f_kernel
 _map_kernel(::typeof(identity), f_kernel) = f_kernel
 
