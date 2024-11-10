@@ -33,7 +33,7 @@ To compute a log-density relative to a specific base-measure, see
 Do not specialize `logdensityof` directly for subtypes of `AbstractMeasure`,
 specialize `MeasureBase.logdensity_def` and `MeasureBase.strict_logdensityof` instead.
 """
-@inline function logdensityof(μ::AbstractMeasure, x) #!!!!!!!!!!!!!!!!!
+@inline function logdensityof(μ::AbstractMeasure, x)
     strict_logdensityof(μ, x)
 end
 
