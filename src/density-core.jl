@@ -33,8 +33,9 @@ To compute a log-density relative to a specific base-measure, see
 Do not specialize `logdensityof` directly for subtypes of `AbstractMeasure`,
 specialize `MeasureBase.logdensity_def` and `MeasureBase.strict_logdensityof` instead.
 """
-@inline function logdensityof(μ::AbstractMeasure, x)
-    strict_logdensityof(μ, x)
+@inline function logdensityof(μ::AbstractMeasure, maybe_mapped_x)
+    mapped_μ, x = mapped_measure_and_obs(μ, maybe_mapped_x)
+    strict_logdensityof(mapped_μ, x)
 end
 
 @inline function logdensityof_rt(::T, ::U) where {T,U}
@@ -97,8 +98,19 @@ whether `x` is in the support of `μ` or `ν` (or both, or neither). If `x` is
 known to be in the support of both, it can be more efficient to call
 `unsafe_logdensity_rel`.
 """
-function logdensity_rel(μ, ν, x)
-    strict_logdensity_rel(μ, ν, x)
+function logdensity_rel(μ, ν, maybe_mapped_x)
+    _logdensity_rel_impl(is_mapped_obs(maybe_mapped_x), μ, ν, maybe_mapped_x)
+end
+
+@inline function _logdensity_rel_impl(::False, μ, ν, maybe_mapped_x)
+    strict_logdensity_rel(μ, ν, maybe_mapped_x)
+end
+
+function _logdensity_rel_impl(::True, μ, ν, maybe_mapped_x)
+    f_map, x = map_result_and_func(maybe_mapped_x)
+    mapped_μ, = pushfwd(f_map, μ)
+    mapped_ν = pushfwd(f_map, ν)
+    strict_logdensity_rel(mapped_μ, mapped_ν, x)
 end
 
 """
