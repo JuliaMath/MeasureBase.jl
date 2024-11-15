@@ -1,8 +1,8 @@
 import Base
 
-Base.rand(d::AbstractMeasure) = rand(Random.GLOBAL_RNG, Float64, d)
+Base.rand(d::AbstractMeasure) = rand(Random.default_rng(), Float64, d)
 
-Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.GLOBAL_RNG, T, μ)
+Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.default_rng(), T, μ)
 
 @nospecialize
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::M) where {T,M<:AbstractMeasure}
