@@ -21,6 +21,7 @@ using JET
 # include("test_aqua.jl")
 
 include("static.jl")
+include("domains.jl")
 
 include("test_primitive.jl")
 include("test_standard.jl")
@@ -33,5 +34,6 @@ include("smf.jl")
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/implicitlymapped.jl")
-
+include("combinators/conditional.jl")
+include("combinators/half.jl")
 include("test_docs.jl")
