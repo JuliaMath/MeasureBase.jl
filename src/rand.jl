@@ -1,12 +1,34 @@
 import Base
 
-Base.rand(d::AbstractMeasure) = rand(Random.GLOBAL_RNG, Float64, d)
+Base.rand(d::AbstractMeasure) = rand(Random.default_rng(), Float64, d)
 
-Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.GLOBAL_RNG, T, μ)
+Base.rand(T::Type, μ::AbstractMeasure) = rand(Random.default_rng(), T, μ)
+
+@nospecialize
+function Base.rand(rng::AbstractRNG, ::Type{T}, d::M) where {T,M<:AbstractMeasure}
+    @error "No method defined for rand(::AbstractRNG, ::Type{T}, $M)"
+end
+@specialize
 
 Base.rand(rng::AbstractRNG, d::AbstractMeasure) = rand(rng, Float64, d)
 
 @inline Random.rand!(d::AbstractMeasure, args...) = rand!(GLOBAL_RNG, d, args...)
+
+@inline function Base.rand(
+    rng::AbstractRNG,
+    ::Type{T},
+    d::ProductMeasure{A},
+) where {T,A<:AbstractArray}
+    mar = marginals(d)
+    elT = typeof(rand(rng, T, first(mar)))
+
+    sz = size(mar)
+    x = Array{elT,length(sz)}(undef, sz)
+    @inbounds @simd for j in eachindex(mar)
+        x[j] = rand(rng, T, mar[j])
+    end
+    x
+end
 
 # TODO: Make this work
 # function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractMeasure) where {T}

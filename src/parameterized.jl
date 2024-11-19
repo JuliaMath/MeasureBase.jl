@@ -13,7 +13,7 @@ end
 function Pretty.tile(d::ParameterizedMeasure)
     result = Pretty.literal(nameof(typeof(d)))
     par = getfield(d, :par)
-    result *= Pretty.literal(sprint(show, par; context = :compact => true))
+    result *= Pretty.tile(par)
     result
 end
 
