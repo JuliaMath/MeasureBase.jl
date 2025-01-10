@@ -76,22 +76,17 @@ end
 import StructArrays
 
 function StructArrays.staticschema(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    # Get the types from the NamedTuple parameter
     par_type = fieldtype(P, :par)
-    # Use proper type construction for the component types
     types = Tuple{(fieldtype(par_type, n) for n in N)...}
-    # Return NamedTuple type with parameter names
-    return NamedTuple{N,types}
+    NamedTuple{N,types}
 end
 
 function StructArrays.component(m::ParameterizedMeasure, key::Symbol)
-    # Extract component from the parameters NamedTuple
-    return getfield(getfield(m, :par), key)
+    getfield(getfield(m, :par), key)
 end
 
 function StructArrays.createinstance(::Type{P}, args...) where {N,P<:ParameterizedMeasure{N}}
-    # Create a new ParameterizedMeasure instance from components
-    return constructorof(P)(NamedTuple{N}(args))
+    constructorof(P)(NamedTuple{N}(args))
 end
 
 ###############################################################################
