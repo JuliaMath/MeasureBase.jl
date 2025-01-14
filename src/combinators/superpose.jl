@@ -138,8 +138,8 @@ end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-function basemeasure(::SuperpositionMeasure{<:NTuple{N,T}}) where {N,T<:AbstractMeasure}
-    rootmeasure(T)
+function basemeasure(μ::SuperpositionMeasure{<:NTuple{N,T}}) where {N,T<:AbstractMeasure}
+    rootmeasure(first(μ.components))
 end
 
 function logdensity_def(μ::SuperpositionMeasure{<:NTuple{N,T}}, x) where {N,T<:AbstractMeasure}
