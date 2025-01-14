@@ -135,7 +135,23 @@ end
 function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
     superpose(map(basemeasure, μ.components)...)
 end
+
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
+
+function basemeasure(::SuperpositionMeasure{<:NTuple{N,T}}) where {N,T<:AbstractMeasure}
+    rootmeasure(T)
+end
+
+function logdensity_def(μ::SuperpositionMeasure{<:NTuple{N,T}}, x) where {N,T<:AbstractMeasure}
+    log(density_def(μ, x))
+end
+
+function density_def(μ::SuperpositionMeasure{<:NTuple{N,T}}, x) where {N,T<:AbstractMeasure}
+    sum(μ.components) do c
+        density_def(c, x)
+    end
+end
+
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
