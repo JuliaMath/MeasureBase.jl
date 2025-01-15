@@ -13,13 +13,6 @@ using Aqua
     # Aqua.test_ambiguities(MeasureBase)
 end
 
-using JET
-# @testset "Code linting (JET.jl)" begin
-#     JET.test_package(MeasureBase; target_defined_modules = true)
-# end
-
-# include("test_aqua.jl")
-
 include("static.jl")
 
 include("test_primitive.jl")
