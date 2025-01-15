@@ -138,15 +138,15 @@ end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-function basemeasure(μ::SuperpositionMeasure{<:NTuple{N,T}}) where {N,T<:AbstractMeasure}
+function basemeasure(μ::SuperpositionMeasure{Tuple{Vararg{AbstractMeasure}}})
     rootmeasure(first(μ.components))
 end
 
-function logdensity_def(μ::SuperpositionMeasure{<:NTuple{N,T}}, x) where {N,T<:AbstractMeasure}
+function logdensity_def(μ::SuperpositionMeasure{Tuple{Vararg{AbstractMeasure}}}, x)
     log(density_def(μ, x))
 end
 
-function density_def(μ::SuperpositionMeasure{<:NTuple{N,T}}, x) where {N,T<:AbstractMeasure}
+function density_def(μ::SuperpositionMeasure{Tuple{Vararg{AbstractMeasure}}}, x)
     sum(μ.components) do c
         density_def(c, x)
     end
