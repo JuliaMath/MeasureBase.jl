@@ -93,3 +93,57 @@ using AffineMaps, PropertyFunctions
         obs,
     )
 end
+
+using Test
+using MeasureBase
+using Static: static
+using Random: MersenneTwister
+
+@testset "TakeAny" begin
+    rng = MersenneTwister(42)
+    
+    @testset "Basic properties" begin
+        take2 = TakeAny(2)
+        take_static2 = TakeAny(static(2))
+        
+        # Test with various collection types
+        arr = [1,2,3,4,5]
+        @test length(take2(arr)) == 2
+        @test length(take_static2(arr)) == 2
+        
+        # Test consistency
+        @test take2(arr) == take2(arr)  # Same elements when called multiple times
+        
+        # Test with different sized inputs
+        @test length(take2(1:10)) == 2
+        @test length(take2(1:1)) == 1  # Should handle cases where input is smaller than n
+    end
+
+    @testset "Implicit mapping with TakeAny" begin
+        # Create a kernel that produces a product measure
+        kernel = par -> StdNormal()^3
+        
+        # Create mapped version that only looks at first two components
+        mapped_kernel = ImplicitlyMapped(kernel, TakeAny(2))
+        
+        # Test with some parameter value
+        par = 1.0
+        full_measure = kernel(par)
+        mapped_measure = explicit_kernel(mapped_kernel, rand(rng, full_measure))(par)
+        
+        # Check dimensions
+        @test getdof(mapped_measure) == 2
+        @test getdof(full_measure) == 3
+        
+        # Test consistency of mapping
+        obs1 = rand(rng, full_measure)
+        obs2 = rand(rng, full_measure)
+        
+        mapped1 = mapped_kernel.mapfunc(obs1)
+        mapped2 = mapped_kernel.mapfunc(obs2)
+        
+        # Same elements should be selected consistently
+        @test length(mapped1) == 2
+        @test mapped_kernel.mapfunc(obs1) == mapped1  # Consistent mapping
+    end
+end

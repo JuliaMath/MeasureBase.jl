@@ -3,6 +3,7 @@ using Test
 import MeasureBase
 
 import Static
+using StaticArrays
 using Static: static
 import FillArrays
 
@@ -31,4 +32,21 @@ import FillArrays
     @test MeasureBase.maybestatic_length(MeasureBase.one_to(7)) == 7
     @test MeasureBase.maybestatic_length(MeasureBase.one_to(static(7))) isa Static.StaticInt
     @test MeasureBase.maybestatic_length(MeasureBase.one_to(static(7))) == static(7)
+end
+
+@testset "maybestatic_size" begin
+    # Test regular array
+    arr = rand(MersenneTwister(123), 3, 4)
+    @test MeasureBase.maybestatic_size(arr) == (3, 4)
+    
+    # Test static array
+    static_arr = SMatrix{2,2}([1 2; 3 4])
+    @test MeasureBase.maybestatic_size(static_arr) == (static(2), static(2))
+    
+    # Test mixed static/dynamic array
+    mixed = zeros(static(2), 3)  # Create a matrix with static first dimension
+    size_result = MeasureBase.maybestatic_size(mixed)
+    @test size_result[1] isa Static.StaticInt
+    @test size_result[2] isa Int
+    @test size_result == (static(2), 3)
 end
