@@ -24,22 +24,36 @@ imposed via type constraints, though, to is is by-contract.
 const SetLike = Union{MeasureBase.MAbstractSet,Base.AbstractSet,IntervalSets.Domain}
 
 """
-    mdomain(m)::MeasureBase.SetLikeIn
+    mdomain(m)::MeasureBase.SetLike
 
 Return the domain, i.e. the measurable set, of the measure `m`.
 
-The measure must allow of evaluating densities and the like over the whole
+The measure must allow for evaluating densities and the like over the whole
 domain, even if the support of the measure is only a subset of the domain.
 
 May return [`MeasureBase.ImplicitDomain`](@ref) if the domain cannot be
 computed (efficiently).
 """
 function mdomain end
+export mdomain
 
 @inline mdomain(m) = ImplicitDomain(m)
 
 """
-    maybe_in(x, s)
+    valdomain(x)::MeasureBase.SetLike
+
+Return the domain of a given value.
+
+May return [`MeasureBase.UnknownDomain`](@ref) if no domain type is available
+that can represents values like `x`.
+"""
+function valdomain end
+export valdomain
+
+@inline valdomain(x) = UnknownDomain(x)
+
+"""
+    MeasureBase.maybe_in(x, s)
 
 Test if `x` may be a member of `s`.
 
@@ -89,6 +103,42 @@ maybe_in(@nospecialize(x), ::ImplicitDomain) = true
 function Base.isempty(::ImplicitDomain)
     throw(ArgumentError("Can't test if an ImplicitDomain is empty"))
 end
+
+"""
+    struct MeasureBase.UnknownDomain{T} <: MeasureBase.MAbstractSet
+
+Represents the unknown domain of a value of type `T`.
+
+Constructors:
+
+```
+MeasureBase.UnknownDomain(x::T)
+```
+
+Does not support `Base.in(x, s::MeasureBase.UnknownDomain)`, and
+`MeasureBase.maybe_in(x, s::MeasureBase.UnknownDomain)` always return `true`
+(unless specialized for the measure type).
+
+`isempty` will always return false, `UnknownDomain` should only be created
+if a value of type `T` existed in the first place, which implies that the
+domain can not be empty.
+"""
+struct UnknownDomain{T} <: MAbstractSet end
+
+UnknownDomain(::T) where {T} = UnknownDomain{T}()
+
+Base.eltype(::UnknownDomain{T}) where {T} = T
+
+@inline Base.union(s::UnknownDomain, others::UnknownDomain...) =
+    UnknownDomain{promote_type(eltype(s), map(eltype, others)...)}()
+
+function Base.in(@nospecialize(x), ::UnknownDomain)
+    throw(ArgumentError("Cannot test if a value lies withing an unknown domain."))
+end
+
+maybe_in(@nospecialize(x), ::UnknownDomain) = true
+
+Base.isempty(::UnknownDomain) = false
 
 """
     RealInterval() isa MeasureBase.MAbstractSet
