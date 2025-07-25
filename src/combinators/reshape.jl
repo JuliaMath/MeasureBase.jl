@@ -43,7 +43,7 @@ function mreshape end
 
 _elsize_for_reshape(m::AbstractMeasure) = _elsize_for_reshape(some_mspace_elsize(m), m)
 _elsize_for_reshape(sz::NTuple{<:Any,Integer}, ::AbstractMeasure) = sz
-_elsize_for_reshape(::NoMSpaceElementSize, m::AbstractMeasure) = size(testvalue(m))
+#!!!!!!!!!!_elsize_for_reshape(::NoMSpaceElementSize, m::AbstractMeasure) = size(testvalue(m))
 
-mreshape(m::AbstractMeasure, sz::Vararg{<:Any,Integer}) = mreshape(m, sz)
-mreshape(m::AbstractMeasure, sz::NTuple{<:Any,Integer}) = pushfwd(Reshape(sz, _elsize_for_reshape(m)), m)
+mreshape(m::AbstractMeasure, sz::Vararg{Any,N}) where N = mreshape(m, sz)
+mreshape(m::AbstractMeasure, sz::NTuple{N,<:Any}) where N = pushfwd(Reshape(sz, _elsize_for_reshape(m)), m)
