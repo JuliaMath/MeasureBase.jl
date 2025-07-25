@@ -342,7 +342,7 @@ import FillArrays
     @test @inferred(size_from_type(typeof(saaxs1))) === maybestatic_size(saaxs1)
     @test @inferred(size_from_type(typeof(siaxs))) === maybestatic_size(siaxs)
     @test @inferred(size_from_type(eltype(A))) === maybestatic_size(A[1])
-    @test @inferred(size_from_type(typeof(A))) === NoTypeSize{Vector{T}}()
+    @test @inferred(size_from_type(typeof(A))) === NoTypeSize{typeof(A)}()
 
     @test @inferred(element_size(tpl)) === maybestatic_size(tpl[1])
     @test @inferred(element_size(nt)) === maybestatic_size(nt[1])
