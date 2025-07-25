@@ -365,3 +365,51 @@ Return the canonical representation of a collection size.
 Return the canonical representation collection axes.
 """
 @inline canonical_axes(axs::AxesLike) = map(canonical_indices, axs)
+
+"""
+    MeasureBase.NoTypeSize(T)
+
+Returned by [`MeasureBase.size_from_type(T)`](@ref) if the size of values of type
+`T` is not fixed or not known.
+"""
+struct NoTypeSize{T} end
+
+"""
+    MeasureBase.size_from_type(::Type{T})::MeasureBase.SizeLike
+
+Get the size (equivalent of MeasureBase.maybestatic_size) of values of
+type `T`.
+
+Requires values of type `T` to have a fixed known size, returns
+[`MeasureBase.NoTypeSize{T}()`](@ref) otherwise.
+"""
+function size_from_type end
+
+size_from_type(::Type{T}) where {T} = NoTypeSize{T}()
+size_from_type(::Type{<:Number}) = ()
+size_from_type(::Type{Tuple{}}) = StaticArrays.Size(0)
+size_from_type(::Type{<:Tuple{Vararg{Any,N}}}) where {N} = StaticArrays.Size(N)
+size_from_type(::Type{<:NamedTuple{names}}) where {names} = StaticArrays.Size(length(names))
+function size_from_type(::Type{<:StaticArrays.Size{tpl}}) where {tpl}
+    StaticArrays.Size(length(tpl))
+end
+size_from_type(::Type{AT}) where {AT<:StaticArray} = StaticArrays.Size(T)
+
+"""
+    MeasureBase.element_size(xs)::MeasureBase.SizeLike
+
+Get the size (equivalent of MeasureBase.maybestatic_size) of the elements of
+a collection `xs`.
+
+Requires all elements of `xs` to have the same size.
+"""
+function element_size end
+
+_FixedSizeType = Union{Number,Tuple,NamedTuple,StaticArray,StaticArrays.Size}
+
+@inline element_size(::AbstractArray{T}) where {T<:_FixedSizeType} =
+    _elsize_impl(size_from_type(eltype(A)), A)
+@inline _elsize_impl(sz, ::Any) = sz
+@inline _elsize_impl(::NoTypeSize, A::AbstractArray{<:AbstractArray}) = innersize(A)
+
+@inline element_size(A::FillArrays.Fill) = maybestatic_size(A.value)

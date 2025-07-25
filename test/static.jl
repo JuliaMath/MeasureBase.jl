@@ -27,6 +27,9 @@ using MeasureBase:
     maybestatic_eachindex,
     maybestatic_first,
     maybestatic_last,
+    NoTypeSize,
+    size_from_type,
+    element_size,
     canonical_indices,
     canonical_size,
     canonical_axes
@@ -326,4 +329,59 @@ import FillArrays
     @test @inferred(canonical_axes(saaxs1)) === saaxs1
     @test @inferred(canonical_axes(siaxs)) === saaxs
     @test @inferred(canonical_axes(siaxs1)) === saaxs1
+
+    @test @inferred(size_from_type(typeof(i))) === maybestatic_size(i)
+    @test @inferred(size_from_type(typeof(()))) === maybestatic_size(())
+    @test @inferred(size_from_type(typeof(tpl))) === maybestatic_size(tpl)
+    @test @inferred(size_from_type(typeof(nt))) === maybestatic_size(nt)
+    @test @inferred(size_from_type(typeof(sz))) === maybestatic_size(sz)
+    @test @inferred(size_from_type(typeof(sasz))) === maybestatic_size(sasz)
+    @test @inferred(size_from_type(typeof(axs))) === maybestatic_size(axs)
+    @test @inferred(size_from_type(typeof(axs1))) === maybestatic_size(axs1)
+    @test @inferred(size_from_type(typeof(saaxs))) === maybestatic_size(saaxs)
+    @test @inferred(size_from_type(typeof(saaxs1))) === maybestatic_size(saaxs1)
+    @test @inferred(size_from_type(typeof(siaxs))) === maybestatic_size(siaxs)
+    @test @inferred(size_from_type(eltype(A))) === maybestatic_size(A[1])
+    @test @inferred(size_from_type(typeof(A))) === NoTypeSize{Vector{T}}()
+
+    @test @inferred(element_size(tpl)) === maybestatic_size(tpl[1])
+    @test @inferred(element_size(nt)) === maybestatic_size(nt[1])
+    @test @inferred(element_size(sz)) === maybestatic_size(sz[1])
+    @test @inferred(element_size(sasz)) === maybestatic_size(sasz[1])
+    @test @inferred(element_size(axs)) === NoTypeSize #!!!!!!!!
+    @test @inferred(element_size(saaxs)) === NoTypeSize #!!!!!!!!
+    @test @inferred(element_size(siaxs)) === NoTypeSize #!!!!!!!!
+
+    @test @inferred(element_size((sz, sz))) === maybestatic_size(sz)
+    @test @inferred(element_size((sasz, sasz))) === maybestatic_size(sasz)
+    @test @inferred(element_size((sisz, sisz))) === maybestatic_size(sisz)
+    @test @inferred(element_size((sz, sasz))) === maybestatic_size(sasz)
+    @test @inferred(element_size((a = sz, b = sz))) === maybestatic_size(sz)
+    @test @inferred(element_size((a = sasz, b = sasz))) === maybestatic_size(sasz)
+    @test @inferred(element_size((a = sisz, b = sisz))) === maybestatic_size(sisz)
+    @test @inferred(element_size((a = sz, b = sasz))) === maybestatic_size(sasz)
+    @test @inferred(element_size([sz, sz])) === maybestatic_size(sz)
+    @test @inferred(element_size([sasz, sasz])) === maybestatic_size(sasz)
+    @test @inferred(element_size([sisz, sisz])) === maybestatic_size(sisz)
+    @test @inferred(element_size([sz, sasz])) === maybestatic_size(sasz)
+
+    @test @inferred(element_size((axs, axs))) === maybestatic_size(axs)
+    @test @inferred(element_size((saaxs, saaxs))) === maybestatic_size(saaxs)
+    @test @inferred(element_size((siaxs, siaxs))) === maybestatic_size(siaxs)
+    @test @inferred(element_size((axs, saaxs))) === maybestatic_size(saaxs)
+    @test @inferred(element_size((a = axs, b = axs))) === maybestatic_size(axs)
+    @test @inferred(element_size((a = saaxs, b = saaxs))) === maybestatic_size(saaxs)
+    @test @inferred(element_size((a = siaxs, b = siaxs))) === maybestatic_size(siaxs)
+    @test @inferred(element_size((a = axs, b = saaxs))) === maybestatic_size(saaxs)
+    @test @inferred(element_size([axs, axs])) === maybestatic_size(axs)
+    @test @inferred(element_size([saaxs, saaxs])) === maybestatic_size(saaxs)
+    @test @inferred(element_size([siaxs, siaxs])) === maybestatic_size(siaxs)
+    @test @inferred(element_size([axs, saaxs])) === maybestatic_size(saaxs)
+
+    @test @inferred(element_size(A)) === maybestatic_size(A[1])
+    @test @inferred(element_size(fill(saaxs, 5))) === maybestatic_size(saaxs)
+    @test @inferred(element_size(fill([1,2,3,4], 5))) === maybestatic_size([1,2,3,4])
+    @test @inferred(element_size(Fill(saaxs, 5))) === maybestatic_size(saaxs)
+    @test @inferred(element_size(Fill([1,2,3,4], 5))) === maybestatic_size([1,2,3,4])
+    @test @inferred(element_size([1, 2], [3, 4, 5])) === NoTypeSize{Vector{Int}}()
 end
