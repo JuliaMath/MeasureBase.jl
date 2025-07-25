@@ -165,50 +165,52 @@ prodset = SetCardProd(sets)
 `sets` may be a `Tuple`, `NamedTuple` or `AbstractArray` of sets/domains.
 """
 struct SetCardProd{S<:Union{Tuple,NamedTuple,AbstractArray}} <: AbstractCartSetProd
-    sets::S
+    _sets::S
 end
 
+componentsets(s::SetCardProd) = s._sets
+
+setcartprod(sets::AbstractArray{<:SetLike}) = SetCardProd(sets)
+setcartprod(sets::Tuple{Vararg{SetLike}}) = SetCardProd(sets)
+setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = SetCardProd(sets)
+
+@inline Base.in(x::Tuple{}, s::SetCardProd{Tuple{}}) = true
 @inline Base.in(x::Tuple{Vararg{Any,N}}, s::SetCardProd{<:Tuple{Vararg{Any,N}}}) where {N} =
-    prod(map(in, x, s.sets))::Bool
+    prod(map(in, x, componentsets(s)))::Bool
 @inline Base.in(x::NamedTuple{names}, s::SetCardProd{<:NamedTuple{names}}) where {names} =
-    prod(map(in, values(x), values(s.sets)))::Bool
+    prod(map(in, values(x), values(componentsets(s))))::Bool
 # ToDo: Allow this?
-# Base.in(x::AbstractVector, s::SetCardProd{<:Tuple}) = all(in.(x,s.sets))::Bool
+# Base.in(x::AbstractVector, s::SetCardProd{<:Tuple}) = all(in.(x,componentsets(s)))::Bool
 function Base.in(
     x::AbstractArray{<:Any,N},
     s::SetCardProd{<:AbstractArray{<:Any,N}},
 ) where {N}
-    all(in.(x, s.sets))::Bool
+    sets = componentsets(s)
+    isempty(x) && isempty(sets) ? true : all(in.(x, sets))::Bool
 end
 
-@inline Base.isempty(s::SetCardProd) = all(!isempty, s.sets)
+@inline Base.isempty(s::SetCardProd) = all(!isempty, componentsets(s))
 
 @inline function Base.union(
     s::SetCardProd{<:Tuple{Vararg{Any,N}}},
     others::SetCardProd{<:Tuple{Vararg{Any,N}}}...,
 ) where {N}
-    SetCardProd(map(union, s.sets, map(componentsets, others)...))
+    SetCardProd(map(union, componentsets(s), map(componentsets, others)...))
 end
 
 @inline function Base.union(
     s::SetCardProd{<:NamedTuple{names}},
     others::SetCardProd{<:NamedTuple{names}}...,
 ) where {names}
-    SetCardProd(map(union, s.sets, map(componentsets, others)...))
+    SetCardProd(map(union, componentsets(s), map(componentsets, others)...))
 end
 
 function Base.union(
     s::SetCardProd{<:AbstractArray{<:Any,N}},
     others::SetCardProd{<:AbstractArray{<:Any,N}}...,
 ) where {N}
-    SetCardProd(union.(s.sets, map(componentsets, others)...))
+    SetCardProd(union.(componentsets(s), map(componentsets, others)...))
 end
-
-componentsets(s::SetCardProd) = s.sets
-
-setcartprod(sets::AbstractArray{<:SetLike}) = SetCardProd(sets)
-setcartprod(sets::Tuple{Vararg{SetLike}}) = SetCardProd(sets)
-setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = SetCardProd(sets)
 
 """
     struct SetCartPower <: AbstractCartSetProd
@@ -216,21 +218,22 @@ setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = SetCardProd(sets
 Represents the n-fold Cartesian product of a set.
 """
 struct SetCartPower{S,A} <: AbstractCartSetProd
-    parent::S
-    axes::A
+    _base::S
+    _axes::A
 end
 
-maybestatic_length(s::SetCartPower) = size2length(maybestatic_size(s))
-maybestatic_size(s::SetCartPower) = axes2size(s.axes)
-
 @inline setcartpower(s::SetLike, dims) = SetCartPower(s, asaxes(dims))
+
+@inline pwr_base(s::SetCartPower) = s._base
+@inline pwr_axes(s::SetCartPower) = s._axes
+@inline pwr_size(s::SetCartPower) = axes2size(s.axes)
 
 componentsets(d::SetCartPower) = fill_with(d.parent, d.axes)
 
 function Base.in(x::AbstractArray, s::SetCartPower)
     axes2size(s.axes) == size(x) ||
         throw(ArgumentError("Size of SetCartPower and given point are incompatible."))
-    all(Base.Fix1(in, s.parent), x)
+    isempty(x) ? true : all(Base.Fix1(in, s.parent), x)::Bool
 end
 
 Base.isempty(s::SetCartPower) = isempty(s.parent) || size2length(axes2size(s.axes)) == 0
