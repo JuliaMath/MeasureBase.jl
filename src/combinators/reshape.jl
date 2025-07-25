@@ -50,6 +50,8 @@ a space of arrays with shape `sz`.
 """
 function mreshape end
 
+
+
 _elsize_for_reshape(m::AbstractMeasure) = _elsize_for_reshape(some_mspace_elsize(m), m)
 _elsize_for_reshape(sz::NTuple{<:Any,Integer}, ::AbstractMeasure) = sz
 #!!!!!!!!!!_elsize_for_reshape(::NoMSpaceElementSize, m::AbstractMeasure) = size(testvalue(m))
