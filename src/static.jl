@@ -214,8 +214,10 @@ Returns the size of `x` as a tuple of dynamic or static integers.
 """
 @inline maybestatic_size(::Number) = ()
 @inline maybestatic_size(::Tuple{}) = StaticArrays.Size(0)
-@inline maybestatic_size(::Tuple{Vararg{Any,N}}) where {N} = StaticArrays.Size{(N,)}()
+@inline maybestatic_size(::Tuple{Vararg{Any,N}}) where {N} = StaticArrays.Size(N)
 @inline maybestatic_size(nt::NamedTuple) = maybestatic_size(values(nt))
+@inline maybestatic_size(::StaticArrays.Size{tpl}) where {tpl} =
+    StaticArrays.Size(length(tpl))
 @inline maybestatic_size(A::AbstractArray) = axes2size(maybestatic_axes(A))
 @inline maybestatic_size(A::StaticArray) = StaticArrays.Size(A)
 
@@ -229,6 +231,7 @@ Returns the size of `x` as a tuple of dynamic or static integers.
 @inline maybestatic_axes(::Tuple{}) = (StaticOneTo(0),)
 @inline maybestatic_axes(::Tuple{Vararg{Any,N}}) where {N} = (StaticOneTo(N),)
 @inline maybestatic_axes(nt::NamedTuple) = maybestatic_axes(values(nt))
+@inline maybestatic_axes(::StaticArrays.Size{tpl}) where {tpl} = (StaticOneTo(length(tpl)),)
 @inline maybestatic_axes(::StaticOneToLike{N}) where {N} = (StaticOneTo(N),)
 @static if isdefined(StaticArrays, :SUnitRange)
     @inline maybestatic_axes(r::StaticArrays.SUnitRange) = axes(r)
