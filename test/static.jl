@@ -202,7 +202,7 @@ import FillArrays
     @test @inferred(maybestatic_length(rshpSA)) === static(length(rshpA))
 
     @test @inferred(maybestatic_size(5)) === ()
-    @test_throws ArgumentError maybestatic_size(())
+    @test @inferred(maybestatic_size(())) === StaticArrays.Size(0)
     @test @inferred(maybestatic_size((sz))) === StaticArrays.Size(3)
     @test @inferred(maybestatic_size((a = 2, b = 4, c = 3))) === StaticArrays.Size(3)
     @test @inferred(maybestatic_size(Base.OneTo(4))) === (4,)

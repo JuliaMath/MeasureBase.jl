@@ -213,8 +213,7 @@ end
 Returns the size of `x` as a tuple of dynamic or static integers.
 """
 @inline maybestatic_size(::Number) = ()
-@inline maybestatic_size(::Tuple{}) =
-    throw(ArgumentError("Cannot determine (maybe-static) size of empty tuple"))
+@inline maybestatic_size(::Tuple{}) = StaticArrays.Size(0)
 @inline maybestatic_size(::Tuple{Vararg{Any,N}}) where {N} = StaticArrays.Size{(N,)}()
 @inline maybestatic_size(nt::NamedTuple) = maybestatic_size(values(nt))
 @inline maybestatic_size(A::AbstractArray) = axes2size(maybestatic_axes(A))
