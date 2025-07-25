@@ -14,20 +14,29 @@ Constructor:
 Reshape(output_size::Dims, input_size::Dims)
 ```
 """
-struct Reshape{M,N} <: Function
-    output_size::NTuple{M,Int}
-    input_size::NTuple{N,Int}
+struct Reshape{M<:SizeLike,N<:SizeLike} <: Function
+    output_size::M
+    input_size::N
+
+    Reshape{M,N}(out_sz::M, in_sz::N) where {M<:SizeLike,N<:SizeLike} =
+        new{M,N}(out_sz, in_sz)
+end
+
+function Reshape(output_size::SizeLike, input_size::SizeLike)
+    out_sz = canonical_size(output_size)
+    in_sz = canonical_size(input_size)
+    return Reshape{typeof(out_sz), typeof(in_sz)}(out_sz, in_sz)
 end
 
 _throw_reshape_mismatch(sz, sz_x) = throw(DimensionMismatch("Reshape input size is $sz but got input of size $sz_x"))
 
 function (f::Reshape)(x::AbstractArray)
-    sz_x = size(x)
+    sz_x = maybestatic_size(x)
     f.input_size == sz_x || _throw_reshape_mismatch(f.input_size, sz_x)
     return reshape(x, f.output_size)
 end
 
-InverseFunctions.inverse(f::Reshape) = Reshape(f.input_size, f.output_size)
+InverseFunctions.inverse(f::Reshape{M,N}) where {M,N} = Reshape{N,M}(f.input_size, f.output_size)
 
 ChangesOfVariables.with_logabsdet_jacobian(::Reshape, x::AbstractArray) = zero(real_numtype(typeof(x)))
 
@@ -45,5 +54,5 @@ _elsize_for_reshape(m::AbstractMeasure) = _elsize_for_reshape(some_mspace_elsize
 _elsize_for_reshape(sz::NTuple{<:Any,Integer}, ::AbstractMeasure) = sz
 #!!!!!!!!!!_elsize_for_reshape(::NoMSpaceElementSize, m::AbstractMeasure) = size(testvalue(m))
 
-mreshape(m::AbstractMeasure, sz::Vararg{Any,N}) where N = mreshape(m, sz)
-mreshape(m::AbstractMeasure, sz::NTuple{N,<:Any}) where N = pushfwd(Reshape(sz, _elsize_for_reshape(m)), m)
+mreshape(m::AbstractMeasure, sz::Vararg{Any}) = mreshape(m, sz)
+mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, _elsize_for_reshape(m)), m)
