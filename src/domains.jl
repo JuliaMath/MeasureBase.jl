@@ -1,3 +1,20 @@
+"""
+    mdomain(m)::MeasureBase.SetLike
+
+Return the domain, i.e. the measurable set, of the measure `m`.
+
+The measure must allow for evaluating densities and the like over the whole
+domain, even if the support of the measure is only a subset of the domain.
+
+May return [`MeasureBase.ImplicitDomain`](@ref) if the domain cannot be
+computed (efficiently).
+"""
+function mdomain end
+export mdomain
+
+@inline mdomain(m) = ImplicitDomain(m)
+
+
 # Custom abstract set type. Design reserve to be able to switch to
 #`Base.AbstractSet` or another set type hierarchy in the future:
 """
@@ -22,22 +39,6 @@ There needs to be an implicit sigma-algebra for subtypes of
 imposed via type constraints, though, to is is by-contract.
 """
 const SetLike = Union{MeasureBase.ValueSet,Base.AbstractSet,IntervalSets.Domain}
-
-"""
-    mdomain(m)::MeasureBase.SetLike
-
-Return the domain, i.e. the measurable set, of the measure `m`.
-
-The measure must allow for evaluating densities and the like over the whole
-domain, even if the support of the measure is only a subset of the domain.
-
-May return [`MeasureBase.ImplicitDomain`](@ref) if the domain cannot be
-computed (efficiently).
-"""
-function mdomain end
-export mdomain
-
-@inline mdomain(m) = ImplicitDomain(m)
 
 """
     valdomain(x)::MeasureBase.SetLike
@@ -296,4 +297,20 @@ function Base.union(s::CartesianPower, others::CartesianPower...)
     )
 
     setcartpower(union(s.parent, map(x -> x.parent, others)...))
+end
+
+
+"""
+    struct CombinedSet <: ValueSet
+
+Represents a combination of two sets.
+
+User code should not create instances of `CombinedMeasure` directly, but should call
+[`combinesets(f_c, α, β)`](@ref) instead.
+"""
+
+struct CombinedSet{FC,MA<:SetLike,MB<:SetLike} <: ValueSet
+    f_c::FC
+    α::MA
+    β::MB
 end
