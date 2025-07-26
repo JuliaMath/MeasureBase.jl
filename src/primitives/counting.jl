@@ -42,6 +42,6 @@ massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
 massof(::CountingBase, s::Set) = length(s)
 
 # ToDo: Would this be correct?
-# @inline mdomain(::CountingBase) = Integers()
+# @inline mdomain(::CountingBase) = IntegerValues()
 
 @inline mdomain(::Counting{DomainType}) where {DomainType} = DomainType()

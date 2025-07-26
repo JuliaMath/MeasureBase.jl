@@ -1,19 +1,19 @@
 # Custom abstract set type. Design reserve to be able to switch to
 #`Base.AbstractSet` or another set type hierarchy in the future:
 """
-    MeasureBase.MAbstractSet
+    MeasureBase.ValueSet
 
 Abstract type for some measurable sets.
 
 Not every measurable set needs to be a a subtype of
-`MeasureBase.MAbstractSet`.
+`MeasureBase.ValueSet`.
 
 See also [`MeasureBase.SetLike`](@ref).
 """
-abstract type MAbstractSet end
+abstract type ValueSet end
 
 """
-    const MeasureBase.SetLike = Union{MeaureBase.MAbstractSet, Base.AbstractSet, IntervalSets.Domain}
+    const MeasureBase.SetLike = Union{MeaureBase.ValueSet, Base.AbstractSet, IntervalSets.Domain}
 
 Any kind of (measurable) set.
 
@@ -21,7 +21,7 @@ There needs to be an implicit sigma-algebra for subtypes of
 `MeasureBase.SetLike` to make them useable for measures. This can't easily be
 imposed via type constraints, though, to is is by-contract.
 """
-const SetLike = Union{MeasureBase.MAbstractSet,Base.AbstractSet,IntervalSets.Domain}
+const SetLike = Union{MeasureBase.ValueSet,Base.AbstractSet,IntervalSets.Domain}
 
 """
     mdomain(m)::MeasureBase.SetLike
@@ -65,7 +65,7 @@ function maybe_in end
 maybe_in(x, s) = in(x, s)
 
 """
-    struct MeasureBase.ImplicitDomain{M} <: MeasureBase.MAbstractSet
+    struct MeasureBase.ImplicitDomain{M} <: MeasureBase.ValueSet
 
 Represents the domain (i.e. the measurable set) of a measure `m::M`.
 
@@ -87,7 +87,7 @@ Does not support `Base.in(x, s::MeasureBase.ImplicitDomain)`, and
 `MeasureBase.maybe_in(x, s::MeasureBase.ImplicitDomain)` always return `true`
 (unless specialized for the measure type).
 """
-struct ImplicitDomain{M} <: MAbstractSet
+struct ImplicitDomain{M} <: ValueSet
     m::M
 end
 
@@ -105,7 +105,7 @@ function Base.isempty(::ImplicitDomain)
 end
 
 """
-    struct MeasureBase.UnknownDomain{T} <: MeasureBase.MAbstractSet
+    struct MeasureBase.UnknownDomain{T} <: MeasureBase.ValueSet
 
 Represents the unknown domain of a value of type `T`.
 
@@ -123,7 +123,7 @@ Does not support `Base.in(x, s::MeasureBase.UnknownDomain)`, and
 if a value of type `T` existed in the first place, which implies that the
 domain can not be empty.
 """
-struct UnknownDomain{T} <: MAbstractSet end
+struct UnknownDomain{T} <: ValueSet end
 
 UnknownDomain(::T) where {T} = UnknownDomain{T}()
 
@@ -141,158 +141,158 @@ maybe_in(@nospecialize(x), ::UnknownDomain) = true
 Base.isempty(::UnknownDomain) = false
 
 """
-    RealInterval() isa MeasureBase.MAbstractSet
+    RealInterval() isa MeasureBase.ValueSet
 
 The real numbers.
 """
-struct RealNumbers <: MAbstractSet end
+struct RealValues <: ValueSet end
 
-@inline Base.in(x::Real, ::RealNumbers) = true
-@inline Base.in(x, ::RealNumbers) = isreal(x)
+@inline Base.in(x::Real, ::RealValues) = true
+@inline Base.in(x, ::RealValues) = isreal(x)
 
-@inline Base.isempty(::RealNumbers) = false
+@inline Base.isempty(::RealValues) = false
 
-@inline Base.union(s::RealNumbers, ::RealNumbers...) = s
+@inline Base.union(s::RealValues, ::RealValues...) = s
 
-@inline Base.minimum(::RealNumbers) = static(-Inf)
-@inline Base.maximum(::RealNumbers) = static(Inf)
-
-"""
-    const MeasureBase.ℝ = RealNumbers()
-
-The real numbers, see [`MeasureBase.RealNumbers`](@ref).
-"""
-const ℝ = RealNumbers()
-
-Base.show(io::IO, ::MIME"text/plain", ::RealNumbers) = print(io, "MeasureBase.ℝ")
+@inline Base.minimum(::RealValues) = static(-Inf)
+@inline Base.maximum(::RealValues) = static(Inf)
 
 """
-    MeasureBase.Integers() isa MeasureBase.MAbstractSet
+    const MeasureBase.ℝ = RealValues()
+
+The set of all real numbers, see [`MeasureBase.RealValues`](@ref).
 """
-struct Integers <: MAbstractSet end
+const ℝ = RealValues()
 
-@inline Base.in(x::Integer, ::Integers) = true
-@inline Base.in(x, ::Integers) = isinteger(x)
+Base.show(io::IO, ::MIME"text/plain", ::RealValues) = print(io, "MeasureBase.ℝ")
 
-@inline Base.isempty(::Integers) = false
+"""
+    MeasureBase.IntegerValues() isa MeasureBase.ValueSet
+"""
+struct IntegerValues <: ValueSet end
 
-@inline Base.union(s::Integers, ::Integers...) = s
+@inline Base.in(x::Integer, ::IntegerValues) = true
+@inline Base.in(x, ::IntegerValues) = isinteger(x)
+
+@inline Base.isempty(::IntegerValues) = false
+
+@inline Base.union(s::IntegerValues, ::IntegerValues...) = s
 
 # # This could get tricky with mixed-precision code. Probably needs some
 # # special AbstractInteger infinity type (but custom AbstractInteger types
 # # may cause a lot of method invalidations, which is why Static.StaticInteger
 # # is not an AbstractInteger).
-# @inline Base.minimum(::RealNumbers) = static(typemax(Int64))
-# @inline Base.maximum(::RealNumbers) = static(typemin(Int64))
+# @inline Base.minimum(::RealValues) = static(typemax(Int64))
+# @inline Base.maximum(::RealValues) = static(typemin(Int64))
 
 """
-    const ℤ = Integers()
+    const ℤ = IntegerValues()
 
-The integers, see [`MeasureBase.Integers`](@ref).
+The set of all integers, see [`MeasureBase.IntegerValues`](@ref).
 """
-const ℤ = Integers()
+const ℤ = IntegerValues()
 
-Base.show(io::IO, ::MIME"text/plain", ::Integers) = print(io, "MeasureBase.ℤ")
+Base.show(io::IO, ::MIME"text/plain", ::IntegerValues) = print(io, "MeasureBase.ℤ")
 
 """
-    struct MeasureBase.AbstractCartSetProd <: MAbstractSet
+    struct MeasureBase.AbstractCartSetProd <: ValueSet
 
 Supertype for cartesian products of sets.
 """
-abstract type AbstractCartSetProd <: MAbstractSet end
+abstract type AbstractCartSetProd <: ValueSet end
 
 """
-    struct SetCardProd <: AbstractCartSetProd
+    struct CartesianProduct <: AbstractCartSetProd
 
 A cartesian product over a collection of sets.
 
 Constructor:
 
 ```julia
-prodset = SetCardProd(sets)
+prodset = CartesianProduct(sets)
 ```
 
 `sets` may be a `Tuple`, `NamedTuple` or `AbstractArray` of sets/domains.
 """
-struct SetCardProd{S<:Union{Tuple,NamedTuple,AbstractArray}} <: AbstractCartSetProd
+struct CartesianProduct{S<:Union{Tuple,NamedTuple,AbstractArray}} <: AbstractCartSetProd
     _sets::S
 end
 
-componentsets(s::SetCardProd) = s._sets
+componentsets(s::CartesianProduct) = s._sets
 
-setcartprod(sets::AbstractArray{<:SetLike}) = SetCardProd(sets)
-setcartprod(sets::Tuple{Vararg{SetLike}}) = SetCardProd(sets)
-setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = SetCardProd(sets)
+setcartprod(sets::AbstractArray{<:SetLike}) = CartesianProduct(sets)
+setcartprod(sets::Tuple{Vararg{SetLike}}) = CartesianProduct(sets)
+setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = CartesianProduct(sets)
 
-@inline Base.in(x::Tuple{}, s::SetCardProd{Tuple{}}) = true
-@inline Base.in(x::Tuple{Vararg{Any,N}}, s::SetCardProd{<:Tuple{Vararg{Any,N}}}) where {N} =
+@inline Base.in(x::Tuple{}, s::CartesianProduct{Tuple{}}) = true
+@inline Base.in(x::Tuple{Vararg{Any,N}}, s::CartesianProduct{<:Tuple{Vararg{Any,N}}}) where {N} =
     prod(map(in, x, componentsets(s)))::Bool
-@inline Base.in(x::NamedTuple{names}, s::SetCardProd{<:NamedTuple{names}}) where {names} =
+@inline Base.in(x::NamedTuple{names}, s::CartesianProduct{<:NamedTuple{names}}) where {names} =
     prod(map(in, values(x), values(componentsets(s))))::Bool
 # ToDo: Allow this?
-# Base.in(x::AbstractVector, s::SetCardProd{<:Tuple}) = all(in.(x,componentsets(s)))::Bool
+# Base.in(x::AbstractVector, s::CartesianProduct{<:Tuple}) = all(in.(x,componentsets(s)))::Bool
 function Base.in(
     x::AbstractArray{<:Any,N},
-    s::SetCardProd{<:AbstractArray{<:Any,N}},
+    s::CartesianProduct{<:AbstractArray{<:Any,N}},
 ) where {N}
     sets = componentsets(s)
     isempty(x) && isempty(sets) ? true : all(in.(x, sets))::Bool
 end
 
-@inline Base.isempty(s::SetCardProd) = all(!isempty, componentsets(s))
+@inline Base.isempty(s::CartesianProduct) = all(!isempty, componentsets(s))
 
 @inline function Base.union(
-    s::SetCardProd{<:Tuple{Vararg{Any,N}}},
-    others::SetCardProd{<:Tuple{Vararg{Any,N}}}...,
+    s::CartesianProduct{<:Tuple{Vararg{Any,N}}},
+    others::CartesianProduct{<:Tuple{Vararg{Any,N}}}...,
 ) where {N}
-    SetCardProd(map(union, componentsets(s), map(componentsets, others)...))
+    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
 end
 
 @inline function Base.union(
-    s::SetCardProd{<:NamedTuple{names}},
-    others::SetCardProd{<:NamedTuple{names}}...,
+    s::CartesianProduct{<:NamedTuple{names}},
+    others::CartesianProduct{<:NamedTuple{names}}...,
 ) where {names}
-    SetCardProd(map(union, componentsets(s), map(componentsets, others)...))
+    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
 end
 
 function Base.union(
-    s::SetCardProd{<:AbstractArray{<:Any,N}},
-    others::SetCardProd{<:AbstractArray{<:Any,N}}...,
+    s::CartesianProduct{<:AbstractArray{<:Any,N}},
+    others::CartesianProduct{<:AbstractArray{<:Any,N}}...,
 ) where {N}
-    SetCardProd(union.(componentsets(s), map(componentsets, others)...))
+    CartesianProduct(union.(componentsets(s), map(componentsets, others)...))
 end
 
 """
-    struct SetCartPower <: AbstractCartSetProd
+    struct CartesianPower <: AbstractCartSetProd
 
 Represents the n-fold Cartesian product of a set.
 """
-struct SetCartPower{S,A} <: AbstractCartSetProd
+struct CartesianPower{S,A} <: AbstractCartSetProd
     _base::S
     _axes::A
 end
 
-@inline setcartpower(s::SetLike, dims) = SetCartPower(s, asaxes(dims))
+@inline setcartpower(s::SetLike, dims) = CartesianPower(s, asaxes(dims))
 
-@inline pwr_base(s::SetCartPower) = s._base
-@inline pwr_axes(s::SetCartPower) = s._axes
-@inline pwr_size(s::SetCartPower) = axes2size(s.axes)
+@inline pwr_base(s::CartesianPower) = s._base
+@inline pwr_axes(s::CartesianPower) = s._axes
+@inline pwr_size(s::CartesianPower) = axes2size(s.axes)
 
-componentsets(d::SetCartPower) = fill_with(d.parent, d.axes)
+componentsets(d::CartesianPower) = fill_with(d.parent, d.axes)
 
-function Base.in(x::AbstractArray, s::SetCartPower)
+function Base.in(x::AbstractArray, s::CartesianPower)
     axes2size(s.axes) == size(x) ||
-        throw(ArgumentError("Size of SetCartPower and given point are incompatible."))
+        throw(ArgumentError("Size of CartesianPower and given point are incompatible."))
     isempty(x) ? true : all(Base.Fix1(in, s.parent), x)::Bool
 end
 
-Base.isempty(s::SetCartPower) = isempty(s.parent) || size2length(axes2size(s.axes)) == 0
+Base.isempty(s::CartesianPower) = isempty(s.parent) || size2length(axes2size(s.axes)) == 0
 
-function Base.union(s::SetCartPower, others::SetCartPower...)
+function Base.union(s::CartesianPower, others::CartesianPower...)
     axs = s.axes
 
     all(isequal(axs), map(x -> x.axes, others)) || throw(
-        ArgumentError("Cannot create union of SetCartPower sets with different axes."),
+        ArgumentError("Cannot create union of CartesianPower sets with different axes."),
     )
 
     setcartpower(union(s.parent, map(x -> x.parent, others)...))
