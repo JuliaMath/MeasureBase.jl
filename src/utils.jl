@@ -133,6 +133,11 @@ function infer_zero(f, args...)
     zero(typeintersect(AbstractFloat, inferred_type))
 end
 
+function infer_logdensity_type(f::F, ::M, ::Type{T}) where {F,M,T}
+    inferred_type = Core.Compiler.return_type(f, Tuple{M,T})
+    return inferred_type
+end
+
 @inline function allequal(f, x::AbstractArray)
     val = f(first(x))
     @simd for xj in x
