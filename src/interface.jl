@@ -110,7 +110,7 @@ function test_smf(μ, n = 100)
     @testset "smf($μ)" begin
         # Get `n` sorted uniforms in O(n) time
         p = rand(n)
-        p .+= 0:n-1
+        p .+= 0:(n-1)
         p .*= inv(n)
 
         F(x) = smf(μ, x)
