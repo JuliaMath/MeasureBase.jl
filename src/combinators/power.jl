@@ -78,7 +78,7 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-for func in [:logdensityof, :logdensity_def]
+for func in [:strict_logdensityof, :logdensity_def]
     @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
         parent = d.parent
         sum(x) do xj

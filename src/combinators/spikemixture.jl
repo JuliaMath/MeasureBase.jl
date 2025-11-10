@@ -21,7 +21,7 @@ end
     SpikeMixture(basemeasure(μ.m), static(1.0), static(1.0))
 end
 
-for func in [:logdensityof, :logdensity_def]
+for func in [:strict_logdensityof, :logdensity_def]
     @eval @inline function $func(μ::SpikeMixture, x)
         # NOTE: We could instead write this as 
         # R1 = typeof(log(one(μ.s))) 
