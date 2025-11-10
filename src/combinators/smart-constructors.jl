@@ -56,7 +56,7 @@ end
 productmeasure(nt::NamedTuple) = ProductMeasure(nt)
 productmeasure(tup::Tuple) = ProductMeasure(tup)
 
-productmeasure(f, param_maps, pars) = ProductMeasure(kernel(f, param_maps), pars)
+productmeasure(f, param_maps, pars) = productmeasure(kernel(f, param_maps), pars)
 
 function productmeasure(k::ParameterizedTransitionKernel, pars)
     productmeasure(k.suff, k.param_maps, pars)

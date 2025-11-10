@@ -135,7 +135,18 @@ end
 function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
     superpose(map(basemeasure, μ.components)...)
 end
-basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
+
+# basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
+
+function basemeasure(μ::SuperpositionMeasure{NTuple{N, M}}) where {N, M<:AbstractMeasure}
+    rootmeasure(first(μ.components))
+end
+
+function logdensity_def(μ::SuperpositionMeasure{NTuple{N, M}}, x) where {N, M<:AbstractMeasure}
+    ℓs = (logdensityof(c, x) for c in μ.components)
+    logsumexp(ℓs)
+end
+
 
 # TODO: Fix `rand` method (this one is wrong)
 # function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}

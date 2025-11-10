@@ -37,7 +37,7 @@ condition(μ, constraint) = ConditionalMeasure(μ, constraint)
 #     end
 # end
 
-function Base.:|(
+function condition(
     μ::ProductMeasure{NamedTuple{M,T}},
     constraint::NamedTuple{N},
 ) where {M,T,N}

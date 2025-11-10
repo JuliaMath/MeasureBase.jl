@@ -30,7 +30,8 @@ To compute a log-density relative to a specific base-measure, see
 """
 @inline function logdensityof(μ::AbstractMeasure, x)
     result = dynamic(unsafe_logdensityof(μ, x))
-    _checksupport(insupport(μ, x), result)
+    # _checksupport(insupport(μ, x), result)
+    result
 end
 
 @inline function logdensityof_rt(::T, ::U) where {T,U}
@@ -125,7 +126,7 @@ See also `logdensity_rel`.
 end
 
 # Note that this method assumes `μ` and `ν` to have the same type
-function logdensity_def(μ::T, ν::T, x) where {T}
+function logdensity_def(μ::T, ν::T, x) where {T<:AbstractMeasure}
     if μ === ν
         return zero(logdensity_def(μ, x))
     else
@@ -167,6 +168,5 @@ end
 
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
-# TODO: Do we need this method?
-density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
-density_def(μ, x) = exp(logdensity_def(μ, x))
+density_def(μ::AbstractMeasure, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
+density_def(μ::AbstractMeasure, x) = exp(logdensity_def(μ, x))
