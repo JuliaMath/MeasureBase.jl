@@ -79,7 +79,7 @@ jobs:
               end;
             end'
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: pr
           path: pr/
@@ -121,7 +121,7 @@ jobs:
             fi
           done >> MSG
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: pr
           path: pr/
