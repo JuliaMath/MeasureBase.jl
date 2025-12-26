@@ -42,6 +42,15 @@ function test_pushfwd(f, μ, ν_ref)
         test_transport(ν_ref, ν)
 
         y = rand(ν_ref)
+        x = inverse(f)(y)
+
+        β = basemeasure(μ)
+        @test isapprox(
+            logdensity_rel(ν, pushfwd(f, β), y),
+            logdensity_rel(μ, β, x),
+            atol = 1e-10,
+        )
+
         @test isapprox(@inferred(logdensityof(ν, y)), logdensityof(ν_ref, y), atol = 1e-10)
         @test isapprox(
             @inferred(unsafe_logdensityof(ν, y)),
