@@ -31,6 +31,7 @@ import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
 
+import StaticArrays
 using StaticArrays:
     StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix, SOneTo
 

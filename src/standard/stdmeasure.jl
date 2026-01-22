@@ -57,7 +57,7 @@ end
 # Helpers for product transforms and similar:
 
 struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
+(::_TransportToStd{NU})(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
 
 struct _TransportFromStd{MU<:StdMeasure} <: Function end
 _TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
@@ -67,7 +67,7 @@ function _tuple_transport_def(
     μs::Tuple,
     xs::Tuple,
 ) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
+    reshape(vcat(map(_TransportToStd{NU}(), μs, xs)...), ν.axes)
 end
 
 function transport_def(
@@ -93,7 +93,7 @@ end
 function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
     N = map(getdof, μs)
     offs = _offset_cumsum(startidx, N...)
-    map((o, n) -> o:o+n-1, offs, N)
+    map((o, n) -> o:(o+n-1), offs, N)
 end
 
 function _tuple_transport_def(
