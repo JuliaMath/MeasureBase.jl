@@ -19,7 +19,7 @@ testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
 
-basemeasure(μ, x) = basemeasure(μ)
+@inline basemeasure(μ, x) = basemeasure(μ)
 
 """
     rootmeasure(μ::AbstractMeasure)
@@ -180,3 +180,15 @@ isapproxzero(A::AbstractArray) = all(isapproxzero, A)
 
 isapproxone(x::T) where {T<:Real} = x ≈ one(T)
 isapproxone(A::AbstractArray) = all(isapproxone, A)
+
+import Statistics
+import StatsBase
+
+using Statistics
+using StatsBase: entropy
+
+StatsBase.entropy(m::AbstractMeasure, b::Real) = entropy(proxy(m), b)
+Statistics.mean(m::AbstractMeasure) = mean(proxy(m))
+Statistics.std(m::AbstractMeasure) = std(proxy(m))
+Statistics.var(m::AbstractMeasure) = var(proxy(m))
+Statistics.quantile(m::AbstractMeasure, q) = quantile(proxy(m), q)
