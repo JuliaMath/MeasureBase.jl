@@ -7,7 +7,11 @@ import LogarithmicNumbers
 using MeasureBase
 using MeasureBase: test_interface, test_smf
 
-include("test_aqua.jl")
+using Aqua
+@testset "Code quality (Aqua.jl)" begin
+    Aqua.test_all(MeasureBase, ambiguities = false)
+    # Aqua.test_ambiguities(MeasureBase)
+end
 
 include("static.jl")
 
