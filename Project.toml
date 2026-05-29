@@ -1,7 +1,7 @@
 name = "MeasureBase"
 uuid = "fa1605e6-acd5-459c-a1e6-7e635759db14"
-authors = ["Chad Scherrer <chad.scherrer@gmail.com>", "Oliver Schulz <oschulz@mpp.mpg.de>", "contributors"]
 version = "0.14.12"
+authors = ["Chad Scherrer <chad.scherrer@gmail.com>", "Oliver Schulz <oschulz@mpp.mpg.de>", "contributors"]
 
 [deps]
 ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
@@ -51,7 +51,7 @@ IntervalSets = "0.7"
 InverseFunctions = "0.1.8"
 IrrationalConstants = "0.1, 0.2"
 LinearAlgebra = "1"
-LogExpFunctions = "0.3"
+LogExpFunctions = "0.3, 1"
 LogarithmicNumbers = "1"
 MappedArrays = "0.4"
 NaNMath = "0.3, 1"
