@@ -18,7 +18,7 @@ jobs:
         pkgversion: [latest, stable]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Install Julia
       - uses: julia-actions/setup-julia@v3
@@ -88,7 +88,7 @@ jobs:
     needs: break
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         with:
