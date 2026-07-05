@@ -30,13 +30,13 @@ See also [`MeasureBase.SetLike`](@ref).
 abstract type ValueSet end
 
 """
-    const MeasureBase.SetLike = Union{MeaureBase.ValueSet, Base.AbstractSet, IntervalSets.Domain}
+    const MeasureBase.SetLike = Union{MeasureBase.ValueSet, Base.AbstractSet, IntervalSets.Domain}
 
 Any kind of (measurable) set.
 
 There needs to be an implicit sigma-algebra for subtypes of
 `MeasureBase.SetLike` to make them useable for measures. This can't easily be
-imposed via type constraints, though, to is is by-contract.
+imposed via type constraints, though, so it is by-contract.
 """
 const SetLike = Union{MeasureBase.ValueSet,Base.AbstractSet,IntervalSets.Domain}
 
@@ -142,7 +142,7 @@ maybe_in(@nospecialize(x), ::UnknownDomain) = true
 Base.isempty(::UnknownDomain) = false
 
 """
-    RealInterval() isa MeasureBase.ValueSet
+    RealValues() isa MeasureBase.ValueSet
 
 The real numbers.
 """
@@ -158,13 +158,17 @@ struct RealValues <: ValueSet end
 @inline Base.minimum(::RealValues) = static(-Inf)
 @inline Base.maximum(::RealValues) = static(Inf)
 
+testvalue(::Type{T}, ::RealValues) where {T} = zero(T)
+
 """
     const MeasureBase.ℝ = RealValues()
 
 The set of all real numbers, see [`MeasureBase.RealValues`](@ref).
 """
 const ℝ = RealValues()
+export ℝ
 
+Base.show(io::IO, ::RealValues) = print(io, "ℝ")
 Base.show(io::IO, ::MIME"text/plain", ::RealValues) = print(io, "MeasureBase.ℝ")
 
 """
@@ -179,6 +183,8 @@ struct IntegerValues <: ValueSet end
 
 @inline Base.union(s::IntegerValues, ::IntegerValues...) = s
 
+testvalue(::Type{T}, ::IntegerValues) where {T} = zero(T)
+
 # # This could get tricky with mixed-precision code. Probably needs some
 # # special AbstractInteger infinity type (but custom AbstractInteger types
 # # may cause a lot of method invalidations, which is why Static.StaticInteger
@@ -192,8 +198,44 @@ struct IntegerValues <: ValueSet end
 The set of all integers, see [`MeasureBase.IntegerValues`](@ref).
 """
 const ℤ = IntegerValues()
+export ℤ
 
+Base.show(io::IO, ::IntegerValues) = print(io, "ℤ")
 Base.show(io::IO, ::MIME"text/plain", ::IntegerValues) = print(io, "MeasureBase.ℤ")
+
+"""
+    struct MeasureBase.BoundedInts{L,U} <: MeasureBase.ValueSet
+
+The integers from `lower` to `upper` (bounds may be infinite).
+
+Constructors:
+
+```julia
+BoundedInts(lower, upper)
+ℤ[lower:upper]
+```
+"""
+struct BoundedInts{L,U} <: ValueSet
+    lower::L
+    upper::U
+end
+
+@inline Base.in(x, b::BoundedInts) = x ∈ ℤ && b.lower <= x <= b.upper
+
+Base.isempty(b::BoundedInts) = b.lower > b.upper
+
+Base.minimum(b::BoundedInts) = b.lower
+Base.maximum(b::BoundedInts) = b.upper
+
+function Base.show(io::IO, b::BoundedInts)
+    io = IOContext(io, :compact => true)
+    print(io, "ℤ[", b.lower, ":", b.upper, "]")
+end
+
+testvalue(b::BoundedInts) = convert(Int, clamp(0, dynamic(b.lower), dynamic(b.upper)))
+testvalue(::Type{T}, b::BoundedInts) where {T} = convert(T, testvalue(b))
+
+Base.getindex(::typeof(ℤ), r::AbstractUnitRange) = BoundedInts(extrema(r)...)
 
 """
     struct MeasureBase.AbstractCartSetProd <: ValueSet
@@ -240,7 +282,7 @@ function Base.in(
     isempty(x) && isempty(sets) ? true : all(in.(x, sets))::Bool
 end
 
-@inline Base.isempty(s::CartesianProduct) = all(!isempty, componentsets(s))
+@inline Base.isempty(s::CartesianProduct) = any(isempty, componentsets(s))
 
 @inline function Base.union(
     s::CartesianProduct{<:Tuple{Vararg{Any,N}}},
@@ -277,26 +319,26 @@ end
 
 @inline pwr_base(s::CartesianPower) = s._base
 @inline pwr_axes(s::CartesianPower) = s._axes
-@inline pwr_size(s::CartesianPower) = axes2size(s.axes)
+@inline pwr_size(s::CartesianPower) = axes2size(pwr_axes(s))
 
-componentsets(d::CartesianPower) = fill_with(d.parent, d.axes)
+componentsets(s::CartesianPower) = maybestatic_fill(pwr_base(s), pwr_axes(s))
 
 function Base.in(x::AbstractArray, s::CartesianPower)
-    axes2size(s.axes) == size(x) ||
+    pwr_size(s) == size(x) ||
         throw(ArgumentError("Size of CartesianPower and given point are incompatible."))
-    isempty(x) ? true : all(Base.Fix1(in, s.parent), x)::Bool
+    isempty(x) ? true : all(Base.Fix1(in, pwr_base(s)), x)::Bool
 end
 
-Base.isempty(s::CartesianPower) = isempty(s.parent) || size2length(axes2size(s.axes)) == 0
+Base.isempty(s::CartesianPower) = isempty(pwr_base(s)) || size2length(pwr_size(s)) == 0
 
 function Base.union(s::CartesianPower, others::CartesianPower...)
-    axs = s.axes
+    axs = pwr_axes(s)
 
-    all(isequal(axs), map(x -> x.axes, others)) || throw(
+    all(isequal(axs), map(pwr_axes, others)) || throw(
         ArgumentError("Cannot create union of CartesianPower sets with different axes."),
     )
 
-    setcartpower(union(s.parent, map(x -> x.parent, others)...))
+    setcartpower(union(pwr_base(s), map(pwr_base, others)...), axs)
 end
 
 
@@ -308,7 +350,6 @@ Represents a combination of two sets.
 User code should not create instances of `CombinedMeasure` directly, but should call
 [`combinesets(f_c, α, β)`](@ref) instead.
 """
-
 struct CombinedSet{FC,MA<:SetLike,MB<:SetLike} <: ValueSet
     f_c::FC
     α::MA
