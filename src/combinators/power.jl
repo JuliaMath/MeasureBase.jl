@@ -17,8 +17,8 @@ struct PowerMeasure{M,A} <: AbstractProductMeasure
     axes::A
 end
 
-maybestatic_length(μ::PowerMeasure) = prod(maybestatic_size(μ))
-maybestatic_size(μ::PowerMeasure) = map(maybestatic_length, μ.axes)
+maybestatic_length(μ::PowerMeasure) = size2length(maybestatic_size(μ))
+maybestatic_size(μ::PowerMeasure) = axes2size(μ.axes)
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
@@ -30,7 +30,7 @@ end
 # ToDo: Make rand return static arrays for statically-sized power measures.
 
 function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
-    CartesianIndices(map(_dynamic, axs))
+    CartesianIndices(map(asnonstatic, axs))
 end
 
 function Base.rand(
@@ -49,11 +49,8 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     end
 end
 
-@inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
-@inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
-
 @inline function powermeasure(x::T, sz::Tuple{Vararg{Any,N}}) where {T,N}
-    PowerMeasure(x, _pm_axes(sz))
+    PowerMeasure(x, asaxes(sz))
 end
 
 marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
@@ -86,7 +83,7 @@ for func in [:logdensityof, :logdensity_def]
         end
     end
 
-    @eval @inline function $func(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
+    @eval @inline function $func(d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike}}, x)
         parent = d.parent
         sum(1:N) do j
             @inbounds $func(parent, x[j])
@@ -94,9 +91,9 @@ for func in [:logdensityof, :logdensity_def]
     end
 
     @eval @inline function $func(
-        d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
+        ::PowerMeasure{<:Any,<:Tuple{Vararg{StaticOneToLike{0}}}},
         x,
-    ) where {M,N}
+    )
         static(0.0)
     end
 end
@@ -117,11 +114,7 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
-
-@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
-    static(0)
-end
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * size2length(axes2size(μ.axes))
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
@@ -144,7 +137,7 @@ logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
 # To avoid ambiguities
 function logdensity_def(
-    ::PowerMeasure{P,Tuple{Vararg{Static.SOneTo{0},N}}},
+    ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0},N}}},
     x,
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)
