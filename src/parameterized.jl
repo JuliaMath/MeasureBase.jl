@@ -13,7 +13,7 @@ end
 function Pretty.tile(d::ParameterizedMeasure)
     result = Pretty.literal(nameof(typeof(d)))
     par = getfield(d, :par)
-    result *= Pretty.literal(sprint(show, par; context = :compact => true))
+    result *= Pretty.tile(par)
     result
 end
 
@@ -65,6 +65,28 @@ function ConstructionBase.setproperties(
     nt::NamedTuple,
 ) where {P<:ParameterizedMeasure}
     return constructorof(P)(merge(params(d), nt))
+end
+
+###############################################################################
+# StructArrays
+
+# TODO: Can this be in an extension?
+
+
+import StructArrays
+
+function StructArrays.staticschema(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
+    par_type = fieldtype(P, :par)
+    types = Tuple{(fieldtype(par_type, n) for n in N)...}
+    NamedTuple{N,types}
+end
+
+function StructArrays.component(m::ParameterizedMeasure, key::Symbol)
+    getfield(getfield(m, :par), key)
+end
+
+function StructArrays.createinstance(::Type{P}, args...) where {N,P<:ParameterizedMeasure{N}}
+    constructorof(P)(NamedTuple{N}(args))
 end
 
 ###############################################################################

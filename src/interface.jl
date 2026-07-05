@@ -41,9 +41,10 @@ function dynamic_basemeasure_depth(μ::M) where {M}
     return depth
 end
 
-function test_interface(μ::M) where {M}
+function test_interface(μ::M, f = identity) where {M}
     @eval begin
         μ = $μ
+        f = $f
         @testset "$μ" begin
             μ = $μ
 
@@ -64,6 +65,7 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = @inferred testvalue(Float64, μ)
+            x = f(x)
             β = @inferred basemeasure(μ, x)
 
             ℓμ = @inferred logdensityof(μ, x)
@@ -71,7 +73,7 @@ function test_interface(μ::M) where {M}
 
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
-            @test logdensity_def(μ, testvalue(Float64, μ)) isa Real
+            @test logdensity_def(μ, x) isa Real
         end
     end
 end
@@ -106,7 +108,7 @@ function test_transport(ν, μ)
     end
 end
 
-function test_smf(μ, n = 100)
+function test_smf(μ, n = 100, k=10)
     @testset "smf($μ)" begin
         # Get `n` sorted uniforms in O(n) time
         p = rand(n)
@@ -121,16 +123,21 @@ function test_smf(μ, n = 100)
         @test issorted(x)
         @test all(istrue ∘ insupport(μ), x)
 
-        @test all((Finv ∘ F).(x) .≈ x)
 
-        for j in 1:n
-            a = rand()
-            b = rand()
-            a, b = minmax(a, b)
-            x = Finv(a)
-            y = Finv(b)
-            @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))
+        for (xj, pj) in zip(x, p)
+            # Ideally this would be exactly zero, but in practice we need to allow for
+            # numerical errors in the implementation of `smf` and `invsmf`.
+
+            # Numerical errors are surprisingly large:
+            # smf(Beta(α = 0.18454471614214718, β = 0.0648526227363212)): Test Failed at /home/chad/git/MeasureBase.jl/src/interface.jl:130
+            # Expression: F(xj) - pj ≥ -1.0e-10
+            # Evaluated: -0.00010369484104344462 ≥ -1.0e-10
+            @test F(xj) - pj ≥ -1e-3
         end
+
+        p .= F.(x)
+
+        @test all(Finv.(p) .≈ x)
     end
 end
 

@@ -80,7 +80,9 @@ struct ZeroSet{F,G} <: AbstractDomain
 end
 
 # Based on some quick tests, but may need some adjustment
-Base.in(x::AbstractArray{T}, z::ZeroSet) where {T} = abs(z.f(x)) < ldexp(eps(float(T)), 6)
+function Base.in(x::AbstractArray{T}, z::ZeroSet) where {T<:Real}
+    abs(z.f(x)) < ldexp(eps(float(T)), 6)
+end
 
 ###########################################################
 # CodimOne

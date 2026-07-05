@@ -20,15 +20,8 @@ basemeasure(d::Dirac) = CountingBase()
 
 massof(::Dirac) = static(1.0)
 
-function logdensityof(μ::Dirac, x::Real)
-    R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
-end
 
-logdensityof(μ::Dirac, x) = insupport(μ, x) ? 0.0 : -Inf
-
-logdensity_def(::Dirac, x::Real) = zero(float(typeof(x)))
-logdensity_def(::Dirac, x) = 0.0
+logdensity_def(μ::Dirac, x) = insupport(μ, x) ? 0.0 : -Inf
 
 Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
 
