@@ -44,6 +44,19 @@ using Static: StaticInteger
 using FunctionChains
 using PropertyFunctions: PropSelFunction
 
+using StaticThings:
+    AxesLike, StaticAxesLike, SizeLike, StaticSizeLike,
+    OneToLike, StaticOneTo, StaticOneToLike, RealLike,
+    IntegerLike, StaticUnitRange, StaticUnitRangeLike,
+    NoTypeSize,
+    asaxes, asnonstatic, 
+    canonical_axes, canonical_indices, canonical_size,
+    maybestatic_axes, maybestatic_eachindex,
+    maybestatic_length, maybestatic_size, maybestatic_first, maybestatic_last,
+    maybestatic_oneto, maybestatic_fill, maybestatic_reshape,
+    size_from_type, axes2size, size2axes, size2length,
+    staticarray_type
+
 import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
 
@@ -150,7 +163,6 @@ using Compat
 using IrrationalConstants
 using IrrationalConstants: loghalf
 
-include("static.jl")
 include("collection_utils.jl")
 include("smf.jl")
 include("getdof.jl")

@@ -13,7 +13,7 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
 end
 
 function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
-    return fill_with(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
+    return maybestatic_fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
 end
 
 function transport_def(

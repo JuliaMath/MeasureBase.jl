@@ -1,4 +1,5 @@
 import Base
+import StaticThings
 
 export PowerMeasure
 
@@ -19,8 +20,8 @@ struct PowerMeasure{M,A} <: AbstractProductMeasure
     axes::A
 end
 
-maybestatic_length(μ::PowerMeasure) = size2length(maybestatic_size(μ))
-maybestatic_size(μ::PowerMeasure) = axes2size(μ.axes)
+StaticThings.maybestatic_length(μ::PowerMeasure) = size2length(maybestatic_size(μ))
+StaticThings.maybestatic_size(μ::PowerMeasure) = axes2size(μ.axes)
 
 """
     MeasureBase.pwr_base(μ::PowerMeasure)
@@ -78,13 +79,13 @@ end
     PowerMeasure(x, asaxes(sz))
 end
 
-marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
+marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
 end
 
-Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, one_to.(dims))
+Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, maybestatic_oneto.(dims))
 Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
 # Base.show(io::IO, d::PowerMeasure) = print(io, d.parent, " ^ ", size(d.xs))
@@ -117,7 +118,10 @@ for func in [:logdensityof, :logdensity_def]
         end
     end
 
-    @eval @inline function $func(d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike}}, x)
+    @eval @inline function $func(
+        d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike{N}}},
+        x,
+    ) where {N}
         parent = d.parent
         sum(1:N) do j
             @inbounds $func(parent, x[j])
@@ -171,8 +175,7 @@ logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
 # To avoid ambiguities
 function logdensity_def(
-    ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0},N}}},
-    x,
+    ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0},N}}}, ::Any,
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)
 end
