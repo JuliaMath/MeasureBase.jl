@@ -11,6 +11,8 @@ the product determines the dimensionality of the resulting support.
 Note that power measures are only well-defined for integer powers.
 
 The nth power of a measure μ can be written μ^n.
+
+See also [`pwr_base`](@ref), [`pwr_axes`](@ref) and [`pwr_size`](@ref).
 """
 struct PowerMeasure{M,A} <: AbstractProductMeasure
     parent::M
@@ -19,6 +21,27 @@ end
 
 maybestatic_length(μ::PowerMeasure) = size2length(maybestatic_size(μ))
 maybestatic_size(μ::PowerMeasure) = axes2size(μ.axes)
+
+"""
+    MeasureBase.pwr_base(μ::PowerMeasure)
+
+Returns `ν` for `μ = ν^axs`
+"""
+@inline pwr_base(μ::PowerMeasure) = μ.parent
+
+"""
+    MeasureBase.pwr_axes(μ::PowerMeasure)
+
+Returns `axs` for `μ = ν^axs`, `axs` being a tuple of integer ranges.
+"""
+@inline pwr_axes(μ::PowerMeasure) = μ.axes
+
+"""
+    MeasureBase.pwr_size(μ::PowerMeasure)
+
+Returns `sz` for `μ = ν^sz`, `sz` being a tuple of integers.
+"""
+@inline pwr_size(μ::PowerMeasure) = axes2size(μ.axes)
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
@@ -38,14 +61,16 @@ function Base.rand(
     ::Type{T},
     d::PowerMeasure{M},
 ) where {T,M<:AbstractMeasure}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, T, d.parent)
+    axs, base_d = pwr_axes(d), pwr_base(d)
+    map(_cartidxs(axs)) do _
+        rand(rng, T, base_d)
     end
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, d.parent)
+    axs, base_d = pwr_axes(d), pwr_base(d)
+    map(_cartidxs(axs)) do _
+        rand(rng, base_d)
     end
 end
 
@@ -127,7 +152,7 @@ end
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
-        sz_μ = map(length, μ.axes)
+        sz_μ = pwr_size(μ)
         sz_x = size(x)
         if sz_μ != sz_x
             throw(ArgumentError("Size of variate doesn't match size of power measure"))
