@@ -66,7 +66,7 @@ function checked_arg end
 
 # Prevent infinite recursion:
 @propagate_inbounds function _default_checked_arg(::Type{MU}, ::MU, ::T) where {MU,T}
-    NoArgCheck{MU,T}
+    NoArgCheck{MU,T}()
 end
 @propagate_inbounds function _default_checked_arg(::Type{MU}, mu_base, x) where {MU}
     checked_arg(mu_base, x)
