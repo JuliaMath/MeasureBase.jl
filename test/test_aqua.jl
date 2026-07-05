@@ -9,5 +9,10 @@ import MeasureBase
 #end # testset
 
 Test.@testset "Aqua tests" begin
-    Aqua.test_all(MeasureBase, ambiguities = false)
+    Aqua.test_all(
+        MeasureBase,
+        ambiguities = false,
+        # Only used by package extensions:
+        stale_deps = (ignore = [:ArgCheck, :ArraysOfArrays],),
+    )
 end # testset

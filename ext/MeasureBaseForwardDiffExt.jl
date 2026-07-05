@@ -3,6 +3,7 @@
 module MeasureBaseForwardDiffExt
 
 using MeasureBase
+using MeasureBase: containsnan, firsttype
 import ForwardDiff
 
 function MeasureBase.containsnan(x::ForwardDiff.Dual)
@@ -10,5 +11,8 @@ function MeasureBase.containsnan(x::ForwardDiff.Dual)
     b = containsnan(x.partials)
     return a || b
 end
+
+MeasureBase.firsttype(::Type{T}, ::Type{<:ForwardDiff.Dual{tag,<:Real,N}}) where {T<:Real,tag,N} =
+    ForwardDiff.Dual{tag,T,N}
 
 end # module MeasureBaseForwardDiffExt

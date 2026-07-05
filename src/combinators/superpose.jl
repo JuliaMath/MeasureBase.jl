@@ -65,37 +65,24 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end
 
-oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
-
-@inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
-    (μ, ν) = s.components
-
-    istrue(insupport(μ, x)) || return exp(ULogarithmic, logdensity_def(ν, x))
-    istrue(insupport(ν, x)) || return exp(ULogarithmic, logdensity_def(μ, x))
-
-    α = basemeasure(μ)
-    β = basemeasure(ν)
-    dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
-    dν_dβ = exp(ULogarithmic, logdensity_def(ν, x))
-    dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
-    dβ_dα = inv(dα_dβ)
-    return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
-end
+@inline _ulogexp(x) = exp(ULogarithmic, dynamic(x))
 
 function density_def(s::SuperpositionMeasure, x)
-    T = typeof(s)
-    msg = """
-    Not implemented: There is no method
-    density_def(::$T, x)
-    """
-    error(msg)
+    cs = values(s.components)
+    αs = map(basemeasure, cs)
+    idxs = eachindex(cs)
+    sum(idxs) do i
+        dμᵢ_dαᵢ = _ulogexp(logdensity_def(cs[i], x))
+        istrue(insupport(cs[i], x)) || return zero(dμᵢ_dαᵢ)
+        dΣα_dαᵢ = sum(idxs) do j
+            dαⱼ_dαᵢ = _ulogexp(logdensity_rel(αs[j], αs[i], x))
+            istrue(insupport(cs[j], x)) ? dαⱼ_dαᵢ : zero(dαⱼ_dαᵢ)
+        end
+        dμᵢ_dαᵢ / dΣα_dαᵢ
+    end
 end
 
-@inline function logdensity_def(
-    μ::T,
-    ν::T,
-    x,
-) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
+@inline function logdensity_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
     else
@@ -103,44 +90,49 @@ end
     end
 end
 
-@inline function logdensity_def(
-    s::T,
-    β,
-    x,
-) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
-    (μ, ν) = s.components
-
-    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
-    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
-    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
+    cs = values(s.components)
+    ds = map(cs) do μ
+        istrue(insupport(μ, x)) ? dynamic(logdensity_rel(μ, β, x)) : -Inf
+    end
+    logsumexp(ds)
 end
 
-@inline function logdensity_def(
-    s::SuperpositionMeasure{Tuple{A,B}},
-    β::SuperpositionMeasure,
-    x,
-) where {A,B}
-    (μ, ν) = s.components
-    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
-    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
-    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
-end
+@inline logdensity_def(s::SuperpositionMeasure, β, x) = _superpos_logdensity_rel(s, β, x)
 
-@inline function logdensity_def(s, β::(SuperpositionMeasure{Tuple{A,B}} where {A,B}), x)
-    -logdensity_def(β, s, x)
-end
+@inline logdensity_def(s::SuperpositionMeasure, β::SuperpositionMeasure, x) =
+    _superpos_logdensity_rel(s, β, x)
+
+@inline logdensity_def(s, β::SuperpositionMeasure, x) = -_superpos_logdensity_rel(β, s, x)
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
-function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
+function basemeasure(μ::SuperpositionMeasure{<:Tuple})
     superpose(map(basemeasure, μ.components)...)
 end
+
+function basemeasure(μ::SuperpositionMeasure{<:AbstractArray})
+    bases = map(basemeasure, μ.components)
+    allequal(bases) ? weightedmeasure(log(length(bases)), first(bases)) : superpose(bases)
+end
+
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-# TODO: Fix `rand` method (this one is wrong)
-# function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
-#     return rand(rand(μ.components))
-# end
+function Base.rand(rng::AbstractRNG, ::Type{T}, μ::SuperpositionMeasure) where {T}
+    components = values(μ.components)
+    masses = map(massof, components)
+    total = sum(masses)
+    total isa AbstractUnknownMass && throw(
+        ArgumentError("Cannot sample from a superposition of measures of unknown mass"),
+    )
+    threshold = rand(rng) * dynamic(total)
+    csum = zero(threshold)
+    for (mass, c) in zip(masses, components)
+        csum += dynamic(mass)
+        csum >= threshold && return rand(rng, T, c)
+    end
+    return rand(rng, T, last(components))
+end
 
 @inline function insupport(d::SuperpositionMeasure, x)
     any(d.components) do c

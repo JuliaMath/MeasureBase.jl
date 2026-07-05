@@ -185,3 +185,54 @@ isapproxzero(A::AbstractArray) = all(isapproxzero, A)
 
 isapproxone(x::T) where {T<:Real} = x ≈ one(T)
 isapproxone(A::AbstractArray) = all(isapproxone, A)
+
+containsnan(x::Real) = isnan(x)
+containsnan(x) = any(containsnan, x)
+
+
+# ForwardDiffPullbacks dummy `fwddiff`, overloaded by
+# ForwardDiffPullbacks extension when loaded:
+@inline _fwddiff(f) = f
+
+
+# Autodiff ignore:
+
+@inline _adignore_call(f) = f()
+
+macro _adignore(expr)
+    :(_adignore_call(() -> $(esc(expr))))
+end
+
+
+"""
+    MeasureBase.convert_realtype(::Type{T}, x) where {T<:Real}
+
+Convert `x` to use `T` as its underlying type for real numbers.
+"""
+function convert_realtype end
+
+@inline convert_realtype(::Type{T}, x::T) where {T<:Real} = x
+@inline convert_realtype(::Type{T}, x::AbstractArray{T}) where {T<:Real} = x
+@inline convert_realtype(::Type{T}, x::U) where {T<:Real,U<:Real} = T(x)
+convert_realtype(::Type{T}, x::AbstractArray{U}) where {T<:Real,U<:Real} = T.(x)
+convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
+    map(Base.Fix1(convert_realtype, T), x)
+convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
+    map(Base.Fix1(convert_realtype, T), x)
+
+"""
+    MeasureBase.firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real}
+
+Return the first type, but as a dual number type if the second one is dual.
+"""
+function firsttype end
+
+firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real} = T
+
+
+
+# Distributions implementation hooks:
+function _trafo_cdf_impl end
+function _trafo_quantile_impl end
+function _trafo_quantile_impl_generic end
+function _dist_params_numtype end

@@ -11,14 +11,25 @@ import ChainRulesCore
 using MeasureBase: isneginf, isposinf
 
 _isneginf_pullback(::Any) = (NoTangent(), ZeroTangent())
-ChainRulesCore.rrule(::typeof(isneginf), x) = isneginf(x), _logdensityof_rt_pullback
+ChainRulesCore.rrule(::typeof(isneginf), x) = isneginf(x), _isneginf_pullback
 
 _isposinf_pullback(::Any) = (NoTangent(), ZeroTangent())
 ChainRulesCore.rrule(::typeof(isposinf), x) = isposinf(x), _isposinf_pullback
 
+using MeasureBase: _adignore_call
+
+@inline _adignore_call_pullback(@nospecialize ΔΩ) = (NoTangent(), NoTangent())
+ChainRulesCore.rrule(::typeof(_adignore_call), f) = _adignore_call(f), _adignore_call_pullback
+
+using MeasureBase: convert_realtype
+
+_convert_realtype_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
+ChainRulesCore.rrule(::typeof(convert_realtype), ::Type{T}, x) where {T} =
+    convert_realtype(T, x), _convert_realtype_pullback
+
 # = collection utils =========================================================
 
-using MeasureBase: _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
+using MeasureBase: _pushfront, _pushback, _rev_cumsum, _exp_cumsum_log
 
 function ChainRulesCore.rrule(::typeof(_pushfront), v::AbstractVector, x)
     result = _pushfront(v, x)
