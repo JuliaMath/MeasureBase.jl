@@ -121,3 +121,28 @@ function transport_def(
 ) where {MU<:StdMeasure,names}
     NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
 end
+
+function transport_def(
+    ν::PowerMeasure{NU},
+    μ::ProductMeasure{<:AbstractArray},
+    x,
+) where {NU<:StdMeasure}
+    reshape(vcat(map(_TransportToStd{NU}(), marginals(μ), x)...), ν.axes)
+end
+
+function _marginal_viewranges(μs::AbstractArray, startidx::IntegerLike)
+    ns = map(m -> dynamic(getdof(m)), μs)
+    offs = cumsum(vcat(dynamic(startidx), ns[begin:(end-1)]))
+    map((o, n) -> o:(o+n-1), offs, ns)
+end
+
+function transport_def(
+    ν::ProductMeasure{<:AbstractArray},
+    μ::PowerMeasure{MU},
+    x::AbstractArray{<:Real},
+) where {MU<:StdMeasure}
+    νs = marginals(ν)
+    vrs = _marginal_viewranges(νs, firstindex(x))
+    xs = map(r -> view(x, r), vrs)
+    map(_TransportFromStd{MU}, νs, xs)
+end
