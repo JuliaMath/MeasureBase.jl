@@ -243,8 +243,8 @@ end
 
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
-    logpdf_src = logdensityof(f.μ, x)
-    logpdf_trg = logdensityof(f.ν, y)
+    logpdf_src = strict_logdensityof(f.μ, x)
+    logpdf_trg = strict_logdensityof(f.ν, y)
     ladj = logpdf_src - logpdf_trg
     # If logpdf_src and logpdf_trg are -Inf setting lafj to zero is safe:
     fixed_ladj = logpdf_src == logpdf_trg == -Inf ? zero(ladj) : ladj

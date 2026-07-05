@@ -44,11 +44,16 @@ ChainRulesCore.rrule(::typeof(checked_arg), ν, x) = checked_arg(ν, x), _checke
 
 # = return type inference ====================================================
 
-using MeasureBase: logdensityof_rt
+using MeasureBase: logdensityof_rt, strict_logdensityof_rt
 
 _logdensityof_rt_pullback(::Any) = (NoTangent(), NoTangent(), ZeroTangent())
 function ChainRulesCore.rrule(::typeof(logdensityof_rt), target, v)
     logdensityof_rt(target, v), _logdensityof_rt_pullback
+end
+
+_strict_logdensityof_rt_pullback(::Any) = (NoTangent(), NoTangent(), ZeroTangent())
+function ChainRulesCore.rrule(::typeof(strict_logdensityof_rt), target, v)
+    strict_logdensityof_rt(target, v), _strict_logdensityof_rt_pullback
 end
 
 end # module MeasureBaseChainRulesCoreExt

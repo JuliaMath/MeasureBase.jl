@@ -1,6 +1,7 @@
 export AbstractTransitionKernel,
     GenericTransitionKernel, TypedTransitionKernel, ParameterizedTransitionKernel
 
+# ToDo (breaking): A transition kernel should be a Function, not an AbstractMeasure.
 abstract type AbstractTransitionKernel <: AbstractMeasure end
 
 struct GenericTransitionKernel{F} <: AbstractTransitionKernel

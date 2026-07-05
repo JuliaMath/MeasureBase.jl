@@ -12,6 +12,7 @@ import InverseFunctions: inverse, FunctionWithInverse, setinverse
 using IrrationalConstants: invsqrt2, sqrt2
 import ChangesOfVariables: with_logabsdet_jacobian
 using MeasureBase.Interface: transport_to, test_transport
+using FunctionChains: fchain
 
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2
@@ -106,7 +107,7 @@ using ChangesOfVariables
     # Test basic pushforward construction
     μ = StdNormal()
     f = exp
-    ν = pushfwd(f, μ)
+    ν = @inferred pushfwd(f, μ)
 
     @test ν isa PushforwardMeasure
 
@@ -167,10 +168,29 @@ using ChangesOfVariables
     # Test pullback
     pb = pullbck(f, ν)
     @test pb isa PushforwardMeasure
+    @test pb.origin === μ
+    @test pb.f === fchain(exp, log)
     @test logdensityof(pb, y) ≈ logdensityof(μ, y)
 
     # Test deprecated pullback
     @test_deprecated pullback(f, μ)
+
+    # Test identity specializations
+    for stylearg in [(), (AdaptRootMeasure(),), (PushfwdRootMeasure(),)]
+        @test @inferred(pushfwd(identity, μ, stylearg...)) === μ
+        @test @inferred(pullbck(identity, ν, stylearg...)) === ν
+    end
+
+    # Test curried pushfwd and pullback
+    for stylearg in [(), (AdaptRootMeasure(),), (PushfwdRootMeasure(),)]
+        @test @inferred(pushfwd(f, stylearg...)(μ)) === pushfwd(f, μ, stylearg...)
+        @test @inferred(pullbck(f, stylearg...)(ν)) === pullbck(f, ν, stylearg...)
+
+        @test @inferred(pushfwd(identity, stylearg...)) === identity
+        @test @inferred(pullbck(identity, stylearg...)) === identity
+    end
+
+    @test pushfwd(identity) === identity
 end
 
 @testset "PushFwdStyle types" begin

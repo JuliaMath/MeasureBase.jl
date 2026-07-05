@@ -4,7 +4,7 @@ export StdUniform
 
 insupport(::StdUniform, x) = zero(x) ≤ x ≤ one(x)
 
-@inline function logdensityof(::StdUniform, x)
+@inline function strict_logdensityof(::StdUniform, x)
     R = float(typeof(x))
     zero(x) ≤ x ≤ one(x) ? zero(R) : R(-Inf)
 end

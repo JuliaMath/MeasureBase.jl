@@ -1,6 +1,11 @@
 export AbstractLikelihood, Likelihood
 
 abstract type AbstractLikelihood end
+(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
+
+DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
+
+Base.:∘(::typeof(log), lik::AbstractLikelihood) = logdensityof(lik)
 
 # @inline function logdensityof(ℓ::AbstractLikelihood, p)
 #     t() = dynamic(unsafe_logdensityof(ℓ, p))
@@ -11,6 +16,7 @@ abstract type AbstractLikelihood end
 # insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
 @doc raw"""
+    Likelihood(k::Base.Callable, x)
     Likelihood(k::AbstractTransitionKernel, x)
 
 "Observe" a value `x`, yielding a function from the parameters to ℝ.
@@ -117,13 +123,10 @@ struct Likelihood{K,X} <: AbstractLikelihood
     x::X
 
     Likelihood(k::K, x::X) where {K<:AbstractTransitionKernel,X} = new{K,X}(k, x)
+    Likelihood(::Type{K}, x::X) where {K,X} = new{Type{K},X}(K, x)
     Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k, x)
     Likelihood(μ, x) = Likelihood(kernel(μ), x)
 end
-
-(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
-
-DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
 
 function Pretty.quoteof(ℓ::Likelihood)
     k = Pretty.quoteof(ℓ.k)
