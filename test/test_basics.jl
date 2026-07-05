@@ -120,8 +120,9 @@ end
 end
 
 @testset "powers" begin
-    @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
-    @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
+    @test logdensityof(Lebesgue()^3, [2, 2, 2]) == logdensityof(Lebesgue()^(3,), fill(2, 3))
+    @test logdensityof(Lebesgue()^3, fill(2, 3)) ==
+          logdensityof(Lebesgue()^(3, 1), fill(2, 3, 1))
 end
 
 NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))

@@ -77,9 +77,18 @@ end
 
 for func in [:logdensityof, :logdensity_def]
     @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
-        parent = d.parent
-        sum(x) do xj
-            $func(parent, xj)
+        parent_m = d.parent
+        sz_parent = axes2size(d.axes)
+        sz_x = maybestatic_size(x)
+        if sz_parent != sz_x
+            throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        end
+        R = infer_logdensity_type($func, parent_m, eltype(x))
+        if isempty(x)
+            return zero(R)::R
+        else
+            # Need to convert since sum can turn static into dynamic values:
+            return convert(R, sum(Base.Fix1($func, parent_m), x))::R
         end
     end
 
