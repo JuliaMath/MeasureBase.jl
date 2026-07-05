@@ -33,9 +33,11 @@ Tricks = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
 
 [weakdeps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 
 [extensions]
 MeasureBaseChainRulesCoreExt = "ChainRulesCore"
+MeasureBaseForwardDiffExt = "ForwardDiff"
 
 [compat]
 ChainRulesCore = "1"
@@ -45,6 +47,7 @@ ConstantRNGs = "0.1.1"
 ConstructionBase = "1.3"
 DensityInterface = "0.4"
 FillArrays = "0.12, 0.13, 1"
+ForwardDiff = "0.8, 0.9, 0.10"
 FunctionChains = "0.2"
 IfElse = "0.1"
 IntervalSets = "0.7"
