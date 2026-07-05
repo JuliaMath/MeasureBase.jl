@@ -11,14 +11,37 @@ the product determines the dimensionality of the resulting support.
 Note that power measures are only well-defined for integer powers.
 
 The nth power of a measure μ can be written μ^n.
+
+See also [`pwr_base`](@ref), [`pwr_axes`](@ref) and [`pwr_size`](@ref).
 """
 struct PowerMeasure{M,A} <: AbstractProductMeasure
     parent::M
     axes::A
 end
 
-maybestatic_length(μ::PowerMeasure) = prod(maybestatic_size(μ))
-maybestatic_size(μ::PowerMeasure) = map(maybestatic_length, μ.axes)
+maybestatic_length(μ::PowerMeasure) = size2length(maybestatic_size(μ))
+maybestatic_size(μ::PowerMeasure) = axes2size(μ.axes)
+
+"""
+    MeasureBase.pwr_base(μ::PowerMeasure)
+
+Returns `ν` for `μ = ν^axs`
+"""
+@inline pwr_base(μ::PowerMeasure) = μ.parent
+
+"""
+    MeasureBase.pwr_axes(μ::PowerMeasure)
+
+Returns `axs` for `μ = ν^axs`, `axs` being a tuple of integer ranges.
+"""
+@inline pwr_axes(μ::PowerMeasure) = μ.axes
+
+"""
+    MeasureBase.pwr_size(μ::PowerMeasure)
+
+Returns `sz` for `μ = ν^sz`, `sz` being a tuple of integers.
+"""
+@inline pwr_size(μ::PowerMeasure) = axes2size(μ.axes)
 
 function Pretty.tile(μ::PowerMeasure)
     sz = length.(μ.axes)
@@ -30,7 +53,7 @@ end
 # ToDo: Make rand return static arrays for statically-sized power measures.
 
 function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
-    CartesianIndices(map(_dynamic, axs))
+    CartesianIndices(map(asnonstatic, axs))
 end
 
 function Base.rand(
@@ -38,22 +61,21 @@ function Base.rand(
     ::Type{T},
     d::PowerMeasure{M},
 ) where {T,M<:AbstractMeasure}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, T, d.parent)
+    axs, base_d = pwr_axes(d), pwr_base(d)
+    map(_cartidxs(axs)) do _
+        rand(rng, T, base_d)
     end
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
-    map(_cartidxs(d.axes)) do _
-        rand(rng, d.parent)
+    axs, base_d = pwr_axes(d), pwr_base(d)
+    map(_cartidxs(axs)) do _
+        rand(rng, base_d)
     end
 end
 
-@inline _pm_axes(sz::Tuple{Vararg{IntegerLike,N}}) where {N} = map(one_to, sz)
-@inline _pm_axes(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N} = axs
-
 @inline function powermeasure(x::T, sz::Tuple{Vararg{Any,N}}) where {T,N}
-    PowerMeasure(x, _pm_axes(sz))
+    PowerMeasure(x, asaxes(sz))
 end
 
 marginals(d::PowerMeasure) = fill_with(d.parent, d.axes)
@@ -80,13 +102,22 @@ end
 
 for func in [:logdensityof, :logdensity_def]
     @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
-        parent = d.parent
-        sum(x) do xj
-            $func(parent, xj)
+        parent_m = d.parent
+        sz_parent = axes2size(d.axes)
+        sz_x = maybestatic_size(x)
+        if sz_parent != sz_x
+            throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        end
+        R = infer_logdensity_type($func, parent_m, eltype(x))
+        if isempty(x)
+            return zero(R)::R
+        else
+            # Need to convert since sum can turn static into dynamic values:
+            return convert(R, sum(Base.Fix1($func, parent_m), x))::R
         end
     end
 
-    @eval @inline function $func(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
+    @eval @inline function $func(d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike}}, x)
         parent = d.parent
         sum(1:N) do j
             @inbounds $func(parent, x[j])
@@ -94,9 +125,9 @@ for func in [:logdensityof, :logdensity_def]
     end
 
     @eval @inline function $func(
-        d::PowerMeasure{M,NTuple{N,Static.SOneTo{0}}},
+        ::PowerMeasure{<:Any,<:Tuple{Vararg{StaticOneToLike{0}}}},
         x,
-    ) where {M,N}
+    )
         static(0.0)
     end
 end
@@ -117,15 +148,11 @@ end
     end
 end
 
-@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * prod(map(length, μ.axes))
-
-@inline function getdof(::PowerMeasure{<:Any,NTuple{N,Static.SOneTo{0}}}) where {N}
-    static(0)
-end
+@inline getdof(μ::PowerMeasure) = getdof(μ.parent) * size2length(axes2size(μ.axes))
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
-        sz_μ = map(length, μ.axes)
+        sz_μ = pwr_size(μ)
         sz_x = size(x)
         if sz_μ != sz_x
             throw(ArgumentError("Size of variate doesn't match size of power measure"))
@@ -144,7 +171,7 @@ logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
 # To avoid ambiguities
 function logdensity_def(
-    ::PowerMeasure{P,Tuple{Vararg{Static.SOneTo{0},N}}},
+    ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0},N}}},
     x,
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)
