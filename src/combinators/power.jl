@@ -179,3 +179,6 @@ function logdensity_def(
 ) where {P<:PrimitiveMeasure,N}
     static(0.0)
 end
+
+
+@inline mspace_elsize(m::PowerMeasure) = axes2size(m.axes)
