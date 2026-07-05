@@ -16,6 +16,50 @@ ChainRulesCore.rrule(::typeof(isneginf), x) = isneginf(x), _logdensityof_rt_pull
 _isposinf_pullback(::Any) = (NoTangent(), ZeroTangent())
 ChainRulesCore.rrule(::typeof(isposinf), x) = isposinf(x), _isposinf_pullback
 
+# = collection utils =========================================================
+
+using MeasureBase: _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
+
+function ChainRulesCore.rrule(::typeof(_pushfront), v::AbstractVector, x)
+    result = _pushfront(v, x)
+    function _pushfront_pullback(thunked_ΔΩ)
+        ΔΩ = ChainRulesCore.unthunk(thunked_ΔΩ)
+        (NoTangent(), ΔΩ[firstindex(ΔΩ)+1:lastindex(ΔΩ)], ΔΩ[firstindex(ΔΩ)])
+    end
+    return result, _pushfront_pullback
+end
+
+
+function ChainRulesCore.rrule(::typeof(_pushback), v::AbstractVector, x)
+    result = _pushback(v, x)
+    function _pushback_pullback(thunked_ΔΩ)
+        ΔΩ = ChainRulesCore.unthunk(thunked_ΔΩ)
+        (NoTangent(), ΔΩ[firstindex(ΔΩ):lastindex(ΔΩ)-1], ΔΩ[lastindex(ΔΩ)])
+    end
+    return result, _pushback_pullback
+end
+
+
+function ChainRulesCore.rrule(::typeof(_rev_cumsum), xs::AbstractVector)
+    result = _rev_cumsum(xs)
+    function _rev_cumsum_pullback(ΔΩ)
+        ∂xs = ChainRulesCore.@thunk cumsum(ChainRulesCore.unthunk(ΔΩ))
+        (NoTangent(), ∂xs)
+    end
+    return result, _rev_cumsum_pullback
+end
+
+
+function ChainRulesCore.rrule(::typeof(_exp_cumsum_log), xs::AbstractVector)
+    result = _exp_cumsum_log(xs)
+    function _exp_cumsum_log_pullback(ΔΩ)
+        ∂xs = inv.(xs) .* _rev_cumsum(exp.(cumsum(log.(xs))) .* ChainRulesCore.unthunk(ΔΩ))
+        (NoTangent(), ∂xs)
+    end
+    return result, _exp_cumsum_log_pullback
+end
+
+
 # = insupport & friends ======================================================
 
 using MeasureBase: check_dof, require_insupport, checked_arg, _checksupport, _origin_depth

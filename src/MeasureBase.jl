@@ -148,6 +148,7 @@ using IrrationalConstants
 using IrrationalConstants: loghalf
 
 include("static.jl")
+include("collection_utils.jl")
 include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
