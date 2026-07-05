@@ -44,6 +44,9 @@ using Static: StaticInteger
 using FunctionChains
 using PropertyFunctions: PropSelFunction
 
+import HeterogeneousComputing
+using HeterogeneousComputing: real_numtype
+
 export gentype
 export rebase
 
