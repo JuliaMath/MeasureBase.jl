@@ -144,15 +144,28 @@ end
     end
 end
 
+_all(A) = all(A)
+_all(::AbstractArray{NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()
+
 @inline function insupport(μ::PowerMeasure, x::AbstractArray)
     p = μ.parent
-    all(x) do xj
+    insupp = broadcast(x) do xj
         # https://github.com/SciML/Static.jl/issues/36
         dynamic(insupport(p, xj))
     end
+    _all(insupp)
 end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * size2length(axes2size(μ.axes))
+@inline fast_dof(μ::PowerMeasure) = fast_dof(μ.parent) * size2length(axes2size(μ.axes))
+
+# Static.SOneTo(0) is not static (yet):
+@inline function getdof(::PowerMeasure{<:Any,<:NTuple{N,StaticOneToLike{0}}}) where {N}
+    static(0)
+end
+@inline function fast_dof(::PowerMeasure{<:Any,<:NTuple{N,StaticOneToLike{0}}}) where {N}
+    static(0)
+end
 
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin

@@ -60,6 +60,9 @@ using StaticThings:
 import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
 
+using ArraysOfArrays:
+    VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays, VectorOfSimilarVectors, flatview
+
 export gentype
 
 export AbstractMeasure
