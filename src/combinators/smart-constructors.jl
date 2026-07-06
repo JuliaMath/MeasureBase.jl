@@ -69,29 +69,50 @@ export productmeasure
 @inline _generic_productmeasure_impl(mar::FillArrays.Fill) =
     powermeasure(_fill_value(mar), _fill_axes(mar))
 
+# Empty products are unit measures:
+@inline _generic_productmeasure_impl(::Tuple{}) = Dirac(())
+@inline _generic_productmeasure_impl(::NamedTuple{()}) = Dirac(NamedTuple())
+
 @inline _generic_productmeasure_impl(mar::Tuple{Vararg{AbstractMeasure}}) =
     ProductMeasure(mar)
-_generic_productmeasure_impl(mar::Tuple{Vararg{Dirac}}) = Dirac(map(m -> m.x, mar))
+_generic_productmeasure_impl(mar::Tuple{Dirac,Vararg{Dirac}}) = Dirac(map(m -> m.x, mar))
+_generic_productmeasure_impl(mar::Tuple{WeightedMeasure,Vararg{WeightedMeasure}}) =
+    weightedmeasure(sum(map(_logweight, mar)), productmeasure(map(m -> m.base, mar)))
 _generic_productmeasure_impl(mar::Tuple) = productmeasure(map(asmeasure, mar))
 
 @inline _generic_productmeasure_impl(
     mar::NamedTuple{names,<:Tuple{Vararg{AbstractMeasure}}},
 ) where {names} = ProductMeasure(mar)
-_generic_productmeasure_impl(mar::NamedTuple{names,<:Tuple{Vararg{Dirac}}}) where {names} =
-    Dirac(map(m -> m.x, mar))
+_generic_productmeasure_impl(
+    mar::NamedTuple{names,<:Tuple{Dirac,Vararg{Dirac}}},
+) where {names} = Dirac(map(m -> m.x, mar))
+_generic_productmeasure_impl(
+    mar::NamedTuple{names,<:Tuple{WeightedMeasure,Vararg{WeightedMeasure}}},
+) where {names} =
+    weightedmeasure(sum(map(_logweight, values(mar))), productmeasure(map(m -> m.base, mar)))
 _generic_productmeasure_impl(mar::NamedTuple) = productmeasure(map(asmeasure, mar))
-
-@inline _generic_productmeasure_impl(mar::AbstractArray{<:AbstractProductMeasure}) =
-    ProductMeasure(mar)
 
 _generic_productmeasure_impl(mar::AbstractArray{<:Dirac}) = Dirac((m -> m.x).(mar))
 
-# TODO: We should be able to further optimize this
+_generic_productmeasure_impl(mar::AbstractArray{<:WeightedMeasure}) =
+    weightedmeasure(sum(_logweight, mar), productmeasure((m -> m.base).(mar)))
+
+@inline function _generic_productmeasure_impl(
+    mar::AbstractArray{<:WeightedMeasure{StaticFloat64{W},M}},
+) where {W,M}
+    return weightedmeasure(
+        static(W) * maybestatic_length(mar),
+        productmeasure((m -> m.base).(mar)),
+    )
+end
+
 function _generic_productmeasure_impl(mar::AbstractArray{T}) where {T}
     if Base.issingletontype(T)
-        first(mar)^size(mar)
+        powermeasure(instance(T), axes(mar))
+    elseif T <: AbstractMeasure
+        ProductMeasure(mar)
     else
-        ProductMeasure(asmeasure.(mar))
+        ProductMeasure(map(asmeasure, mar))
     end
 end
 
@@ -102,13 +123,6 @@ end
 end
 
 @inline _generic_productmeasure_impl(mar::Base.Generator) = ProductMeasure(mar)
-
-# TODO: Make this static when its length is static
-@inline function _generic_productmeasure_impl(
-    mar::AbstractArray{<:WeightedMeasure{StaticFloat64{W},M}},
-) where {W,M}
-    return weightedmeasure(W * length(mar), productmeasure(map(basemeasure, mar)))
-end
 
 # ToDo: Remove or at least refactor this (ProductMeasure shouldn't take a kernel as its argument).
 
