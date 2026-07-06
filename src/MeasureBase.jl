@@ -176,6 +176,9 @@ include("primitive.jl")
 include("utils.jl")
 include("mass-interface.jl")
 
+include("density.jl")
+include("density-core.jl")
+
 include("primitives/counting.jl")
 include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
@@ -205,9 +208,6 @@ include("combinators/half.jl")
 #include("implicitmaps.jl")
 
 include("rand.jl")
-
-include("density.jl")
-include("density-core.jl")
 
 include("measure_operators.jl")
 

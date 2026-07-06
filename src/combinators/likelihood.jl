@@ -1,207 +1,214 @@
-export AbstractLikelihood, Likelihood
+"""
+    abstract type AbstractLikelihood <: Function
 
-abstract type AbstractLikelihood end
+Abstract supertype for likelihood objects.
 
-# @inline function logdensityof(ℓ::AbstractLikelihood, p)
-#     t() = dynamic(unsafe_logdensityof(ℓ, p))
-#     f() = -Inf
-#     ifelse(insupport(ℓ, p), t, f)()
-# end
+Likelihoods are *not* measures, but density functions. They are callable
+and also support the DensityInterface API. If `ℒ isa AbstractLikelihood`,
+then
 
-# insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
+```julia
+DensityInterface.DensityKind(ℒ) == IsDensity()
+log(ℒ(θ)) ≈ logdensityof(ℒ, θ)
+```
+
+Given a transition kernel `k(θ)` (a function that takes a parameter object
+and returns a measure) and an observation `x`, the recommended way to create
+a likelihood object is
+
+```julia
+ℒ = likelihoodof(k, x)
+ℒ isa AbstractLikelihood
+```
+
+Then
+
+```julia
+log(ℒ(θ)) ≈ logdensityof(ℒ, θ) ≈ logdensityof(k(θ), x)
+```
+
+See [`likelihoodof`](@ref) for details on the mathematical semantics of
+`k` and `x`.
+
+Likelihood-like types that are not subtypes of `AbstractLikelihood` can be
+made compatible with the `MeasureBase` likelihoods and Lebesgue integrals by
+specializing [`MeasureBase.as_likelihood`](@ref) and
+[`MeasureBase.as_integrand`](@ref).
+"""
+abstract type AbstractLikelihood <: Function end
+export AbstractLikelihood
+
+@inline AbstractLikelihood(l) = as_likelihood(l)::AbstractLikelihood
+
+Base.convert(::Type{AbstractLikelihood}, l::AbstractLikelihood) = l
+Base.convert(::Type{AbstractLikelihood}, l) = AbstractLikelihood(l)
+
+
+"""
+    likelihood_kernel(ℒ::AbstractLikelihood)
+
+Return the transition kernel that is part of likelihood `ℒ`.
+
+If `ℒ = likelihoodof(k, x)` then `likelihood_kernel(ℒ)` must return an
+equivalent of `k` (typically but not necessarily `k` itself).
+"""
+function likelihood_kernel end
+export likelihood_kernel
+
+
+"""
+    likelihood_obs(ℒ::AbstractLikelihood)
+
+Return the observation that is part of likelihood `ℒ`.
+
+If `ℒ = likelihoodof(k, x)` then `likelihood_obs(ℒ)` must return an
+equivalent of `x` (typically but not necessarily `x` itself).
+"""
+function likelihood_obs end
+export likelihood_obs
+
+
+"""
+    MeasureBase.as_likelihood(l)::AbstractLikelihood
+
+Turn a likelihood-like object `l` into an `AbstractLikelihood`.
+
+Likelihood-like types that are not subtypes of `AbstractLikelihood` can be
+made compatible by specializing
+
+```julia
+MeasureBase.as_likelihood(l::MyLikelihoodType) = likelihoodof(..., ...)
+MeasureBase.as_integrand(l::MyLikelihoodType) = MeasureBase.as_likelihood(l)
+```
+
+By default, this is implemented for objects like
+
+```julia
+l = Base.Fix2(densityof, x) ∘ f
+l = FuncDensity(Base.Fix2(densityof, x) ∘ f)
+l = LogFuncDensity(Base.Fix2(logdensityof, x) ∘ f)
+```
+"""
+function as_likelihood end
+export as_likelihood
+
+@inline as_likelihood(l::AbstractLikelihood) = l
+
+@inline as_integrand(l::AbstractLikelihood) = l
+
+
+(ℒ::AbstractLikelihood)(p) = densityof(ℒ, p)
+
+
+DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
+
+
+_eval_k(ℒ::AbstractLikelihood, p) = asmeasure(likelihood_kernel(ℒ)(p))
+
+function DensityInterface.logdensityof(ℒ::AbstractLikelihood, p)
+    logdensityof(_eval_k(ℒ, p), likelihood_obs(ℒ))
+end
+
+function DensityInterface.densityof(ℒ::AbstractLikelihood, p)
+    exp(ULogarithmic, logdensityof(_eval_k(ℒ, p), likelihood_obs(ℒ)))
+end
+
+
+const _SimpleLikelihood1 = ComposedFunction{<:Base.Fix2{typeof(densityof),<:Any},<:Any}
+as_likelihood(l::_SimpleLikelihood1) = likelihoodof(l.inner, l.outer.x)
+as_integrand(l::_SimpleLikelihood1) = as_likelihood(l)
+
+const _SimpleLikelihood2 = DensityInterface.FuncDensity{
+    <:ComposedFunction{<:Base.Fix2{typeof(densityof),<:Any},<:Any},
+}
+as_likelihood(l::_SimpleLikelihood2) = likelihoodof(l._f.inner, l._f.outer.x)
+as_integrand(l::_SimpleLikelihood2) = as_likelihood(l)
+
+const _SimpleLikelihood3 = DensityInterface.LogFuncDensity{
+    <:ComposedFunction{<:Base.Fix2{typeof(logdensityof),<:Any},<:Any},
+}
+as_likelihood(l::_SimpleLikelihood3) = likelihoodof(l._log_f.inner, l._log_f.outer.x)
+as_integrand(l::_SimpleLikelihood3) = as_likelihood(l)
+
+const _SimpleLogLikelihood1 = ComposedFunction{<:Base.Fix2{typeof(logdensityof),<:Any},<:Any}
+as_integrand_exp(l::_SimpleLogLikelihood1) = likelihoodof(l.inner, l.outer.x)
+
 
 @doc raw"""
-    Likelihood(k::AbstractTransitionKernel, x)
+    struct Likelihood <: AbstractLikelihood
 
-"Observe" a value `x`, yielding a function from the parameters to ℝ.
+Default result of [`likelihoodof(k, x)`](@ref).
 
-Likelihoods are most commonly used in conjunction with an existing _prior_
-measure to yield a new measure, the _posterior_. In Bayes's Law, we have
-
-``P(θ|x) ∝ P(θ) P(x|θ)``
-
-Here ``P(θ)`` is the prior. If we consider ``P(x|θ)`` as a function on ``θ``,
-then it is called a likelihood.
-
-Since measures are most commonly manipulated using `density` and `logdensity`,
-it's awkward to commit a (log-)likelihood to using one or the other. To evaluate
-a `Likelihood`, we therefore use `density` or `logdensity`, depending on the
-circumstances. In the latter case, it is of course acting as a log-density.
-
-For example,
-
-    julia> ℓ = Likelihood(Normal{(:μ,)}, 2.0)
-    Likelihood(Normal{(:μ,), T} where T, 2.0)
-
-    julia> density_def(ℓ, (μ=2.0,))
-    1.0
-
-    julia> logdensity_def(ℓ, (μ=2.0,))
-    -0.0
-
-If, as above, the measure includes the parameter information, we can optionally
-leave it out of the second argument in the call to `density` or `logdensity`. 
-
-    julia> density_def(ℓ, 2.0)
-    1.0
-
-    julia> logdensity_def(ℓ, 2.0)
-    -0.0
-
-With several parameters, things work as expected:
-    
-    julia> ℓ = Likelihood(Normal{(:μ,:σ)}, 2.0)
-    Likelihood(Normal{(:μ, :σ), T} where T, 2.0)
-    
-    julia> logdensity_def(ℓ, (μ=2, σ=3))
-    -1.0986122886681098
-    
-    julia> logdensity_def(ℓ, (2,3))
-    -1.0986122886681098
-    
-    julia> logdensity_def(ℓ, [2, 3])
-    -1.0986122886681098
-
----------
-
-    Likelihood(M<:ParameterizedMeasure, constraint::NamedTuple, x)
-
-In some cases the measure might have several parameters, and we may want the
-(log-)likelihood with respect to some subset of them. In this case, we can use
-the three-argument form, where the second argument is a constraint. For example,
-
-    julia> ℓ = Likelihood(Normal{(:μ,:σ)}, (σ=3.0,), 2.0)
-    Likelihood(Normal{(:μ, :σ), T} where T, (σ = 3.0,), 2.0)
-
-Similarly to the above, we have
-
-    julia> density_def(ℓ, (μ=2.0,))
-    0.3333333333333333
-
-    julia> logdensity_def(ℓ, (μ=2.0,))
-    -1.0986122886681098
-
-    julia> density_def(ℓ, 2.0)
-    0.3333333333333333
-
-    julia> logdensity_def(ℓ, 2.0)
-    -1.0986122886681098
-
------------------------
-
-Finally, let's return to the expression for Bayes's Law, 
-
-``P(θ|x) ∝ P(θ) P(x|θ)``
-
-The product on the right side is computed pointwise. To work with this in
-MeasureBase, we have a "pointwise product" `⊙`, which takes a measure and a
-likelihood, and returns a new measure, that is, the unnormalized posterior that
-has density ``P(θ) P(x|θ)`` with respect to the base measure of the prior.
-
-For example, say we have
-
-    μ ~ Normal()
-    x ~ Normal(μ,σ)
-    σ = 1
-
-and we observe `x=3`. We can compute the posterior measure on `μ` as
-
-    julia> post = Normal() ⊙ Likelihood(Normal{(:μ, :σ)}, (σ=1,), 3)
-    Normal() ⊙ Likelihood(Normal{(:μ, :σ), T} where T, (σ = 1,), 3)
-
-    julia> logdensity_def(post, 2)
-    -2.5
+See [`AbstractLikelihood`](@ref) and [`likelihoodof`](@ref) for details.
 """
 struct Likelihood{K,X} <: AbstractLikelihood
     k::K
     x::X
 
-    Likelihood(k::K, x::X) where {K<:AbstractTransitionKernel,X} = new{K,X}(k, x)
-    Likelihood(k::K, x::X) where {K<:Function,X} = new{K,X}(k, x)
-    Likelihood(μ, x) = Likelihood(kernel(μ), x)
+    Likelihood{K,X}(k, x) where {K,X} = new{K,X}(k, x)
 end
+export Likelihood
 
-(lik::AbstractLikelihood)(p) = exp(ULogarithmic, logdensityof(lik.k(p), lik.x))
+# For type stability, in case k is a type (resp. a constructor):
+Likelihood(k, x::X) where {X} = Likelihood{Core.Typeof(k),X}(k, x)
 
-DensityInterface.DensityKind(::AbstractLikelihood) = IsDensity()
+likelihood_kernel(ℒ::Likelihood) = ℒ.k
+likelihood_obs(ℒ::Likelihood) = ℒ.x
 
-function Pretty.quoteof(ℓ::Likelihood)
-    k = Pretty.quoteof(ℓ.k)
-    x = Pretty.quoteof(ℓ.x)
+function Pretty.quoteof(ℒ::Likelihood)
+    k = Pretty.quoteof(ℒ.k)
+    x = Pretty.quoteof(ℒ.x)
     :(Likelihood($k, $x))
 end
 
-function Base.show(io::IO, ℓ::Likelihood)
+function Base.show(io::IO, ℒ::Likelihood)
     io = IOContext(io, :compact => true)
-    Pretty.pprint(io, ℓ)
+    Pretty.pprint(io, ℒ)
 end
 
-insupport(ℓ::AbstractLikelihood, p) = insupport(ℓ.k(p), ℓ.x)
 
-@inline function logdensityof(ℓ::AbstractLikelihood, p)
-    logdensityof(ℓ.k(p), ℓ.x)
-end
+@doc raw"""
+    likelihoodof(k, x)::AbstractLikelihood
 
-@inline function unsafe_logdensityof(ℓ::AbstractLikelihood, p)
-    return unsafe_logdensityof(ℓ.k(p), ℓ.x)
-end
+Returns the likelihood of observing `x` under a family of probability
+measures that is generated by a transition kernel `k(θ)`.
 
-# basemeasure(ℓ::Likelihood) = @error "Likelihood requires local base measure"
+`k(θ)` maps points in the parameter space to measures (resp. objects that can
+be converted to measures) on an implicit set `Χ` that contains values like
+`x`.
 
-export likelihoodof
+`likelihoodof(k, x)` returns a likelihood object. A likelihood is **not** a
+measure, it is a function from the parameter space to `ℝ₊`. Likelihood
+objects can also be interpreted as "generic densities" (but **not** as
+probability densities).
 
-"""
-    likelihoodof(k::AbstractTransitionKernel, x; constraints...)
-    likelihoodof(k::AbstractTransitionKernel, x, constraints::NamedTuple)
+`likelihoodof(k, x)` implicitly chooses `ξ = rootmeasure(k(θ))` as the
+reference measure on the observation set `Χ`. Note that this implicit
+`ξ` **must** be independent of `θ`.
 
-A likelihood is *not* a measure. Rather, a likelihood acts on a measure, through
-the "pointwise product" `⊙`, yielding another measure.
+`ℒ = likelihoodof(k, x)` has the mathematical interpretation
+
+```math
+\mathcal{L}_x(\theta) = \frac{\rm{d}\, k(\theta)}{\rm{d}\, \chi}(x)
+```
+
+`likelihoodof` must return an object that implements the
+[`DensityInterface`](https://github.com/JuliaMath/DensityInterface.jl) API
+and `ℒ = likelihoodof(k, x)` must satisfy
+
+```julia
+log(ℒ(θ)) == logdensityof(ℒ, θ) ≈ logdensityof(k(θ), x)
+
+DensityKind(ℒ) isa IsDensity
+```
+
+[`likelihood_kernel(ℒ)`](@ref) must return an equivalent of `k` and
+[`likelihood_obs(ℒ)`](@ref) must return an equivalent of `x` (typically, but
+not necessarily, `k` and `x` themselves).
+
+By default, an instance of [`MeasureBase.Likelihood`](@ref) is returned.
 """
 function likelihoodof end
+export likelihoodof
 
-likelihoodof(k, x, ::NamedTuple{()}) = Likelihood(k, x)
-
-likelihoodof(k, x; kwargs...) = likelihoodof(k, x, NamedTuple(kwargs))
-
-likelihoodof(k, x, pars::NamedTuple) = likelihoodof(kernel(k, pars), x)
-
-likelihoodof(k::AbstractTransitionKernel, x) = Likelihood(k, x)
-
-export log_likelihood_ratio
-
-"""
-    log_likelihood_ratio(ℓ::Likelihood, p, q)
-
-Compute the log of the likelihood ratio, in order to compare two choices for
-parameters. This is computed as
-
-    logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
-
-Since `logdensity_rel` can leave common base measure unevaluated, this can be
-more efficient than
-
-    logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
-"""
-log_likelihood_ratio(ℓ::Likelihood, p, q) = logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
-
-# likelihoodof(k, x; kwargs...) = likelihoodof(k, x, NamedTuple(kwargs))
-
-export likelihood_ratio
-
-"""
-    likelihood_ratio(ℓ::Likelihood, p, q)
-
-Compute the log of the likelihood ratio, in order to compare two choices for
-parameters. This is equal to
-
-    density_rel(ℓ.k(p), ℓ.k(q), ℓ.x)
-
-but is computed using LogarithmicNumbers.jl to avoid underflow and overflow.
-Since `density_rel` can leave common base measure unevaluated, this can be
-more efficient than
-
-    logdensityof(ℓ.k(p), ℓ.x) - logdensityof(ℓ.k(q), ℓ.x)
-"""
-function likelihood_ratio(ℓ::Likelihood, p, q)
-    exp(ULogarithmic, logdensity_rel(ℓ.k(p), ℓ.k(q), ℓ.x))
-end
+likelihoodof(k, x) = Likelihood(k, x)
