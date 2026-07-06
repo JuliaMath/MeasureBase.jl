@@ -209,6 +209,8 @@ include("rand.jl")
 include("density.jl")
 include("density-core.jl")
 
+include("measure_operators.jl")
+
 include("interface.jl")
 
 using .Interface
