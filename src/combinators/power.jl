@@ -75,10 +75,6 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
     end
 end
 
-@inline function powermeasure(x::T, sz::Tuple{Vararg{Any,N}}) where {T,N}
-    PowerMeasure(x, asaxes(sz))
-end
-
 marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}

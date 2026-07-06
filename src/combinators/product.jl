@@ -28,6 +28,9 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
+proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
+    powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
+
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     mar = marginals(d)
     _rand_product(rng, T, mar, eltype(mar))
@@ -221,12 +224,16 @@ end
 
 @inline function insupport(d::AbstractProductMeasure, x)
     for (mj, xj) in zip(marginals(d), x)
-        dynamic(insupport(mj, xj)) || return false
+        insup = dynamic(insupport(mj, xj))
+        if insup isa NoFastInsupport || insup == false
+            return insup
+        end
     end
     return true
 end
 
-getdof(d::AbstractProductMeasure) = mapreduce(getdof, +, marginals(d))
+getdof(d::AbstractProductMeasure) = sum(getdof, marginals(d))
+fast_dof(d::AbstractProductMeasure) = sum(fast_dof, marginals(d))
 
 function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
     map(checked_arg, marginals(μ), x)
