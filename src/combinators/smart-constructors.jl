@@ -156,7 +156,13 @@ end
 # RestrictedMeasure
 export restrict
 
-restrict(f, b) = RestrictedMeasure(f, b)
+@inline restrict(f) = Base.Fix1(restrict, f)
+
+restrict(f, μ) = RestrictedMeasure(f, asmeasure(μ))
+
+# Nested restrictions fuse into a single predicate:
+restrict(f, μ::RestrictedMeasure) =
+    RestrictedMeasure(x -> μ.predicate(x) && f(x), μ.base)
 
 ###############################################################################
 # SuperpositionMeasure
