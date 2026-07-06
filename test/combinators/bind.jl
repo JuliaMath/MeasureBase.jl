@@ -82,6 +82,16 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         @test_throws ArgumentError transport_to(StdUniform()^5, μ)(xy)
         @test_throws ArgumentError transport_to(StdUniform()^2, μ)(xy)
 
+        # Scalar-variate primary measures work in vcat streams:
+        f_βs(a) = pushfwd(Mul(abs(a) + 0.5), StdNormal())^2
+        μsc = mbind(f_βs, StdExponential(), vcat)
+        xys = rand(stblrng(), Float64, μsc)
+        @test xys isa AbstractVector{<:Real} && length(xys) == 3
+        @test logdensityof(μsc, xys) ≈
+              logdensityof(StdExponential(), xys[1]) + logdensityof(f_βs(xys[1]), xys[2:3])
+        ysc = transport_to(StdUniform()^3, μsc)(xys)
+        @test transport_to(μsc, StdUniform()^3)(ysc) ≈ xys
+
         # Nested binds evaluate in a single with-rest pass:
         μnest = mbind(f_βv, μ, vcat)
         xyz = rand(stblrng(), Float64, μnest)

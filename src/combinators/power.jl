@@ -77,6 +77,11 @@ end
 
 marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
+# Powers of scalar-variate measures have array-valued variates of known size:
+@inline mspace_elsize(μ::PowerMeasure) = _pwr_mspace_elsize(μ, mspace_elsize(pwr_base(μ)))
+@inline _pwr_mspace_elsize(μ::PowerMeasure, ::Tuple{}) = pwr_size(μ)
+@inline _pwr_mspace_elsize(μ::PowerMeasure, ::Any) = NoMSpaceElementSize{typeof(μ)}()
+
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)
 end
@@ -196,5 +201,3 @@ function logdensity_def(
     static(0.0)
 end
 
-
-@inline mspace_elsize(m::PowerMeasure) = axes2size(m.axes)

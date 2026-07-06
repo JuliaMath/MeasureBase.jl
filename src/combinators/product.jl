@@ -89,6 +89,8 @@ proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
     mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
 end
 
+_mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
+
 function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end

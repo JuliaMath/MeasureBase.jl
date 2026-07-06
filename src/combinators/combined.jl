@@ -33,6 +33,9 @@ end
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) =
     _split_after(ab, length(test_a))
 
+_split_variate_byvalue(::typeof(vcat), ::Real, ab::AbstractVector) =
+    _consume_from_stream(ab, ())
+
 _split_variate_byvalue(::typeof(vcat), ::NTuple{N,Any}, ab::Tuple) where {N} =
     _split_after(ab, Val{N}())
 

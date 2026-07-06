@@ -199,6 +199,31 @@ end
     end
 end
 
+@testset "logdensityof_with_rest" begin
+    StdNormal = MeasureBase.StdNormal
+    x = [0.3, 0.7, 0.2, 0.9, 0.5]
+
+    # Scalar variates consume one stream element:
+    @test MeasureBase.mspace_elsize(StdNormal()) == ()
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal(), x)
+    @test a == 0.3 && length(x_rest) == 4
+    @test ℓ ≈ logdensityof(StdNormal(), 0.3)
+
+    # Vector variates:
+    @test MeasureBase.mspace_elsize(StdNormal()^2) == (2,)
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal()^2, x)
+    @test a == [0.3, 0.7] && length(x_rest) == 3
+    @test ℓ ≈ logdensityof(StdNormal()^2, [0.3, 0.7])
+
+    # Multi-rank variates are consumed in flattened form and reshaped:
+    @test MeasureBase.mspace_elsize(StdNormal()^(2, 2)) == (2, 2)
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal()^(2, 2), x)
+    @test a == [0.3 0.2; 0.7 0.9] && length(x_rest) == 1
+    @test ℓ ≈ logdensityof(StdNormal()^(2, 2), a)
+
+    @test MeasureBase.mspace_elsize(Dirac([1, 2])) == (2,)
+end
+
 @testset "logdensity_rel" begin
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 0.0) == Inf
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 1.0) == -Inf

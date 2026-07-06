@@ -43,6 +43,8 @@ insupport(d::Dirac, x) = x == d.x
 
 @inline getdof(::Dirac) = static(0)
 
+@inline mspace_elsize(μ::Dirac) = maybestatic_size(μ.x)
+
 @propagate_inbounds function checked_arg(μ::Dirac, x)
     @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
     x
