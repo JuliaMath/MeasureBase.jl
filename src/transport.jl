@@ -137,9 +137,27 @@ end
     return static(10)
 end
 
-# If both both measures have no origin:
+# If both measures have no origin:
 function _transport_between_origins(ν, ::StaticInteger{0}, ::StaticInteger{0}, μ, x)
+    _transport_between_noorigins(ν, fast_dof(ν), fast_dof(μ), μ, x)
+end
+
+function _transport_between_noorigins(ν, ::IntegerLike, ::IntegerLike, μ, x)
     _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
+end
+
+# If the DOF of either side is not known, pivot through a flat vector of
+# standard-measure variates, using the with-rest transport protocol:
+_transport_between_noorigins(ν, ::AbstractNoDOF, ::IntegerLike, μ, x) =
+    _transport_mvstd_pivot(ν, μ, x)
+_transport_between_noorigins(ν, ::IntegerLike, ::AbstractNoDOF, μ, x) =
+    _transport_mvstd_pivot(ν, μ, x)
+_transport_between_noorigins(ν, ::AbstractNoDOF, ::AbstractNoDOF, μ, x) =
+    _transport_mvstd_pivot(ν, μ, x)
+
+function _transport_mvstd_pivot(ν, μ, x)
+    z = transport_to_mvstd(StdUniform(), μ, x)
+    return _transport_from_mvstd(ν, StdUniform(), z)
 end
 
 @generated function _transport_between_origins(

@@ -124,7 +124,11 @@ end
 # Transport to a multivariate standard measure from any measure:
 
 function transport_def(ν::StdPowerMeasure{NU,1}, μ::AbstractMeasure, x) where {NU}
-    transport_to_mvstd(pwr_base(ν), μ, x)
+    y = transport_to_mvstd(pwr_base(ν), μ, x)
+    if maybestatic_length(y) != maybestatic_length(ν)
+        throw(ArgumentError("Length of transport target doesn't match variate DOF during transport"))
+    end
+    return y
 end
 
 function transport_to_mvstd(ν_inner::StdMeasure, μ::AbstractMeasure, x)

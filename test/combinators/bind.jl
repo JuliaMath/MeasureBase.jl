@@ -64,6 +64,23 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         @test all(u -> 0 <= u <= 1, y)
         xy_reco = transport_to(μ, StdUniform()^3)(y)
         @test xy_reco ≈ xy
+
+        # Transport between two measures of unknown DOF (mvstd pivot):
+        μ2 = mbind(f_βv, StdUniform()^1, vcat)
+        xy2 = transport_to(μ2, μ)(xy)
+        @test xy2 isa AbstractVector{<:Real} && length(xy2) == 3
+        @test transport_to(μ, μ2)(xy2) ≈ xy
+        @test logdensityof(μ2, xy2) isa Real
+
+        # Transport between known-DOF and unknown-DOF measures (mvstd pivot):
+        ν_known = productmeasure((StdNormal(), StdNormal(), StdNormal()))
+        z = transport_to(ν_known, μ)(xy)
+        @test z isa Tuple{Vararg{Real,3}}
+        @test collect(transport_to(μ, ν_known)(z)) ≈ xy
+
+        # DOF mismatches must not go unnoticed:
+        @test_throws ArgumentError transport_to(StdUniform()^5, μ)(xy)
+        @test_throws ArgumentError transport_to(StdUniform()^2, μ)(xy)
     end
 
     @testset "mbind with merge" begin
