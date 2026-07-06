@@ -75,11 +75,6 @@ testbroken_measures = [
     end
 end
 
-# @testset "TransitionKernel" begin
-#     κ = MeasureBase.kernel(MeasureBase.Dirac, identity)
-#     @test rand(κ(1.1)) == 1.1
-# end
-
 @testset "SpikeMixture" begin
     @test rand(SpikeMixture(Dirac(0), 0.5)) == 0
     @test rand(SpikeMixture(Dirac(1), 1.0)) == 1

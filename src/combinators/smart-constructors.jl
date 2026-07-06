@@ -131,21 +131,6 @@ end
 
 @inline _generic_productmeasure_impl(mar::Base.Generator) = ProductMeasure(mar)
 
-# ToDo: Remove or at least refactor this (ProductMeasure shouldn't take a kernel as its argument).
-
-productmeasure(f, param_maps, pars) = productmeasure(kernel(f, param_maps), pars)
-
-function productmeasure(k::ParameterizedTransitionKernel, pars)
-    productmeasure(k.suff, k.param_maps, pars)
-end
-
-function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:WeightedMeasure}
-    ℓ = _logweight(f.value)
-    base = basemeasure(f.value)
-    newbase = productmeasure(Returns(base), identity, pars)
-    weightedmeasure(length(pars) * ℓ, newbase)
-end
-
 ###############################################################################
 # PushforwardMeasure
 
@@ -280,73 +265,3 @@ function weightedmeasure(ℓ, b::WeightedMeasure)
     weightedmeasure(ℓ + _logweight(b), b.base)
 end
 
-###############################################################################
-# TransitionKernel
-
-# kernel(Normal(μ=2))
-function kernel(μ::M) where {M<:ParameterizedMeasure}
-    kernel(M)
-end
-
-function kernel(d::PowerMeasure)
-    Base.Fix2(powermeasure, d.axes) ∘ kernel(d.parent)
-end
-
-function kernel(f)
-    T = Core.Compiler.return_type(f, Tuple{Any})
-    _kernel(f, T)
-end
-
-function _kernel(f, ::Type{T}) where {T}
-    GenericTransitionKernel(f)
-end
-
-function _kernel(f, ::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    k = length(N)
-    C = constructorof(P)
-    maps = ntuple(Val(k)) do i
-        x -> @inbounds x[i]
-    end
-
-    kernel(params ∘ f, C, NamedTuple{N}(maps))
-end
-
-kernel(f::F, ::Type{M}; kwargs...) where {F<:Function,M} = kernel(f, M, NamedTuple(kwargs))
-
-function kernel(f::F, ::Type{M}, nt::NamedTuple) where {F<:Function,M}
-    ParameterizedTransitionKernel(M, f, nt)
-end
-
-function kernel(f::F, ::Type{M}, ::NamedTuple{()}) where {F<:Function,M}
-    T = Core.Compiler.return_type(f, Tuple{Any})
-    _kernel(f, M, T)
-end
-
-kernel(::Type{P}, nt::NamedTuple) where {P<:ParameterizedMeasure} = kernel(identity, P, nt)
-
-# Disambiguation:
-kernel(::Type{P}, ::NamedTuple{()}) where {P<:ParameterizedMeasure} =
-    TypedTransitionKernel(constructorof(P), identity)
-
-kernel(::Type{T}; kwargs...) where {T} = kernel(T, NamedTuple(kwargs))
-
-function kernel(::Type{M}, ::NamedTuple{()}) where {M}
-    C = constructorof(M)
-    TypedTransitionKernel(C, identity)
-end
-
-function _kernel(f::F, ::Type{M}, ::Type{NT}) where {M,F,N,NT<:NamedTuple{N}}
-    k = length(N)
-    maps = ntuple(Val(k)) do i
-        x -> @inbounds x[i]
-    end
-
-    ParameterizedTransitionKernel(M, values ∘ f, NamedTuple{N}(maps))
-end
-
-kernel(f::F; kwargs...) where {F<:Function} = kernel(f, NamedTuple(kwargs))
-
-function kernel(f::F, nt::NamedTuple{()}) where {F<:Function}
-    T = Core.Compiler.return_type(f, Tuple{Any})
-    _kernel(f, T)
-end

@@ -24,27 +24,6 @@ function Pretty.tile(d::ParameterizedMeasure{()})
     result
 end
 
-# Allow things like
-#
-# julia> Normal{(:μ,)}(2)
-# Normal(μ = 2,)
-function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    C = constructorof(P)
-    _kernel(C, Val(N))
-end
-
-@inline function _kernel(::Type{C}, ::Val{N}) where {C,N}
-    @inline function f(args::T) where {T<:Tuple}
-        C(NamedTuple{N,T}(args))::C{N,T}
-    end
-
-    @inline function f(arg::T) where {T}
-        C(NamedTuple{N,Tuple{T}}((arg,)))::C{N,Tuple{T}}
-    end
-
-    kernel(f)
-end
-
 function (::Type{P})(nt::NamedTuple{K,T}) where {K,T,N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)

@@ -163,6 +163,17 @@ function _basemeasure(
     productmeasure(mappedarray(basemeasure, mar))
 end
 
+"""
+    MeasureBase.basekernel(f)
+
+For a function `f` that returns a measure, return the function that returns
+the base measure instead, satisfying `basekernel(f)(p) == basemeasure(f(p))`.
+"""
+function basekernel end
+
+basekernel(f) = basemeasure ∘ f
+basekernel(f::Returns) = Returns(basemeasure(f.value))
+
 function _basemeasure(
     μ::ProductMeasure{Base.Generator{I,F}},
     ::Type{B},
