@@ -322,6 +322,14 @@ function _marginals_to_mvstd(::NU, marginals_μ::Tuple, x::Tuple) where {NU<:Std
     _flatten_to_rv(map(_TransportToMvStd{NU}(), marginals_μ, x))
 end
 
+function _marginals_to_mvstd(
+    ν::NU,
+    marginals_μ::NamedTuple{names},
+    x::NamedTuple{names},
+) where {NU<:StdMeasure,names}
+    _marginals_to_mvstd(ν, values(marginals_μ), values(x))
+end
+
 function _marginals_to_mvstd(::NU, marginals_μ, x) where {NU<:StdMeasure}
     _flatten_to_rv(broadcast(_TransportToMvStd{NU}(), marginals_μ, x))
 end
@@ -337,6 +345,16 @@ function transport_from_mvstd_with_rest(ν::ProductMeasure, μ_inner::StdMeasure
     νs = marginals(ν)
     dofs = map(fast_dof, νs)
     return _marginals_from_mvstd_with_rest(νs, dofs, μ_inner, x)
+end
+
+function transport_from_mvstd_with_rest(
+    ν::ProductMeasure{<:NamedTuple{names}},
+    μ_inner::StdMeasure,
+    x,
+) where {names}
+    ys, x_rest =
+        transport_from_mvstd_with_rest(productmeasure(values(marginals(ν))), μ_inner, x)
+    return NamedTuple{names}(ys), x_rest
 end
 
 function _dof_access_firstidxs(dofs::Tuple{Vararg{IntegerLike,N}}, first_idx) where {N}

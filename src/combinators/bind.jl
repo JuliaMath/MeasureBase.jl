@@ -1,43 +1,329 @@
-"""
-    struct MeasureBase.Bind{M,K} <: AbstractMeasure
+@doc raw"""
+    mkernel(f_β, f_c = OneTwoMany.secondarg)::Function
 
-Represents a monatic bind. User code should not create instances of `Bind`
-directly, but should call `mbind(k, μ)` instead.
-"""
-struct Bind{M,K} <: AbstractMeasure
-    k::K
-    μ::M
-end
+Constructs a generalized monadic transition kernel from a primary transition
+kernel function `f_β` and a value combination function `f_c`.
 
-getdof(d::Bind) = NoDOF{typeof(d)}()
+`f_β` must behave like `β = f_β(a)`, taking a value `a` from a primary
+measurable space and returning a measure-like object `β`.
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
-    x = rand(rng, T, d.μ)
-    y = rand(rng, T, d.k(x))
-    return y
-end
+`f_c` must behave like `c = f_c(a, b)`, taking a value `a` (like `f_β`) and
+a value `b` from the measurable space of `β` and returning a value `c`.
 
+`f_k = mkernel(f_β, f_c)` then acts like
 
-"""
-    mbind(k, μ)::AbstractMeasure
-
-Given
-
-- a measure μ
-- a kernel function k that takes values from the support of μ and returns a
-  measure
-
-The *monadic bind* operation `mbind(k, μ)` returns is a new measure.
-
-A monadic bind is often written as `>>=` (e.g. in Haskell), but this symbol is
-unavailable in Julia.
-
+```julia
+f_k(a) ≡ pushfwd(c -> f_c(c[1], c[2]), productmeasure((Dirac(a), f_β(a))))
 ```
-μ = StdExponential()
-ν = mbind(μ) do scale
-    pushfwd(Base.Fix1(*, scale), StdNormal())
+
+(`≡` denoting pseudocode-equivalency here). So with the default
+`f_c == OneTwoMany.secondarg`, we just have `f_k(a) ≡ f_β(a)`.
+
+Also,
+
+```julia
+mbind(mkernel(f_β, f_c), α) == mbind(f_β, α, f_c)
+```
+
+See also [`mbind`](@ref).
+"""
+function mkernel end
+export mkernel
+
+
+"""
+    struct MeasureBase.MKernel <: Function
+
+Represents a generalized monadic transition kernel.
+
+User code should not create instances of `MKernel` directly, but should
+call [`mkernel`](@ref) instead.
+"""
+struct MKernel{FT,FC} <: Function
+    f_β::FT
+    f_c::FC
 end
+
+(f_k::MKernel)(a) = mbind(f_k, Dirac(a))
+
+@inline mkernel(f_β::MKernel) = f_β
+@inline mkernel(f_β, f_c = secondarg) = _generic_mkernel_impl(f_β, f_c)
+
+@inline _generic_mkernel_impl(f_β, f_c) = MKernel(f_β, f_c)
+@inline _generic_mkernel_impl(f_β::MKernel, ::typeof(secondarg)) = f_β
+
+
+@doc raw"""
+    mbind(f_β, α::AbstractMeasure, f_c = OneTwoMany.secondarg)
+    mbind(f_β::MeasureBase.MKernel, α::AbstractMeasure)
+
+Constructs a monadic bind, resp. a hierarchical measure, from a transition
+kernel function `f_β`, a primary measure `α` and a value combination
+function `f_c`.
+
+`f_β` must be a function that maps a point `a` from the space of the primary
+measure `α` to a dependent secondary measure `β_a = f_β(a)`.
+`ab = f_c(a, b)` must map such a point `a` and a point `b` from the
+space of measure `β_a` to a combined value `ab = f_c(a, b)`.
+
+The resulting measure
+
+```julia
+μ = mbind(f_β, α, f_c)
+```
+
+has the mathematical interpretation (on sets $$A$$ and $$B$$)
+
+```math
+\mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a)
+```
+
+When using the default `f_c = OneTwoMany.secondarg` (so `ab == b`) this
+simplifies to
+
+```math
+\mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a)
+```
+
+which is equivalent to a monadic bind, viewing measures as monads.
+
+Computationally, `ab = rand(μ)` is equivalent to
+
+```julia
+a = rand(α)
+β_a = f_β(a)
+b = rand(β_a)
+ab = f_c(a, b)
+```
+
+The measure `α` that went into the bind can be retrieved via
+`boundmeasure(mbind(f_β, α, f_c)) == α` and the kernel via
+`bindkernel(mbind(f_β, α, f_c)) == mkernel(f_β, f_c)`.
+
+Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
+can be unambiguously split into `a` and `b` again, knowing `α`. This is
+currently implemented for `f_c` that is either `tuple` or `=>`/`Pair` (these
+work for any combination of variate types), `vcat` (for tuple- or
+vector-like variates) and `merge` (`NamedTuple` variates).
+[`MeasureBase.tpmeasure_split_combined`](@ref) can be specialized to
+support other choices for `f_c`.
+
+# Extended help
+
+Bayesian example with a correlated prior: Mathematically, let
+
+    position = a1 ~ StdNormal()
+    noise = a2 ~ pushforward(h(a1, ·), StdExponential())
+
+where `h(a1, a2) = √(abs(a1) * a2)`. Because this prior on the space of
+`A = A1 × A2 = (position, noise)` is a hierarchical measure (`a2` depends
+on `a1`), we can construct it using `mbind` with `merge` as `f_c`:
+
+```julia
+using MeasureBase, AffineMaps
+
+prior = mbind(
+    productmeasure((
+        position = StdNormal(),
+    )), merge
+) do a
+    productmeasure((
+        noise = pushfwd(setinverse(sqrt, setladj(x -> x^2, x -> log(2))) ∘ Mul(abs(a.position)), StdExponential()),
+    ))
+end
+
+model = θ -> pushfwd(MulAdd(θ.noise, θ.position), StdNormal())^10
+
+joint_θ_obs = mbind(model, prior, tuple)
+prior_predictive = mbind(model, prior)
+
+observation = rand(prior_predictive)
+likelihood = likelihoodof(model, observation)
+
+posterior = mintegrate(likelihood, prior)
+
+θ = rand(prior)
+logdensityof(posterior, θ)
 ```
 """
-mbind(k, μ) = Bind(k, μ)
+function mbind end
 export mbind
+
+@inline mbind(f_β) = Base.Fix1(mbind, f_β)
+
+@inline function mbind(f_β, α::AbstractMeasure, f_c = secondarg)
+    _generic_mbind_impl(f_β, asmeasure(α), f_c)
+end
+
+@inline function _generic_mbind_impl(f_β, α::AbstractMeasure, f_c)
+    F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
+    Bind{F,M,G}(f_β, α, f_c)
+end
+
+@inline _generic_mbind_impl(f_β, α::Dirac, f_c) = mcombine(f_c, α, asmeasure(f_β(α.x)))
+
+@inline _generic_mbind_impl(@nospecialize(f_β), α::AbstractMeasure, ::typeof(firstarg)) = α
+@inline _generic_mbind_impl(@nospecialize(f_β), α::Dirac, ::typeof(firstarg)) = α
+
+@inline _generic_mbind_impl(f_k::MKernel, α::AbstractMeasure, ::typeof(secondarg)) =
+    mbind(f_k.f_β, α, f_k.f_c)
+@inline _generic_mbind_impl(f_k::MKernel, α::Dirac, ::typeof(secondarg)) =
+    mbind(f_k.f_β, α, f_k.f_c)
+
+
+"""
+    struct MeasureBase.Bind <: AbstractMeasure
+
+Represents a monadic bind resp. a hierarchical measure in general.
+
+User code should not create instances of `Bind` directly, but should call
+[`mbind`](@ref) instead.
+"""
+struct Bind{FT,M<:AbstractMeasure,FC} <: AbstractMeasure
+    f_β::FT
+    α::M
+    f_c::FC
+end
+
+# ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
+
+
+"""
+    bindkernel(μ::Bind)::MKernel
+
+Returns the monadic transition kernel of a monadic bind, so that
+`bindkernel(mbind(f_k::MKernel, α)) == f_k`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function bindkernel end
+export bindkernel
+
+bindkernel(μ::Bind) = mkernel(μ.f_β, μ.f_c)
+
+
+"""
+    boundmeasure(μ::Bind)::AbstractMeasure
+
+Returns the measure that went into a monadic bind, so that
+`boundmeasure(mbind(f_k, α)) == α`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function boundmeasure end
+export boundmeasure
+
+boundmeasure(μ::Bind) = μ.α
+
+
+_get_β_a(μ::Bind, a) = asmeasure(μ.f_β(a))
+
+function transportmeasure(μ::Bind, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
+    tpm_β_a = transportmeasure(_get_β_a(μ, a), b)
+    mcombine(μ.f_c, tpm_α, tpm_β_a)
+end
+
+localmeasure(μ::Bind, x) = transportmeasure(μ, x)
+
+tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tpm_sc(f_c, μ, xy)
+
+function _bind_tpm_sc(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
+    x, y = xy[1], xy[2]
+    tpm_μ = transportmeasure(μ, x)
+    return tpm_μ, x, y
+end
+
+function _bind_tpm_sc(::Type{Pair}, μ::Bind, xy::Pair)
+    x, y = xy.first, xy.second
+    tpm_μ = transportmeasure(μ, x)
+    return tpm_μ, x, y
+end
+
+const _BindBy{FC} = Bind{<:Any,<:AbstractMeasure,FC}
+_bind_tpm_sc(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector) =
+    _bind_tpm_sc_cat(f_c, μ, xy)
+_bind_tpm_sc(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple) =
+    _bind_tpm_sc_cat(f_c, μ, xy)
+
+function _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
+    β_a = _get_β_a(μ, a)
+    tpm_β_a, b, y = tpmeasure_split_combined(f_c, β_a, by)
+    tpm_μ = mcombine(μ.f_c, tpm_α, tpm_β_a)
+    return tpm_μ, a, b, y, xy
+end
+
+function _bind_tpm_sc_cat(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector)
+    tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
+    x, y = _split_after(xy, length(a) + length(b))
+    return tpm_μ, x, y
+end
+
+function _bind_tpm_sc_cat(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple)
+    tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    return tpm_μ, f_c(a, b), y
+end
+
+
+@inline insupport(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
+
+@inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
+
+# Bypass `checked_arg`, would require potentially costly evaluation of f_β:
+@inline checked_arg(::Bind, x) = x
+
+rootmeasure(::Bind) =
+    throw(ArgumentError("root measure is implicit, but can't be instantiated, for Bind"))
+
+basemeasure(::Bind) = throw(ArgumentError("basemeasure is not available for Bind"))
+
+testvalue(::Bind) = throw(ArgumentError("testvalue is not available for Bind"))
+
+logdensity_def(::Bind, x) =
+    throw(ArgumentError("logdensity_def is not available for Bind"))
+
+# Specialize logdensityof to avoid duplicate calculations:
+function logdensityof(μ::Bind, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
+    β_a = _get_β_a(μ, a)
+    logdensityof(tpm_α, a) + logdensityof(β_a, b)
+end
+
+# Specialize unsafe_logdensityof to avoid duplicate calculations:
+function unsafe_logdensityof(μ::Bind, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
+    β_a = _get_β_a(μ, a)
+    unsafe_logdensityof(tpm_α, a) + unsafe_logdensityof(β_a, b)
+end
+
+
+function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
+    a = rand(rng, T, μ.α)
+    b = rand(rng, T, _get_β_a(μ, a))
+    return μ.f_c(a, b)
+end
+
+function Base.rand(rng::Random.AbstractRNG, μ::Bind)
+    a = rand(rng, μ.α)
+    b = rand(rng, _get_β_a(μ, a))
+    return μ.f_c(a, b)
+end
+
+
+function transport_to_mvstd(ν_inner::StdMeasure, μ::Bind, ab)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    β_a = _get_β_a(μ, a)
+    y1 = transport_to_mvstd(ν_inner, tpm_α, a)
+    y2 = transport_to_mvstd(ν_inner, β_a, b)
+    return vcat(y1, y2)
+end
+
+
+function transport_from_mvstd_with_rest(ν::Bind, μ_inner::StdMeasure, x)
+    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
+    β_a = _get_β_a(ν, a)
+    b, x_rest = transport_from_mvstd_with_rest(β_a, μ_inner, x2)
+    return ν.f_c(a, b), x_rest
+end

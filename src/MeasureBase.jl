@@ -63,6 +63,8 @@ using HeterogeneousComputing: real_numtype
 using ArraysOfArrays:
     VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays, VectorOfSimilarVectors, flatview
 
+using OneTwoMany: firstarg, secondarg
+
 export gentype
 
 export AbstractMeasure
@@ -190,7 +192,6 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
-include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/reshape.jl")
 include("combinators/weighted.jl")
@@ -210,6 +211,8 @@ include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
 include("combinators/product_transport.jl")
+include("combinators/combined.jl")
+include("combinators/bind.jl")
 include("combinators/half.jl")
 
 #include("implicitmaps.jl")
