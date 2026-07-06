@@ -110,6 +110,24 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         yP_reco, rest = MeasureBase.transport_from_mvstd_with_rest(P, StdUniform(), z)
         @test yP_reco isa Vector{<:AbstractVector{Float64}}
         @test yP_reco ≈ yP && isempty(rest)
+        @test logdensityof(P, yP) ≈ logdensityof(μ, yP[1]) + logdensityof(μ, yP[2])
+
+        # Products with value-dependent marginal sizes, in all marginal
+        # container flavors:
+        Pt = productmeasure((μ, μ))
+        yt = rand(stblrng(), Float64, Pt)
+        @test logdensityof(Pt, yt) ≈ logdensityof(μ, yt[1]) + logdensityof(μ, yt[2])
+        zt = transport_to(StdUniform()^6, Pt)(yt)
+        yt_reco = transport_to(Pt, StdUniform()^6)(zt)
+        @test all(map(≈, yt_reco, yt))
+
+        Pnt = productmeasure((a = StdNormal(), b = μ))
+        ynt = rand(stblrng(), Float64, Pnt)
+        @test logdensityof(Pnt, ynt) ≈
+              logdensityof(StdNormal(), ynt.a) + logdensityof(μ, ynt.b)
+        znt = transport_to(StdUniform()^4, Pnt)(ynt)
+        ynt_reco = transport_to(Pnt, StdUniform()^4)(znt)
+        @test ynt_reco.a ≈ ynt.a && ynt_reco.b ≈ ynt.b
     end
 
     @testset "mbind with merge" begin
