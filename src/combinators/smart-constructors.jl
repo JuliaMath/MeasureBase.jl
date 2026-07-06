@@ -7,7 +7,14 @@
 ###############################################################################
 # Half
 
+"""
+    half(μ::AbstractMeasure)
+
+Constructs the half-measure of a measure `μ` that is symmetric around zero:
+`μ` folded onto the non-negative half-line.
+"""
 half(μ::AbstractMeasure) = Half(μ)
+export half
 
 ###############################################################################
 # PowerMeaure
@@ -236,6 +243,16 @@ _superpose_two(μ::WeightedMeasure, ν::SuperpositionMeasure) =
 
 ###############################################################################
 # WeightedMeasure
+
+"""
+    weightedmeasure(logweight::Real, μ)
+
+Constructs a measure that behaves like the measure `μ`, but with its density
+scaled by `exp(logweight)`. Weights of nested weighted measures combine
+additively.
+"""
+function weightedmeasure end
+export weightedmeasure
 
 function weightedmeasure(ℓ::R, b::M) where {R,M}
     WeightedMeasure{R,M}(ℓ, b)
