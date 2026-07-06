@@ -31,6 +31,7 @@ import ConstructionBase
 using ConstructionBase: constructorof
 using IntervalSets
 
+import StaticArrays
 using StaticArrays:
     StaticArray, StaticVector, StaticMatrix, SArray, SVector, SMatrix, SOneTo
 
@@ -42,6 +43,22 @@ using Static
 using Static: StaticInteger
 using FunctionChains
 using PropertyFunctions: PropSelFunction
+
+using StaticThings:
+    AxesLike, StaticAxesLike, SizeLike, StaticSizeLike,
+    OneToLike, StaticOneTo, StaticOneToLike, RealLike,
+    IntegerLike, StaticUnitRange, StaticUnitRangeLike,
+    NoTypeSize,
+    asaxes, asnonstatic, 
+    canonical_axes, canonical_indices, canonical_size,
+    maybestatic_axes, maybestatic_eachindex,
+    maybestatic_length, maybestatic_size, maybestatic_first, maybestatic_last,
+    maybestatic_oneto, maybestatic_fill, maybestatic_reshape,
+    size_from_type, axes2size, size2axes, size2length,
+    staticarray_type
+
+import HeterogeneousComputing
+using HeterogeneousComputing: real_numtype
 
 export gentype
 export rebase
@@ -63,6 +80,39 @@ include("insupport.jl")
 abstract type AbstractMeasure end
 
 AbstractMeasure(m::AbstractMeasure) = m
+
+"""
+    asmeasure(m)
+
+Turns a measure-like object `m` into an `AbstractMeasure`.
+
+Calls `convert(AbstractMeasure, m)` by default
+"""
+function asmeasure end
+
+@inline asmeasure(m::AbstractMeasure) = m
+asmeasure(m) = convert(AbstractMeasure, m)
+export asmeasure
+
+"""
+    struct AsMeasure{T}
+
+Wrapes a measure-like object into an `AbstractMeasure`.
+
+Constructor:
+
+```
+AsMeasure{T}(obj::T)
+```
+
+User code should not create instances of `AsMeasure` directly, but should
+call `asmeasure(obj)` instead.
+"""
+struct AsMeasure{T} <: AbstractMeasure
+    obj::T
+
+    AsMeasure{T}(obj::T) where {T} = new(obj)
+end
 
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
@@ -113,7 +163,7 @@ using Compat
 using IrrationalConstants
 using IrrationalConstants: loghalf
 
-include("static.jl")
+include("collection_utils.jl")
 include("smf.jl")
 include("getdof.jl")
 include("transport.jl")
@@ -134,6 +184,7 @@ include("primitives/trivial.jl")
 
 include("combinators/bind.jl")
 include("combinators/transformedmeasure.jl")
+include("combinators/reshape.jl")
 include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")

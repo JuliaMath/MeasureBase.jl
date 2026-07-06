@@ -1,59 +1,228 @@
-abstract type AbstractDomain end
+"""
+    mdomain(m)::MeasureBase.SetLike
 
-abstract type RealDomain <: AbstractDomain end
+Return the domain, i.e. the measurable set, of the measure `m`.
 
-# TODO: Use IntervalSets
-struct RealNumbers <: RealDomain end
+The measure must allow for evaluating densities and the like over the whole
+domain, even if the support of the measure is only a subset of the domain.
 
-const ℝ = RealNumbers()
+May return [`MeasureBase.ImplicitDomain`](@ref) if the domain cannot be
+computed (efficiently).
+"""
+function mdomain end
+export mdomain
 
-Base.minimum(::RealNumbers) = static(-Inf)
-Base.maximum(::RealNumbers) = static(Inf)
+@inline mdomain(m) = ImplicitDomain(m)
 
-Base.in(x, ::RealNumbers) = isreal(x)
 
-Base.show(io::IO, ::typeof(ℝ)) = print(io, "ℝ")
+# Custom abstract set type. Design reserve to be able to switch to
+#`Base.AbstractSet` or another set type hierarchy in the future:
+"""
+    MeasureBase.ValueSet
 
-struct BoundedReals{L,U} <: RealDomain
+Abstract type for some measurable sets.
+
+Not every measurable set needs to be a a subtype of
+`MeasureBase.ValueSet`.
+
+See also [`MeasureBase.SetLike`](@ref).
+"""
+abstract type ValueSet end
+
+"""
+    const MeasureBase.SetLike = Union{MeasureBase.ValueSet, Base.AbstractSet, IntervalSets.Domain}
+
+Any kind of (measurable) set.
+
+There needs to be an implicit sigma-algebra for subtypes of
+`MeasureBase.SetLike` to make them useable for measures. This can't easily be
+imposed via type constraints, though, so it is by-contract.
+"""
+const SetLike = Union{MeasureBase.ValueSet,Base.AbstractSet,IntervalSets.Domain}
+
+"""
+    valdomain(x)::MeasureBase.SetLike
+
+Return the domain of a given value.
+
+May return [`MeasureBase.UnknownDomain`](@ref) if no domain type is available
+that can represents values like `x`.
+"""
+function valdomain end
+export valdomain
+
+@inline valdomain(x) = UnknownDomain(x)
+
+"""
+    MeasureBase.maybe_in(x, s)
+
+Test if `x` may be a member of `s`.
+
+Defaults to `in(x, s)`, but may be specialized for certain types of `s`,
+e.g. for `s::MeasureBase.ImplicitDomain`.
+"""
+function maybe_in end
+
+maybe_in(x, s) = in(x, s)
+
+"""
+    struct MeasureBase.ImplicitDomain{M} <: MeasureBase.ValueSet
+
+Represents the domain (i.e. the measurable set) of a measure `m::M`.
+
+Constructors:
+
+```
+MeasureBase.ImplicitDomain(m)
+```
+
+Fields:
+
+* `m::M`: The measure.
+
+For many pushforward measures and similar, the measureable space can not be
+computed efficiently or at all. In such cases, [`mdomain(m)`](@ref) should
+return `ImplicitDomain(m)`.
+
+Does not support `Base.in(x, s::MeasureBase.ImplicitDomain)`, and
+`MeasureBase.maybe_in(x, s::MeasureBase.ImplicitDomain)` always return `true`
+(unless specialized for the measure type).
+"""
+struct ImplicitDomain{M} <: ValueSet
+    m::M
+end
+
+@inline Base.union(s::ImplicitDomain, others::ImplicitDomain...) =
+    ImplicitDomain(+(s.m, map(x -> x.m, others)...))
+
+function Base.in(@nospecialize(x), ::ImplicitDomain)
+    throw(ArgumentError("Cannot test if a value lies withing an implicit domain."))
+end
+
+maybe_in(@nospecialize(x), ::ImplicitDomain) = true
+
+function Base.isempty(::ImplicitDomain)
+    throw(ArgumentError("Can't test if an ImplicitDomain is empty"))
+end
+
+"""
+    struct MeasureBase.UnknownDomain{T} <: MeasureBase.ValueSet
+
+Represents the unknown domain of a value of type `T`.
+
+Constructors:
+
+```
+MeasureBase.UnknownDomain(x::T)
+```
+
+Does not support `Base.in(x, s::MeasureBase.UnknownDomain)`, and
+`MeasureBase.maybe_in(x, s::MeasureBase.UnknownDomain)` always return `true`
+(unless specialized for the measure type).
+
+`isempty` will always return false, `UnknownDomain` should only be created
+if a value of type `T` existed in the first place, which implies that the
+domain can not be empty.
+"""
+struct UnknownDomain{T} <: ValueSet end
+
+UnknownDomain(::T) where {T} = UnknownDomain{T}()
+
+Base.eltype(::UnknownDomain{T}) where {T} = T
+
+@inline Base.union(s::UnknownDomain, others::UnknownDomain...) =
+    UnknownDomain{promote_type(eltype(s), map(eltype, others)...)}()
+
+function Base.in(@nospecialize(x), ::UnknownDomain)
+    throw(ArgumentError("Cannot test if a value lies withing an unknown domain."))
+end
+
+maybe_in(@nospecialize(x), ::UnknownDomain) = true
+
+Base.isempty(::UnknownDomain) = false
+
+"""
+    RealValues() isa MeasureBase.ValueSet
+
+The real numbers.
+"""
+struct RealValues <: ValueSet end
+
+@inline Base.in(x::Real, ::RealValues) = true
+@inline Base.in(x, ::RealValues) = isreal(x)
+
+@inline Base.isempty(::RealValues) = false
+
+@inline Base.union(s::RealValues, ::RealValues...) = s
+
+@inline Base.minimum(::RealValues) = static(-Inf)
+@inline Base.maximum(::RealValues) = static(Inf)
+
+testvalue(::Type{T}, ::RealValues) where {T} = zero(T)
+
+"""
+    const MeasureBase.ℝ = RealValues()
+
+The set of all real numbers, see [`MeasureBase.RealValues`](@ref).
+"""
+const ℝ = RealValues()
+export ℝ
+
+Base.show(io::IO, ::RealValues) = print(io, "ℝ")
+Base.show(io::IO, ::MIME"text/plain", ::RealValues) = print(io, "MeasureBase.ℝ")
+
+"""
+    MeasureBase.IntegerValues() isa MeasureBase.ValueSet
+"""
+struct IntegerValues <: ValueSet end
+
+@inline Base.in(x::Integer, ::IntegerValues) = true
+@inline Base.in(x, ::IntegerValues) = isinteger(x)
+
+@inline Base.isempty(::IntegerValues) = false
+
+@inline Base.union(s::IntegerValues, ::IntegerValues...) = s
+
+testvalue(::Type{T}, ::IntegerValues) where {T} = zero(T)
+
+# # This could get tricky with mixed-precision code. Probably needs some
+# # special AbstractInteger infinity type (but custom AbstractInteger types
+# # may cause a lot of method invalidations, which is why Static.StaticInteger
+# # is not an AbstractInteger).
+# @inline Base.minimum(::RealValues) = static(typemax(Int64))
+# @inline Base.maximum(::RealValues) = static(typemin(Int64))
+
+"""
+    const ℤ = IntegerValues()
+
+The set of all integers, see [`MeasureBase.IntegerValues`](@ref).
+"""
+const ℤ = IntegerValues()
+export ℤ
+
+Base.show(io::IO, ::IntegerValues) = print(io, "ℤ")
+Base.show(io::IO, ::MIME"text/plain", ::IntegerValues) = print(io, "MeasureBase.ℤ")
+
+"""
+    struct MeasureBase.BoundedInts{L,U} <: MeasureBase.ValueSet
+
+The integers from `lower` to `upper` (bounds may be infinite).
+
+Constructors:
+
+```julia
+BoundedInts(lower, upper)
+ℤ[lower:upper]
+```
+"""
+struct BoundedInts{L,U} <: ValueSet
     lower::L
     upper::U
 end
 
-Base.in(x, b::BoundedReals) = b.lower ≤ x ≤ b.upper
+@inline Base.in(x, b::BoundedInts) = x ∈ ℤ && b.lower <= x <= b.upper
 
-export ℝ, ℝ₊, 𝕀, ℤ
-
-const ℝ₊ = BoundedReals(static(0.0), static(Inf))
-const 𝕀 = BoundedReals(static(0.0), static(1.0))
-
-Base.minimum(b::BoundedReals) = b.lower
-Base.maximum(b::BoundedReals) = b.upper
-
-Base.show(io::IO, ::typeof(ℝ₊)) = print(io, "ℝ₊")
-Base.show(io::IO, ::typeof(𝕀)) = print(io, "𝕀")
-
-testvalue(::Type{T}, ::typeof(ℝ)) where {T} = zero(T)
-testvalue(::Type{T}, ::typeof(ℝ₊)) where {T} = one(T)
-testvalue(::Type{T}, ::typeof(𝕀)) where {T} = one(T) / 2
-
-abstract type IntegerDomain <: AbstractDomain end
-
-struct IntegerNumbers <: IntegerDomain end
-
-Base.in(x, ::IntegerNumbers) = isinteger(x)
-
-const ℤ = IntegerNumbers()
-
-Base.show(io::IO, ::typeof(ℤ)) = print(io, "ℤ")
-
-Base.minimum(::IntegerNumbers) = static(-Inf)
-Base.maximum(::IntegerNumbers) = static(Inf)
-struct BoundedInts{L,U} <: IntegerDomain
-    lower::L
-    upper::U
-end
-
-Base.in(x, b::BoundedInts) = x ∈ ℤ && b.lower ≤ x ≤ b.upper
+Base.isempty(b::BoundedInts) = b.lower > b.upper
 
 Base.minimum(b::BoundedInts) = b.lower
 Base.maximum(b::BoundedInts) = b.upper
@@ -63,83 +232,126 @@ function Base.show(io::IO, b::BoundedInts)
     print(io, "ℤ[", b.lower, ":", b.upper, "]")
 end
 
-testvalue(b::BoundedInts) = min(b.lower, 0)
+testvalue(b::BoundedInts) = convert(Int, clamp(0, dynamic(b.lower), dynamic(b.upper)))
+testvalue(::Type{T}, b::BoundedInts) where {T} = convert(T, testvalue(b))
 
-function Base.getindex(::typeof(ℤ), r::AbstractUnitRange)
-    BoundedInts(extrema(r)...)
+Base.getindex(::typeof(ℤ), r::AbstractUnitRange) = BoundedInts(extrema(r)...)
+
+"""
+    struct MeasureBase.AbstractCartSetProd <: ValueSet
+
+Supertype for cartesian products of sets.
+"""
+abstract type AbstractCartSetProd <: ValueSet end
+
+"""
+    struct CartesianProduct <: AbstractCartSetProd
+
+A cartesian product over a collection of sets.
+
+Constructor:
+
+```julia
+prodset = CartesianProduct(sets)
+```
+
+`sets` may be a `Tuple`, `NamedTuple` or `AbstractArray` of sets/domains.
+"""
+struct CartesianProduct{S<:Union{Tuple,NamedTuple,AbstractArray}} <: AbstractCartSetProd
+    _sets::S
 end
 
-###########################################################
-# ZeroSet
+componentsets(s::CartesianProduct) = s._sets
 
-export ZeroSet
+setcartprod(sets::AbstractArray{<:SetLike}) = CartesianProduct(sets)
+setcartprod(sets::Tuple{Vararg{SetLike}}) = CartesianProduct(sets)
+setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = CartesianProduct(sets)
 
-struct ZeroSet{F,G} <: AbstractDomain
-    f::F
-    ∇f::G
+@inline Base.in(x::Tuple{}, s::CartesianProduct{Tuple{}}) = true
+@inline Base.in(x::Tuple{Vararg{Any,N}}, s::CartesianProduct{<:Tuple{Vararg{Any,N}}}) where {N} =
+    prod(map(in, x, componentsets(s)))::Bool
+@inline Base.in(x::NamedTuple{names}, s::CartesianProduct{<:NamedTuple{names}}) where {names} =
+    prod(map(in, values(x), values(componentsets(s))))::Bool
+# ToDo: Allow this?
+# Base.in(x::AbstractVector, s::CartesianProduct{<:Tuple}) = all(in.(x,componentsets(s)))::Bool
+function Base.in(
+    x::AbstractArray{<:Any,N},
+    s::CartesianProduct{<:AbstractArray{<:Any,N}},
+) where {N}
+    sets = componentsets(s)
+    isempty(x) && isempty(sets) ? true : all(in.(x, sets))::Bool
 end
 
-# Based on some quick tests, but may need some adjustment
-Base.in(x::AbstractArray{T}, z::ZeroSet) where {T} = abs(z.f(x)) < ldexp(eps(float(T)), 6)
+@inline Base.isempty(s::CartesianProduct) = any(isempty, componentsets(s))
 
-###########################################################
-# CodimOne
-
-export CodimOne
-
-abstract type CodimOne <: AbstractDomain end
-
-function tangentat(
-    a::CodimOne,
-    b::CodimOne,
-    x::AbstractArray{T};
-    tol = ldexp(eps(float(T)), 6),
-) where {T}
-    # Sometimes you get lucky
-    a == b && return true
-
-    # Get the normal vectors
-    g1 = a.∇f(x)
-    g2 = b.∇f(x)
-
-    # See if one is a multiple of the other
-    one(T) - Statistics.corm(g1, zero(T), g2, zero(T)) < tol
+@inline function Base.union(
+    s::CartesianProduct{<:Tuple{Vararg{Any,N}}},
+    others::CartesianProduct{<:Tuple{Vararg{Any,N}}}...,
+) where {N}
+    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
 end
 
-function zeroset(::CodimOne)::ZeroSet end
-
-###########################################################
-# Simplex
-export Simplex
-
-struct Simplex <: CodimOne end
-
-function zeroset(::Simplex)
-    f(x::AbstractArray{T}) where {T} = sum(x) - one(T)
-    ∇f(x::AbstractArray{T}) where {T} = fill_with(one(T), size(x))
-    ZeroSet(f, ∇f)
+@inline function Base.union(
+    s::CartesianProduct{<:NamedTuple{names}},
+    others::CartesianProduct{<:NamedTuple{names}}...,
+) where {names}
+    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
 end
 
-function Base.in(x::AbstractArray{T}, ::Simplex) where {T}
-    all(≥(zero(eltype(x))), x) || return false
-    return x ∈ zeroset(Simplex())
+function Base.union(
+    s::CartesianProduct{<:AbstractArray{<:Any,N}},
+    others::CartesianProduct{<:AbstractArray{<:Any,N}}...,
+) where {N}
+    CartesianProduct(union.(componentsets(s), map(componentsets, others)...))
 end
 
-projectto!(x, ::Simplex) = normalize!(x, 1)
+"""
+    struct CartesianPower <: AbstractCartSetProd
 
-###########################################################
-# Sphere
-
-struct Sphere <: CodimOne end
-
-function zeroset(::Sphere)
-    f(x::AbstractArray{T}) where {T} = dot(x, x) - one(T)
-    ∇f(x::AbstractArray{T}) where {T} = x
-    ZeroSet(f, ∇f)
+Represents the n-fold Cartesian product of a set.
+"""
+struct CartesianPower{S,A} <: AbstractCartSetProd
+    _base::S
+    _axes::A
 end
 
-function Base.in(x::AbstractArray{T}, ::Sphere) where {T}
-    return x ∈ zeroset(Sphere())
+@inline setcartpower(s::SetLike, dims) = CartesianPower(s, asaxes(dims))
+
+@inline pwr_base(s::CartesianPower) = s._base
+@inline pwr_axes(s::CartesianPower) = s._axes
+@inline pwr_size(s::CartesianPower) = axes2size(pwr_axes(s))
+
+componentsets(s::CartesianPower) = maybestatic_fill(pwr_base(s), pwr_axes(s))
+
+function Base.in(x::AbstractArray, s::CartesianPower)
+    pwr_size(s) == size(x) ||
+        throw(ArgumentError("Size of CartesianPower and given point are incompatible."))
+    isempty(x) ? true : all(Base.Fix1(in, pwr_base(s)), x)::Bool
 end
 
-projectto!(x, ::Sphere) = normalize!(x, 2)
+Base.isempty(s::CartesianPower) = isempty(pwr_base(s)) || size2length(pwr_size(s)) == 0
+
+function Base.union(s::CartesianPower, others::CartesianPower...)
+    axs = pwr_axes(s)
+
+    all(isequal(axs), map(pwr_axes, others)) || throw(
+        ArgumentError("Cannot create union of CartesianPower sets with different axes."),
+    )
+
+    setcartpower(union(pwr_base(s), map(pwr_base, others)...), axs)
+end
+
+
+"""
+    struct CombinedSet <: ValueSet
+
+Represents a combination of two sets.
+
+User code should not create instances of `CombinedMeasure` directly, but should call
+[`combinesets(f_c, α, β)`](@ref) instead.
+"""
+struct CombinedSet{FC,MA<:SetLike,MB<:SetLike} <: ValueSet
+    f_c::FC
+    α::MA
+    β::MB
+end

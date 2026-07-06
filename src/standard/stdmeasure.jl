@@ -13,7 +13,7 @@ function transport_def(ν::StdMeasure, μ::PowerMeasure{<:StdMeasure}, x)
 end
 
 function transport_def(ν::PowerMeasure{<:StdMeasure}, μ::StdMeasure, x)
-    return fill_with(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
+    return maybestatic_fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes))
 end
 
 function transport_def(
@@ -57,7 +57,7 @@ end
 # Helpers for product transforms and similar:
 
 struct _TransportToStd{NU<:StdMeasure} <: Function end
-_TransportToStd{NU}(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
+(::_TransportToStd{NU})(μ, x) where {NU} = transport_to(NU()^getdof(μ), μ)(x)
 
 struct _TransportFromStd{MU<:StdMeasure} <: Function end
 _TransportFromStd{MU}(ν, x) where {MU} = transport_to(ν, MU()^getdof(ν))(x)
@@ -67,7 +67,7 @@ function _tuple_transport_def(
     μs::Tuple,
     xs::Tuple,
 ) where {NU<:StdMeasure}
-    reshape(vcat(map(_TransportToStd{NU}, μs, xs)...), ν.axes)
+    reshape(vcat(map(_TransportToStd{NU}(), μs, xs)...), ν.axes)
 end
 
 function transport_def(
@@ -93,7 +93,7 @@ end
 function _stdvar_viewranges(μs::Tuple, startidx::IntegerLike)
     N = map(getdof, μs)
     offs = _offset_cumsum(startidx, N...)
-    map((o, n) -> o:o+n-1, offs, N)
+    map((o, n) -> o:(o+n-1), offs, N)
 end
 
 function _tuple_transport_def(
@@ -120,4 +120,29 @@ function transport_def(
     x,
 ) where {MU<:StdMeasure,names}
     NamedTuple{names}(_tuple_transport_def(values(marginals(ν)), μ, x))
+end
+
+function transport_def(
+    ν::PowerMeasure{NU},
+    μ::ProductMeasure{<:AbstractArray},
+    x,
+) where {NU<:StdMeasure}
+    reshape(vcat(map(_TransportToStd{NU}(), marginals(μ), x)...), ν.axes)
+end
+
+function _marginal_viewranges(μs::AbstractArray, startidx::IntegerLike)
+    ns = map(m -> dynamic(getdof(m)), μs)
+    offs = cumsum(vcat(dynamic(startidx), ns[begin:(end-1)]))
+    map((o, n) -> o:(o+n-1), offs, ns)
+end
+
+function transport_def(
+    ν::ProductMeasure{<:AbstractArray},
+    μ::PowerMeasure{MU},
+    x::AbstractArray{<:Real},
+) where {MU<:StdMeasure}
+    νs = marginals(ν)
+    vrs = _marginal_viewranges(νs, firstindex(x))
+    xs = map(r -> view(x, r), vrs)
+    map(_TransportFromStd{MU}, νs, xs)
 end

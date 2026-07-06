@@ -51,7 +51,7 @@ Lebesgue() = Lebesgue(ℝ)
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueBase())
-proxy(::Lebesgue{MeasureBase.RealNumbers}) = LebesgueBase()
+proxy(::Lebesgue{MeasureBase.RealValues}) = LebesgueBase()
 
 @useproxy Lebesgue
 
@@ -61,7 +61,7 @@ Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
-insupport(::Lebesgue{RealNumbers}, ::Real) = true
+insupport(::Lebesgue{RealValues}, ::Real) = true
 
 @inline function logdensityof(μ::Lebesgue, x::Real)
     R = float(typeof(x))
@@ -70,28 +70,28 @@ end
 
 @inline logdensityof(μ::Lebesgue, x) = insupport(μ, x) ? 0.0 : -Inf
 
-massof(::Lebesgue{RealNumbers}, s::Interval) = width(s)
+massof(::Lebesgue{RealValues}, s::Interval) = width(s)
 
 # Example: 
 # julia> Lebesgue(𝕀)(0.2..5)
 # 0.8
-function massof(μ::Lebesgue{<:BoundedReals}, s::Interval)
-    a = μ.support.lower
-    b = μ.support.upper
+function massof(μ::Lebesgue{<:AbstractInterval}, s::Interval)
+    a, b = endpoints(μ.support)
     left = max(s.left, a)
     right = min(s.right, b)
     w = right - left
     max(w, zero(w))
 end
 
-function smf(μ::Lebesgue{<:BoundedReals}, x)
-    clamp(x, μ.support.lower, μ.support.upper)
+function smf(μ::Lebesgue{<:AbstractInterval}, x)
+    a, b = endpoints(μ.support)
+    clamp(x, a, b)
 end
 
-smf(::Lebesgue{RealNumbers}, x) = x
-smf(::Lebesgue{RealNumbers}) = identity
-invsmf(::Lebesgue{RealNumbers}, x) = x
-invsmf(::Lebesgue{RealNumbers}) = identity
+smf(::Lebesgue{<:RealValues}, x) = x
+smf(::Lebesgue{<:RealValues}) = identity
+invsmf(::Lebesgue{<:RealValues}, x) = x
+invsmf(::Lebesgue{<:RealValues}) = identity
 
 smf(::LebesgueBase, x) = x
 smf(::LebesgueBase) = identity

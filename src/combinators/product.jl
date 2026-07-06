@@ -244,6 +244,10 @@ function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) wher
     map(checked_arg, marginals(μ), x)
 end
 
+function checked_arg(μ::ProductMeasure{<:AbstractArray}, x::AbstractArray)
+    map(checked_arg, marginals(μ), x)
+end
+
 function checked_arg(
     μ::ProductMeasure{<:NamedTuple{names}},
     x::NamedTuple{names},

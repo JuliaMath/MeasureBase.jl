@@ -9,7 +9,6 @@ using MeasureBase: test_interface, test_smf
 
 include("test_aqua.jl")
 
-include("static.jl")
 
 include("test_primitive.jl")
 include("test_standard.jl")
@@ -19,8 +18,13 @@ include("getdof.jl")
 include("transport.jl")
 include("smf.jl")
 
+include("test_mooncake.jl")
+
 include("combinators/weighted.jl")
 include("combinators/transformedmeasure.jl")
+include("combinators/reshape.jl")
 include("combinators/implicitlymapped.jl")
+
+include("distributions/test_distributions.jl")
 
 include("test_docs.jl")
