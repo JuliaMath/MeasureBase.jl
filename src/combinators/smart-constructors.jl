@@ -41,7 +41,7 @@ end
 
 @inline function _generic_powermeasure_stage2(μ::WeightedMeasure, exponent::Tuple)
     ν = μ.base^exponent
-    k = maybestatic_length(ν) * μ.logweight
+    k = size2length(axes2size(exponent)) * μ.logweight
     return weightedmeasure(k, ν)
 end
 
