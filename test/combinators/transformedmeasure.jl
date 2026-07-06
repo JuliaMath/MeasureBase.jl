@@ -152,9 +152,10 @@ using ChangesOfVariables
     @test rootmeasure(ν) === rootmeasure(μ)  # AdaptRootMeasure
     @test rootmeasure(ν_no_corr) isa PushforwardMeasure  # PushfwdRootMeasure
 
-    # Test basemeasure
-    @test basemeasure(ν) isa PushforwardMeasure
-    @test basemeasure(ν).style isa PushfwdRootMeasure
+    # Test basemeasure. The base measure of μ is a weighted Lebesgue measure,
+    # so the weight gets pulled out of the pushforward:
+    @test basemeasure(ν) isa WeightedMeasure{<:Any,<:PushforwardMeasure}
+    @test basemeasure(ν).base.style isa PushfwdRootMeasure
 
     # Test massof
     # TODO: mass interface is very incomplete

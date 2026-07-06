@@ -140,6 +140,19 @@ function productmeasure(f::Returns{W}, ::typeof(identity), pars) where {W<:Weigh
 end
 
 ###############################################################################
+# PushforwardMeasure
+
+# The pushforward of a point mass is a point mass. Note that no density
+# volume correction applies, Dirac measures are density-defined relative
+# to counting measure:
+_pushfwd_impl(f, μ::Dirac, ::PushFwdStyle) = Dirac(f(μ.x))
+
+# Pushforward and weighting commute:
+function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle)
+    weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style))
+end
+
+###############################################################################
 # RestrictedMeasure
 export restrict
 

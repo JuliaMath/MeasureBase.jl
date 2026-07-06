@@ -232,8 +232,10 @@ export pushfwd
 
 @inline pushfwd(f) = Base.Fix1(pushfwd, f)
 @inline pushfwd(f, μ) = _pushfwd_impl(f, μ, AdaptRootMeasure())
-@inline pushfwd(f, μ, style::AdaptRootMeasure) = _pushfwd_impl(f, μ, style)
-@inline pushfwd(f, μ, style::PushfwdRootMeasure) = _pushfwd_impl(f, μ, style)
+@inline pushfwd(f, μ, style::PushFwdStyle) = _pushfwd_impl(f, μ, style)
+
+@inline pushfwd(::typeof(identity), μ) = μ
+@inline pushfwd(::typeof(identity), μ, ::PushFwdStyle) = μ
 
 _pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style)
 
@@ -248,8 +250,8 @@ function _pushfwd_impl(
     PushforwardMeasure(new_f, new_f_inv, orig_μ, style)
 end
 
-_pushfwd_impl(::typeof(identity), μ, ::AdaptRootMeasure) = μ
-_pushfwd_impl(::typeof(identity), μ, ::PushfwdRootMeasure) = μ
+# Simplifications for Dirac and WeightedMeasure origins are defined in
+# smart-constructors.jl.
 
 ###############################################################################
 # pullback
@@ -274,8 +276,7 @@ export pullbck
 
 @inline pullbck(f) = Base.Fix1(pullbck, f)
 @inline pullbck(f, μ) = _pullback_impl(f, μ, AdaptRootMeasure())
-@inline pullbck(f, μ, style::AdaptRootMeasure) = _pullback_impl(f, μ, style)
-@inline pullbck(f, μ, style::PushfwdRootMeasure) = _pullback_impl(f, μ, style)
+@inline pullbck(f, μ, style::PushFwdStyle) = _pullback_impl(f, μ, style)
 
 function _pullback_impl(f, μ, style = AdaptRootMeasure())
     pushfwd(inverse(f), μ, style)
