@@ -170,7 +170,9 @@ for func in [:logdensityof, :logdensity_def]
     end
 end
 
-insupport(m::PushforwardMeasure, x) = insupport(transport_origin(m), to_origin(m, x))
+# Checking insupport via the origin would require a potentially costly
+# transformation of x:
+insupport(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))
@@ -192,6 +194,9 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 
 @inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
 @inline getdof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()
+
+@inline fast_dof(ν::PushforwardMeasure) = fast_dof(ν.origin)
+@inline fast_dof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()
 
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
@@ -222,6 +227,7 @@ To manually specify an inverse, call
 function pushfwd end
 export pushfwd
 
+@inline pushfwd(f) = Base.Fix1(pushfwd, f)
 @inline pushfwd(f, μ) = _pushfwd_impl(f, μ, AdaptRootMeasure())
 @inline pushfwd(f, μ, style::AdaptRootMeasure) = _pushfwd_impl(f, μ, style)
 @inline pushfwd(f, μ, style::PushfwdRootMeasure) = _pushfwd_impl(f, μ, style)
@@ -263,6 +269,7 @@ To manually specify an inverse, call
 function pullbck end
 export pullbck
 
+@inline pullbck(f) = Base.Fix1(pullbck, f)
 @inline pullbck(f, μ) = _pullback_impl(f, μ, AdaptRootMeasure())
 @inline pullbck(f, μ, style::AdaptRootMeasure) = _pullback_impl(f, μ, style)
 @inline pullbck(f, μ, style::PushfwdRootMeasure) = _pullback_impl(f, μ, style)

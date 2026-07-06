@@ -162,7 +162,7 @@ using ChangesOfVariables
 
     # Test rand
     @test rand(ν) isa Real
-    @test insupport(ν, rand(ν))
+    @test insupport(ν, rand(ν)) != false
 
     # Test pullback
     pb = pullbck(f, ν)

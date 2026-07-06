@@ -26,12 +26,12 @@ end
 
 massof(::LebesgueBase) = static(Inf)
 
-function _massof(m, s::Interval, ::LebesgueBase)
+function _default_massof_impl(m, s::AbstractInterval, ::LebesgueBase)
     mass = massof(m)
     nu = mass * StdUniform()
     f = transport_to(nu, m)
-    a = f(minimum(s))
-    b = f(maximum(s))
+    a = f(leftendpoint(s))
+    b = f(rightendpoint(s))
     return mass * abs(b - a)
 end
 

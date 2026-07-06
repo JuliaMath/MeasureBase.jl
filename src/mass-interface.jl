@@ -22,7 +22,10 @@ for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
         Base.:*(::$T, ::$T) = $T()
-        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
+        # Disambiguation:
+        Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Rational) = isfinite(k) ? $T() : UnknownMass()
     end
 end
 
@@ -65,7 +68,7 @@ finite, or we may know nothing at all about it. For these cases, it will return
 `UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
 exists, it defaults to `UnknownMass`.
 """
-massof(m::AbstractMeasure) = UnknownMass(m)
+massof(::AbstractMeasure) = UnknownMass()
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P
@@ -105,7 +108,7 @@ isnormalized(x, p::Real = 2) = isone(norm(x, p))
 isone(::AbstractUnknownMass) = false
 
 function massof(m, s)
-    _massof(m, s, rootmeasure(m))
+    _default_massof_impl(m, s, rootmeasure(m))
 end
 
 """
