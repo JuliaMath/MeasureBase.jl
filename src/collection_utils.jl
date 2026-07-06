@@ -101,3 +101,12 @@ _cat_measures(a::Tuple, b::Tuple) = (a..., b...)
 _cat_measures(a::AbstractVector, b::Tuple) = vcat(a, [b...])
 _cat_measures(a::Tuple, b::AbstractVector) = vcat([a...], b)
 _cat_measures(a::AbstractVector, b::AbstractVector) = vcat(a, b)
+
+
+# Take the beginning of a flat vector stream as a variate of size `sz`:
+Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::Tuple{IntegerLike}) =
+    _split_after(x, sz[1])
+
+function _consume_from_stream(x::AbstractVector, @nospecialize(sz::Tuple))
+    throw(ArgumentError("Can't consume a variate of size $sz from a flat vector stream"))
+end

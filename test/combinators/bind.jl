@@ -81,6 +81,16 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         # DOF mismatches must not go unnoticed:
         @test_throws ArgumentError transport_to(StdUniform()^5, μ)(xy)
         @test_throws ArgumentError transport_to(StdUniform()^2, μ)(xy)
+
+        # Nested binds evaluate in a single with-rest pass:
+        μnest = mbind(f_βv, μ, vcat)
+        xyz = rand(stblrng(), Float64, μnest)
+        @test length(xyz) == 5
+        an, bn = xyz[1:3], xyz[4:5]
+        @test logdensityof(μnest, xyz) ≈ logdensityof(μ, an) + logdensityof(f_βv(an), bn)
+
+        # Variates that are too long must not go unnoticed:
+        @test_throws ArgumentError logdensityof(μ, vcat(xy, [0.5]))
     end
 
     @testset "mbind with merge" begin

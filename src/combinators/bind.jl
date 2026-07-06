@@ -284,18 +284,51 @@ testvalue(::Bind) = throw(ArgumentError("testvalue is not available for Bind"))
 logdensity_def(::Bind, x) =
     throw(ArgumentError("logdensity_def is not available for Bind"))
 
-# Specialize logdensityof to avoid duplicate calculations:
-function logdensityof(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
-    β_a = _get_β_a(μ, a)
-    logdensityof(tpm_α, a) + logdensityof(β_a, b)
+# Density evaluation consumes the variate parts of the primary and secondary
+# measure in a single pass, using the with-rest protocol for value-dependent
+# variate sizes:
+
+logdensityof_impl(μ::Bind, x) = _bind_ld_impl(μ.f_c, μ, x)
+
+unsafe_logdensityof(μ::Bind, x) = logdensityof_impl(μ, x)
+
+function _bind_ld_impl(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
+    a, b = xy[1], xy[2]
+    logdensityof(μ.α, a) + logdensityof(_get_β_a(μ, a), b)
 end
 
-# Specialize unsafe_logdensityof to avoid duplicate calculations:
-function unsafe_logdensityof(μ::Bind, x)
-    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
-    β_a = _get_β_a(μ, a)
-    unsafe_logdensityof(tpm_α, a) + unsafe_logdensityof(β_a, b)
+function _bind_ld_impl(::Type{Pair}, μ::Bind, xy::Pair)
+    a, b = xy.first, xy.second
+    logdensityof(μ.α, a) + logdensityof(_get_β_a(μ, a), b)
+end
+
+function _bind_ld_impl(::Union{typeof(vcat),typeof(merge)}, μ::Bind, xy)
+    ℓ, x_μ, x_rest = logdensityof_with_rest(μ, xy)
+    if !isempty(x_rest)
+        throw(ArgumentError("Variate too long during density evaluation of a bind"))
+    end
+    return ℓ
+end
+
+function _bind_ld_impl(@nospecialize(f_c), @nospecialize(μ::Bind), @nospecialize(xy))
+    throw(
+        ArgumentError(
+            "Can't compute density of a bind with value combination function of type $(nameof(typeof(f_c)))",
+        ),
+    )
+end
+
+function logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a(μ, a), x2)
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return ℓ_a + ℓ_b, x_μ, x_rest
+end
+
+function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a(μ, a), x2)
+    return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
 
 

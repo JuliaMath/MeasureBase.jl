@@ -135,7 +135,7 @@ function _combine_logd_with_ladj(logd_orig::Real, ladj::Real)
     end
 end
 
-function logdensityof(
+function logdensityof_impl(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:PushfwdRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -146,7 +146,7 @@ function logdensityof(
     )
 end
 
-function logdensityof(
+function logdensityof_impl(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:AdaptRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -157,15 +157,15 @@ function logdensityof(
     )
 end
 
-for func in [:logdensityof, :logdensity_def]
-    @eval function $func(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
+for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
+    @eval function $head(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
         f_inv = unwrap(ν.finv)
         x, inv_ladj = with_logabsdet_jacobian(f_inv, y)
         logd_orig = $func(ν.origin, x)
         return _combine_logd_with_ladj(logd_orig, inv_ladj)
     end
 
-    @eval function $func(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
+    @eval function $head(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
         f_inv = unwrap(ν.finv)
         x = f_inv(y)
         logd_orig = $func(ν.origin, x)

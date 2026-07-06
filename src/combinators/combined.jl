@@ -134,15 +134,50 @@ function logdensity_def(μ::CombinedMeasure, ab)
     return logdensity_def(tpm_α, a) + logdensity_def(μ.β, b)
 end
 
-# Specialize logdensityof directly to avoid creating temporary combined base measures:
-function logdensityof(μ::CombinedMeasure, ab)
-    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+# Density evaluation consumes the variate parts of both component measures
+# in a single pass, using the with-rest protocol for value-dependent
+# variate sizes:
+
+logdensityof_impl(μ::CombinedMeasure, ab) = _combined_ld_impl(μ.f_c, μ, ab)
+
+unsafe_logdensityof(μ::CombinedMeasure, ab) = logdensityof_impl(μ, ab)
+
+function _combined_ld_impl(::typeof(tuple), μ::CombinedMeasure, ab::Tuple{Vararg{Any,2}})
+    logdensityof(μ.α, ab[1]) + logdensityof(μ.β, ab[2])
+end
+
+function _combined_ld_impl(::Type{Pair}, μ::CombinedMeasure, ab::Pair)
+    logdensityof(μ.α, ab.first) + logdensityof(μ.β, ab.second)
+end
+
+function _combined_ld_impl(::Union{typeof(vcat),typeof(merge)}, μ::CombinedMeasure, ab)
+    ℓ, x_μ, x_rest = logdensityof_with_rest(μ, ab)
+    if !isempty(x_rest)
+        throw(
+            ArgumentError(
+                "Variate too long during density evaluation of a combined measure",
+            ),
+        )
+    end
+    return ℓ
+end
+
+function _combined_ld_impl(f_c, μ::CombinedMeasure, ab)
+    tpm_α, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
     return logdensityof(tpm_α, a) + logdensityof(μ.β, b)
 end
 
-function unsafe_logdensityof(μ::CombinedMeasure, ab)
-    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    return unsafe_logdensityof(tpm_α, a) + unsafe_logdensityof(μ.β, b)
+function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return ℓ_a + ℓ_b, x_μ, x_rest
+end
+
+function logdensityof_with_rest(μ::CombinedMeasure{typeof(merge)}, x::NamedTuple)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
+    return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
 
 

@@ -10,25 +10,41 @@ export density_rel
 export density_def
 
 """
-    logdensityof(m::AbstractMeasure, x) 
+    logdensityof(m::AbstractMeasure, x)
 
 Compute the log-density of the measure `m` at `x`. Density is always relative,
 but `DensityInterface.jl` does not account for this. For compatibility with
 this, `logdensityof` for a measure is always implicitly relative to
-[`rootmeasure(x)`](@ref rootmeasure). 
+[`rootmeasure(x)`](@ref rootmeasure).
 
-`logdensityof` works by first computing `insupport(m, x)`. If this is true, then
-`unsafe_logdensityof` is called. If `insupport(m, x)` is known to be `true`, it
-can be a little faster to directly call `unsafe_logdensityof(m, x)`. 
+`logdensityof(m, x)` is implemented via
+[`MeasureBase.logdensityof_impl`](@ref), measure types should specialize
+`logdensityof_impl` instead of `logdensityof` itself.
 
 To compute log-density relative to `basemeasure(m)` or *define* a log-density
 (relative to `basemeasure(m)` or another measure given explicitly), see
-`logdensity_def`. 
+`logdensity_def`.
 
 To compute a log-density relative to a specific base-measure, see
-`logdensity_rel`. 
+`logdensity_rel`.
 """
-@inline function logdensityof(μ::AbstractMeasure, x)
+@inline logdensityof(μ::AbstractMeasure, x) = logdensityof_impl(μ, x)
+
+"""
+    MeasureBase.logdensityof_impl(μ::AbstractMeasure, x)
+
+Implements [`logdensityof(μ, x)`](@ref logdensityof).
+
+Measure types should specialize `logdensityof_impl` instead of
+`logdensityof` itself. Implementations must return the log-density of `μ`
+at `x` relative to [`rootmeasure(μ)`](@ref) and must handle `x` outside of
+the support of `μ` (the result must be `-Inf` then).
+
+The default implementation checks `insupport(μ, x)` (unless the result is
+a [`MeasureBase.NoFastInsupport`](@ref)) and computes the density via
+[`unsafe_logdensityof`](@ref).
+"""
+@inline function logdensityof_impl(μ::AbstractMeasure, x)
     result = dynamic(unsafe_logdensityof(μ, x))
     _checksupport(insupport(μ, x), result)
 end
@@ -39,6 +55,43 @@ end
 
 _checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
 @inline _checksupport(::NoFastInsupport, result) = result
+
+"""
+    MeasureBase.logdensityof_with_rest(μ::AbstractMeasure, x)
+
+Compute the log-density of `μ` at the beginning of `x`, a flat stream of
+variate content that may extend beyond the variate of `μ`.
+
+`x` must either be a vector that starts with the (flattened) variate of `μ`
+(for measures combined via `vcat`) or a `NamedTuple` whose first properties
+constitute the variate of `μ` (for measures combined via `merge`).
+
+Returns a tuple `(ℓ, x_μ, x_rest)` of the log-density `ℓ`, the variate
+`x_μ` of `μ` consumed from the stream, and the unconsumed rest of the
+stream.
+
+Measure types whose variate size depends on measure values, like
+[`mbind`](@ref) results, implement density calculation via
+`logdensityof_with_rest` instead of
+[`logdensityof_impl`](@ref MeasureBase.logdensityof_impl).
+
+The default implementation determines the size resp. the property names of
+the variate via [`some_mspace_elsize`](@ref MeasureBase.some_mspace_elsize)
+resp. `testvalue` and delegates to `logdensityof_impl`.
+"""
+function logdensityof_with_rest end
+
+function logdensityof_with_rest(μ::AbstractMeasure, x::AbstractVector)
+    a, x_rest = _consume_from_stream(x, some_mspace_elsize(μ))
+    return logdensityof_impl(μ, a), a, x_rest
+end
+
+function logdensityof_with_rest(μ::AbstractMeasure, x::NamedTuple)
+    a, x_rest = _split_after(x, Val(_mspace_names(μ)))
+    return logdensityof_impl(μ, a), a, x_rest
+end
+
+_mspace_names(μ::AbstractMeasure) = keys(testvalue(μ))
 
 
 """

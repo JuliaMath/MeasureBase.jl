@@ -97,8 +97,8 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-for func in [:logdensityof, :logdensity_def]
-    @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
+for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
+    @eval @inline function $head(d::PowerMeasure{M}, x) where {M}
         parent_m = d.parent
         sz_parent = axes2size(d.axes)
         sz_x = maybestatic_size(x)
@@ -114,7 +114,7 @@ for func in [:logdensityof, :logdensity_def]
         end
     end
 
-    @eval @inline function $func(
+    @eval @inline function $head(
         d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike{N}}},
         x,
     ) where {N}
@@ -124,7 +124,7 @@ for func in [:logdensityof, :logdensity_def]
         end
     end
 
-    @eval @inline function $func(
+    @eval @inline function $head(
         ::PowerMeasure{<:Any,<:Tuple{Vararg{StaticOneToLike{0}}}},
         x,
     )

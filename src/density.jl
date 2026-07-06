@@ -224,7 +224,7 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-function logdensityof(μ::DensityMeasure, x::Any)
+function logdensityof_impl(μ::DensityMeasure, x::Any)
     integrand, μ_base = μ.f, μ.base
 
     base_logval = logdensityof(μ_base, x)
