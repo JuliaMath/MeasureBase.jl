@@ -324,6 +324,10 @@ end
 
 kernel(::Type{P}, nt::NamedTuple) where {P<:ParameterizedMeasure} = kernel(identity, P, nt)
 
+# Disambiguation:
+kernel(::Type{P}, ::NamedTuple{()}) where {P<:ParameterizedMeasure} =
+    TypedTransitionKernel(constructorof(P), identity)
+
 kernel(::Type{T}; kwargs...) where {T} = kernel(T, NamedTuple(kwargs))
 
 function kernel(::Type{M}, ::NamedTuple{()}) where {M}

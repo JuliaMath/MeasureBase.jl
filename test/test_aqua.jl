@@ -4,14 +4,13 @@ import Test
 import Aqua
 import MeasureBase
 
-#Test.@testset "Package ambiguities" begin
-#    Test.@test isempty(Test.detect_ambiguities(MeasureBase))
-#end # testset
+Test.@testset "Package ambiguities" begin
+    Test.@test isempty(Test.detect_ambiguities(MeasureBase, recursive = true))
+end # testset
 
 Test.@testset "Aqua tests" begin
     Aqua.test_all(
         MeasureBase,
-        ambiguities = false,
         # Only used by package extensions:
         stale_deps = (ignore = [:ArgCheck, :ArraysOfArrays],),
     )

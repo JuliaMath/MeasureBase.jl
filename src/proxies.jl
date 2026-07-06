@@ -35,6 +35,9 @@ macro useproxy(M)
 
         @inline $MeasureBase.massof(μ::$M) = massof(proxy(μ))
         @inline $MeasureBase.massof(μ::$M, s) = massof(proxy(μ), s)
+        # Disambiguation with massof(μ, ::AbstractInterval):
+        @inline $MeasureBase.massof(μ::$M, s::$(IntervalSets.AbstractInterval)) =
+            massof(proxy(μ), s)
 
         @inline $MeasureBase.smf(μ::$M, x) = smf(proxy(μ), x)
         @inline $MeasureBase.invsmf(μ::$M, x) = invsmf(proxy(μ), x)
