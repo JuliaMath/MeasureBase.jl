@@ -8,6 +8,7 @@ pushforward. Either [`AdaptRootMeasure()`](@ref) or
 abstract type PushFwdStyle end
 export PushFwdStyle
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const TransformVolCorr = PushFwdStyle
 
 """
@@ -22,9 +23,10 @@ Density calculations for pushforward measures constructed with
 transform (typically via the log-abs-det-Jacobian of the transform) into
 account.
 """
-struct AdaptRootMeasure <: TransformVolCorr end
+struct AdaptRootMeasure <: PushFwdStyle end
 export AdaptRootMeasure
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const WithVolCorr = AdaptRootMeasure
 
 """
@@ -37,9 +39,10 @@ Density calculations for pushforward measures constructed with
 `PushfwdRootMeasure()` will ignore the volume element of the variate
 transform.
 """
-struct PushfwdRootMeasure <: TransformVolCorr end
+struct PushfwdRootMeasure <: PushFwdStyle end
 export PushfwdRootMeasure
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const NoVolCorr = PushfwdRootMeasure
 
 abstract type AbstractTransformedMeasure <: AbstractMeasure end
