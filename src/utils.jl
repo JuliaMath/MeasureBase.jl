@@ -188,17 +188,6 @@ convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
 convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
     map(Base.Fix1(convert_realtype, T), x)
 
-"""
-    MeasureBase.firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real}
-
-Return the first type, but as a dual number type if the second one is dual.
-"""
-function firsttype end
-
-firsttype(::Type{T}, ::Type{U}) where {T<:Real,U<:Real} = T
-
-
-
 # Distributions implementation hooks:
 function _trafo_cdf_impl end
 function _trafo_quantile_impl end

@@ -20,7 +20,7 @@ using MeasureBase: getdof, checked_arg, massof
 using MeasureBase: transport_to, transport_def, transport_origin, from_origin, to_origin
 using MeasureBase: NoTransportOrigin, NoTransport
 using MeasureBase: Reshape
-using MeasureBase: convert_realtype, firsttype, _fwddiff, @_adignore
+using MeasureBase: convert_realtype, _fwddiff, @_adignore
 import MeasureBase:
     _dist_params_numtype, _trafo_cdf_impl, _trafo_quantile_impl, _trafo_quantile_impl_generic
 using MeasureBase: _pushfront, _pushback, _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
