@@ -17,6 +17,7 @@ include("test_basics.jl")
 include("getdof.jl")
 include("transport.jl")
 include("smf.jl")
+include("domains.jl")
 
 include("test_mooncake.jl")
 

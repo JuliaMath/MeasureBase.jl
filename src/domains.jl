@@ -265,7 +265,8 @@ componentsets(s::CartesianProduct) = s._sets
 
 setcartprod(sets::AbstractArray{<:SetLike}) = CartesianProduct(sets)
 setcartprod(sets::Tuple{Vararg{SetLike}}) = CartesianProduct(sets)
-setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) = CartesianProduct(sets)
+setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) where {names} =
+    CartesianProduct(sets)
 
 @inline Base.in(x::Tuple{}, s::CartesianProduct{Tuple{}}) = true
 @inline Base.in(x::Tuple{Vararg{Any,N}}, s::CartesianProduct{<:Tuple{Vararg{Any,N}}}) where {N} =
@@ -326,7 +327,7 @@ componentsets(s::CartesianPower) = maybestatic_fill(pwr_base(s), pwr_axes(s))
 function Base.in(x::AbstractArray, s::CartesianPower)
     pwr_size(s) == size(x) ||
         throw(ArgumentError("Size of CartesianPower and given point are incompatible."))
-    isempty(x) ? true : all(Base.Fix1(in, pwr_base(s)), x)::Bool
+    isempty(x) ? true : all(Base.Fix2(in, pwr_base(s)), x)::Bool
 end
 
 Base.isempty(s::CartesianPower) = isempty(pwr_base(s)) || size2length(pwr_size(s)) == 0
@@ -347,11 +348,79 @@ end
 
 Represents a combination of two sets.
 
-User code should not create instances of `CombinedMeasure` directly, but should call
-[`combinesets(f_c, α, β)`](@ref) instead.
+User code should not create instances of `CombinedSet` directly, but should
+call [`combinesets(f_c, α, β)`](@ref) instead.
 """
 struct CombinedSet{FC,MA<:SetLike,MB<:SetLike} <: ValueSet
     f_c::FC
     α::MA
     β::MB
 end
+
+function Base.in(@nospecialize(x), ::CombinedSet)
+    throw(ArgumentError("Cannot test if a value lies within a combined set."))
+end
+
+maybe_in(@nospecialize(x), ::CombinedSet) = true
+
+Base.isempty(s::CombinedSet) = isempty(s.α) || isempty(s.β)
+
+"""
+    combinesets(f_c, α, β)
+
+Combine two sets `α` and `β` into the set of all values `f_c(a, b)` with
+`a ∈ α` and `b ∈ β`.
+
+`f_c` must combine values as described in [`mcombine`](@ref). Uses set
+representations more specific than [`MeasureBase.CombinedSet`](@ref) where
+possible.
+"""
+function combinesets end
+export combinesets
+
+@inline combinesets(f_c, α::SetLike, β::SetLike) = _generic_combinesets(f_c, α, β)
+
+# Combining the implicit domains of two measures yields the implicit domain
+# of the combined measure:
+@inline combinesets(f_c, α::ImplicitDomain, β::ImplicitDomain) =
+    ImplicitDomain(mcombine(f_c, α.m, β.m))
+
+@inline _generic_combinesets(::typeof(firstarg), α::SetLike, β::SetLike) = α
+@inline _generic_combinesets(::typeof(secondarg), α::SetLike, β::SetLike) = β
+@inline _generic_combinesets(::typeof(tuple), α::SetLike, β::SetLike) =
+    setcartprod((α, β))
+@inline _generic_combinesets(f_c::typeof(vcat), α::SetLike, β::SetLike) =
+    _combinesets_cat(f_c, α, β)
+@inline _generic_combinesets(f_c::typeof(merge), α::SetLike, β::SetLike) =
+    _combinesets_cat(f_c, α, β)
+@inline _generic_combinesets(f_c, α::SetLike, β::SetLike) = CombinedSet(f_c, α, β)
+
+_combinesets_cat(
+    ::typeof(vcat),
+    α::CartesianProduct{<:AbstractVector},
+    β::CartesianProduct{<:AbstractVector},
+) = setcartprod(vcat(componentsets(α), componentsets(β)))
+
+_combinesets_cat(
+    ::typeof(merge),
+    α::CartesianProduct{<:NamedTuple},
+    β::CartesianProduct{<:NamedTuple},
+) = setcartprod(merge(componentsets(α), componentsets(β)))
+
+# Concatenating one-dimensional powers of equal base sets yields a longer
+# power. Set equality can typically only be established at runtime, so this
+# simplification only happens when it is decidable from the set types alone:
+function _combinesets_cat(
+    ::typeof(vcat),
+    α::CartesianPower{<:Any,<:Tuple{Any}},
+    β::CartesianPower{<:Any,<:Tuple{Any}},
+)
+    if _static_isequal(pwr_base(α), pwr_base(β)) isa True
+        n = size2length(pwr_size(α)) + size2length(pwr_size(β))
+        setcartpower(pwr_base(α), (n,))
+    else
+        CombinedSet(vcat, α, β)
+    end
+end
+
+_combinesets_cat(f_c, α::SetLike, β::SetLike) = CombinedSet(f_c, α, β)

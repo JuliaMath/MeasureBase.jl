@@ -127,6 +127,8 @@ end
 # Bypass `checked_arg`, would require splitting ab:
 @inline checked_arg(::CombinedMeasure, ab) = ab
 
+mdomain(μ::CombinedMeasure) = combinesets(μ.f_c, mdomain(μ.α), mdomain(μ.β))
+
 rootmeasure(μ::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ.α), rootmeasure(μ.β))
 
 basemeasure(μ::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ.α), basemeasure(μ.β))
