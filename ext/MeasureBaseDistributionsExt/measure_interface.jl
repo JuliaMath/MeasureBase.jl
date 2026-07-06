@@ -23,4 +23,5 @@
     Counting(MeasureBase.BoundedInts(static(0), static(Inf)))^size(d)
 
 
-MeasureBase.∫(f, base::Distribution) = MeasureBase.∫(f, convert(AbstractMeasure, base))
+MeasureBase.mintegrate(f, base::Distribution) =
+    MeasureBase.mintegrate(f, convert(AbstractMeasure, base))

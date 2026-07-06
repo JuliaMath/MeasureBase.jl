@@ -39,5 +39,5 @@ import MeasureBase
         @test (MeasureBase.params(c0)) == (α = 0.7, θ = 1.3)
     end
 
-    @test MeasureBase.∫(x -> Distributions.Normal(x, 0), Distributions.Normal()) isa MeasureBase.DensityMeasure
+    @test MeasureBase.mintegrate(x -> Distributions.Normal(x, 0), Distributions.Normal()) isa MeasureBase.DensityMeasure
 end

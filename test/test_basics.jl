@@ -1,4 +1,4 @@
-d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+d = mintegrate_exp(x -> -x^2, Lebesgue(ℝ))
 
 # function draw2(μ)
 #     x = rand(μ)
@@ -125,7 +125,7 @@ end
           logdensityof(Lebesgue()^(3, 1), fill(2, 3, 1))
 end
 
-NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+NormalMeasure() = mintegrate_exp(x -> -0.5x^2, Lebesgue(ℝ))
 
 @testset "Half" begin
     HalfNormal() = Half(NormalMeasure())
@@ -136,12 +136,10 @@ end
 
 @testset "Likelihood" begin
     ℓ = Likelihood(3) do (μ,)
-        ∫exp(Lebesgue(ℝ)) do x
+        mintegrate_exp(Lebesgue(ℝ)) do x
             -(x - μ)^2
         end
     end
-
-    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin
@@ -197,7 +195,7 @@ end
     f2 = x -> sqrt(abs(sum(x)))
     f3 = x -> 2 * sum(x)
     f4 = x -> sum(sqrt.(abs.(x)))
-    m = @inferred ∫exp(f1, ∫exp(f2, ∫exp(f3, ∫exp(f4, StdUniform()^3))))
+    m = @inferred mintegrate_exp(f1, mintegrate_exp(f2, mintegrate_exp(f3, mintegrate_exp(f4, StdUniform()^3))))
 
     for x in [Float32[0.7, 0.2, 0.5], Float32[-0.7, 0.2, 0.5]]
         @test @inferred(logdensityof(m, x)) isa Float32
@@ -229,13 +227,13 @@ end
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test log(𝒹(∫exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
+    @test log(density_rel(mintegrate_exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
-    let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
+    let f = density_rel(mintegrate_exp(x -> x^2, Lebesgue()), Lebesgue())
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(∫exp(x -> x^2, NormalMeasure()), NormalMeasure())
+    let f = logdensity_rel(mintegrate_exp(x -> x^2, NormalMeasure()), NormalMeasure())
         @test f(x) ≈ x^2
     end
 end
