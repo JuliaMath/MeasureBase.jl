@@ -91,6 +91,15 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
 
         # Variates that are too long must not go unnoticed:
         @test_throws ArgumentError logdensityof(μ, vcat(xy, [0.5]))
+
+        # Products of same-typed unknown-DOF marginals transport type-stably:
+        P = productmeasure([μ, μ])
+        yP = rand(stblrng(), Float64, P)
+        z = transport_to(StdUniform()^6, P)(yP)
+        @test z isa AbstractVector{<:Real} && length(z) == 6
+        yP_reco, rest = MeasureBase.transport_from_mvstd_with_rest(P, StdUniform(), z)
+        @test yP_reco isa Vector{<:AbstractVector{Float64}}
+        @test yP_reco ≈ yP && isempty(rest)
     end
 
     @testset "mbind with merge" begin

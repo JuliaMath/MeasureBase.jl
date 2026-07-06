@@ -417,15 +417,31 @@ _marginals_from_mvstd_with_rest_nodof(::Tuple{}, ::StdMeasure, x::AbstractVector
     (), x
 
 function _marginals_from_mvstd_with_rest_nodof(
-    νs::AbstractVector{<:AbstractMeasure},
+    νs::AbstractVector{M},
     μ_inner::StdMeasure,
     x::AbstractVector{<:Real},
-)
-    # ToDo: Check for type stability:
-    ys = Vector{Any}(undef, length(eachindex(νs)))
-    x_rest = x
-    for (i, ν) in zip(eachindex(ys), νs)
-        ys[i], x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x_rest)
+) where {M<:AbstractMeasure}
+    if isconcretetype(M)
+        # Marginals of concrete type produce variates of uniform type, so
+        # the loop below is type stable (the type of the remaining stream
+        # stays invariant under repeated view-taking):
+        idxs = eachindex(νs)
+        y1, x_rest = transport_from_mvstd_with_rest(νs[first(idxs)], μ_inner, x)
+        ys = Vector{typeof(y1)}(undef, length(idxs))
+        ys[begin] = y1
+        j = firstindex(ys) + 1
+        for i in Iterators.drop(idxs, 1)
+            ys[j], x_rest = transport_from_mvstd_with_rest(νs[i], μ_inner, x_rest)
+            j += 1
+        end
+        return ys, x_rest
+    else
+        # Fallback for marginals of mixed type:
+        ys_any = Vector{Any}(undef, length(eachindex(νs)))
+        x_rest = x
+        for (i, ν) in zip(eachindex(ys_any), νs)
+            ys_any[i], x_rest = transport_from_mvstd_with_rest(ν, μ_inner, x_rest)
+        end
+        return [y for y in ys_any], x_rest
     end
-    return [y for y in ys], x_rest
 end
