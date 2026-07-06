@@ -119,4 +119,16 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+function massof(μ, a_b::AbstractInterval)
+    _smf_interval_massof(μ, smf(μ, rightendpoint(a_b)), smf(μ, leftendpoint(a_b)))
+end
+
+_smf_interval_massof(μ, smf_r, smf_l) = smf_r - smf_l
+
+function _smf_interval_massof(μ, ::NoSMF, ::NoSMF)
+    throw(
+        ArgumentError(
+            "Can't compute the mass over an interval for a measure of type $(nameof(typeof(μ))), no statistical measure function available",
+        ),
+    )
+end

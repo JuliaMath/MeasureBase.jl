@@ -20,7 +20,7 @@ basemeasure(μ::PrimitiveMeasure) = μ
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
 
 @inline logdensityof_impl(::PrimitiveMeasure, x::Real) = zero(float(typeof(x)))
-@inline logdensityof_impl(::PrimitiveMeasure, x) = false
+@inline logdensityof_impl(::PrimitiveMeasure, x) = static(0.0)
 
 logdensity_def(::PrimitiveMeasure, x) = static(0.0)
 

@@ -118,7 +118,8 @@ function test_smf(μ, n = 100)
         @assert issorted(p)
         x = invsmf.(μ, p)
         @test issorted(x)
-        @test all(istrue ∘ insupport(μ), x)
+        # insupport may return a non-Bool "don't know" (NoFastInsupport):
+        @test all(x_i -> insupport(μ, x_i) != false, x)
 
         @test all((Finv ∘ F).(x) .≈ x)
 

@@ -164,11 +164,12 @@ Compute the log-density of `m1` relative to `m2` at the point `x`, assuming
 `insupport(m1, x)` and `insupport(m2, x)`.
 
 The generic implementation descends the base measure chains of both
-measures in lockstep, so it terminates at the first specialized
-`logdensity_def` method for a pair of base measures (in particular at pairs
-of identical primitive measures) and any shared chain suffix cancels
-symbolically. Measure types may add specialized three-argument methods for
-measure pairs whose relative density can be computed more directly.
+measures in lockstep, so it terminates at the first pair of base measures
+for which a specialized relative density is available (in particular at
+pairs of identical primitive measures) and any shared chain suffix cancels
+symbolically. To provide specialized relative densities for pairs of
+measure types, add methods to [`MeasureBase.logdensity_rel_def`](@ref),
+not to `logdensity_def` itself.
 """
 function logdensity_def end
 
