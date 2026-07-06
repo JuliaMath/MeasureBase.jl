@@ -27,7 +27,7 @@ Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tupl
 
 
 Base.@propagate_inbounds function _get_or_view(A::AbstractVector, from::IntegerLike, until::IntegerLike)
-    view(A, from:until)
+    view(A, dynamic(from):dynamic(until))
 end
 
 Base.@propagate_inbounds function _get_or_view(

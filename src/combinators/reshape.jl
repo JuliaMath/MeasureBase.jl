@@ -53,17 +53,4 @@ a space of arrays with shape `sz`.
 function mreshape end
 
 mreshape(m::AbstractMeasure, sz::IntegerLike...) = mreshape(m, sz)
-mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, mspace_elsize(m)), m)
-
-
-"""
-    MeasureBase.mspace_elsize(m::AbstractMeasure)::MeasureBase.SizeLike
-
-Return the size of the elements of the measurable space of `m`.
-
-Defaults to the size of a test value of `m`, may be specialized for
-measure types where this is inefficient.
-"""
-function mspace_elsize end
-
-mspace_elsize(m::AbstractMeasure) = maybestatic_size(testvalue(m))
+mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, some_mspace_elsize(m)), m)

@@ -116,6 +116,9 @@ struct AsMeasure{T} <: AbstractMeasure
     AsMeasure{T}(obj::T) where {T} = new(obj)
 end
 
+Base.:(==)(a::AsMeasure, b::AsMeasure) = a.obj == b.obj
+Base.isapprox(a::AsMeasure, b::AsMeasure; kwargs...) = isapprox(a.obj, b.obj; kwargs...)
+
 function Pretty.quoteof(d::M) where {M<:AbstractMeasure}
     the_names = fieldnames(typeof(d))
     :($M($([getfield(d, n) for n in the_names]...)))
@@ -167,6 +170,7 @@ using IrrationalConstants: loghalf
 
 include("collection_utils.jl")
 include("smf.jl")
+include("mspace.jl")
 include("getdof.jl")
 include("transport.jl")
 include("schema.jl")
@@ -205,6 +209,7 @@ include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
+include("combinators/product_transport.jl")
 include("combinators/half.jl")
 
 #include("implicitmaps.jl")

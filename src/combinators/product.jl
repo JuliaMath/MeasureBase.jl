@@ -28,9 +28,6 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
-proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
-    powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
-
 function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
     mar = marginals(d)
     _rand_product(rng, T, mar, eltype(mar))
@@ -84,6 +81,9 @@ end
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end
+
+proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
+    powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
 
 @inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
     mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
