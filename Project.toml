@@ -37,6 +37,7 @@ Tricks = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 
 [extensions]
 MeasureBaseChainRulesCoreExt = "ChainRulesCore"
@@ -44,6 +45,7 @@ MeasureBaseDistributionsExt = "Distributions"
 MeasureBaseDistributionsChainRulesCoreExt = ["Distributions", "ChainRulesCore"]
 MeasureBaseDistributionsForwardDiffExt = ["Distributions", "ForwardDiff"]
 MeasureBaseForwardDiffExt = "ForwardDiff"
+MeasureBaseMooncakeExt = "Mooncake"
 
 [compat]
 ChainRulesCore = "1"
@@ -66,6 +68,7 @@ LinearAlgebra = "1"
 LogExpFunctions = "0.3, 1"
 LogarithmicNumbers = "1"
 MappedArrays = "0.4"
+Mooncake = "0.5.34"
 NaNMath = "0.3, 1"
 PrettyPrinting = "0.3, 0.4"
 PropertyFunctions = "0.2.2"
