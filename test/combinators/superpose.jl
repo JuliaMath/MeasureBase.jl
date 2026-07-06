@@ -14,9 +14,8 @@ using MeasureBase: superpose
 
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
-    @test_throws ErrorException density_def(μs, 0)
-    @test basemeasure(μs).components ==
-          SuperpositionMeasure([CountingBase(), CountingBase()]).components
+    @test density_def(μs, 0) == 1.0
+    @test basemeasure(μs) == weightedmeasure(log(2), CountingBase())
 
     μ2 = μ + μ
     @test μ2 isa WeightedMeasure

@@ -22,7 +22,9 @@ include("test_mooncake.jl")
 
 include("measure_operators.jl")
 
+include("combinators/smart_constructors.jl")
 include("combinators/weighted.jl")
+include("combinators/superpose.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/reshape.jl")
 include("combinators/implicitlymapped.jl")
