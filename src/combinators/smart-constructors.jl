@@ -184,6 +184,8 @@ as a collection (array, tuple or named tuple) of measures.
 The vararg form simplifies algebraically: equal measures combine into weighted
 measures (`superpose(μ, μ) == weightedmeasure(log(2), μ)`), weighted measures
 with equal bases add their weights, and superpositions merge their components.
+To keep `superpose` type stable, such simplifications only happen when
+equality of the measures involved can be decided from their types alone.
 Collections are wrapped as-is, apart from cost-free structural simplifications.
 """
 function superpose end
@@ -208,12 +210,22 @@ superpose(a::FillArrays.Fill) = weightedmeasure(log(length(a)), asmeasure(_fill_
 superpose(t::Tuple) = SuperpositionMeasure(t)
 superpose(nt::NamedTuple) = SuperpositionMeasure(nt)
 
+# Measure equality can typically only be established at runtime, but measure
+# construction must be type stable, so simplifications may only depend on
+# measure equality that is decidable from the measure types alone:
+@inline _static_isequal(::T, ::T) where {T} = static(Base.issingletontype(T))
+@inline _static_isequal(::Any, ::Any) = static(false)
+
 function _superpose_two(μ::AbstractMeasure, ν::AbstractMeasure)
-    μ == ν ? weightedmeasure(static(float(logtwo)), μ) : SuperpositionMeasure((μ, ν))
+    if _static_isequal(μ, ν) isa True
+        weightedmeasure(static(float(logtwo)), μ)
+    else
+        SuperpositionMeasure((μ, ν))
+    end
 end
 
 function _superpose_two(μ::WeightedMeasure, ν::WeightedMeasure)
-    if μ.base == ν.base
+    if _static_isequal(μ.base, ν.base) isa True
         weightedmeasure(logaddexp(asnonstatic(μ.logweight), asnonstatic(ν.logweight)), μ.base)
     else
         SuperpositionMeasure((μ, ν))
@@ -221,13 +233,19 @@ function _superpose_two(μ::WeightedMeasure, ν::WeightedMeasure)
 end
 
 function _superpose_two(μ::WeightedMeasure, ν::AbstractMeasure)
-    μ.base == ν ? weightedmeasure(log1pexp(asnonstatic(μ.logweight)), μ.base) :
-    SuperpositionMeasure((μ, ν))
+    if _static_isequal(μ.base, ν) isa True
+        weightedmeasure(log1pexp(asnonstatic(μ.logweight)), μ.base)
+    else
+        SuperpositionMeasure((μ, ν))
+    end
 end
 
 function _superpose_two(μ::AbstractMeasure, ν::WeightedMeasure)
-    μ == ν.base ? weightedmeasure(log1pexp(asnonstatic(ν.logweight)), ν.base) :
-    SuperpositionMeasure((μ, ν))
+    if _static_isequal(μ, ν.base) isa True
+        weightedmeasure(log1pexp(asnonstatic(ν.logweight)), ν.base)
+    else
+        SuperpositionMeasure((μ, ν))
+    end
 end
 
 _superpose_two(μ::SuperpositionMeasure, ν::SuperpositionMeasure) =

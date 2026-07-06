@@ -103,6 +103,18 @@ using Static: static
         sv2 = superpose(sv, StdExponential())
         @test length(sv.components) == 2 && length(sv2.components) == 3
 
+        # Simplifications must be type stable, so they only happen when
+        # measure equality is decidable from the measure types:
+        @inferred superpose(μ, ν)
+        @inferred superpose(μ, μ)
+        @inferred superpose(2.0 * μ, 3.0 * μ)
+        @inferred superpose(2.0 * μ, μ)
+        @inferred superpose(μ, μ, μ, μ)
+        @inferred superpose(Dirac(1), Dirac(1))
+        @test superpose(Dirac(1), Dirac(1)) isa SuperpositionMeasure
+        @inferred superpose(2.0 * Dirac(1), 3.0 * Dirac(1))
+        @test superpose(2.0 * Dirac(1), 3.0 * Dirac(1)) isa SuperpositionMeasure
+
         @test superpose(Fill(μ, 4)) == weightedmeasure(log(4), μ)
         @test superpose([μ, μ, μ]) == weightedmeasure(log(3), μ)
 
