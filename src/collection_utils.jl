@@ -94,3 +94,10 @@ _flatten_to_rv(VV::VectorOfVectors{<:Real}) = flatview(VV)
 _flatten_to_rv(::Tuple{}) = []
 _flatten_to_rv(tpl::Tuple{Vararg{AbstractVector}}) = vcat(tpl...)
 _flatten_to_rv(tpl::Tuple{Vararg{StaticVector}}) = vcat(tpl...)
+
+
+# Non-mutating concatenation of measure collections:
+_cat_measures(a::Tuple, b::Tuple) = (a..., b...)
+_cat_measures(a::AbstractVector, b::Tuple) = vcat(a, [b...])
+_cat_measures(a::Tuple, b::AbstractVector) = vcat([a...], b)
+_cat_measures(a::AbstractVector, b::AbstractVector) = vcat(a, b)
