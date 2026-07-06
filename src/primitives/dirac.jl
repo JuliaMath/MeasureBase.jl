@@ -9,6 +9,9 @@ function Pretty.tile(d::Dirac)
     Pretty.literal("Dirac(") * Pretty.tile(d.x) * Pretty.literal(")")
 end
 
+Base.:(==)(a::Dirac, b::Dirac) = a.x == b.x
+Base.isapprox(a::Dirac, b::Dirac; kwargs...) = isapprox(a.x, b.x; kwargs...)
+
 gentype(μ::Dirac{X}) where {X} = X
 
 function (μ::Dirac{X})(s) where {X}
