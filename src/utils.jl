@@ -93,36 +93,6 @@ measure of the previous term, and with no repeated entries.
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-commonbase(μ, ν) = commonbase(μ, ν, Any)
-
-"""
-    commonbase(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
-
-Find minimal (with respect to their sum) `i` and `j` such that there is a method
-
-    logdensity_def(basemeasure_sequence(μ)[i], basemeasure_sequence(ν)[j], ::T)
-
-This is used in `logdensity_rel` to help make that function efficient.
-"""
-@inline function commonbase(μ, ν, ::Type{T}) where {T}
-    return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν), T)
-end
-
-@generated function commonbase(μ::M, ν::N, ::Type{T}) where {M<:Tuple,N<:Tuple,T}
-    m = schema(M)
-    n = schema(N)
-
-    sols = Iterators.filter(
-        ((i, j),) -> static_hasmethod(logdensity_def, Tuple{m[i],n[j],T}),
-        Iterators.product(1:length(m), 1:length(n)),
-    )
-    isempty(sols) && return :(nothing)
-    minsol = static.(argmin(((i, j),) -> i + j, sols))
-    quote
-        $minsol
-    end
-end
-
 mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
 mymap(f, inds...) = Iterators.map(f, inds...)
 

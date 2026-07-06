@@ -222,6 +222,29 @@ end
     @test logdensity_rel(Lebesgue(), Dirac(0.0) + Lebesgue(), 1.0) == 0.0
 
     @test isnan(logdensity_rel(Dirac(0), Dirac(1), 2))
+
+    # The generic implementation descends the base measure chains of both
+    # measures in lockstep, type-stably and with symbolic cancellation of
+    # shared chain suffixes:
+    let μW = MeasureBase.weightedmeasure(0.7, MeasureBase.StdNormal())
+        StdNormal, StdUniform, StdExponential =
+            MeasureBase.StdNormal, MeasureBase.StdUniform, MeasureBase.StdExponential
+        @test @inferred(logdensity_rel(μW, StdNormal(), 0.5)) ≈ 0.7
+        @test @inferred(logdensity_rel(StdNormal(), μW, 0.5)) ≈ -0.7
+        @test @inferred(logdensity_rel(StdNormal(), StdUniform(), 0.5)) ≈
+              logdensityof(StdNormal(), 0.5)
+        p1 = productmeasure((StdNormal(), StdExponential()))
+        p2 = productmeasure((StdUniform(), StdExponential()))
+        @test @inferred(logdensity_rel(p1, p2, (0.5, 0.5))) ≈
+              logdensityof(StdNormal(), 0.5)
+
+        # Incompatible root measures result in an informative exception:
+        @test_throws ArgumentError logdensity_rel(
+            productmeasure((StdNormal(),)),
+            StdNormal()^1,
+            (0.5,),
+        )
+    end
 end
 
 @testset "Density measures and Radon-Nikodym" begin

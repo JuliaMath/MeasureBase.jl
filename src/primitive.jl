@@ -11,7 +11,7 @@ measures satisfy the following laws:
 
     logdensity_def(μ::PrimitiveMeasure, x) = 0.0
 
-    logdensity_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
+    logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
 """
 abstract type PrimitiveMeasure <: AbstractMeasure end
 
@@ -24,7 +24,7 @@ basemeasure(μ::PrimitiveMeasure) = μ
 
 logdensity_def(::PrimitiveMeasure, x) = static(0.0)
 
-logdensity_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
+logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
 
 function Pretty.quoteof(μ::M) where {M<:PrimitiveMeasure}
     :($M())

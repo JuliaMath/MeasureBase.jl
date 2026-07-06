@@ -12,9 +12,9 @@ insupport(::LebesgueBase, x) = true
 
 insupport(::LebesgueBase) = Returns(true)
 
-logdensity_def(::LebesgueBase, ::CountingBase, x) = -Inf
+logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = -Inf
 
-logdensity_def(::CountingBase, ::LebesgueBase, x) = Inf
+logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = Inf
 
 @inline getdof(::LebesgueBase) = static(1)
 

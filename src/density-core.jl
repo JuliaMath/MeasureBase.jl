@@ -230,75 +230,118 @@ See also `logdensity_rel`.
 @inline function unsafe_logdensity_rel(μ::AbstractMeasure, ν::AbstractMeasure, x)
     μ_local = localmeasure(μ, x)
     ν_local = localmeasure(ν, x)
-    # Extra dispatch boundary to reduce number of required specializations of implementation:
-    return _unsafe_logdensity_rel_local(μ_local, ν_local, x)
+    return logdensity_def(μ_local, ν_local, x)
 end
 
-@inline function _unsafe_logdensity_rel_local(μ::M, ν::N, x::X) where {M,N,X}
-    if static_hasmethod(logdensity_def, Tuple{M,N,X})
-        return logdensity_def(μ, ν, x)
-    end
-    μs = basemeasure_sequence(μ)
-    νs = basemeasure_sequence(ν)
-    cb = commonbase(μs, νs, X)
-    # _logdensity_rel(μ, ν)
-    isnothing(cb) && begin
-        μ = μs[end]
-        ν = νs[end]
-        @warn """
-        No common base measure for
-            $μ
-        and
-            $ν
+# Indicates that no specialized method is available to compute the
+# log-density between a given pair of measures:
+struct _NoLogdensityRel end
 
-        Returning a relative log-density of NaN. If this is incorrect, add a
-        three-argument method
-            logdensity_def($μ, $ν, x)
-        """
-        return NaN
-    end
-    return _logdensity_rel(μs, νs, cb, x)
+"""
+    MeasureBase.logdensity_rel_def(μ, ν, x)
+
+Specialization point for the log-density of `μ` relative to `ν` at `x`.
+
+Measure types may add methods for pairs of measure types whose relative
+density can be computed directly. The generic implementation of
+[`logdensity_def(μ, ν, x)`](@ref logdensity_def) descends the base measure
+chains of both measures in lockstep and uses the first specialized
+`logdensity_rel_def` method it encounters along the way.
+
+Do not call `logdensity_rel_def` directly, call
+[`logdensity_rel`](@ref) (or `logdensity_def`) instead.
+"""
+@inline logdensity_rel_def(μ, ν, x) = _NoLogdensityRel()
+
+# Generic relative density: descend the base measure chains of both measures
+# in lockstep, after equalizing their depths. Since the members of a shared
+# chain suffix have the same depth-from-root on both sides, the descent
+# terminates at a specialized `logdensity_rel_def` method as soon as one
+# becomes applicable (in particular for pairs of identical primitive
+# measures), so any shared chain suffix cancels symbolically instead of
+# numerically. The descent is fully unrolled at compile time based on the
+# static base measure depths, only the base measures actually visited are
+# constructed, and whether a specialized method applies at a given level is
+# decided purely by dispatch (on the sentinel type `_NoLogdensityRel`).
+@inline function logdensity_def(μ, ν, x)
+    _logdensity_rel_descent(μ, basemeasure_depth(μ), ν, basemeasure_depth(ν), x)
 end
 
-# Note that this method assumes `μ` and `ν` to have the same type
-function logdensity_def(μ::T, ν::T, x) where {T}
-    if μ === ν
-        return zero(logdensity_def(μ, x))
-    else
-        α = basemeasure(μ)
-        β = basemeasure(ν)
-        return logdensity_def(μ, x) - logdensity_def(ν, x) + logdensity_rel(α, β, x)
+@generated function _logdensity_rel_descent(
+    μ,
+    ::StaticInteger{M},
+    ν,
+    ::StaticInteger{N},
+    x,
+) where {M,N}
+    μsym(i) = Symbol(:μ_, i)
+    νsym(j) = Symbol(:ν_, j)
+    prog = Expr(:block, Expr(:meta, :inline), :(μ_0 = μ), :(ν_0 = ν))
+    terms = Any[]
+    n_checks = 0
+    # Return via a specialized `logdensity_rel_def` method for the current
+    # measure pair, if available. Whether one is available is decided purely
+    # by type, so unsuccessful checks are free at run time:
+    function emit_check!(i, j)
+        r = Symbol(:r_, n_checks)
+        n_checks += 1
+        push!(prog.args, :($r = logdensity_rel_def($(μsym(i)), $(νsym(j)), x)))
+        ret = isempty(terms) ? r : :(+($(terms...), $r))
+        push!(prog.args, :(if !($r isa _NoLogdensityRel)
+            return $ret
+        end))
     end
+    i = j = 0
+    emit_check!(i, j)
+    # Equalize depths, accumulating one-sided density terms:
+    while M - i > N - j
+        ℓ = Symbol(:ℓμ_, i)
+        push!(prog.args, :($ℓ = logdensity_def($(μsym(i)), x)))
+        push!(prog.args, :($(μsym(i + 1)) = basemeasure($(μsym(i)))))
+        push!(terms, ℓ)
+        i += 1
+        emit_check!(i, j)
+    end
+    while N - j > M - i
+        ℓ = Symbol(:ℓν_, j)
+        push!(prog.args, :($ℓ = -logdensity_def($(νsym(j)), x)))
+        push!(prog.args, :($(νsym(j + 1)) = basemeasure($(νsym(j)))))
+        push!(terms, ℓ)
+        j += 1
+        emit_check!(i, j)
+    end
+    # Lockstep descent at equal depth:
+    for _ in 1:(M-i)
+        ℓμ, ℓν = Symbol(:ℓμ_, i), Symbol(:ℓν_, j)
+        push!(prog.args, :($ℓμ = logdensity_def($(μsym(i)), x)))
+        push!(prog.args, :($ℓν = -logdensity_def($(νsym(j)), x)))
+        push!(terms, ℓμ, ℓν)
+        push!(prog.args, :($(μsym(i + 1)) = basemeasure($(μsym(i)))))
+        push!(prog.args, :($(νsym(j + 1)) = basemeasure($(νsym(j)))))
+        i += 1
+        j += 1
+        emit_check!(i, j)
+    end
+    # Both measures are at root level now:
+    push!(
+        prog.args,
+        :(r_root = _root_logdensity_rel($(μsym(i)), $(νsym(j)), x)),
+    )
+    ret = isempty(terms) ? :r_root : :(+($(terms...), r_root))
+    push!(prog.args, :(return $ret))
+    return prog
 end
 
-@generated function _logdensity_rel(
-    μs::Tμ,
-    νs::Tν,
-    ::Tuple{<:StaticInteger{M},<:StaticInteger{N}},
-    x::X,
-) where {Tμ,Tν,M,N,X}
-    sμ = schema(Tμ)
-    sν = schema(Tν)
+# Root measures of the same type are equal almost everywhere for the
+# purpose of pointwise relative densities:
+_root_logdensity_rel(μ::M, ν::M, x) where {M} = zero(logdensity_def(μ, x))
 
-    q = quote
-        $(Expr(:meta, :inline))
-        ℓ = logdensity_def(μs[$M], νs[$N], x)
-    end
-
-    for i in 1:(M-1)
-        push!(q.args, :(Δℓ = logdensity_def(μs[$i], x)))
-        # push!(q.args, :(println("Adding", Δℓ)))
-        push!(q.args, :(ℓ += Δℓ))
-    end
-
-    for j in 1:(N-1)
-        push!(q.args, :(Δℓ = logdensity_def(νs[$j], x)))
-        # push!(q.args, :(println("Subtracting", Δℓ)))
-        push!(q.args, :(ℓ -= Δℓ))
-    end
-
-    push!(q.args, :(return ℓ))
-    return q
+function _root_logdensity_rel(@nospecialize(μ), @nospecialize(ν), @nospecialize(x))
+    throw(
+        ArgumentError(
+            "No method available to compute the log-density between measures with root measures of type $(nameof(typeof(μ))) and $(nameof(typeof(ν)))",
+        ),
+    )
 end
 
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))

@@ -5,7 +5,7 @@ using Reexport
 @reexport using MeasureBase
 
 using MeasureBase: basemeasure_depth, proxy, istrue
-using MeasureBase: insupport, basemeasure_sequence, commonbase
+using MeasureBase: insupport, basemeasure_sequence
 using MeasureBase: transport_to, NoTransport
 
 using DensityInterface: logdensityof
@@ -21,7 +21,6 @@ export basemeasure_depth
 export proxy
 export insupport
 export basemeasure_sequence
-export commonbase
 
 using Test
 

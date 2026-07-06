@@ -82,7 +82,7 @@ function density_def(s::SuperpositionMeasure, x)
     end
 end
 
-@inline function logdensity_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
+@inline function logdensity_rel_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
     if μ === ν
         return zero(return_type(logdensity_def, (μ, x)))
     else
@@ -98,12 +98,12 @@ function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
     logsumexp(ds)
 end
 
-@inline logdensity_def(s::SuperpositionMeasure, β, x) = _superpos_logdensity_rel(s, β, x)
+@inline logdensity_rel_def(s::SuperpositionMeasure, β, x) = _superpos_logdensity_rel(s, β, x)
 
-@inline logdensity_def(s::SuperpositionMeasure, β::SuperpositionMeasure, x) =
+@inline logdensity_rel_def(s::SuperpositionMeasure, β::SuperpositionMeasure, x) =
     _superpos_logdensity_rel(s, β, x)
 
-@inline logdensity_def(s, β::SuperpositionMeasure, x) = -_superpos_logdensity_rel(β, s, x)
+@inline logdensity_rel_def(s, β::SuperpositionMeasure, x) = -_superpos_logdensity_rel(β, s, x)
 
 @inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
 
