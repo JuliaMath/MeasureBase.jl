@@ -85,8 +85,20 @@ end
 proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
     powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
 
-@inline function logdensity_rel(μ::ProductMeasure, ν::ProductMeasure, x)
-    mapreduce(logdensity_rel, +, marginals(μ), marginals(ν), x)
+# Relative densities between products evaluate marginal-wise. Support
+# checks happen at the logdensity_rel level for the whole products, so the
+# unsafe marginal evaluation suffices here:
+@inline function logdensity_rel_def(μ::ProductMeasure, ν::ProductMeasure, x)
+    mapreduce(unsafe_logdensity_rel, +, marginals(μ), marginals(ν), x)
+end
+
+# For tuples, `mapreduce` has trouble with type inference:
+@inline function logdensity_rel_def(
+    μ::ProductMeasure{<:Tuple},
+    ν::ProductMeasure{<:Tuple},
+    x,
+)
+    sum(map(unsafe_logdensity_rel, marginals(μ), marginals(ν), x))
 end
 
 _mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
