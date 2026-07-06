@@ -64,7 +64,7 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = @inferred testvalue(Float64, μ)
-            β = @inferred basemeasure(μ, x)
+            β = @inferred basemeasure(μ)
 
             ℓμ = @inferred logdensityof(μ, x)
             ℓβ = @inferred logdensityof(β, x)

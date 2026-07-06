@@ -8,6 +8,8 @@ See [`MeasureBase.transport_origin`](@ref).
 """
 struct NoTransportOrigin{NU} end
 
+Base.:^(origin::NoTransportOrigin, ::IntegerLike) = origin
+
 """
     MeasureBase.transport_origin(ν)
 
@@ -147,6 +149,21 @@ end
     μ,
     x,
 ) where {n_ν,n_μ}
+    if n_ν == 10
+        return :(throw(
+            ArgumentError(
+                "Transport to measure of type $(nameof(typeof(ν))) not supported, origin stack too deep.",
+            ),
+        ))
+    end
+    if n_μ == 10
+        return :(throw(
+            ArgumentError(
+                "Transport from measure of type $(nameof(typeof(μ))) not supported, origin stack too deep.",
+            ),
+        ))
+    end
+
     prog = quote
         μ0 = μ
         x0 = x
@@ -183,8 +200,8 @@ end
     return prog
 end
 
-@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
-@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
+@inline _transport_intermediate(ν, μ) = _transport_intermediate(fast_dof(ν), fast_dof(μ))
+@inline _transport_intermediate(::IntegerLike, n_μ::IntegerLike) = StdUniform()^n_μ
 @inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
 
 _call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
@@ -227,7 +244,7 @@ struct TransportFunction{NU,MU} <: Function
     end
 end
 
-@inline transport_to(ν, μ) = TransportFunction(ν, μ)
+@inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
 
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ

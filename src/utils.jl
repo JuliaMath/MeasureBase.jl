@@ -19,8 +19,6 @@ testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
 
-basemeasure(μ, x) = basemeasure(μ)
-
 """
     rootmeasure(μ::AbstractMeasure)
 
