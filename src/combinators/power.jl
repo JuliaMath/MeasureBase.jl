@@ -102,31 +102,13 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
-    @eval @inline function $head(d::PowerMeasure{M}, x) where {M}
-        parent_m = d.parent
-        sz_parent = axes2size(d.axes)
-        sz_x = maybestatic_size(x)
-        if sz_parent != sz_x
-            throw(ArgumentError("Size of variate doesn't match size of power measure"))
-        end
-        R = infer_logdensity_type($func, parent_m, eltype(x))
-        if isempty(x)
-            return zero(R)::R
-        else
-            # Need to convert since sum can turn static into dynamic values:
-            return convert(R, sum(Base.Fix1($func, parent_m), x))::R
-        end
-    end
+# Power structure is unwrapped into the power axes arguments of the batched
+# density machinery (see density-batched.jl), which fuses evaluation over
+# flat variate storage:
 
-    @eval @inline function $head(
-        d::PowerMeasure{<:Any,Tuple{<:StaticOneToLike{N}}},
-        x,
-    ) where {N}
-        parent = d.parent
-        sum(1:N) do j
-            @inbounds $func(parent, x[j])
-        end
+for head in [:logdensityof_impl, :logdensity_def]
+    @eval @inline function $head(d::PowerMeasure, x)
+        _powered_ld($head, pwr_base(d), x, pwr_axes(d))
     end
 
     @eval @inline function $head(
@@ -187,13 +169,7 @@ massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
 logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
 
-# Disambiguation with the static-size power density methods:
-function logdensity_def(
-    ::PowerMeasure{P,Tuple{<:StaticOneToLike{N}}},
-    ::Any,
-) where {P<:PrimitiveMeasure,N}
-    static(0.0)
-end
+# Disambiguation with the static-zero-size power density method:
 function logdensity_def(
     ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0}}}},
     ::Any,
