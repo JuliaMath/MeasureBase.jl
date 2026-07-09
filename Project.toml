@@ -59,7 +59,7 @@ MeasureBaseMooncakeExt = "Mooncake"
 
 [compat]
 ArgCheck = "1, 2"
-ArraysOfArrays = "0.6"
+ArraysOfArrays = "0.6, 0.7"
 ChainRulesCore = "1"
 ChangesOfVariables = "0.1.3"
 Compat = "3.35, 4"
