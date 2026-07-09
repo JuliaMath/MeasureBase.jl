@@ -15,6 +15,7 @@ include("test_standard.jl")
 include("test_basics.jl")
 
 include("getdof.jl")
+include("logdensities.jl")
 include("transport.jl")
 include("smf.jl")
 include("domains.jl")

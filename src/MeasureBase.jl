@@ -61,7 +61,8 @@ import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
 
 using ArraysOfArrays:
-    VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays, VectorOfSimilarVectors, flatview
+    ArrayOfSimilarArrays, VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays,
+    VectorOfSimilarVectors, flatview
 
 using OneTwoMany: firstarg, secondarg
 
@@ -204,6 +205,7 @@ include("combinators/weighted.jl")
 include("combinators/superpose.jl")
 include("combinators/product.jl")
 include("combinators/power.jl")
+include("density-batched.jl")
 include("combinators/spikemixture.jl")
 include("combinators/likelihood.jl")
 include("combinators/restricted.jl")
