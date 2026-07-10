@@ -65,10 +65,10 @@ insupport(::Lebesgue{RealValues}, ::Real) = true
 
 @inline function logdensityof_impl(μ::Lebesgue, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupport(μ, x), zero(R))
 end
 
-@inline logdensityof_impl(μ::Lebesgue, x) = insupport(μ, x) ? 0.0 : -Inf
+@inline logdensityof_impl(μ::Lebesgue, x) = _checksupport(insupport(μ, x), 0.0)
 
 massof(::Lebesgue{RealValues}, s::Interval) = width(s)
 

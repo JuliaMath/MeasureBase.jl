@@ -25,10 +25,10 @@ massof(::Dirac) = static(1.0)
 
 function logdensityof_impl(μ::Dirac, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupport(μ, x), zero(R))
 end
 
-logdensityof_impl(μ::Dirac, x) = insupport(μ, x) ? 0.0 : -Inf
+logdensityof_impl(μ::Dirac, x) = _checksupport(insupport(μ, x), 0.0)
 
 logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
 logdensity_def(::Dirac, x) = 0.0

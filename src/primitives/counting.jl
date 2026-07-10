@@ -14,10 +14,10 @@ end
 
 @inline function logdensityof_impl(μ::Counting, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupport(μ, x), zero(R))
 end
 
-@inline logdensityof_impl(μ::Counting, x) = insupport(μ, x) ? 0.0 : -Inf
+@inline logdensityof_impl(μ::Counting, x) = _checksupport(insupport(μ, x), 0.0)
 
 @inline logdensity_def(μ::Counting, x) = logdensityof(μ, x)
 

@@ -4,9 +4,9 @@ export StdExponential
 
 insupport(::StdExponential, x) = x ≥ zero(x)
 
-@inline function logdensityof_impl(::StdExponential, x)
+@inline function logdensityof_impl(d::StdExponential, x)
     R = float(typeof(x))
-    x ≥ zero(R) ? convert(R, -x) : R(-Inf)
+    _checksupport(insupport(d, x), convert(R, -x))
 end
 
 @inline logdensity_def(::StdExponential, x) = -x
