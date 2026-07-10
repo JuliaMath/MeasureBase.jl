@@ -372,7 +372,7 @@ end
 
 function _split_x_by_marginals_with_rest(
     dofs::Union{Tuple,AbstractVector},
-    x::AbstractVector{<:Real},
+    x::AbstractVector{<:Number},
 )
     x_idxs = maybestatic_eachindex(x)
     first_idxs = _dof_access_firstidxs(dofs, maybestatic_first(x_idxs))
@@ -385,7 +385,7 @@ function _marginals_from_mvstd_with_rest(
     νs,
     dofs::_KnownDOFs,
     μ_inner::StdMeasure,
-    x::AbstractVector{<:Real},
+    x::AbstractVector{<:Number},
 )
     xs, x_rest = _split_x_by_marginals_with_rest(dofs, x)
     μs = map(n -> μ_inner^n, dofs)
@@ -397,7 +397,7 @@ function _marginals_from_mvstd_with_rest(
     νs,
     dofs,
     μ_inner::StdMeasure,
-    x::AbstractVector{<:Real},
+    x::AbstractVector{<:Number},
 )
     _marginals_from_mvstd_with_rest_nodof(νs, μ_inner, x)
 end
@@ -405,7 +405,7 @@ end
 function _marginals_from_mvstd_with_rest_nodof(
     νs::Tuple{Vararg{AbstractMeasure}},
     μ_inner::StdMeasure,
-    x::AbstractVector{<:Real},
+    x::AbstractVector{<:Number},
 )
     # ToDo: Check for type stability, may need a generated function:
     y1, x_rest = transport_from_mvstd_with_rest(νs[1], μ_inner, x)
@@ -413,13 +413,13 @@ function _marginals_from_mvstd_with_rest_nodof(
     return (y1, y2_end...), x_final_rest
 end
 
-_marginals_from_mvstd_with_rest_nodof(::Tuple{}, ::StdMeasure, x::AbstractVector{<:Real}) =
+_marginals_from_mvstd_with_rest_nodof(::Tuple{}, ::StdMeasure, x::AbstractVector{<:Number}) =
     (), x
 
 function _marginals_from_mvstd_with_rest_nodof(
     νs::AbstractVector{M},
     μ_inner::StdMeasure,
-    x::AbstractVector{<:Real},
+    x::AbstractVector{<:Number},
 ) where {M<:AbstractMeasure}
     if isconcretetype(M)
         # Marginals of concrete type produce variates of uniform type, so

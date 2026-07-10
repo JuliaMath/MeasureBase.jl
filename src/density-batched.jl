@@ -86,7 +86,7 @@ end
 function _logdensities_stripped(
     f::F,
     μ,
-    X::ArrayOfSimilarArrays{<:Real},
+    X::ArrayOfSimilarArrays{<:Number},
     p1,
     powers::Vararg{Any,N},
 ) where {F,N}
@@ -110,7 +110,7 @@ end
 @inline function _logdensities_byelsize(
     f::F,
     μ,
-    X::AbstractArray{<:Real},
+    X::AbstractArray{<:Number},
     ::Tuple{},
 ) where {F}
     broadcast(Base.Fix1(f, μ), X)
@@ -126,7 +126,7 @@ end
 function _logdensities_fused(
     f::F,
     μ,
-    X::ArrayOfSimilarArrays{<:Real,M},
+    X::ArrayOfSimilarArrays{<:Number,M},
     ::Tuple{},
     powers::Vararg{Any,N},
 ) where {F,M,N}

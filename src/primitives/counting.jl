@@ -12,7 +12,7 @@ struct Counting{T} <: AbstractMeasure
     Counting(supp) = new{Core.Typeof(supp)}(supp)
 end
 
-@inline function logdensityof_impl(μ::Counting, x::Real)
+@inline function logdensityof_impl(μ::Counting, x::Number)
     R = float(typeof(x))
     insupport(μ, x) ? zero(R) : R(-Inf)
 end

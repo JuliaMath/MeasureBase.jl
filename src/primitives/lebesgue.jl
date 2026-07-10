@@ -18,7 +18,7 @@ logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = Inf
 
 @inline getdof(::LebesgueBase) = static(1)
 
-@inline checked_arg(::LebesgueBase, x::Real) = x
+@inline checked_arg(::LebesgueBase, x::Number) = x
 
 @propagate_inbounds function checked_arg(::LebesgueBase, x::Any)
     @boundscheck throw(ArgumentError("Invalid variate type for measure"))
@@ -63,7 +63,7 @@ insupport(μ::Lebesgue, x) = x ∈ μ.support
 
 insupport(::Lebesgue{RealValues}, ::Real) = true
 
-@inline function logdensityof_impl(μ::Lebesgue, x::Real)
+@inline function logdensityof_impl(μ::Lebesgue, x::Number)
     R = float(typeof(x))
     insupport(μ, x) ? zero(R) : R(-Inf)
 end

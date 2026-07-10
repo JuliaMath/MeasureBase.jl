@@ -118,7 +118,7 @@ end
 # end
 
 # TODO: Would profit from custom pullback:
-function _combine_logd_with_ladj(logd_orig::Real, ladj::Real)
+function _combine_logd_with_ladj(logd_orig::Number, ladj::Number)
     logd_result = logd_orig + ladj
     R = typeof(logd_result)
 

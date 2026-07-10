@@ -138,7 +138,7 @@ fcomp(::typeof(identity), g) = g
 fcomp(f, ::typeof(identity)) = f
 fcomp(::typeof(identity), ::typeof(identity)) = identity
 
-near_neg_inf(::Type{T}) where {T<:Real} = T(-1E38) # Still fits into Float32
+near_neg_inf(::Type{T}) where {T<:Number} = T(-1E38) # Still fits into Float32
 
 isneginf(x) = isinf(x) && x < zero(x)
 isposinf(x) = isinf(x) && x > zero(x)
@@ -149,7 +149,7 @@ isapproxzero(A::AbstractArray) = all(isapproxzero, A)
 isapproxone(x::T) where {T<:Real} = x ≈ one(T)
 isapproxone(A::AbstractArray) = all(isapproxone, A)
 
-containsnan(x::Real) = isnan(x)
+containsnan(x::Number) = isnan(x)
 containsnan(x) = any(containsnan, x)
 
 
@@ -176,8 +176,8 @@ function convert_realtype end
 
 @inline convert_realtype(::Type{T}, x::T) where {T<:Real} = x
 @inline convert_realtype(::Type{T}, x::AbstractArray{T}) where {T<:Real} = x
-@inline convert_realtype(::Type{T}, x::U) where {T<:Real,U<:Real} = T(x)
-convert_realtype(::Type{T}, x::AbstractArray{U}) where {T<:Real,U<:Real} = T.(x)
+@inline convert_realtype(::Type{T}, x::U) where {T<:Real,U<:Number} = T(x)
+convert_realtype(::Type{T}, x::AbstractArray{U}) where {T<:Real,U<:Number} = T.(x)
 convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
     map(Base.Fix1(convert_realtype, T), x)
 convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =

@@ -44,7 +44,7 @@ function Base.:*(k::T, m::AbstractMeasure) where {T<:Number}
     return weightedmeasure(logk, m)
 end
 
-Base.:*(m::AbstractMeasure, k::Real) = k * m
+Base.:*(m::AbstractMeasure, k::Number) = k * m
 
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
