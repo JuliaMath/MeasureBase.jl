@@ -14,7 +14,7 @@ though: power measures with flat variate storage (e.g. based on
 plus a segmented reduction over the underlying flat data, compatible with
 GPU-backed storage.
 
-Measure types should specialize [`MeasureBase.logdensities_impl`](@ref)
+Measure types should specialize [`MeasureBase.batched_logdensityof_impl`](@ref)
 instead of `logdensities` itself.
 """
 function logdensities end
@@ -24,14 +24,14 @@ function logdensities end
 end
 
 """
-    MeasureBase.logdensities_impl(μ::AbstractMeasure, X::AbstractArray)
+    MeasureBase.batched_logdensityof_impl(μ::AbstractMeasure, X::AbstractArray)
 
 Implements [`logdensities(μ, X)`](@ref logdensities) for arrays `X` of
-plain `μ`-variates. Power measures never reach `logdensities_impl`, their
+plain `μ`-variates. Power measures never reach `batched_logdensityof_impl`, their
 power structure is processed generically beforehand.
 
 Measure types that support fused multi-point evaluation should specialize
-`logdensities_impl`. Implementations must preserve the shape of `X` and
+`batched_logdensityof_impl`. Implementations must preserve the shape of `X` and
 must handle points outside the support of `μ` (the result must be `-Inf`
 at such points).
 
@@ -39,9 +39,9 @@ The default implementation broadcasts the log-density over `X` for
 measures with scalar variates and falls back to a `map` over `X`
 otherwise.
 """
-function logdensities_impl end
+function batched_logdensityof_impl end
 
-function logdensities_impl(μ::AbstractMeasure, X::AbstractArray)
+function batched_logdensityof_impl(μ::AbstractMeasure, X::AbstractArray)
     _logdensities_generic(logdensityof_impl, μ, X)
 end
 
@@ -70,7 +70,7 @@ end
 end
 
 @inline function _logdensities_stripped(f::F, μ, X::AbstractArray) where {F}
-    _logdensities_impl(f, μ, X)
+    _batched_logdensityof_impl(f, μ, X)
 end
 
 function _logdensities_stripped(
@@ -93,12 +93,12 @@ function _logdensities_stripped(
     _logdensities_fused(f, μ, X, mspace_elsize(μ), p1, powers...)
 end
 
-# Absolute densities go through the `logdensities_impl` extension point:
-@inline function _logdensities_impl(::typeof(logdensityof_impl), μ, X::AbstractArray)
-    logdensities_impl(μ, X)
+# Absolute densities go through the `batched_logdensityof_impl` extension point:
+@inline function _batched_logdensityof_impl(::typeof(logdensityof_impl), μ, X::AbstractArray)
+    batched_logdensityof_impl(μ, X)
 end
 
-@inline function _logdensities_impl(f::F, μ, X::AbstractArray) where {F}
+@inline function _batched_logdensityof_impl(f::F, μ, X::AbstractArray) where {F}
     _logdensities_generic(f, μ, X)
 end
 
