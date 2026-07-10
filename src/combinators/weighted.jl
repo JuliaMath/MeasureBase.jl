@@ -16,6 +16,12 @@ _logweight(::AbstractMeasure) = 0
     d.logweight
 end
 
+# The weight-shifted density of a support-safe base density is support-safe,
+# no explicit support check required:
+@inline function logdensityof_impl(d::AbstractWeightedMeasure, x)
+    d.logweight + logdensityof_impl(basemeasure(d), x)
+end
+
 function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
     rand(rng, T, basemeasure(μ))
 end
