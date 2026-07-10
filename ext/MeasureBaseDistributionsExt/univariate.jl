@@ -12,21 +12,21 @@
 _dist_params_numtype(d::Distribution) = real_numtype(typeof(Distributions.params(d)))
 
 
-@inline _trafo_cdf(d::Distribution{Univariate,Continuous}, x::Real) =
+@inline _trafo_cdf(d::Distribution{Univariate,Continuous}, x::Number) =
     _trafo_cdf_impl(_dist_params_numtype(d), d, x)
 
-@inline _trafo_cdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Real) =
+@inline _trafo_cdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
     Distributions.cdf(d, x)
 
 
-@inline _trafo_quantile(d::Distribution{Univariate,Continuous}, u::Real) =
+@inline _trafo_quantile(d::Distribution{Univariate,Continuous}, u::Number) =
     _trafo_quantile_impl(_dist_params_numtype(d), d, u)
 
-@inline _trafo_quantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, u::Real) =
+@inline _trafo_quantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, u::Number) =
     _trafo_quantile_impl_generic(d, u)
 
 
-@inline _trafo_quantile_impl_generic(d::Distribution{Univariate,Continuous}, u::Real) =
+@inline _trafo_quantile_impl_generic(d::Distribution{Univariate,Continuous}, u::Number) =
     Distributions.quantile(d, u)
 
 # Workaround for Beta dist, current quantile implementation only supports Float64:
@@ -50,45 +50,40 @@ end
 end
 
 
-@inline function _result_numtype(d::Distribution{Univariate}, x::T) where {T<:Real}
+@inline function _result_numtype(d::Distribution{Univariate}, x::T) where {T<:Number}
     float(promote_type(T, _dist_params_numtype(d)))
 end
 
 
 @inline function MeasureBase.transport_def(::StdUniform, μ::Distribution{Univariate,Continuous}, x)
     R = _result_numtype(μ, x)
-    if Distributions.insupport(μ, x)
-        y = _trafo_cdf(μ, x)
-        convert(R, y)
-    else
-        convert(R, NaN)
-    end
+    y = _trafo_cdf(μ, x)
+    ifelse(Distributions.insupport(μ, x), convert(R, y), convert(R, NaN))
 end
 
 
 @inline function MeasureBase.transport_def(ν::Distribution{Univariate,Continuous}, ::StdUniform, x::T) where {T}
     R = _result_numtype(ν, x)
     TF = float(T)
-    if 0 <= x <= 1
-        # Avoid x ≈ 0 and x ≈ 1 to avoid infinite variate values for target distributions with infinite support:
-        mod_x = ifelse(x ≈ 0, zero(TF) + eps(TF), ifelse(x ≈ 1, one(TF) - eps(TF), convert(TF, x)))
-        y = _trafo_quantile(ν, mod_x)
-        convert(R, y)
-    else
-        convert(R, NaN)
-    end
+    # Avoid x ≈ 0 and x ≈ 1 to avoid infinite variate values for target
+    # distributions with infinite support, keep the quantile argument valid
+    # for out-of-range x (the result is masked to NaN then):
+    clamped_x = clamp(convert(TF, x), zero(TF), one(TF))
+    mod_x = ifelse(x ≈ 0, zero(TF) + eps(TF), ifelse(x ≈ 1, one(TF) - eps(TF), clamped_x))
+    y = _trafo_quantile(ν, mod_x)
+    ifelse((zero(x) <= x) & (x <= one(x)), convert(R, y), convert(R, NaN))
 end
 
 
 # Use standard measures as transformation origin for scaled/translated equivalents:
 
-function _origin_to_affine(ν::Distribution{Univariate}, y::T) where {T<:Real}
+function _origin_to_affine(ν::Distribution{Univariate}, y::T) where {T<:Number}
     trg_offs, trg_scale = Distributions.location(ν), Distributions.scale(ν)
     x = muladd(y, trg_scale, trg_offs)
     convert(_result_numtype(ν, y), x)
 end
 
-function _affine_to_origin(μ::Distribution{Univariate}, x::T) where {T<:Real}
+function _affine_to_origin(μ::Distribution{Univariate}, x::T) where {T<:Number}
     src_offs, src_scale = Distributions.location(μ), Distributions.scale(μ)
     y = (x - src_offs) / src_scale
     convert(_result_numtype(μ, x), y)
