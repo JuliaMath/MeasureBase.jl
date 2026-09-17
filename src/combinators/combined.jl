@@ -265,3 +265,37 @@ function transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::Abstrac
     b, z_rest = transport_from_std_with_rest(S, μ.β, z2)
     return μ.f_c(a, b), z_rest
 end
+
+
+# Batched transport consumes the variate parts of both component measures
+# along batches of streams:
+
+function batched_transport_to_std(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray) where {S<:StdMeasure}
+    Z, _, X_rest = batched_transport_to_std_with_rest(S, μ, X)
+    if size(X_rest, 1) != 0
+        throw(ArgumentError("Variate streams too long during batched transport of a combined measure"))
+    end
+    return Z
+end
+
+function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray) where {S<:StdMeasure}
+    Z_a, _, X2 = batched_transport_to_std_with_rest(S, μ.α, X)
+    Z_b, _, X_rest = batched_transport_to_std_with_rest(S, μ.β, X2)
+    X_μ, _ = _batched_split(X, size(X, 1) - size(X_rest, 1))
+    return vcat(Z_a, Z_b), X_μ, X_rest
+end
+
+function batched_transport_from_std(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray) where {S<:StdMeasure}
+    X, Z_rest = batched_transport_from_std_with_rest(S, μ, Z)
+    if size(Z_rest, 1) != 0
+        throw(ArgumentError("Length of standard variates doesn't match degrees of freedom of a combined measure"))
+    end
+    return X
+end
+
+function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray) where {S<:StdMeasure}
+    A, Z2 = batched_transport_from_std_with_rest(S, μ.α, Z)
+    B, Z_rest = batched_transport_from_std_with_rest(S, μ.β, Z2)
+    X = vcat(_as_stream_batch(A, mspace_flatsize(μ.α)), _as_stream_batch(B, mspace_flatsize(μ.β)))
+    return X, Z_rest
+end

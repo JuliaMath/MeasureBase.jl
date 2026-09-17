@@ -18,6 +18,7 @@ using MeasureBase: PowerMeasure, WeightedMeasure, SuperpositionMeasure, Pushforw
 using MeasureBase: basemeasure, rootmeasure, testvalue, productmeasure, pushfwd, superpose
 using MeasureBase: getdof, checked_arg, massof
 using MeasureBase: transport_to, transport_def, transport_to_std, transport_from_std
+using MeasureBase: batched_transport_to_std, batched_transport_from_std
 using MeasureBase: Reshape
 using MeasureBase: convert_realtype, _fwddiff, @_adignore
 import MeasureBase:

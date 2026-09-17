@@ -56,3 +56,14 @@ end
 @inline transport_to_std(::Type{S}, ::Dirac, x) where {S<:StdMeasure} = SVector{0,Bool}()
 @inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
 @inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
+
+function batched_transport_to_std(::Type{S}, μ::Dirac, X::AbstractArray) where {S<:StdMeasure}
+    n = length(_value_flatsize(μ.x))
+    similar(X, Bool, (0, ntuple(i -> size(X, n + i), Val(ndims(X) - n))...))
+end
+
+function batched_transport_from_std(::Type{S}, μ::Dirac, Z::AbstractArray) where {S<:StdMeasure}
+    X = similar(Z, eltype(μ.x), (size(μ.x)..., Base.tail(size(Z))...))
+    X .= μ.x
+    return X
+end

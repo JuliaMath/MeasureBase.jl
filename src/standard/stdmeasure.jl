@@ -89,3 +89,6 @@ end
 end
 
 @inline _stdmeasure_rank(::Type{<:StdMeasure}) = 0
+
+@inline batched_transport_to_std(::Type{S}, ::S, X::AbstractArray) where {S<:StdMeasure} = _as_stdstream_batch(X)
+@inline batched_transport_from_std(::Type{S}, ::S, Z::AbstractArray) where {S<:StdMeasure} = _drop_stdstream_dim(Z)

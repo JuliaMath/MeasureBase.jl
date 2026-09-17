@@ -265,3 +265,56 @@ end
 @inline _nest_leaf(A::AbstractArray, ::Val{M}, ::Val) where {M} = sliced(A, Val(M))
 @inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = sliced(B, Val(length(pwr_axes(ν))))
 @inline _pwr_nest(ν, B::AbstractArray) = B
+
+# Batched transport over the flat storage `(base variate dims..., power
+# dims..., batch dims...)`:
+
+function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray) where {S<:StdMeasure}
+    _pwr_batched_to_std(S, μ, X, mspace_flatsize(μ))
+end
+
+function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz_flat::SizeLike) where {S}
+    ν, _ = _pwr_unwrap(μ)
+    _check_flatsize(X, sz_flat)
+    n_flat = length(sz_flat)
+    Z = _pwr_batched_to_std_flat(S, ν, X, mspace_flatsize(ν))
+    batch_dims = ntuple(i -> size(X, n_flat + i), Val(ndims(X) - n_flat))
+    return reshape(Z, (dynamic(fast_dof(μ)), batch_dims...))
+end
+
+function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::NoMSpaceElementSize) where {S}
+    throw(ArgumentError("Batched transport of powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
+end
+
+@inline function _pwr_batched_to_std_flat(::Type{S}, ν, X::AbstractArray, ::Tuple{}) where {S}
+    broadcast(Base.Fix1(_ToStd{S}(), ν), X)
+end
+
+@inline function _pwr_batched_to_std_flat(::Type{S}, ν, X::AbstractArray, sz::SizeLike) where {S}
+    stacked(map(Base.Fix1(_ToStd{S}(), ν), sliced(X, Val(length(sz)))))
+end
+
+function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray) where {S<:StdMeasure}
+    _pwr_batched_from_std(S, μ, Z, mspace_flatsize(μ))
+end
+
+function _pwr_batched_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray, sz_flat::SizeLike) where {S}
+    ν, _ = _pwr_unwrap(μ)
+    batch_dims = Base.tail(size(Z))
+    X = _pwr_batched_from_std_flat(S, ν, Z, batch_dims, mspace_flatsize(ν))
+    return reshape(X, (map(dynamic, _size_dims(sz_flat))..., batch_dims...))
+end
+
+function _pwr_batched_from_std(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::NoMSpaceElementSize) where {S}
+    throw(ArgumentError("Batched transport to powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
+end
+
+@inline function _pwr_batched_from_std_flat(::Type{S}, ν, Z::AbstractArray, batch_dims, ::Tuple{}) where {S}
+    broadcast(Base.Fix1(_FromStd{S}(), ν), Z)
+end
+
+@inline function _pwr_batched_from_std_flat(::Type{S}, ν, Z::AbstractArray, batch_dims, sz::SizeLike) where {S}
+    n_variates = size(Z, 1) ÷ dynamic(fast_dof(ν))
+    chunks = sliced(reshape(Z, (dynamic(fast_dof(ν)), n_variates, batch_dims...)), Val(1))
+    stacked(map(Base.Fix1(_FromStd{S}(), ν), chunks))
+end

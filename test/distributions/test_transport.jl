@@ -5,6 +5,7 @@ using Test
 using LinearAlgebra
 using InverseFunctions, ChangesOfVariables
 using Distributions, ArraysOfArrays
+using ArraysOfArrays: sliced, flatview
 using StableRNGs
 using LogExpFunctions: logit
 import ForwardDiff, Zygote
@@ -217,6 +218,22 @@ include("getjacobian.jl")
         m2 = MeasureBase.asmeasure(pd2)
         y = transport_to(m2, m)(x)
         @test transport_to(m, m2)(y) ≈ x
+    end
+
+    @testset "batched transport" begin
+        mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
+        f = transport_to(StdNormal()^2, mvn)
+        X = rand(StableRNG(789990641), mvn, 6)
+        Y = f.(sliced(X, Val(1)))
+        @test flatview(Y) ≈ stack(map(f, eachcol(X)))
+        @test flatview(inverse(f).(Y)) ≈ X
+        g = transport_to(StdNormal(), Weibull(0.7, 1.3))
+        x = rand(StableRNG(789990641), Weibull(0.7, 1.3), 10)
+        @test g.(x) ≈ map(g, x)
+        pd = product_distribution([Weibull(0.7), Exponential(1.3), Normal(0.5, 2.0)])
+        h = transport_to(StdNormal()^3, asmeasure(pd))
+        Xp = rand(StableRNG(789990641), pd, 5)
+        @test stack(h.(sliced(Xp, Val(1)))) ≈ stack(map(h, eachcol(Xp)))
     end
 
     @testset "MvNormal covariance representations" begin

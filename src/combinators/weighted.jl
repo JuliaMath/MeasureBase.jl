@@ -79,3 +79,12 @@ insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
     transport_to_std_with_rest(S, basemeasure(μ), x)
 @inline transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, z::AbstractVector) where {S<:StdMeasure} =
     transport_from_std_with_rest(S, basemeasure(μ), z)
+
+@inline batched_transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray) where {S<:StdMeasure} =
+    batched_transport_to_std(S, basemeasure(μ), X)
+@inline batched_transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
+    batched_transport_from_std(S, basemeasure(μ), Z)
+@inline batched_transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray) where {S<:StdMeasure} =
+    batched_transport_to_std_with_rest(S, basemeasure(μ), X)
+@inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
+    batched_transport_from_std_with_rest(S, basemeasure(μ), Z)

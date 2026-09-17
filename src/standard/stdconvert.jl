@@ -55,3 +55,9 @@ const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,OneToLike}}
 function transport_def(ν::StdPowerMeasure{NU}, μ::StdPowerMeasure{MU}, x) where {NU<:StdMeasure,MU<:StdMeasure}
     _pwr_variate(ν, maybestatic_reshape(stdconvert(NU, MU, x), mspace_flatsize(ν)))
 end
+
+function batched_transport_def(ν::StdPowerMeasure{NU}, μ::StdPowerMeasure{MU}, X::AbstractArray) where {NU<:StdMeasure,MU<:StdMeasure}
+    n_μ = length(mspace_flatsize(μ))
+    batch_dims = ntuple(i -> size(X, n_μ + i), Val(ndims(X) - n_μ))
+    reshape(stdconvert(NU, MU, X), (map(dynamic, _size_dims(mspace_flatsize(ν)))..., batch_dims...))
+end

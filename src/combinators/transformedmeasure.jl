@@ -211,6 +211,28 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
     return ν.f(x), z_rest
 end
 
+# Batched transport for pushforwards of measures with scalar variates, the
+# functions apply elementwise then:
+function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray) where {S<:StdMeasure}
+    _pushfwd_batched_to_std(S, ν, Y, mspace_flatsize(ν.origin))
+end
+@inline function _pushfwd_batched_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray, ::Tuple{}) where {S}
+    batched_transport_to_std(S, ν.origin, broadcast(ν.finv, Y))
+end
+@inline function _pushfwd_batched_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray, ::Any) where {S}
+    _batched_to_std(S, ν, Y, mspace_flatsize(ν))
+end
+
+function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
+    _pushfwd_batched_from_std(S, ν, Z, mspace_flatsize(ν.origin))
+end
+@inline function _pushfwd_batched_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, ::Tuple{}) where {S}
+    broadcast(ν.f, batched_transport_from_std(S, ν.origin, Z))
+end
+@inline function _pushfwd_batched_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, ::Any) where {S}
+    _batched_from_std(S, ν, Z, mspace_flatsize(ν))
+end
+
 massof(m::PushforwardMeasure) = massof(m.origin)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}

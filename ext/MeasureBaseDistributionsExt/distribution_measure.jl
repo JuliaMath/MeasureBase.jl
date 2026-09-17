@@ -79,6 +79,10 @@ end
     MeasureBase.transport_to_std(S, m.obj, x)
 @inline MeasureBase.transport_from_std(::Type{S}, m::DistributionMeasure, z) where {S<:StdMeasure} =
     MeasureBase.transport_from_std(S, m.obj, z)
+@inline MeasureBase.batched_transport_to_std(::Type{S}, m::DistributionMeasure, X::AbstractArray) where {S<:StdMeasure} =
+    MeasureBase.batched_transport_to_std(S, m.obj, X)
+@inline MeasureBase.batched_transport_from_std(::Type{S}, m::DistributionMeasure, Z::AbstractArray) where {S<:StdMeasure} =
+    MeasureBase.batched_transport_from_std(S, m.obj, Z)
 
 @inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
 @inline MeasureBase.params(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))

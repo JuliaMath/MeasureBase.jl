@@ -327,8 +327,15 @@ end
 @inline _all_insupport(A::AbstractArray{<:NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()
 @inline _all_insupport(A::AbstractArray) = all(A)
 
-getdof(d::AbstractProductMeasure) = sum(getdof, marginals(d))
-fast_dof(d::AbstractProductMeasure) = sum(fast_dof, marginals(d))
+getdof(d::AbstractProductMeasure) = _sum_dofs(getdof, marginals(d))
+fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
+
+# Sums over static DOFs of tuples fold at compile time, arrays of marginals
+# are summed dynamically (also on GPU arrays):
+@inline _sum_dofs(f, mar) = sum(f, mar)
+@inline _sum_dofs(f, mar::AbstractArray) = mapreduce(_dynamic_dof ∘ f, +, mar; init = 0)
+@inline _dynamic_dof(n::IntegerLike) = dynamic(n)
+@inline _dynamic_dof(nodof::AbstractNoDOF) = nodof
 
 function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) where {N}
     map(checked_arg, marginals(μ), x)
@@ -444,4 +451,29 @@ function _marginals_from_std_with_rest(::Type{S}, νs::AbstractArray{M}, z::Abst
         end
         return [y for y in ys_any], z_rest
     end
+end
+
+# Batched transport of array products with scalar-variate marginals in one
+# broadcast, the marginals align with the leading dimension of the batch:
+
+function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {S<:StdMeasure,M}
+    _array_product_batched_to_std(S, μ, X, mspace_flatsize(M), Val(isconcretetype(M)))
+end
+function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Tuple{}, ::Val{true}) where {S}
+    _check_flatsize(X, maybestatic_size(marginals(μ)))
+    _as_stream_batch(broadcast(_ToStd{S}(), marginals(μ), X), maybestatic_size(marginals(μ)))
+end
+function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Any, ::Val) where {S}
+    _batched_to_std(S, μ, X, mspace_flatsize(μ))
+end
+
+function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray) where {S<:StdMeasure,M}
+    _array_product_batched_from_std(S, μ, Z, mspace_flatsize(M), Val(isconcretetype(M)))
+end
+function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Tuple{}, ::Val{true}) where {S}
+    mar = marginals(μ)
+    broadcast(_FromStd{S}(), mar, reshape(Z, (map(dynamic, maybestatic_size(mar))..., Base.tail(size(Z))...)))
+end
+function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Any, ::Val) where {S}
+    _batched_from_std(S, μ, Z, mspace_flatsize(μ))
 end

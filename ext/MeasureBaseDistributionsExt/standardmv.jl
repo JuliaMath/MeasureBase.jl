@@ -19,6 +19,18 @@ function MeasureBase.transport_from_std(::Type{StdNormal}, d::MvNormal, z)
     muladd(_cholesky_L(d.Σ), z, d.μ)
 end
 
+function MeasureBase.batched_transport_to_std(::Type{StdNormal}, d::MvNormal, X::AbstractArray)
+    X_mat = reshape(X, (length(d), :))
+    Z_mat = _cholesky_L(d.Σ) \ (X_mat .- d.μ)
+    return reshape(Z_mat, size(X))
+end
+
+function MeasureBase.batched_transport_from_std(::Type{StdNormal}, d::MvNormal, Z::AbstractArray)
+    Z_mat = reshape(Z, (length(d), :))
+    X_mat = muladd(_cholesky_L(d.Σ), Z_mat, d.μ)
+    return reshape(X_mat, size(Z))
+end
+
 
 #DirichletMultinomial
 #Distributions.AbstractMvLogNormal

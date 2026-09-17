@@ -11,7 +11,7 @@ using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
 using MeasureBase: mcombine
-using ArraysOfArrays: VectorOfSimilarVectors, sliced
+using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Exponential, Uniform, Beta
 
 Reactant.set_default_backend("cpu")
@@ -86,6 +86,13 @@ _plain(x::Number) = Float64(x)
         mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
         test_traced(x -> transport_to(StdNormal()^3, mc)(x), vcat(randn(2), rand(1)))
         test_traced(z -> transport_to(mc, StdNormal()^3)(z), randn(3))
+    end
+
+    @testset "batched transport" begin
+        test_traced(X -> transport_to(StdNormal(), StdUniform()).(X), rand(10))
+        test_traced(X -> flatview(transport_to(StdExponential()^3, StdNormal()^3).(sliced(X, Val(1)))), X)
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(X -> flatview(transport_to(StdLogistic()^3, mc).(sliced(X, Val(1)))), vcat(X[1:2, :], rand(1, 20)))
     end
 
     @testset "transport" begin

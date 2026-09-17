@@ -5,9 +5,12 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac, Half, restrict, mbind, productmeasure, pushfwd
 using MeasureBase: transport_to_std, transport_from_std, transport_from_std_with_rest
 using InverseFunctions: inverse
+using MeasureBase: weightedmeasure, mcombine
 using StaticArrays: SVector
 using Static: static
 using LogExpFunctions: logit
+using ArraysOfArrays: sliced, flatview
+using JLArrays
 
 @testset "transport_to" begin
     for (f, μ) in [
@@ -131,6 +134,64 @@ using LogExpFunctions: logit
         μ = restrict(x -> x > 0, StdNormal())
         @test_throws ArgumentError transport_to(StdUniform(), μ)(0.5)
         @test_throws ArgumentError transport_to(μ, StdUniform())(0.5)
+    end
+
+    @testset "batched transport" begin
+        f = transport_to(StdNormal(), StdUniform())
+        X = rand(7)
+        @test f.(X) ≈ map(f, X)
+        @test inverse(f).(f.(X)) ≈ X
+        @test eltype(f.(rand(Float32, 5))) == Float32
+
+        g = transport_to(StdExponential()^3, StdNormal()^3)
+        Xn = randn(3, 5)
+        Yn = g.(sliced(Xn, Val(1)))
+        @test Yn isa AbstractVector && length(Yn) == 5
+        @test flatview(Yn) ≈ stack(map(g, eachcol(Xn)))
+        @test flatview(g.(Xn)) ≈ flatview(Yn)
+        @test flatview(inverse(g).(Yn)) ≈ Xn
+        Xv = [randn(3) for _ in 1:4]
+        @test g.(Xv) == map(g, Xv)
+
+        h = transport_to(StdUniform()^(2, 3), (StdNormal()^2)^3)
+        Xh = randn(2, 3, 4)
+        @test flatview(h.(Xh)) ≈ stack([h(Xh[:, :, i]) for i in 1:4])
+        @test flatview(inverse(h).(h.(Xh))) ≈ Xh
+
+        P = MeasureBase.ProductMeasure([weightedmeasure(log(i), StdNormal()) for i in 1:3])
+        p = transport_to(StdUniform()^3, P)
+        Xp = randn(3, 6)
+        Yp = p.(sliced(Xp, Val(1)))
+        @test flatview(Yp) ≈ stack(map(p, eachcol(Xp)))
+        @test flatview(inverse(p).(Yp)) ≈ Xp
+
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^3)
+        c = transport_to(StdExponential()^5, mc)
+        Xc = vcat(randn(2, 4), rand(3, 4))
+        Yc = c.(sliced(Xc, Val(1)))
+        @test flatview(Yc) ≈ stack(map(c, eachcol(Xc)))
+        @test flatview(inverse(c).(Yc)) ≈ Xc
+        cd = transport_to(mcombine(vcat, Dirac(0.5), StdUniform()^2), StdNormal()^2)
+        @test flatview(cd.(randn(2, 3)))[1, :] == fill(0.5, 3)
+
+        pf = transport_to(StdUniform(), pushfwd(exp, StdNormal()))
+        Xe = exp.(randn(8))
+        @test pf.(Xe) ≈ map(pf, Xe)
+        @test inverse(pf).(pf.(Xe)) ≈ Xe
+
+        w = transport_to(StdLogistic()^2, weightedmeasure(0.3, StdNormal()^2))
+        Xw = randn(2, 5)
+        @test flatview(w.(sliced(Xw, Val(1)))) ≈ stack(map(w, eachcol(Xw)))
+
+        JLArrays.allowscalar(false)
+        Xj = JLArray(Xn)
+        Yj = g.(sliced(Xj, Val(1)))
+        @test flatview(Yj) isa JLArray
+        @test Array(flatview(Yj)) ≈ flatview(Yn)
+        @test Array(flatview(c.(sliced(JLArray(Xc), Val(1))))) ≈ flatview(Yc)
+        Pj = MeasureBase.ProductMeasure(JLArray([weightedmeasure(log(i), StdNormal()) for i in 1:3]))
+        pj = transport_to(StdUniform()^3, Pj)
+        @test Array(flatview(pj.(sliced(JLArray(Xp), Val(1))))) ≈ flatview(Yp)
     end
 
     @testset "transport for products" begin
