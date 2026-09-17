@@ -34,9 +34,11 @@ flat storage: the leading dimensions of `A` are the variate dimensions
 batch dimensions. Returns the log-densities as an array over the batch
 dimensions, or a scalar if there are none.
 
-Power measures never reach `batched_logdensityof_impl`, their power
-structure is unwrapped beforehand. Implementations must handle points
-outside the support of `μ` (the result must be `-Inf` there).
+Implementations must handle points outside the support of `μ` (the
+result must be `-Inf` there). Implementations for structural measures
+evaluate their component measures via `batched_logdensityof_impl` as well,
+power measures route back into the batched core (which unwraps their
+power structure and sums over the power dimensions).
 
 The default implementation broadcasts the log-density over `A` for
 measures with scalar variates and maps it over the variate slices of `A`
@@ -244,4 +246,52 @@ end
 @inline _sum_dims_seq(A::AbstractArray, ::StaticInteger{0}) = A
 @inline function _sum_dims_seq(A::AbstractArray, ::StaticInteger{N}) where {N}
     _sum_dims_seq(sum(A; dims = N), static(N - 1))
+end
+
+
+@inline _lazy_add(c, x::Number) = c + x
+@inline _lazy_add(c, A) = Broadcast.instantiate(Broadcast.broadcasted(+, c, A))
+
+
+"""
+    MeasureBase.batched_logdensityof_with_rest(μ::AbstractMeasure, A::AbstractArray)
+
+Batched form of [`MeasureBase.logdensityof_with_rest`](@ref) for a batch
+`A` of flat vector streams: the first dimension of `A` runs along the
+streams, all further dimensions are batch dimensions.
+
+Returns a tuple `(ℓ, A_μ, A_rest)` of the log-densities over the batch
+dimensions, the flat variate batch consumed from the streams and the
+unconsumed rest of the streams.
+
+Requires the flat variate size of `μ` to be known, see
+[`MeasureBase.mspace_flatsize`](@ref).
+"""
+function batched_logdensityof_with_rest end
+
+function batched_logdensityof_with_rest(μ::AbstractMeasure, A::AbstractArray)
+    A_μ, A_rest = _batched_consume(A, mspace_flatsize(μ))
+    return _materialize(_batched_ld(logdensityof_impl, μ, A_μ)), A_μ, A_rest
+end
+
+# Consume the leading rows of a batch of streams as a batch of flat variates:
+@inline function _batched_consume(A::AbstractArray, sz::SizeLike)
+    n = size2length(sz)
+    n_stream = size(A, 1)
+    if n_stream < n
+        throw(ArgumentError("Variate streams too short during batched density evaluation"))
+    end
+    batch_axes = Base.tail(axes(A))
+    A_flat = view(A, 1:dynamic(n), batch_axes...)
+    A_rest = view(A, (dynamic(n) + 1):n_stream, batch_axes...)
+    return maybestatic_reshape(A_flat, (_size_dims(sz)..., map(length, batch_axes)...)), A_rest
+end
+
+@inline function _batched_consume(A::AbstractArray, ::Tuple{})
+    batch_axes = Base.tail(axes(A))
+    view(A, 1, batch_axes...), view(A, 2:size(A, 1), batch_axes...)
+end
+
+function _batched_consume(::AbstractArray, sz::NoMSpaceElementSize)
+    throw(ArgumentError("Batched stream consumption requires a variate of known flat size"))
 end

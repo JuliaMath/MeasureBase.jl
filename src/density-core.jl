@@ -99,9 +99,13 @@ resp. `testvalue` and delegates to `logdensityof_impl`.
 function logdensityof_with_rest end
 
 function logdensityof_with_rest(μ::AbstractMeasure, x::AbstractVector)
-    a, x_rest = _consume_from_stream(x, some_mspace_elsize(μ))
+    a, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
     return logdensityof_impl(μ, a), a, x_rest
 end
+
+@inline _stream_consume_size(μ) = _stream_consume_size(μ, mspace_flatsize(μ))
+@inline _stream_consume_size(μ, sz::SizeLike) = sz
+@inline _stream_consume_size(μ, ::NoMSpaceElementSize) = some_mspace_elsize(μ)
 
 function logdensityof_with_rest(μ::AbstractMeasure, x::NamedTuple)
     a, x_rest = _split_after(x, Val(_mspace_names(μ)))

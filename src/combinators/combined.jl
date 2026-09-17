@@ -84,7 +84,7 @@ end
     _mcombine_product_shortcut(f_c, marginals(α), marginals(β), α, β)
 end
 
-_mcombine_product_shortcut(::typeof(vcat), ma::AbstractVector, mb::AbstractVector, α, β) =
+_mcombine_product_shortcut(::typeof(vcat), ma::AbstractVector{T}, mb::AbstractVector{T}, α, β) where {T} =
     productmeasure(vcat(ma, mb))
 _mcombine_product_shortcut(::typeof(merge), ma::NamedTuple, mb::NamedTuple, α, β) =
     productmeasure(merge(ma, mb))
@@ -124,6 +124,15 @@ end
 
 
 @inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
+
+@inline function mspace_flatsize(μ::CombinedMeasure{typeof(vcat)})
+    _vcat_flatsize(mspace_flatsize(μ.α), mspace_flatsize(μ.β))
+end
+
+@inline _vcat_flatsize(a::SizeLike, b::SizeLike) = (size2length(a) + size2length(b),)
+@inline _vcat_flatsize(a::NoMSpaceElementSize, ::Any) = a
+@inline _vcat_flatsize(::Any, b::NoMSpaceElementSize) = b
+@inline _vcat_flatsize(a::NoMSpaceElementSize, ::NoMSpaceElementSize) = a
 
 @inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
 @inline fast_dof(μ::CombinedMeasure) = fast_dof(μ.α) + fast_dof(μ.β)
@@ -174,6 +183,22 @@ end
 function _combined_ld_impl(f_c, μ::CombinedMeasure, ab)
     tpm_α, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
     return logdensityof(tpm_α, a) + logdensityof(μ.β, b)
+end
+
+function batched_logdensityof_impl(μ::CombinedMeasure{typeof(vcat)}, A::AbstractArray)
+    ℓ, _, A_rest = batched_logdensityof_with_rest(μ, A)
+    if size(A_rest, 1) != 0
+        throw(ArgumentError("Variate streams too long during batched density evaluation of a combined measure"))
+    end
+    return ℓ
+end
+
+function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, A::AbstractArray)
+    ℓ_a, _, A2 = batched_logdensityof_with_rest(μ.α, A)
+    ℓ_b, _, A_rest = batched_logdensityof_with_rest(μ.β, A2)
+    n_μ = size(A, 1) - size(A_rest, 1)
+    A_μ = view(A, 1:n_μ, Base.tail(axes(A))...)
+    return ℓ_a .+ ℓ_b, A_μ, A_rest
 end
 
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)

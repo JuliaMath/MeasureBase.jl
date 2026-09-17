@@ -199,6 +199,27 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
+@inline mspace_elsize(μ::ProductMeasure{<:AbstractArray}) = maybestatic_size(marginals(μ))
+
+@inline function mspace_flatsize(μ::ProductMeasure{<:AbstractArray{M}}) where {M}
+    _cat_sizes(mspace_flatsize(M), maybestatic_size(marginals(μ)))
+end
+
+# The marginals align with the leading dimensions of the flat batch, so
+# one broadcast evaluates all marginal densities:
+@inline function batched_logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M,N}}, A::AbstractArray) where {M,N}
+    _product_batched_ld(μ, A, mspace_flatsize(M), Val(N))
+end
+
+@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Tuple{}, ::Val{N}) where {N}
+    ld = Broadcast.instantiate(Broadcast.broadcasted(dynamic ∘ logdensityof_impl, marginals(μ), A))
+    _sum_leading_dims(ld, static(N))
+end
+
+@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Any, ::Val)
+    _batched_ld_generic(logdensityof_impl, μ, A)
+end
+
 # TODO: Better `map` support in MappedArrays
 _map(f, args...) = map(f, args...)
 _map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)

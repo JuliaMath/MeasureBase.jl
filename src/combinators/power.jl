@@ -105,6 +105,7 @@ end
 
 @inline logdensityof_impl(μ::PowerMeasure, x) = _powered_ld(logdensityof_impl, μ, x)
 @inline logdensity_def(μ::PowerMeasure, x) = _powered_ld(logdensity_def, μ, x)
+@inline batched_logdensityof_impl(μ::PowerMeasure, A::AbstractArray) = _batched_ld(logdensityof_impl, μ, A)
 
 # Support checks of powers run over the flat variate storage where the base
 # measure has scalar variates, elementwise otherwise:

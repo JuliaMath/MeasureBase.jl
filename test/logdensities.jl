@@ -3,7 +3,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: logdensities, logdensity_def, StdNormal, StdUniform, Dirac, Lebesgue, LebesgueBase, superpose, weightedmeasure
+using MeasureBase: logdensities, logdensity_def, StdNormal, StdUniform, StdExponential, StdLogistic, Dirac, Lebesgue, LebesgueBase, superpose, weightedmeasure, mcombine, productmeasure
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using StaticArrays: SVector, @SVector, @SMatrix
 using Static: static
@@ -131,6 +131,75 @@ stdnormal_ld(x) = -(x^2 + log2π) / 2
         @test @inferred(logdensity_def(Lebesgue()^3, randn(3))) == 0
         @test @inferred(logdensity_def(LebesgueBase()^(2, 2), randn(2, 2))) == 0
         @test @inferred(logdensityof(Lebesgue()^3, randn(3))) == 0
+    end
+
+    @testset "structural batched kernels" begin
+        w = weightedmeasure(log(0.3), StdNormal()^3)
+        X = randn(3, 10)
+        @test @inferred(logdensities(w, X)) ≈ [logdensityof(w, x) for x in eachcol(X)]
+        xw = randn(3)
+        fw(x) = logdensityof(w, x)
+        @test @inferred(fw(xw)) ≈ log(0.3) + sum(stdnormal_ld, xw)
+        @test @allocated(fw(xw)) == 0
+
+        ms = [weightedmeasure(log(i), StdNormal()) for i in 1:4]
+        prod4 = productmeasure(ms)
+        @test @inferred(MeasureBase.mspace_flatsize(prod4)) == (4,)
+        @test @inferred(MeasureBase.mspace_elsize(prod4)) == (4,)
+        xp = randn(4)
+        fp(x) = logdensityof(prod4, x)
+        @test @inferred(fp(xp)) ≈ sum(log(i) + stdnormal_ld(xp[i]) for i in 1:4)
+        @test @allocated(fp(xp)) == 0
+        Xp = randn(4, 7)
+        @test @inferred(logdensities(prod4, Xp)) ≈ [logdensityof(prod4, x) for x in eachcol(Xp)]
+        @test logdensities(prod4, sliced(Xp, 1)) ≈ logdensities(prod4, Xp)
+        @test @inferred(logdensityof(prod4^2, randn(4, 2))) isa Float64
+        Xpp = randn(4, 2, 5)
+        @test logdensities(prod4^2, Xpp) ≈ [logdensityof(prod4^2, Xpp[:, :, i]) for i in 1:5]
+
+        ms2 = reshape([weightedmeasure(log(i), StdUniform()) for i in 1:6], 2, 3)
+        prod23 = productmeasure(ms2)
+        @test @inferred(MeasureBase.mspace_flatsize(prod23)) == (2, 3)
+        x23 = rand(2, 3)
+        @test @inferred(logdensityof(prod23, x23)) ≈ sum(log(i) for i in 1:6)
+        @test logdensities(prod23, rand(2, 3, 4)) ≈ fill(sum(log(i) for i in 1:6), 4)
+
+        mvec = productmeasure([StdNormal()^2, StdNormal()^2])
+        @test @inferred(MeasureBase.mspace_flatsize(mvec)) isa MeasureBase.NoMSpaceElementSize
+    end
+
+    @testset "batched with-rest for combined measures" begin
+        m = mcombine(vcat, StdNormal()^2, StdUniform()^3)
+        @test @inferred(MeasureBase.mspace_flatsize(m)) == (5,)
+        x = vcat(randn(2), rand(3))
+        @test @inferred(logdensityof(m, x)) ≈ sum(stdnormal_ld, x[1:2])
+        X = vcat(randn(2, 6), rand(3, 6))
+        @test @inferred(logdensities(m, X)) ≈ [logdensityof(m, x) for x in eachcol(X)]
+        @test logdensities(m, sliced(X, 1)) ≈ logdensities(m, X)
+        ℓ, A_μ, A_rest = MeasureBase.batched_logdensityof_with_rest(StdNormal()^2, X)
+        @test ℓ ≈ vec(sum(stdnormal_ld.(X[1:2, :]), dims = 1))
+        @test size(A_μ) == (2, 6) && size(A_rest) == (3, 6)
+        @test_throws ArgumentError logdensities(m, vcat(X, rand(1, 6)))
+
+        m3 = mcombine(vcat, StdNormal(), mcombine(vcat, StdExponential()^2, StdLogistic()))
+        @test @inferred(MeasureBase.mspace_flatsize(m3)) == (4,)
+        X3 = vcat(randn(1, 5), rand(2, 5), randn(1, 5))
+        @test @inferred(logdensities(m3, X3)) ≈ [logdensityof(m3, x) for x in eachcol(X3)]
+    end
+
+    @testset "GPU array semantics for structural kernels" begin
+        JLArrays.allowscalar(false)
+        ms = JLArray([weightedmeasure(log(i), StdNormal()) for i in 1:4])
+        prodj = productmeasure(ms)
+        Xj = JLArray(randn(4, 7))
+        ldj = logdensities(prodj, Xj)
+        @test ldj isa JLArray
+        @test Array(ldj) ≈ logdensities(productmeasure(Array(ms)), Array(Xj))
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^3)
+        Xc = JLArray(vcat(randn(2, 6), rand(3, 6)))
+        ldc = logdensities(mc, Xc)
+        @test ldc isa JLArray
+        @test Array(ldc) ≈ logdensities(mc, Array(Xc))
     end
 
     @testset "GPU array semantics" begin

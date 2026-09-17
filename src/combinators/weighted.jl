@@ -26,6 +26,10 @@ _logweight(::AbstractMeasure) = 0
     _logweight_for(d.logweight, x) + logdensityof_impl(basemeasure(d), x)
 end
 
+@inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, A::AbstractArray)
+    _lazy_add(_logweight_for(d.logweight, A), batched_logdensityof_impl(basemeasure(d), A))
+end
+
 function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
     rand(rng, T, basemeasure(μ))
 end
