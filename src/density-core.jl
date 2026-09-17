@@ -45,16 +45,33 @@ a [`MeasureBase.NoFastInsupport`](@ref)) and computes the density via
 [`unsafe_logdensityof`](@ref).
 """
 @inline function logdensityof_impl(μ::AbstractMeasure, x)
-    result = dynamic(unsafe_logdensityof(μ, x))
+    result = _dynamic_logd(unsafe_logdensityof(μ, x), x)
     _checksupport(insupport(μ, x), result)
 end
 
-@inline function logdensityof_rt(::T, ::U) where {T,U}
-    Core.Compiler.return_type(logdensityof, Tuple{T,U})
-end
+# Log-density kernels return numbers of the number type of the variate,
+# never static numbers, so that automatic differentiation and tracing see
+# ordinary floating point values throughout:
+@inline _logd_numtype(x) = float(real_numtype(typeof(x)))
+@inline _dynamic_logd(ℓ, x) = dynamic(ℓ)
+@inline _neg_inf_logd(x) = _logd_numtype(x)(-Inf)
 
-_checksupport(cond, result) = ifelse(cond == true, result, oftype(result, -Inf))
-@inline _checksupport(::NoFastInsupport, result) = result
+# Support checks as masks: `NoFastInsupport` means the density is evaluated
+# unconditionally.
+@inline _insupport_mask(ins) = ins == true
+@inline _insupport_mask(::NoFastInsupport) = true
+
+# Support checks as booleans, keeping `NoFastInsupport`:
+@inline _insupport_bool(ins) = ins == true
+@inline _insupport_bool(ins::NoFastInsupport) = ins
+
+# Combining support checks of components, `NoFastInsupport` is absorbing:
+@inline _insupport_and(a, b) = _insupport_bool(a) & _insupport_bool(b)
+@inline _insupport_and(a::NoFastInsupport, ::Any) = a
+@inline _insupport_and(::Any, b::NoFastInsupport) = b
+@inline _insupport_and(a::NoFastInsupport, ::NoFastInsupport) = a
+
+@inline _checksupport(cond, result) = ifelse(_insupport_mask(cond), result, oftype(result, -Inf))
 
 """
     MeasureBase.logdensityof_with_rest(μ::AbstractMeasure, x)
@@ -153,9 +170,7 @@ end
         # if b_{i} isa typeof(b_{i - 1})
         #     return ℓ_{i - 1}
         # end
-        ℓ_{i} = let Δℓ_{i} = logdensity_def(b_{i}, x)
-            ℓ_{i - 1} + Δℓ_{i}
-        end
+        ℓ_{i} = ℓ_{i - 1} + logdensity_def(b_{i}, x)
     end
     return ℓ_10
 end
@@ -168,55 +183,12 @@ whether `x` is in the support of `m1` or `m2` (or both, or neither). If `x` is
 known to be in the support of both, it can be more efficient to call
 `unsafe_logdensity_rel`. 
 """
-@inline function logdensity_rel(μ::M, ν::N, x::X) where {M,N,X}
-    inμ = insupport(μ, x)
-    inν = insupport(ν, x)
-    return _logdensity_rel_impl(μ, ν, x, inμ, inν)
-end
-
-@inline function _logdensity_rel_impl(μ::M, ν::N, x::X, inμ::Bool, inν::Bool) where {M,N,X}
-    T = unstatic(
-        promote_type(
-            return_type(logdensity_def, (μ, x)),
-            return_type(logdensity_def, (ν, x)),
-        ),
-    )
-    istrue(inμ) || return convert(T, ifelse(inν, -Inf, NaN))
-    istrue(inν) || return convert(T, Inf)
-
-    return unsafe_logdensity_rel(μ, ν, x)
-end
-
-@inline function _logdensity_rel_impl(
-    μ::M,
-    ν::N,
-    x::X,
-    @nospecialize(::NoFastInsupport),
-    @nospecialize(::NoFastInsupport)
-) where {M,N,X}
-    unsafe_logdensity_rel(μ, ν, x)
-end
-
-@inline function _logdensity_rel_impl(
-    μ::M,
-    ν::N,
-    x::X,
-    inμ::Bool,
-    @nospecialize(::NoFastInsupport)
-) where {M,N,X}
-    logd = unsafe_logdensity_rel(μ, ν, x)
-    return istrue(inμ) ? logd : oftype(logd, -Inf)
-end
-
-@inline function _logdensity_rel_impl(
-    μ::M,
-    ν::N,
-    x::X,
-    @nospecialize(::NoFastInsupport),
-    inν::Bool
-) where {M,N,X}
-    logd = unsafe_logdensity_rel(μ, ν, x)
-    return istrue(inν) ? logd : oftype(logd, +Inf)
+@inline function logdensity_rel(μ, ν, x)
+    inμ = _insupport_mask(insupport(μ, x))
+    inν = _insupport_mask(insupport(ν, x))
+    logd = _dynamic_logd(unsafe_logdensity_rel(μ, ν, x), x)
+    outside = ifelse(inμ, oftype(logd, +Inf), ifelse(inν, oftype(logd, -Inf), oftype(logd, NaN)))
+    return ifelse(inμ & inν, logd, outside)
 end
 
 """

@@ -9,9 +9,9 @@ measures satisfy the following laws:
 
     basemeasure(μ::PrimitiveMeasure) = μ
 
-    logdensity_def(μ::PrimitiveMeasure, x) = 0.0
+    logdensity_def(μ::PrimitiveMeasure, x) == 0
 
-    logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
+    logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} == 0
 """
 abstract type PrimitiveMeasure <: AbstractMeasure end
 
@@ -19,12 +19,11 @@ basemeasure(μ::PrimitiveMeasure) = μ
 
 @inline basemeasure_depth(::PrimitiveMeasure) = static(0)
 
-@inline logdensityof_impl(::PrimitiveMeasure, x::Number) = zero(float(typeof(x)))
-@inline logdensityof_impl(::PrimitiveMeasure, x) = static(0.0)
+@inline logdensityof_impl(::PrimitiveMeasure, x) = zero(_logd_numtype(x))
 
-logdensity_def(::PrimitiveMeasure, x) = static(0.0)
+logdensity_def(::PrimitiveMeasure, x) = zero(_logd_numtype(x))
 
-logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = 0.0
+logdensity_rel_def(μ::M, ν::M, x) where {M<:PrimitiveMeasure} = zero(_logd_numtype(x))
 
 function Pretty.quoteof(μ::M) where {M<:PrimitiveMeasure}
     :($M())

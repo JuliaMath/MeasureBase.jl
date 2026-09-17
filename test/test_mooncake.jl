@@ -10,7 +10,6 @@ using MeasureBase
 using MeasureBase: transport_to
 using MeasureBase: isneginf, isposinf, _adignore_call
 using MeasureBase: check_dof, require_insupport, _origin_depth
-using MeasureBase: logdensityof_rt
 
 _mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(
     Mooncake.prepare_gradient_cache(f, x), f, x
@@ -27,7 +26,6 @@ _mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(
         Mooncake.TestUtils.test_rule(rng, check_dof, StdNormal(), StdUniform(); is_primitive = true)
         Mooncake.TestUtils.test_rule(rng, require_insupport, StdNormal(), 0.5; is_primitive = true)
         Mooncake.TestUtils.test_rule(rng, _origin_depth, StdNormal(); is_primitive = true)
-        Mooncake.TestUtils.test_rule(rng, logdensityof_rt, StdNormal(), 0.5; is_primitive = true)
     end
 
     @testset "@_adignore is ignored" begin

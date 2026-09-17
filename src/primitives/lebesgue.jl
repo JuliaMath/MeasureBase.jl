@@ -15,9 +15,9 @@ insupport(::LebesgueBase, x) = true
 
 insupport(::LebesgueBase) = Returns(true)
 
-logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = -Inf
+logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = _neg_inf_logd(x)
 
-logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = Inf
+logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = -_neg_inf_logd(x)
 
 @inline getdof(::LebesgueBase) = static(1)
 
@@ -52,7 +52,7 @@ gentype(::Lebesgue) = Float64
 Lebesgue() = Lebesgue(ℝ)
 
 @inline mspace_elsize(μ::Lebesgue) = _valueset_elsize(μ.support)
-@inline mspace_flatsize(μ::Lebesgue) = _valueset_elsize(μ.support)
+@inline mspace_flatsize(μ::Lebesgue) = _valueset_flatsize(μ.support)
 
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 

@@ -95,7 +95,7 @@ struct DensityMeasure{F,B} <: AbstractMeasure
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
+    _insupport_mask(insupport(d.base, x)) & isfinite(logdensityof(getfield(d, :f), x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
@@ -226,18 +226,10 @@ density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
 function logdensityof_impl(μ::DensityMeasure, x::Any)
     integrand, μ_base = μ.f, μ.base
-
-    base_logval = logdensityof(μ_base, x)
-
-    T = typeof(base_logval)
-    U = logdensityof_rt(integrand, x)
-    R = promote_type(T, U)
-
-    # Don't evaluate base measure if integrand is zero or NaN
-    if isneginf(base_logval)
-        R(-Inf)
-    else
-        integrand_logval = logdensityof(integrand, x)
-        convert(R, integrand_logval + base_logval)::R
-    end
+    base_logval = dynamic(logdensityof(μ_base, x))
+    integrand_logval = dynamic(logdensityof(integrand, x))
+    logval = integrand_logval + base_logval
+    # Outside of the support of the base measure the integrand may be
+    # anything, including NaN:
+    ifelse(isneginf(base_logval), oftype(logval, -Inf), logval)
 end

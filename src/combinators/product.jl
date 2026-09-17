@@ -239,23 +239,15 @@ function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArra
 end
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
-    mar = marginals(d)
-    # We might get lucky and know statically that everything is inbounds
-    T = Core.Compiler.return_type(insupport, Tuple{eltype(mar),eltype(x)})
-    T <: True || all(zip(x, mar)) do (xj, mj)
-        insupport(mj, xj) == true
-    end
+    _all_insupport(broadcast(_insupport_bool ∘ insupport, marginals(d), x))
 end
 
 @inline function insupport(d::AbstractProductMeasure, x)
-    for (mj, xj) in zip(marginals(d), x)
-        insup = dynamic(insupport(mj, xj))
-        if insup isa NoFastInsupport || insup == false
-            return insup
-        end
-    end
-    return true
+    mapreduce(insupport, _insupport_and, marginals(d), x)
 end
+
+@inline _all_insupport(A::AbstractArray{<:NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()
+@inline _all_insupport(A::AbstractArray) = all(A)
 
 getdof(d::AbstractProductMeasure) = sum(getdof, marginals(d))
 fast_dof(d::AbstractProductMeasure) = sum(fast_dof, marginals(d))

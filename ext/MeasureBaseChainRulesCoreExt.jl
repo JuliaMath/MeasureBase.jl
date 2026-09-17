@@ -97,13 +97,4 @@ ChainRulesCore.rrule(::typeof(check_dof), ν, μ) = check_dof(ν, μ), _check_do
 _checked_arg_pullback(ΔΩ) = NoTangent(), NoTangent(), ΔΩ
 ChainRulesCore.rrule(::typeof(checked_arg), ν, x) = checked_arg(ν, x), _checked_arg_pullback
 
-# = return type inference ====================================================
-
-using MeasureBase: logdensityof_rt
-
-_logdensityof_rt_pullback(::Any) = (NoTangent(), NoTangent(), ZeroTangent())
-function ChainRulesCore.rrule(::typeof(logdensityof_rt), target, v)
-    logdensityof_rt(target, v), _logdensityof_rt_pullback
-end
-
 end # module MeasureBaseChainRulesCoreExt

@@ -28,10 +28,10 @@ function logdensityof_impl(μ::Dirac, x::Number)
     _checksupport(insupport(μ, x), zero(R))
 end
 
-logdensityof_impl(μ::Dirac, x) = _checksupport(insupport(μ, x), 0.0)
+logdensityof_impl(μ::Dirac, x) = _checksupport(insupport(μ, x), zero(_logd_numtype(x)))
 
 logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
-logdensity_def(::Dirac, x) = 0.0
+logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
 
 Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
 

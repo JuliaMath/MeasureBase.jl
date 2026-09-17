@@ -12,14 +12,18 @@ abstract type AbstractWeightedMeasure <: AbstractMeasure end
 # By default the weight for all measure is 1
 _logweight(::AbstractMeasure) = 0
 
-@inline function logdensity_def(d::AbstractWeightedMeasure, _)
-    d.logweight
-end
+@inline logdensity_def(d::AbstractWeightedMeasure, x) = _logweight_for(d.logweight, x)
+
+# Plain floating-point log-weights adopt the number type of the variate,
+# log-weights that carry more information (dual numbers, traced values)
+# promote as usual:
+@inline _logweight_for(w, x) = w
+@inline _logweight_for(w::Union{AbstractFloat,StaticFloat64}, x) = _logd_numtype(x)(dynamic(w))
 
 # The weight-shifted density of a support-safe base density is support-safe,
 # no explicit support check required:
 @inline function logdensityof_impl(d::AbstractWeightedMeasure, x)
-    d.logweight + logdensityof_impl(basemeasure(d), x)
+    _logweight_for(d.logweight, x) + logdensityof_impl(basemeasure(d), x)
 end
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}

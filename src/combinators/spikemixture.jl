@@ -23,23 +23,9 @@ end
 
 for func in [:logdensityof, :logdensity_def]
     @eval @inline function $func(μ::SpikeMixture, x)
-        # NOTE: We could instead write this as 
-        # R1 = typeof(log(one(μ.s))) 
-        # R2 = typeof(log(one(μ.w))) 
-
-        # which would rely on constant propagation insteadof type inference.
-        # We'll try this for now and come back to the question if we see
-        # problems.
-
-        R1 = Core.Compiler.return_type(log, Tuple{typeof(μ.s)})
-        R2 = Core.Compiler.return_type(log, Tuple{typeof(μ.w)})
-        R3 = Core.Compiler.return_type($func, Tuple{typeof(μ.m),typeof(x)})
-        R = promote_type(R1, R2, R3)
-        if iszero(x)
-            return convert(R, log(μ.s))::R
-        else
-            return convert(R, log(μ.w) + $func(μ.m, x))::R
-        end
+        ℓ_spike = dynamic(log(μ.s))
+        ℓ_parent = dynamic(log(μ.w)) + dynamic($func(μ.m, x))
+        ifelse(iszero(x), oftype(ℓ_parent, ℓ_spike), ℓ_parent)
     end
 end
 
@@ -53,4 +39,4 @@ end
 
 testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
 
-insupport(μ::SpikeMixture, x) = dynamic(insupport(μ.m, x)) || iszero(x)
+insupport(μ::SpikeMixture, x) = _insupport_mask(insupport(μ.m, x)) | iszero(x)

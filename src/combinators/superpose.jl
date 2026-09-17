@@ -65,37 +65,44 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end
 
-@inline _ulogexp(x) = exp(ULogarithmic, dynamic(x))
+# Masks components outside of their support with -Inf:
+@inline _masked_logd(ℓ, ins) = ifelse(_insupport_mask(ins), ℓ, oftype(ℓ, -Inf))
 
-function density_def(s::SuperpositionMeasure, x)
+# Branch-free logsumexp over the components, valid for infinite entries:
+@inline function _logsumexp_components(ℓs)
+    m = reduce(max, ℓs)
+    m_finite = ifelse(isfinite(m), m, zero(m))
+    m_finite + log(sum(map(ℓ -> exp(ℓ - m_finite), ℓs)))
+end
+
+# The density of a superposition relative to the superposition of the
+# component base measures, in log space: each component contributes its
+# own density, divided by the density of the superposed base measures
+# relative to its own base measure.
+function logdensity_def(s::SuperpositionMeasure, x)
     cs = values(s.components)
     αs = map(basemeasure, cs)
-    idxs = eachindex(cs)
-    sum(idxs) do i
-        dμᵢ_dαᵢ = _ulogexp(logdensity_def(cs[i], x))
-        istrue(insupport(cs[i], x)) || return zero(dμᵢ_dαᵢ)
-        dΣα_dαᵢ = sum(idxs) do j
-            dαⱼ_dαᵢ = _ulogexp(logdensity_rel(αs[j], αs[i], x))
-            istrue(insupport(cs[j], x)) ? dαⱼ_dαᵢ : zero(dαⱼ_dαᵢ)
-        end
-        dμᵢ_dαᵢ / dΣα_dαᵢ
+    terms = map(cs, αs) do cᵢ, αᵢ
+        ℓᵢ = _dynamic_logd(logdensity_def(cᵢ, x), x)
+        log_dΣα_dαᵢ = _logsumexp_components(map(cs, αs) do cⱼ, αⱼ
+            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupport(cⱼ, x))
+        end)
+        _masked_logd(ℓᵢ - log_dΣα_dαᵢ, insupport(cᵢ, x))
     end
+    _logsumexp_components(terms)
 end
 
 @inline function logdensity_rel_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
-    if μ === ν
-        return zero(return_type(logdensity_def, (μ, x)))
-    else
-        return logdensity_def(μ, x) - logdensity_def(ν, x)
-    end
+    ℓ = logdensity_def(μ, x) - logdensity_def(ν, x)
+    ifelse(μ === ν, zero(ℓ), ℓ)
 end
 
 function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
     cs = values(s.components)
     ds = map(cs) do μ
-        istrue(insupport(μ, x)) ? dynamic(logdensity_rel(μ, β, x)) : -Inf
+        _masked_logd(logdensity_rel(μ, β, x), insupport(μ, x))
     end
-    logsumexp(ds)
+    _logsumexp_components(ds)
 end
 
 @inline logdensity_rel_def(s::SuperpositionMeasure, β, x) = _superpos_logdensity_rel(s, β, x)
@@ -105,7 +112,7 @@ end
 
 @inline logdensity_rel_def(s, β::SuperpositionMeasure, x) = -_superpos_logdensity_rel(β, s, x)
 
-@inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
+@inline density_def(s::SuperpositionMeasure, x) = exp(logdensity_def(s, x))
 
 function basemeasure(μ::SuperpositionMeasure{<:Tuple})
     superpose(map(basemeasure, μ.components)...)
@@ -135,7 +142,5 @@ function Base.rand(rng::AbstractRNG, ::Type{T}, μ::SuperpositionMeasure) where 
 end
 
 @inline function insupport(d::SuperpositionMeasure, x)
-    any(d.components) do c
-        dynamic(insupport(c, x))
-    end
+    mapreduce(c -> _insupport_mask(insupport(c, x)), |, values(d.components))
 end

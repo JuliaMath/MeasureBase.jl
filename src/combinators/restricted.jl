@@ -10,7 +10,7 @@ end
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
-insupport(μ::RestrictedMeasure, x) = μ.predicate(x) && insupport(μ.base, x)
+insupport(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupport(μ.base, x))
 
 function Pretty.quoteof(d::RestrictedMeasure)
     qf = Pretty.quoteof(d.predicate)
