@@ -4,6 +4,9 @@ export Counting, CountingBase
 
 struct CountingBase <: PrimitiveMeasure end
 
+@inline mspace_elsize(::CountingBase) = ()
+@inline mspace_flatsize(::CountingBase) = ()
+
 insupport(::CountingBase, x) = true
 
 struct Counting{T} <: AbstractMeasure
@@ -24,6 +27,9 @@ end
 basemeasure(::Counting) = CountingBase()
 
 Counting() = Counting(ℤ)
+
+@inline mspace_elsize(μ::Counting) = _valueset_elsize(μ.support)
+@inline mspace_flatsize(μ::Counting) = _valueset_elsize(μ.support)
 
 testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 

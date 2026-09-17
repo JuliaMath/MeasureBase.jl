@@ -12,14 +12,45 @@ struct NoMSpaceElementSize{MU} end
     mspace_elsize(μ)
 
 For a measure `μ` over an array-valued measurable space, return the size of
-the arrays that are the elements of the space.
+the arrays that are the elements of the space, `()` for scalar variates.
 
-May return [`NoMSpaceElementSize{typeof(μ)}()`](@ref).
+The size is static where it is known statically. Returns
+[`NoMSpaceElementSize{typeof(μ)}()`](@ref) if the elements of the space
+are not arrays of one common size, e.g. for structured variates or variates
+whose size depends on the value, or if the size can not be determined
+efficiently.
+
+See also [`MeasureBase.mspace_flatsize`](@ref).
 """
 function mspace_elsize end
 export mspace_elsize
 
 @inline mspace_elsize(μ::AbstractMeasure) = NoMSpaceElementSize{typeof(μ)}()
+
+
+"""
+    MeasureBase.mspace_flatsize(μ)
+
+Return the size of the flat storage of a variate of `μ`, `()` for scalar
+variates.
+
+Variates of powers of measures with array-valued variates are nested
+arrays, their flat storage has the size of the inner arrays followed by
+the size of the power. Returns [`NoMSpaceElementSize{typeof(μ)}()`](@ref)
+if the variates of `μ` have no flat storage of a common size.
+
+See also [`mspace_elsize`](@ref).
+"""
+function mspace_flatsize end
+
+@inline mspace_flatsize(μ::AbstractMeasure) = NoMSpaceElementSize{typeof(μ)}()
+
+@inline _cat_sizes(a::SizeLike, b::SizeLike) = canonical_size((_size_dims(a)..., _size_dims(b)...))
+@inline _size_dims(sz::Tuple) = sz
+@inline _size_dims(::StaticArrays.Size{S}) where {S} = map(static, S)
+@inline _cat_sizes(a::NoMSpaceElementSize, ::SizeLike) = a
+@inline _cat_sizes(::SizeLike, b::NoMSpaceElementSize) = b
+@inline _cat_sizes(a::NoMSpaceElementSize, ::NoMSpaceElementSize) = a
 
 
 """
@@ -44,3 +75,11 @@ function some_mspace_elsize end
 @inline _mspace_some_elsize_impl(::AbstractMeasure, sz::SizeLike) = sz
 _mspace_some_elsize_impl(μ::AbstractMeasure, ::NoMSpaceElementSize) =
     maybestatic_size(testvalue(μ))
+
+@inline _value_elsize(::Number) = ()
+@inline _value_elsize(x::AbstractArray) = maybestatic_size(x)
+@inline _value_elsize(x) = NoMSpaceElementSize{typeof(x)}()
+
+@inline _value_flatsize(::Number) = ()
+@inline _value_flatsize(x::AbstractArray{<:Number}) = maybestatic_size(x)
+@inline _value_flatsize(x) = NoMSpaceElementSize{typeof(x)}()

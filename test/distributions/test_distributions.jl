@@ -14,6 +14,7 @@ using .MeasureBaseDistributionsExt:
 @testset "Distributions extension" begin
     include("test_autodiff_utils.jl")
     include("test_measure_interface.jl")
+    include("test_shape_contract.jl")
     include("test_distribution_measure.jl")
     include("test_standard_dist.jl")
     include("test_standard_uniform.jl")

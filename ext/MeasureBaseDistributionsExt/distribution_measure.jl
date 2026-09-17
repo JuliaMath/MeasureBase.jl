@@ -59,7 +59,12 @@ end
 
 @inline MeasureBase.massof(::DistributionMeasure) = static(1.0)
 
-@inline MeasureBase.mspace_elsize(m::DistributionMeasure{<:ArrayLikeVariate}) = size(m.obj)
+@inline MeasureBase.mspace_elsize(d::Distribution{Univariate}) = ()
+@inline MeasureBase.mspace_elsize(d::Distribution{<:ArrayLikeVariate}) = size(d)
+@inline MeasureBase.mspace_flatsize(d::Distribution{Univariate}) = ()
+@inline MeasureBase.mspace_flatsize(d::Distribution{<:ArrayLikeVariate}) = size(d)
+@inline MeasureBase.mspace_elsize(m::DistributionMeasure) = MeasureBase.mspace_elsize(m.obj)
+@inline MeasureBase.mspace_flatsize(m::DistributionMeasure) = MeasureBase.mspace_flatsize(m.obj)
 
 @inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = 1
 

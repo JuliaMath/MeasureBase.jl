@@ -54,3 +54,6 @@ function mreshape end
 
 mreshape(m::AbstractMeasure, sz::IntegerLike...) = mreshape(m, sz)
 mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, some_mspace_elsize(m)), m)
+
+@inline mspace_elsize(μ::PushforwardMeasure{<:Reshape}) = μ.f.output_size
+@inline mspace_flatsize(μ::PushforwardMeasure{<:Reshape}) = μ.f.output_size

@@ -4,6 +4,9 @@ struct Half{M} <: AbstractMeasure
     parent::M
 end
 
+@inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
+@inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
+
 function Base.show(io::IO, μ::Half)
     print(io, "Half")
     show(io, μ.parent)

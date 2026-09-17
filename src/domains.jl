@@ -424,3 +424,12 @@ function _combinesets_cat(
 end
 
 _combinesets_cat(f_c, α::SetLike, β::SetLike) = CombinedSet(f_c, α, β)
+
+
+# Element size of the arrays in array-valued sets, for mspace_elsize:
+@inline _valueset_elsize(::RealValues) = ()
+@inline _valueset_elsize(::IntegerValues) = ()
+@inline _valueset_elsize(::BoundedInts) = ()
+@inline _valueset_elsize(::IntervalSets.AbstractInterval) = ()
+@inline _valueset_elsize(s::CartesianPower) = _cat_sizes(_valueset_elsize(pwr_base(s)), pwr_size(s))
+@inline _valueset_elsize(s) = NoMSpaceElementSize{typeof(s)}()

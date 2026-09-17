@@ -4,6 +4,9 @@ export Lebesgue
 
 struct LebesgueBase <: PrimitiveMeasure end
 
+@inline mspace_elsize(::LebesgueBase) = ()
+@inline mspace_flatsize(::LebesgueBase) = ()
+
 massof(::LebesgueBase, s::Interval) = width(s)
 
 testvalue(::LebesgueBase) = 0.0
@@ -47,6 +50,9 @@ end
 gentype(::Lebesgue) = Float64
 
 Lebesgue() = Lebesgue(ℝ)
+
+@inline mspace_elsize(μ::Lebesgue) = _valueset_elsize(μ.support)
+@inline mspace_flatsize(μ::Lebesgue) = _valueset_elsize(μ.support)
 
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 

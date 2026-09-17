@@ -35,6 +35,9 @@ struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     base::M
 end
 
+@inline mspace_elsize(μ::WeightedMeasure) = mspace_elsize(μ.base)
+@inline mspace_flatsize(μ::WeightedMeasure) = mspace_flatsize(μ.base)
+
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
 _logweight(μ::WeightedMeasure) = μ.logweight

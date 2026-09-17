@@ -3,6 +3,9 @@ struct RestrictedMeasure{P,M} <: AbstractMeasure
     base::M
 end
 
+@inline mspace_elsize(μ::RestrictedMeasure) = mspace_elsize(μ.base)
+@inline mspace_flatsize(μ::RestrictedMeasure) = mspace_flatsize(μ.base)
+
 @inline logdensity_def(d::RestrictedMeasure, x) = logdensity_def(d.base, x)
 
 basemeasure(μ::RestrictedMeasure) = μ.base
