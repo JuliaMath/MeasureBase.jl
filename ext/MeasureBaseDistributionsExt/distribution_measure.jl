@@ -59,6 +59,8 @@ end
 
 @inline MeasureBase.massof(::DistributionMeasure) = static(1.0)
 
+@inline MeasureBase.mspace_elsize(d::Distribution) = MeasureBase.NoMSpaceElementSize{typeof(d)}()
+@inline MeasureBase.mspace_flatsize(d::Distribution) = MeasureBase.NoMSpaceElementSize{typeof(d)}()
 @inline MeasureBase.mspace_elsize(d::Distribution{Univariate}) = ()
 @inline MeasureBase.mspace_elsize(d::Distribution{<:ArrayLikeVariate}) = size(d)
 @inline MeasureBase.mspace_flatsize(d::Distribution{Univariate}) = ()

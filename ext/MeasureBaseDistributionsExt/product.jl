@@ -3,6 +3,10 @@
 @static if isdefined(Distributions, :Product)
     MeasureBase.AbstractMeasure(obj::Distributions.Product) = productmeasure(map(asmeasure, obj.v))
 
+    @inline function MeasureBase.preferred_stdmeasure(::Type{<:Distributions.Product{<:Any,T}}) where {T}
+        MeasureBase.preferred_stdmeasure(T)
+    end
+
     function AsMeasure{D}(::D) where {D<:Distributions.Product}
         throw(ArgumentError("Don't wrap Distributions.Product into MeasureBase.AsMeasure, use asmeasure to convert instead."))
     end
@@ -23,6 +27,10 @@ end
 
 @static if isdefined(Distributions, :ProductDistribution)
     MeasureBase.AbstractMeasure(obj::Distributions.ProductDistribution) = productmeasure(map(asmeasure, obj.dists))
+
+    @inline function MeasureBase.preferred_stdmeasure(::Type{<:Distributions.ProductDistribution{N,M,D}}) where {N,M,D<:AbstractArray}
+        MeasureBase.preferred_stdmeasure(eltype(D))
+    end
 
     function AsMeasure{D}(::D) where {D<:Distributions.ProductDistribution}
         throw(ArgumentError("Don't wrap Distributions.ProductDistribution into MeasureBase.AsMeasure, use asmeasure to convert instead."))

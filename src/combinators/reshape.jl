@@ -56,4 +56,15 @@ mreshape(m::AbstractMeasure, sz::IntegerLike...) = mreshape(m, sz)
 mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, some_mspace_elsize(m)), m)
 
 @inline mspace_elsize(μ::PushforwardMeasure{<:Reshape}) = μ.f.output_size
-@inline mspace_flatsize(μ::PushforwardMeasure{<:Reshape}) = μ.f.output_size
+# Reshaped variates have flat storage only if the reshaped elements are
+# numbers, the reshape of a nested variate has no flat form its density
+# kernel could consume:
+@inline function mspace_flatsize(μ::PushforwardMeasure{<:Reshape})
+    _reshaped_flatsize(mspace_flatsize(μ.origin), mspace_elsize(μ.origin), μ.f.output_size)
+end
+@inline function _reshaped_flatsize(sz_flat::SizeLike, sz_outer::SizeLike, sz_out)
+    _reshaped_flatsize(Val(length(_size_dims(sz_flat)) == length(_size_dims(sz_outer))), sz_out)
+end
+@inline _reshaped_flatsize(::Val{true}, sz_out) = sz_out
+@inline _reshaped_flatsize(::Val{false}, sz_out) = NoMSpaceElementSize{typeof(sz_out)}()
+@inline _reshaped_flatsize(::Any, ::Any, sz_out) = NoMSpaceElementSize{typeof(sz_out)}()

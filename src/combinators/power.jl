@@ -137,20 +137,21 @@ end
     static(0)
 end
 
+# Variates may be nested arrays of the power's shape or their flat storage:
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
     @boundscheck begin
-        sz_μ = pwr_size(μ)
-        sz_x = size(x)
-        if sz_μ != sz_x
-            throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        sz_x = maybestatic_size(x)
+        if sz_x != pwr_size(μ) && !_matches_flatsize(sz_x, mspace_flatsize(μ))
+            _throw_size_mismatch()
         end
     end
     return x
 end
 
-function checked_arg(μ::PowerMeasure, x::Any)
-    throw(ArgumentError("Size of variate doesn't match size of power measure"))
-end
+@inline _matches_flatsize(sz_x, sz_flat::SizeLike) = Tuple(sz_x) == Tuple(sz_flat)
+@inline _matches_flatsize(sz_x, ::NoMSpaceElementSize) = false
+
+checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 

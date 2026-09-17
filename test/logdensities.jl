@@ -60,9 +60,29 @@ stdnormal_ld(x) = -(x^2 + log2π) / 2
         @test logdensities(mix, X) ≈ logdensityof.(Ref(mix), X)
         @test logdensityof(mix^4, X[:, 1]) ≈ sum(logdensityof.(Ref(mix), X[:, 1]))
         @test logdensities(mix^4, sliced(X, 1)) ≈ vec(sum(logdensityof.(Ref(mix), X), dims = 1))
+        @test @inferred(logdensityof(mix^0, Float64[])) == 0
+        @test logdensities(mix^0, [Float64[], Float64[]]) == [0.0, 0.0]
+    end
+
+    @testset "flat and nested variate forms agree" begin
+        for (μ, x_flat) in (
+            ((StdNormal()^3)^2, randn(3, 2)),
+            ((StdNormal()^(2, 3))^4, randn(2, 3, 4)),
+        )
+            x_nested = sliced(x_flat, length(MeasureBase.mspace_flatsize(MeasureBase.pwr_base(μ))))
+            @test logdensityof(μ, x_flat) ≈ logdensityof(μ, x_nested)
+            @test MeasureBase.checked_arg(μ, x_flat) === x_flat
+            @test MeasureBase.checked_arg(μ, x_nested) === x_nested
+            @test_throws ArgumentError MeasureBase.checked_arg(μ, randn(7))
+        end
     end
 
     @testset "size mismatch" begin
+        @test_throws ArgumentError logdensityof(StdNormal()^3, randn(3, 4))
+        @test_throws ArgumentError logdensityof(StdNormal()^(2, 3), randn(2, 3, 1))
+        @test_throws ArgumentError logdensityof(StdNormal()^3, randn(4))
+        @test_throws ArgumentError logdensityof(StdNormal()^3, 1.0)
+        @test_throws ArgumentError logdensities(StdNormal(), VectorOfSimilarVectors(randn(3, 5)))
         @test_throws ArgumentError logdensities(StdNormal()^3, [randn(3), randn(2)])
         @test_throws ArgumentError logdensities(
             StdNormal()^3,

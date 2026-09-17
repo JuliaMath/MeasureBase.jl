@@ -53,7 +53,7 @@ to `StdNormal`.
 function promote_stdmeasure end
 
 @inline function promote_stdmeasure(::Type{A}, ::Type{B}) where {A<:StdMeasure,B<:StdMeasure}
-    ifelse(_stdmeasure_rank(A) >= _stdmeasure_rank(B), A, B)
+    _stdmeasure_rank(A) >= _stdmeasure_rank(B) ? A : B
 end
 
 @inline promote_stdmeasure(::Type{AnyStdMeasure}, ::Type{B}) where {B} = B
@@ -70,6 +70,7 @@ end
     promote_stdmeasure(promote_stdmeasure(A, B), Cs...)
 end
 
+@inline _stdmeasure_rank(::Type{<:StdMeasure}) = 0
 @inline _stdmeasure_rank(::Type{StdUniform}) = 1
 @inline _stdmeasure_rank(::Type{StdExponential}) = 2
 @inline _stdmeasure_rank(::Type{StdLogistic}) = 3

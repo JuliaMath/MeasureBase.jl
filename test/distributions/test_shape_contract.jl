@@ -31,4 +31,11 @@ using LinearAlgebra: I
     @test @inferred(preferred_stdmeasure(productmeasure((a = Dirac(1.0), b = asmeasure(Beta(2, 3)))))) === StdUniform
     @test @inferred(preferred_stdmeasure(productmeasure((a = asmeasure(Poisson(2)), b = asmeasure(Beta(2, 3)))))) <: NoStdTransport
     @test @inferred(preferred_stdmeasure(productmeasure([asmeasure(Normal(i, 1)) for i in 1:3]))) === StdNormal
+    @test @inferred(preferred_stdmeasure(product_distribution([Beta(2, 3), Beta(1, 1)]))) === StdUniform
+
+    lkj = asmeasure(LKJCholesky(3, 1.0))
+    @test @inferred(mspace_elsize(lkj)) isa MeasureBase.NoMSpaceElementSize
+    @test @inferred(mspace_flatsize(lkj)) isa MeasureBase.NoMSpaceElementSize
+    X_lkj = [rand(LKJCholesky(3, 1.0)) for _ in 1:3]
+    @test logdensities(lkj, X_lkj) ≈ logdensityof.(Ref(lkj), X_lkj)
 end

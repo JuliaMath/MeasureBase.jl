@@ -9,6 +9,13 @@ using MeasureBase: mreshape, productmeasure, weightedmeasure, pushfwd, mbind, re
 using IntervalSets: (..)
 using StaticArrays: SVector, Size
 using Static: static
+using MeasureBase: size2length
+using MeasureBase: setcartpower, ℝ, testvalue
+
+_flat_iter(x::Number) = (x,)
+_flat_iter(x::AbstractArray) = Iterators.flatten(map(_flat_iter, x))
+
+struct _CustomStd <: MeasureBase.StdMeasure end
 
 @testset "shape contract" begin
     @testset "mspace_elsize and mspace_flatsize" begin
@@ -39,6 +46,15 @@ using Static: static
         @test @inferred(mspace_elsize(restrict(x -> x > 0, StdNormal()))) === ()
         @test @inferred(mspace_elsize(mreshape(StdNormal()^6, (2, 3)))) == (2, 3)
         @test @inferred(mspace_flatsize(mreshape(StdNormal()^6, (2, 3)))) == (2, 3)
+        @test @inferred(mspace_elsize(mreshape((StdNormal()^2)^6, (2, 3)))) == (2, 3)
+        @test @inferred(mspace_flatsize(mreshape((StdNormal()^2)^6, (2, 3)))) isa NoMSpaceElementSize
+
+        s = setcartpower(setcartpower(ℝ, 2), 3)
+        @test @inferred(mspace_elsize(Lebesgue(s))) == (3,)
+        @test @inferred(mspace_flatsize(Lebesgue(s))) == (2, 3)
+        for μ in (StdNormal(), StdNormal()^3, (StdNormal()^2)^3, Dirac([1.0, 2.0]), Dirac(3.0))
+            @test size2length(mspace_flatsize(μ)) == length(vec(collect(Iterators.flatten(_flat_iter(testvalue(μ))))))
+        end
 
         @test @inferred(mspace_elsize(productmeasure((a = StdNormal(), b = StdUniform())))) isa NoMSpaceElementSize
         @test @inferred(mspace_flatsize(mbind(x -> StdNormal()^2, StdUniform()))) isa NoMSpaceElementSize
@@ -81,5 +97,8 @@ using Static: static
         @test @inferred(promote_stdmeasure(NoStdTransport{Int}, AnyStdMeasure)) === NoStdTransport{Int}
         @test @inferred(promote_stdmeasure(AnyStdMeasure, NoStdTransport{Int})) === NoStdTransport{Int}
         @test @inferred(promote_stdmeasure(StdUniform, StdExponential, AnyStdMeasure, StdLogistic)) === StdLogistic
+        @test @inferred(promote_stdmeasure(_CustomStd, StdUniform)) === StdUniform
+        @test @inferred(promote_stdmeasure(_CustomStd, AnyStdMeasure)) === _CustomStd
+        @test @inferred(preferred_stdmeasure(_CustomStd())) === _CustomStd
     end
 end

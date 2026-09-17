@@ -67,6 +67,17 @@ struct NoFlatStorage end
     _batched_ld_flat(f, μ, X, _flat_storage(X), sz_flat)
 end
 
+# Batches of scalar variates are arrays of numbers, nested arrays are not
+# reinterpreted as flat storage:
+@inline function _batched_ld_sized(f::F, μ, X::AbstractArray, sz_flat::Tuple{}) where {F}
+    _batched_ld_flat(f, μ, X, _flat_scalar_storage(X), sz_flat)
+end
+
+@inline _flat_scalar_storage(X::AbstractArray{<:Number}) = X
+function _flat_scalar_storage(::AbstractArray)
+    throw(ArgumentError("A batch of scalar variates must be an array of numbers"))
+end
+
 @inline function _batched_ld_sized(f::F, μ, X::AbstractArray, ::NoMSpaceElementSize) where {F}
     map(x -> _pointwise_ld(f, μ, x), X)
 end
@@ -98,6 +109,9 @@ end
 
 @inline function _powered_ld_flat(f::F, μ::PowerMeasure, x, x_flat::AbstractArray, sz_flat) where {F}
     ν, n_pwr = _pwr_unwrap(μ)
+    if ndims(x_flat) != length(sz_flat)
+        _throw_size_mismatch()
+    end
     _check_flatsize(x_flat, sz_flat)
     _sum_leading_dims(_batched_kernel(f, ν, x_flat), n_pwr)
 end
@@ -107,16 +121,19 @@ end
 # Sum of the point-level densities over the elements of the variate:
 @inline function _powered_ld_pointwise(f::F, μ::PowerMeasure, x::AbstractArray) where {F}
     if maybestatic_size(x) != pwr_size(μ)
-        throw(ArgumentError("Size of variate doesn't match size of power measure"))
+        _throw_size_mismatch()
     end
-    sum(Base.Fix1(_pointwise_ld_dyn, (f, pwr_base(μ))), x)
+    init = zero(float(real_numtype(typeof(x))))
+    sum(Base.Fix1(_pointwise_ld_dyn, (f, pwr_base(μ))), x; init = init)
 end
+
+@noinline _throw_size_mismatch() = throw(ArgumentError("Size of variate doesn't match size of measure"))
 
 function _powered_ld_pointwise(f::F, ::PowerMeasure, x) where {F}
     throw(ArgumentError("Variate of a power measure must be an array"))
 end
 
-@inline _pointwise_ld_dyn((f, μ), x) = dynamic(_pointwise_ld(f, μ, x))
+@inline _pointwise_ld_dyn((f, μ), x) = _dynamic_logd(_pointwise_ld(f, μ, x), x)
 
 @inline _pwr_unwrap(μ) = (μ, static(0))
 @inline function _pwr_unwrap(μ::PowerMeasure)
@@ -141,7 +158,7 @@ end
 @inline function _check_flatsize(A::AbstractArray, sz_flat::SizeLike)
     n = length(sz_flat)
     if ndims(A) < n || ntuple(i -> size(A, i), Val(n)) != Tuple(sz_flat)
-        throw(ArgumentError("Size of variate doesn't match size of measure"))
+        _throw_size_mismatch()
     end
     return nothing
 end
@@ -153,7 +170,7 @@ end
 
 # Powers of primitive measures have log-density zero relative to their base:
 @inline function _batched_kernel(::typeof(logdensity_def), ν::PrimitiveMeasure, A::AbstractArray)
-    FillArrays.Zeros{Float64}(size(A))
+    FillArrays.Zeros{_logd_numtype(A)}(size(A))
 end
 
 @inline _batched_ld_generic(f::F, ν, A::AbstractArray) where {F} = _batched_ld_byflatsize(f, ν, A, mspace_flatsize(ν))
@@ -163,8 +180,14 @@ end
 # Static results of point kernels are made dynamic, to keep reductions
 # over them type stable.
 @inline function _batched_ld_byflatsize(f::F, ν, A::AbstractArray, ::Tuple{}) where {F}
-    Broadcast.instantiate(Broadcast.broadcasted(dynamic ∘ Base.Fix1(f, ν), A))
+    Broadcast.instantiate(Broadcast.broadcasted(_DynamicLogd(f, ν), A))
 end
+
+struct _DynamicLogd{F,M} <: Function
+    f::F
+    ν::M
+end
+@inline (k::_DynamicLogd)(x) = _dynamic_logd(k.f(k.ν, x), x)
 
 # Array variates: map over the variate slices, or evaluate directly if `A`
 # is a single variate.
