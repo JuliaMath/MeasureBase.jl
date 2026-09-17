@@ -4,7 +4,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: logdensities, StdNormal, StdUniform
-using ArraysOfArrays: VectorOfSimilarVectors, nestedview, flatview
+using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using IrrationalConstants: log2π
 import JLArrays
 using JLArrays: JLArray
@@ -42,7 +42,7 @@ stdnormal_ld(x) = -(x^2 + log2π) / 2
 
         # Power structure may be stored flattened out within each point:
         mpp = (StdNormal()^(2, 3))^4
-        Xpp = nestedview(randn(2, 3, 4, 7), 3)
+        Xpp = sliced(randn(2, 3, 4, 7), 3)
         @test logdensities(mpp, Xpp) ≈ [sum(stdnormal_ld, x) for x in Xpp]
     end
 

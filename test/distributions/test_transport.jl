@@ -32,7 +32,7 @@ include("getjacobian.jl")
     end
 
     reshaped_rand(d::Distribution{Univariate}, n) = rand(d, n)
-    reshaped_rand(d::Distribution{Multivariate}, n) = nestedview(rand(d, n))
+    reshaped_rand(d::Distribution{Multivariate}, n) = sliced(rand(d, n))
 
     function test_dist_trafo_moments(trg, src)
         unshaped(x) = first(torv_and_back(x))
