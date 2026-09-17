@@ -7,11 +7,10 @@ using InverseFunctions, ChangesOfVariables
 using Distributions, ArraysOfArrays
 using ArraysOfArrays: sliced, flatview
 using StableRNGs
-using LogExpFunctions: logit
 import ForwardDiff, Zygote
 import PDMats
 
-using MeasureBase: transport_to, transport_def
+using MeasureBase: transport_to
 using MeasureBase: StdUniform, StdNormal, StdExponential, StdLogistic
 using .MeasureBaseDistributionsExt: _trafo_logcdf, _trafo_logccdf, _trafo_quantile, _trafo_cquantile
 
@@ -49,7 +48,7 @@ include("getjacobian.jl")
 
     @testset "transforms-tests" begin
         stduvuni = StandardDist{Uniform}()
-        stduvnorm = StandardDist{Uniform}()
+        stduvnorm = StandardDist{Normal}()
 
         uniform1 = Uniform(-5.0, -0.01)
         uniform2 = Uniform(0.01, 5.0)

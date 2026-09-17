@@ -21,8 +21,9 @@ transport_to(StdNormal, μ)
 transport_to(ν, StdNormal)
 ```
 
-An instance of the standard measure itself or a power of it (depending on
-[`getdof(μ)`](@ref) resp. `ν`) is chosen as the transport partner then.
+The transport partner is then an instance of the standard measure for
+measures with scalar variates, and a power of it with as many elements as
+the measure has degrees of freedom otherwise.
 
 # Extended help
 
@@ -143,7 +144,10 @@ end
 @inline function _transport_pivot(ν, μ)
     _concrete_pivot(promote_stdmeasure(preferred_stdmeasure(ν), preferred_stdmeasure(μ)), ν, μ)
 end
-@inline _concrete_pivot(::Type{S}, ν, μ) where {S<:StdMeasure} = S
+@inline function _concrete_pivot(::Type{S}, ν, μ) where {S<:StdMeasure}
+    isconcretetype(S) || _throw_abstract_std(S)
+    return S
+end
 @inline _concrete_pivot(::Type{AnyStdMeasure}, ν, μ) = StdUniform
 function _concrete_pivot(::Type{<:NoStdTransport{MU}}, ν, μ) where {MU}
     throw(ArgumentError("No transport between measures of type $(nameof(typeof(ν))) and $(nameof(typeof(μ))), measures of type $(nameof(MU)) have no transport via standard measures"))
@@ -178,6 +182,9 @@ end
 function _to_std_via(::Type{S}, ::Type{S}, μ, x) where {S<:StdMeasure}
     throw(ArgumentError("Transport to $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
 end
+function _to_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, x) where {S<:StdMeasure}
+    throw(ArgumentError("Transport to standard measures is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
 function _to_std_via(::Type{S}, ::Type, μ, x) where {S<:StdMeasure}
     throw(ArgumentError("Measures of type $(nameof(typeof(μ))) have no transport via standard measures"))
 end
@@ -201,6 +208,9 @@ end
 function _from_std_via(::Type{S}, ::Type{S}, μ, z) where {S<:StdMeasure}
     throw(ArgumentError("Transport from $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
 end
+function _from_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, z) where {S<:StdMeasure}
+    throw(ArgumentError("Transport from standard measures is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
 function _from_std_via(::Type{S}, ::Type, μ, z) where {S<:StdMeasure}
     throw(ArgumentError("Measures of type $(nameof(typeof(μ))) have no transport via standard measures"))
 end
@@ -216,6 +226,13 @@ Returns a tuple `(z, x_μ, x_rest)` of the flat vector `z` of standard
 variates, the variate `x_μ` of `μ` consumed from the stream and the
 unconsumed rest of the stream. See
 [`MeasureBase.logdensityof_with_rest`](@ref) for the stream conventions.
+
+The default implementation consumes a variate of the size given by
+[`MeasureBase.mspace_flatsize`](@ref) or
+[`MeasureBase.some_mspace_elsize`](@ref). Measure types whose variates are
+composed of the variates of other measures implement
+`transport_to_std_with_rest` instead of
+[`MeasureBase.transport_to_std`](@ref).
 """
 function transport_to_std_with_rest end
 

@@ -337,8 +337,16 @@ function transport_to_std(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, x:
     transport_to_std(S, productmeasure(values(marginals(μ))), values(x))
 end
 
-function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray}, x::AbstractArray) where {S<:StdMeasure}
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {S<:StdMeasure,M}
+    _array_product_to_std(S, μ, x, Val(isconcretetype(M)))
+end
+function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{true}) where {S}
     _flat_std_of(broadcast(_ToStd{S}(), marginals(μ), x))
+end
+# Marginals of mixed types may have standard variates of mixed shapes:
+function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{false}) where {S}
+    zs = [_as_stdstream(transport_to_std(S, m, xi)) for (m, xi) in zip(marginals(μ), x)]
+    isempty(zs) ? SVector{0,Bool}() : reduce(vcat, zs)
 end
 
 function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, z::AbstractVector) where {S<:StdMeasure}

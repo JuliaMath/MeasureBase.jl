@@ -14,8 +14,16 @@ StdMeasure(::typeof(randn)) = StdNormal()
 
 @inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
 
-@inline transport_to_std(::Type{S}, ::S, x) where {S<:StdMeasure} = x
-@inline transport_from_std(::Type{S}, ::S, z) where {S<:StdMeasure} = z
+@inline transport_to_std(::Type{S}, ::S, x) where {S<:StdMeasure} = _std_identity(S, x)
+@inline transport_from_std(::Type{S}, ::S, z) where {S<:StdMeasure} = _std_identity(S, z)
+
+# Only concrete standard measure types identify a transport partner:
+@inline function _std_identity(::Type{S}, x) where {S<:StdMeasure}
+    isconcretetype(S) || _throw_abstract_std(S)
+    return x
+end
+@noinline _throw_abstract_std(::Type{S}) where {S} =
+    throw(ArgumentError("$(S) is not a concrete standard measure type"))
 
 
 """
@@ -56,7 +64,9 @@ function preferred_stdmeasure end
 @inline preferred_stdmeasure(μ) = preferred_stdmeasure(typeof(μ))
 @inline preferred_stdmeasure(::Type{MU}) where {MU} = NoStdTransport{MU}
 
-@inline preferred_stdmeasure(::Type{MU}) where {MU<:StdMeasure} = MU
+@inline function preferred_stdmeasure(::Type{MU}) where {MU<:StdMeasure}
+    isconcretetype(MU) ? MU : NoStdTransport{MU}
+end
 
 """
     MeasureBase.promote_stdmeasure(A::Type, B::Type)::Type

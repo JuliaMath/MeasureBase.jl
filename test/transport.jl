@@ -130,6 +130,25 @@ using JLArrays
         @test transport_to(StdUniform(), μ)(0.0) ≈ 0
     end
 
+    @testset "array products of mixed standard measures" begin
+        src = productmeasure([StdNormal(), StdExponential()])
+        trg = productmeasure([StdUniform(), StdLogistic()])
+        @test MeasureBase.preferred_stdmeasure(src) === StdNormal
+        f = transport_to(trg, src)
+        x = [0.5, 1.0]
+        y = f(x)
+        @test y ≈ [transport_to(StdUniform(), StdNormal())(0.5), transport_to(StdLogistic(), StdExponential())(1.0)]
+        @test inverse(f)(y) ≈ x
+        @test_throws ArgumentError transport_to_std(MeasureBase.StdMeasure, StdNormal(), 0.5)
+
+        pm = productmeasure(AbstractMeasure[StdNormal(), StdNormal()^2, Dirac(1.0)])
+        xm = [0.5, [0.1, 0.2], 1.0]
+        z = transport_to(StdUniform()^3, pm)(xm)
+        @test z isa AbstractVector{<:Real} && length(z) == 3
+        xm_reco = transport_to(pm, StdUniform()^3)(z)
+        @test xm_reco[1] ≈ xm[1] && xm_reco[2] ≈ xm[2] && xm_reco[3] == 1.0
+    end
+
     @testset "measures without standard transport" begin
         μ = restrict(x -> x > 0, StdNormal())
         @test_throws ArgumentError transport_to(StdUniform(), μ)(0.5)

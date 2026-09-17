@@ -41,8 +41,8 @@ for (A, B) in [
 ]
     @eval begin
         @inline MeasureBase.preferred_stdmeasure(::Type{<:StandardDist{$A}}) = $B
-        @inline MeasureBase.transport_to_std(::Type{$B}, ::StandardDist{$A,0}, x) = x
-        @inline MeasureBase.transport_from_std(::Type{$B}, ::StandardDist{$A,0}, z) = z
+        @inline MeasureBase.transport_to_std(::Type{$B}, ::StandardDist{$A,0}, x::Number) = x
+        @inline MeasureBase.transport_from_std(::Type{$B}, ::StandardDist{$A,0}, z::Number) = z
         @inline MeasureBase.transport_to_std(::Type{$B}, ::StandardDist{$A}, x::AbstractArray) = vec(x)
         @inline MeasureBase.transport_from_std(::Type{$B}, d::StandardDist{$A}, z::AbstractVector) = reshape(z, size(d))
 
