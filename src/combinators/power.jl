@@ -100,22 +100,11 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-# Power structure is unwrapped into the power axes arguments of the batched
-# density machinery (see density-batched.jl), which fuses evaluation over
-# flat variate storage:
+# Densities of powers are evaluated by the batched density machinery over
+# the flat variate storage (see density-batched.jl):
 
-for head in [:logdensityof_impl, :logdensity_def]
-    @eval @inline function $head(d::PowerMeasure, x)
-        _powered_ld($head, pwr_base(d), x, pwr_axes(d))
-    end
-
-    @eval @inline function $head(
-        ::PowerMeasure{<:Any,<:Tuple{Vararg{StaticOneToLike{0}}}},
-        x,
-    )
-        static(0.0)
-    end
-end
+@inline logdensityof_impl(μ::PowerMeasure, x) = _powered_ld(logdensityof_impl, μ, x)
+@inline logdensity_def(μ::PowerMeasure, x) = _powered_ld(logdensity_def, μ, x)
 
 @inline function insupport(μ::PowerMeasure, x)
     p = μ.parent
@@ -165,13 +154,4 @@ end
 
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
-logdensity_def(::PowerMeasure{P}, x) where {P<:PrimitiveMeasure} = static(0.0)
-
-# Disambiguation with the static-zero-size power density method:
-function logdensity_def(
-    ::PowerMeasure{P,<:Tuple{Vararg{StaticOneToLike{0}}}},
-    ::Any,
-) where {P<:PrimitiveMeasure}
-    static(0.0)
-end
 

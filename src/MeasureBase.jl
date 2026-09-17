@@ -62,7 +62,8 @@ using HeterogeneousComputing: real_numtype
 
 using ArraysOfArrays:
     ArrayOfSimilarArrays, VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays,
-    VectorOfSimilarVectors, flatview
+    VectorOfSimilarVectors, flatview, fused, stacked, sliced, getsplitmode,
+    is_memordered_splitmode, AbstractSplitMode, UnknownSplitMode, NonSplitMode
 
 using OneTwoMany: firstarg, secondarg
 
