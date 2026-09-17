@@ -45,6 +45,7 @@ insupport(d::Dirac, x) = x == d.x
 
 @inline mspace_elsize(μ::Dirac) = _value_elsize(μ.x)
 @inline mspace_flatsize(μ::Dirac) = _value_flatsize(μ.x)
+@inline mspace_flatsize(::Type{<:Dirac{<:Number}}) = ()
 
 @propagate_inbounds function checked_arg(μ::Dirac, x)
     @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))

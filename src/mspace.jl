@@ -83,3 +83,20 @@ _mspace_some_elsize_impl(μ::AbstractMeasure, ::NoMSpaceElementSize) =
 @inline _value_flatsize(::Number) = ()
 @inline _value_flatsize(x::AbstractArray{<:Number}) = maybestatic_size(x)
 @inline _value_flatsize(x) = NoMSpaceElementSize{typeof(x)}()
+
+@inline _scalar_or_unknown(::Tuple{}) = ()
+@inline _scalar_or_unknown(sz::NoMSpaceElementSize) = sz
+@inline _scalar_or_unknown(sz) = NoMSpaceElementSize{typeof(sz)}()
+
+
+"""
+    MeasureBase.mspace_flatsize(::Type{MU})
+
+The flat variate size of measures of type `MU`, if it is determined by the
+type alone, e.g. `()` for measures with scalar variates. Returns
+`NoMSpaceElementSize{MU}()` otherwise.
+
+Composite measures use it to determine the flat size of their variates
+without inspecting each component.
+"""
+@inline mspace_flatsize(::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()

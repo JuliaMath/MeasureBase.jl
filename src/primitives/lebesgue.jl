@@ -6,6 +6,7 @@ struct LebesgueBase <: PrimitiveMeasure end
 
 @inline mspace_elsize(::LebesgueBase) = ()
 @inline mspace_flatsize(::LebesgueBase) = ()
+@inline mspace_flatsize(::Type{LebesgueBase}) = ()
 
 massof(::LebesgueBase, s::Interval) = width(s)
 
@@ -53,6 +54,8 @@ Lebesgue() = Lebesgue(ℝ)
 
 @inline mspace_elsize(μ::Lebesgue) = _valueset_elsize(μ.support)
 @inline mspace_flatsize(μ::Lebesgue) = _valueset_flatsize(μ.support)
+@inline mspace_flatsize(::Type{<:Lebesgue{RealValues}}) = ()
+@inline mspace_flatsize(::Type{<:Lebesgue{<:IntervalSets.AbstractInterval}}) = ()
 
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 

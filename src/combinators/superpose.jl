@@ -144,3 +144,14 @@ end
 @inline function insupport(d::SuperpositionMeasure, x)
     mapreduce(c -> _insupport_mask(insupport(c, x)), |, values(d.components))
 end
+
+
+@inline mspace_flatsize(μ::SuperpositionMeasure) = mspace_flatsize(typeof(μ))
+@inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
+@inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple} = _common_scalar_flatsize(C)
+@generated function _common_scalar_flatsize(::Type{C}) where {C<:Tuple}
+    args = [:(mspace_flatsize($T)) for T in C.parameters]
+    :(_all_scalar_sizes($(args...)))
+end
+@inline _all_scalar_sizes(::Tuple{}...) = ()
+@inline _all_scalar_sizes(szs...) = NoMSpaceElementSize{typeof(szs)}()

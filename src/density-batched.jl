@@ -78,9 +78,14 @@ function _flat_scalar_storage(::AbstractArray)
     throw(ArgumentError("A batch of scalar variates must be an array of numbers"))
 end
 
+# Measures of unknown variate size take `X` as an array of points:
 @inline function _batched_ld_sized(f::F, μ, X::AbstractArray, ::NoMSpaceElementSize) where {F}
-    map(x -> _pointwise_ld(f, μ, x), X)
+    _batched_kernel(f, μ, X)
 end
+@inline function _batched_ld_sized(f::F, μ::PowerMeasure, X::AbstractArray, ::NoMSpaceElementSize) where {F}
+    Broadcast.instantiate(Broadcast.broadcasted(_DynamicLogd(_pointwise_ld_fixed(f), μ), X))
+end
+@inline _pointwise_ld_fixed(f::F) where {F} = (μ, x) -> _pointwise_ld(f, μ, x)
 
 @inline function _batched_ld_flat(f::F, μ, X, X_flat::AbstractArray, sz_flat) where {F}
     ν, n_pwr = _pwr_unwrap(μ)
@@ -118,19 +123,20 @@ end
 
 @inline _powered_ld_flat(f::F, μ::PowerMeasure, x, ::NoFlatStorage, sz_flat) where {F} = _powered_ld_pointwise(f, μ, x)
 
-# Sum of the point-level densities over the elements of the variate:
+# Sum of the point-level densities of the base measure over the elements
+# of the variate, evaluated via the batched kernel of the base measure:
 @inline function _powered_ld_pointwise(f::F, μ::PowerMeasure, x::AbstractArray) where {F}
     if maybestatic_size(x) != pwr_size(μ)
         _throw_size_mismatch()
     end
-    init = zero(float(real_numtype(typeof(x))))
-    sum(Base.Fix1(_pointwise_ld_dyn, (f, pwr_base(μ))), x; init = init)
+    ν = pwr_base(μ)
+    _sum_leading_dims(_batched_ld_sized(f, ν, x, mspace_flatsize(ν)), static(ndims(x)))
 end
 
 @noinline _throw_size_mismatch() = throw(ArgumentError("Size of variate doesn't match size of measure"))
 
-function _powered_ld_pointwise(f::F, ::PowerMeasure, x) where {F}
-    throw(ArgumentError("Variate of a power measure must be an array"))
+function _powered_ld_pointwise(f::F, μ::PowerMeasure, x) where {F}
+    throw(ArgumentError("Variates of powers of measures must be arrays, and flat variate storage requires a base measure of known variate size"))
 end
 
 @inline _pointwise_ld_dyn((f, μ), x) = _dynamic_logd(_pointwise_ld(f, μ, x), x)
@@ -197,7 +203,7 @@ end
 
 # Variates of unknown size: the elements of `A` are the variates.
 @inline function _batched_ld_byflatsize(f::F, ν, A::AbstractArray, ::NoMSpaceElementSize) where {F}
-    map(Base.Fix1(f, ν), A)
+    Broadcast.instantiate(Broadcast.broadcasted(_DynamicLogd(f, ν), A))
 end
 
 @inline _batched_ld_slices(f::F, ν, A::AbstractArray{<:Any,N}, ::Val{N}) where {F,N} = f(ν, A)

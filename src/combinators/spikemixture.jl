@@ -40,3 +40,7 @@ end
 testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
 
 insupport(μ::SpikeMixture, x) = _insupport_mask(insupport(μ.m, x)) | iszero(x)
+
+
+@inline mspace_flatsize(μ::SpikeMixture) = _scalar_or_unknown(mspace_flatsize(μ.m))
+@inline mspace_flatsize(::Type{<:SpikeMixture{M}}) where {M} = _scalar_or_unknown(mspace_flatsize(M))

@@ -5,6 +5,7 @@ end
 
 @inline mspace_elsize(μ::RestrictedMeasure) = mspace_elsize(μ.base)
 @inline mspace_flatsize(μ::RestrictedMeasure) = mspace_flatsize(μ.base)
+@inline mspace_flatsize(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
 
 @inline logdensity_def(d::RestrictedMeasure, x) = logdensity_def(d.base, x)
 

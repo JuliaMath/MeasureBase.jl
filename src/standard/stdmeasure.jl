@@ -13,6 +13,7 @@ const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,OneToLike}}
 
 @inline mspace_elsize(::StdMeasure) = ()
 @inline mspace_flatsize(::StdMeasure) = ()
+@inline mspace_flatsize(::Type{<:StdMeasure}) = ()
 
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 

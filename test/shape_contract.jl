@@ -66,8 +66,10 @@ struct _CustomStd <: MeasureBase.StdMeasure end
             @test @inferred(preferred_stdmeasure(S()^3)) === S
             @test @inferred(preferred_stdmeasure(weightedmeasure(0.1, S()))) === S
             @test @inferred(preferred_stdmeasure(pushfwd(exp, S()))) === S
-            @test @inferred(preferred_stdmeasure(restrict(x -> x > 0, S()))) === S
         end
+        # Transports of the base measure don't transport restricted measures:
+        @test @inferred(preferred_stdmeasure(restrict(x -> x > 0, StdNormal()))) <: NoStdTransport
+        @test @inferred(preferred_stdmeasure(MeasureBase.Half(StdNormal()))) <: NoStdTransport
 
         @test @inferred(preferred_stdmeasure(Dirac(2.0))) === AnyStdMeasure
         @test @inferred(preferred_stdmeasure(Lebesgue())) <: NoStdTransport

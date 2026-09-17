@@ -6,7 +6,8 @@ end
 
 @inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
 @inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
-@inline preferred_stdmeasure(::Type{<:Half{M}}) where {M} = preferred_stdmeasure(M)
+@inline mspace_flatsize(::Type{<:Half{M}}) where {M} = mspace_flatsize(M)
+@inline preferred_stdmeasure(::Type{MU}) where {MU<:Half} = NoStdTransport{MU}
 
 function Base.show(io::IO, μ::Half)
     print(io, "Half")

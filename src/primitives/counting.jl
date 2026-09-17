@@ -6,6 +6,7 @@ struct CountingBase <: PrimitiveMeasure end
 
 @inline mspace_elsize(::CountingBase) = ()
 @inline mspace_flatsize(::CountingBase) = ()
+@inline mspace_flatsize(::Type{CountingBase}) = ()
 
 insupport(::CountingBase, x) = true
 
@@ -30,6 +31,8 @@ Counting() = Counting(ℤ)
 
 @inline mspace_elsize(μ::Counting) = _valueset_elsize(μ.support)
 @inline mspace_flatsize(μ::Counting) = _valueset_flatsize(μ.support)
+@inline mspace_flatsize(::Type{<:Counting{IntegerValues}}) = ()
+@inline mspace_flatsize(::Type{<:Counting{<:BoundedInts}}) = ()
 
 testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 

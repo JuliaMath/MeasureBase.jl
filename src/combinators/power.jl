@@ -106,24 +106,28 @@ end
 @inline logdensityof_impl(μ::PowerMeasure, x) = _powered_ld(logdensityof_impl, μ, x)
 @inline logdensity_def(μ::PowerMeasure, x) = _powered_ld(logdensity_def, μ, x)
 
-@inline function insupport(μ::PowerMeasure, x)
-    p = μ.parent
-    all(x) do xj
-        # https://github.com/SciML/Static.jl/issues/36
-        dynamic(insupport(p, xj))
-    end
+# Support checks of powers run over the flat variate storage where the base
+# measure has scalar variates, elementwise otherwise:
+@inline function insupport(μ::PowerMeasure, x::AbstractArray)
+    _powered_insupport(μ, x, _flat_storage(x), mspace_flatsize(μ))
 end
 
-_all(A) = all(A)
-_all(::AbstractArray{NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()
+@inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::SizeLike)
+    ν, _ = _pwr_unwrap(μ)
+    _powered_insupport_flat(ν, x_flat, mspace_flatsize(ν))
+end
+@inline function _powered_insupport_flat(ν, x_flat::AbstractArray, ::Tuple{})
+    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x_flat))
+end
+@inline _powered_insupport_flat(ν, x_flat::AbstractArray, ::Any) = _powered_insupport_elementwise(ν, x_flat)
+@inline _powered_insupport(μ::PowerMeasure, x, ::Any, ::Any) = _powered_insupport_elementwise(pwr_base(μ), x)
 
-@inline function insupport(μ::PowerMeasure, x::AbstractArray)
-    p = μ.parent
-    insupp = broadcast(x) do xj
-        # https://github.com/SciML/Static.jl/issues/36
-        dynamic(insupport(p, xj))
-    end
-    _all(insupp)
+@inline function _powered_insupport_elementwise(ν, x::AbstractArray)
+    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x))
+end
+
+function insupport(μ::PowerMeasure, x)
+    mapreduce(_insupport_bool ∘ Base.Fix1(insupport, pwr_base(μ)), _insupport_and, x)
 end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * size2length(axes2size(μ.axes))

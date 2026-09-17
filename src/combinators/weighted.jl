@@ -41,6 +41,7 @@ end
 
 @inline mspace_elsize(μ::WeightedMeasure) = mspace_elsize(μ.base)
 @inline mspace_flatsize(μ::WeightedMeasure) = mspace_flatsize(μ.base)
+@inline mspace_flatsize(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
 
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
