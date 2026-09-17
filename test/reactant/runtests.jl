@@ -10,6 +10,7 @@ using Reactant
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
+using MeasureBase: mcombine
 using ArraysOfArrays: VectorOfSimilarVectors, sliced
 using Distributions: Normal, Exponential, Uniform, Beta
 
@@ -65,6 +66,26 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensities(dm, x), x)
         sm = SpikeMixture(StdNormal(), 0.2)
         test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
+    end
+
+    # Products over arrays of marginals are not covered: Reactant can't
+    # broadcast over arrays of measures together with traced arrays.
+    @testset "structural batched kernels" begin
+        w = weightedmeasure(log(0.3), StdNormal()^3)
+        test_traced(X -> logdensities(w, X), X)
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(X -> logdensities(mc, X), vcat(X[1:2, :], rand(1, 20)))
+        test_traced(X -> logdensities((StdNormal()^2)^3, X), reshape(X[1:2, 1:6], 2, 3, 2))
+    end
+
+    @testset "transport of powers and products" begin
+        test_traced(x -> transport_to(StdNormal()^10, StdUniform()^10)(x), rand(10))
+        test_traced(x -> transport_to(StdExponential()^10, StdNormal()^10)(x), x)
+        test_traced(x -> transport_to(StdLogistic()^10, StdExponential()^10)(x), rand(10))
+        test_traced(x -> transport_to(StdNormal()^6, (StdUniform()^2)^3)(x), rand(2, 3))
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(x -> transport_to(StdNormal()^3, mc)(x), vcat(randn(2), rand(1)))
+        test_traced(z -> transport_to(mc, StdNormal()^3)(z), randn(3))
     end
 
     @testset "transport" begin

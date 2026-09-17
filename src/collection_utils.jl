@@ -109,6 +109,9 @@ function _consume_from_stream(x::AbstractVector, sz::Tuple{Vararg{IntegerLike}})
     return maybestatic_reshape(a_flat, sz), x_rest
 end
 
+Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::StaticArrays.Size) =
+    _consume_from_stream(x, _size_dims(sz))
+
 function _consume_from_stream(x::AbstractVector, @nospecialize(sz))
     throw(ArgumentError("Can't consume a variate of size $sz from a flat vector stream"))
 end

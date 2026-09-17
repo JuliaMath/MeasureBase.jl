@@ -79,6 +79,12 @@ marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
 @inline mspace_elsize(μ::PowerMeasure) = pwr_size(μ)
 @inline mspace_flatsize(μ::PowerMeasure) = _cat_sizes(mspace_flatsize(pwr_base(μ)), pwr_size(μ))
+@inline function mspace_flatsize(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple{Vararg{StaticOneToLike}}}
+    _cat_sizes(mspace_flatsize(M), _static_axes_size(A))
+end
+@generated function _static_axes_size(::Type{A}) where {A<:Tuple{Vararg{StaticOneToLike}}}
+    :(StaticArrays.Size($(map(T -> T.parameters[1], A.parameters)...)))
+end
 
 function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) where {N}
     powermeasure(μ, dims)

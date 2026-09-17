@@ -84,8 +84,9 @@ end
     _mcombine_product_shortcut(f_c, marginals(α), marginals(β), α, β)
 end
 
-_mcombine_product_shortcut(::typeof(vcat), ma::AbstractVector{T}, mb::AbstractVector{T}, α, β) where {T} =
-    productmeasure(vcat(ma, mb))
+function _mcombine_product_shortcut(::typeof(vcat), ma::AbstractVector{T}, mb::AbstractVector{T}, α, β) where {T}
+    isconcretetype(T) ? productmeasure(vcat(ma, mb)) : _generic_mcombine_impl_stage2(vcat, α, β)
+end
 _mcombine_product_shortcut(::typeof(merge), ma::NamedTuple, mb::NamedTuple, α, β) =
     productmeasure(merge(ma, mb))
 _mcombine_product_shortcut(f_c, ma, mb, α, β) = _generic_mcombine_impl_stage2(f_c, α, β)
@@ -129,9 +130,9 @@ end
     _vcat_flatsize(mspace_flatsize(μ.α), mspace_flatsize(μ.β))
 end
 
-@inline _vcat_flatsize(a::SizeLike, b::SizeLike) = (size2length(a) + size2length(b),)
-@inline _vcat_flatsize(a::NoMSpaceElementSize, ::Any) = a
-@inline _vcat_flatsize(::Any, b::NoMSpaceElementSize) = b
+@inline _vcat_flatsize(a::SizeLike, b::SizeLike) = canonical_size((size2length(a) + size2length(b),))
+@inline _vcat_flatsize(a::NoMSpaceElementSize, ::SizeLike) = a
+@inline _vcat_flatsize(::SizeLike, b::NoMSpaceElementSize) = b
 @inline _vcat_flatsize(a::NoMSpaceElementSize, ::NoMSpaceElementSize) = a
 
 @inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
@@ -198,7 +199,7 @@ function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, A::Ab
     ℓ_b, _, A_rest = batched_logdensityof_with_rest(μ.β, A2)
     n_μ = size(A, 1) - size(A_rest, 1)
     A_μ = view(A, 1:n_μ, Base.tail(axes(A))...)
-    return ℓ_a .+ ℓ_b, A_μ, A_rest
+    return _lazy_add(ℓ_a, ℓ_b), A_μ, A_rest
 end
 
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)

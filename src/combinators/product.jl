@@ -74,9 +74,29 @@ end
 
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     @eval @inline function $head(d::AbstractProductMeasure, x)
+        _check_marginal_count(marginals(d), x)
         mapreduce($func, +, marginals(d), x)
     end
 end
+
+# Variates of products are collections of marginal variates, with the same
+# structure as the marginals:
+@inline function _check_marginal_count(mar::AbstractArray, x::AbstractArray)
+    size(mar) == size(x) || _throw_marginal_mismatch()
+    return nothing
+end
+@inline _check_marginal_count(::AbstractArray, x) = _throw_marginal_mismatch()
+# Tuple products also take vector variates (e.g. from converted product
+# distributions):
+@inline function _check_marginal_count(mar::Tuple, x::Union{Tuple,AbstractVector})
+    length(mar) == length(x) || _throw_marginal_mismatch()
+    return nothing
+end
+@inline _check_marginal_count(::Tuple, x) = _throw_marginal_mismatch()
+@inline _check_marginal_count(mar, x) = nothing
+
+@noinline _throw_marginal_mismatch() =
+    throw(ArgumentError("Variate doesn't match the structure of the marginals of a product measure"))
 
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
@@ -129,6 +149,7 @@ end
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     # For tuples, `mapreduce` has trouble with type inference
     @eval @inline function $head(d::ProductMeasure{T}, x) where {T<:Tuple}
+        _check_marginal_count(marginals(d), x)
         ℓs = map($func, marginals(d), x)
         sum(ℓs)
     end
@@ -205,19 +226,55 @@ marginals(μ::ProductMeasure) = μ.marginals
     _cat_sizes(mspace_flatsize(M), maybestatic_size(marginals(μ)))
 end
 
-# The marginals align with the leading dimensions of the flat batch, so
-# one broadcast evaluates all marginal densities:
+# Batched densities over flat storage `(marginal flat dims..., product
+# dims..., batch dims...)`. Marginals with scalar variates align with the
+# leading dimensions of the batch, so one broadcast evaluates all marginal
+# densities. Marginals with array variates are evaluated one by one over
+# their slices of the batch.
 @inline function batched_logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M,N}}, A::AbstractArray) where {M,N}
-    _product_batched_ld(μ, A, mspace_flatsize(M), Val(N))
+    _product_batched_ld(μ, A, mspace_flatsize(M), Val(N), Val(isconcretetype(M)))
 end
 
-@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Tuple{}, ::Val{N}) where {N}
+@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Tuple{}, ::Val{N}, ::Val{true}) where {N}
     ld = Broadcast.instantiate(Broadcast.broadcasted(dynamic ∘ logdensityof_impl, marginals(μ), A))
     _sum_leading_dims(ld, static(N))
 end
 
-@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Any, ::Val)
+@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, sz_m::SizeLike, ::Val{N}, ::Val{true}) where {N}
+    _marginal_slices_ld(marginals(μ), A, Val(length(sz_m)), Val(ndims(A) - length(sz_m) - N))
+end
+
+@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Any, ::Val, ::Val)
     _batched_ld_generic(logdensityof_impl, μ, A)
+end
+
+function _marginal_slices_ld(mar::AbstractArray{<:Any,N}, A::AbstractArray, ::Val{K}, ::Val{B}) where {N,K,B}
+    if ndims(A) != K + N + B || ntuple(i -> size(A, K + i), Val(N)) != size(mar)
+        _throw_size_mismatch()
+    end
+    lead = ntuple(_ -> Colon(), Val(K))
+    trail = ntuple(_ -> Colon(), Val(B))
+    ld(i) = _materialize(batched_logdensityof_impl(mar[i], view(A, lead..., Tuple(i)..., trail...)))
+    init = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
+    return mapreduce(ld, +, CartesianIndices(mar); init = init)
+end
+
+@inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
+@inline _zero_logd(A::AbstractArray, dims::Tuple) = fill!(similar(A, _logd_numtype(A), dims), 0)
+
+# The point density of array products with array-variate marginals accepts
+# the flat variate storage `(marginal flat dims..., product dims...)`:
+@inline function logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
+    _array_product_ld(μ, x, mspace_flatsize(M))
+end
+@inline _array_product_ld(μ::ProductMeasure, x::AbstractArray, ::Tuple{}) = _array_product_ld_nested(μ, x)
+@inline _array_product_ld(μ::ProductMeasure, x::AbstractArray, ::NoMSpaceElementSize) = _array_product_ld_nested(μ, x)
+@inline function _array_product_ld(μ::ProductMeasure, x::AbstractArray, sz_m::SizeLike)
+    _marginal_slices_ld(marginals(μ), x, Val(length(sz_m)), Val(0))
+end
+@inline function _array_product_ld_nested(μ::ProductMeasure, x::AbstractArray)
+    _check_marginal_count(marginals(μ), x)
+    mapreduce(logdensityof, +, marginals(μ), x)
 end
 
 # TODO: Better `map` support in MappedArrays
@@ -277,9 +334,29 @@ function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) wher
     map(checked_arg, marginals(μ), x)
 end
 
-function checked_arg(μ::ProductMeasure{<:AbstractArray}, x::AbstractArray)
-    map(checked_arg, marginals(μ), x)
+# Variates of array products are arrays of marginal variates or, for
+# marginals with array variates of known size, their flat storage:
+@propagate_inbounds function checked_arg(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {M}
+    @boundscheck _check_product_arg(marginals(μ), x, mspace_flatsize(M))
+    return x
 end
+
+@inline _check_product_arg(mar, x::AbstractArray, ::Tuple{}) = _check_marginal_count(mar, x)
+@inline _check_product_arg(mar, x::AbstractArray{<:Number}, ::NoMSpaceElementSize) = _check_marginal_count(mar, x)
+@inline function _check_product_arg(mar, x::AbstractArray, ::NoMSpaceElementSize)
+    _check_marginal_count(mar, x)
+    foreach(checked_arg, mar, x)
+    return nothing
+end
+@inline function _check_product_arg(mar, x::AbstractArray, sz_m::SizeLike)
+    if size(x) == size(mar)
+        foreach(checked_arg, mar, x)
+    elseif size(x) != (Tuple(sz_m)..., size(mar)...)
+        _throw_marginal_mismatch()
+    end
+    return nothing
+end
+
 
 function checked_arg(
     μ::ProductMeasure{<:NamedTuple{names}},

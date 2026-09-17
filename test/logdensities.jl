@@ -13,6 +13,17 @@ using JLArrays: JLArray
 
 stdnormal_ld(x) = -(x^2 + log2π) / 2
 
+# A measure with array variates of a known flat size at the type level:
+struct VecTestMeasure{T} <: AbstractMeasure
+    s::T
+end
+MeasureBase.mspace_elsize(::VecTestMeasure) = (2,)
+MeasureBase.mspace_flatsize(::VecTestMeasure) = (2,)
+MeasureBase.mspace_flatsize(::Type{<:VecTestMeasure}) = (2,)
+MeasureBase.basemeasure(::VecTestMeasure) = LebesgueBase()^2
+MeasureBase.insupport(::VecTestMeasure, x) = true
+MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
+
 @testset "logdensities" begin
     @testset "scalar variates" begin
         X = randn(10)
@@ -185,6 +196,69 @@ stdnormal_ld(x) = -(x^2 + log2π) / 2
         @test @inferred(MeasureBase.mspace_flatsize(m3)) == (4,)
         X3 = vcat(randn(1, 5), rand(2, 5), randn(1, 5))
         @test @inferred(logdensities(m3, X3)) ≈ [logdensityof(m3, x) for x in eachcol(X3)]
+    end
+
+    @testset "static sizes in combined measures" begin
+        m = mcombine(vcat, StdNormal()^static(2), StdUniform()^3)
+        @test @inferred(MeasureBase.mspace_flatsize(m)) == (5,)
+        x = vcat(randn(2), rand(3))
+        @test @inferred(logdensityof(m, x)) ≈ sum(stdnormal_ld, x[1:2])
+        X = vcat(randn(2, 4), rand(3, 4))
+        @test @inferred(logdensities(m, X)) ≈ [logdensityof(m, x) for x in eachcol(X)]
+        ms = mcombine(vcat, StdNormal()^static(2), StdUniform()^static(3))
+        @test @inferred(MeasureBase.mspace_flatsize(ms)) == MeasureBase.mspace_flatsize(StdNormal()^static(5))
+        @test @inferred(logdensityof(ms, SVector{5}(x))) ≈ logdensityof(m, x)
+        @test @inferred(logdensityof(ms, x)) ≈ logdensityof(m, x)
+        @test logdensities(ms, X) ≈ logdensities(m, X)
+        @test_throws ArgumentError MeasureBase.batched_logdensityof_with_rest(StdNormal(), zeros(0, 4))
+    end
+
+    @testset "array products of array-variate marginals" begin
+        p = productmeasure([VecTestMeasure(1.0), VecTestMeasure(2.0), VecTestMeasure(0.5)])
+        @test @inferred(MeasureBase.mspace_flatsize(p)) == (2, 3)
+        xs = [randn(2) for _ in 1:3]
+        X = stack(xs)
+        ℓ = sum(map(logdensityof, MeasureBase.marginals(p), xs))
+        @test @inferred(logdensityof(p, xs)) ≈ ℓ
+        @test @inferred(logdensityof(p, X)) ≈ ℓ
+        A = randn(2, 3, 5)
+        @test @inferred(logdensities(p, A)) ≈ [logdensityof(p, A[:, :, i]) for i in 1:5]
+        @test logdensities(p, sliced(A, Val(2))) ≈ logdensities(p, A)
+        @test logdensities(p, zeros(2, 3, 0)) == Float64[]
+        @test_throws ArgumentError logdensityof(p, randn(2, 2))
+        @test_throws ArgumentError logdensities(p, randn(2, 2, 5))
+
+        # Powers with static axes have a flat size at the type level:
+        pp = MeasureBase.ProductMeasure([StdNormal()^static(2), StdNormal()^static(2)])
+        @test @inferred(MeasureBase.mspace_flatsize(pp)) == (2, 2)
+        Xp = randn(2, 2)
+        @test @inferred(logdensityof(pp, Xp)) ≈ sum(stdnormal_ld, Xp)
+        A3 = randn(2, 2, 3)
+        @test @inferred(logdensities(pp, A3)) ≈ [sum(stdnormal_ld, A3[:, :, i]) for i in 1:3]
+    end
+
+    @testset "products with mixed marginal types" begin
+        pa = productmeasure(AbstractMeasure[StdNormal(), StdUniform()])
+        X = vcat(randn(1, 4), rand(1, 4))
+        xs = [X[:, i] for i in 1:4]
+        @test logdensities(pa, xs) ≈ [logdensityof(pa, x) for x in xs]
+        @test logdensities(pa, sliced(X, Val(1))) ≈ [logdensityof(pa, x) for x in xs]
+        @test_throws ArgumentError logdensityof(pa, 0.5)
+        @test_throws ArgumentError logdensityof(productmeasure((StdNormal(), StdUniform())), 0.5)
+        @test_throws ArgumentError logdensityof(pa, X[:, 1:1])
+    end
+
+    @testset "out-of-support and empty batches of structural kernels" begin
+        w = weightedmeasure(log(0.3), StdUniform()^2)
+        X = [0.5 -0.5 0.5; 0.5 0.5 1.5]
+        @test logdensities(w, X) == [log(0.3), -Inf, -Inf]
+        @test logdensities(w, zeros(2, 0)) == Float64[]
+        pu = productmeasure([weightedmeasure(log(i), StdUniform()) for i in 1:2])
+        @test logdensities(pu, X) == [log(2), -Inf, -Inf]
+        mc = mcombine(vcat, StdUniform()^1, StdExponential()^1)
+        @test logdensities(mc, [0.5 -0.5 0.5; 0.5 0.5 -1.0]) == [-0.5, -Inf, -Inf]
+        @test logdensities(mc, zeros(2, 0)) == Float64[]
+        @test MeasureBase.logdensity_def(pu, [0.5, 0.5]) ≈ log(2)
     end
 
     @testset "GPU array semantics for structural kernels" begin

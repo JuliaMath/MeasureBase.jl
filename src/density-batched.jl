@@ -249,8 +249,8 @@ end
 end
 
 
-@inline _lazy_add(c, x::Number) = c + x
-@inline _lazy_add(c, A) = Broadcast.instantiate(Broadcast.broadcasted(+, c, A))
+@inline _lazy_add(a::Number, b::Number) = a + b
+@inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(+, a, b))
 
 
 """
@@ -261,35 +261,48 @@ Batched form of [`MeasureBase.logdensityof_with_rest`](@ref) for a batch
 streams, all further dimensions are batch dimensions.
 
 Returns a tuple `(ℓ, A_μ, A_rest)` of the log-densities over the batch
-dimensions, the flat variate batch consumed from the streams and the
-unconsumed rest of the streams.
+dimensions (possibly as a lazy broadcast), the rows consumed from the
+streams and the unconsumed rest of the streams.
 
-Requires the flat variate size of `μ` to be known, see
-[`MeasureBase.mspace_flatsize`](@ref).
+Consuming from streams requires the flat variate sizes of `μ` or its
+components to be known, see [`MeasureBase.mspace_flatsize`](@ref).
 """
 function batched_logdensityof_with_rest end
 
 function batched_logdensityof_with_rest(μ::AbstractMeasure, A::AbstractArray)
     A_μ, A_rest = _batched_consume(A, mspace_flatsize(μ))
-    return _materialize(_batched_ld(logdensityof_impl, μ, A_μ)), A_μ, A_rest
+    return _batched_ld(logdensityof_impl, μ, A_μ), A_μ, A_rest
 end
 
 # Consume the leading rows of a batch of streams as a batch of flat variates:
 @inline function _batched_consume(A::AbstractArray, sz::SizeLike)
-    n = size2length(sz)
-    n_stream = size(A, 1)
-    if n_stream < n
-        throw(ArgumentError("Variate streams too short during batched density evaluation"))
-    end
-    batch_axes = Base.tail(axes(A))
-    A_flat = view(A, 1:dynamic(n), batch_axes...)
-    A_rest = view(A, (dynamic(n) + 1):n_stream, batch_axes...)
-    return maybestatic_reshape(A_flat, (_size_dims(sz)..., map(length, batch_axes)...)), A_rest
+    A_flat, A_rest = _batched_split(A, dynamic(size2length(sz)))
+    return _batched_chunk_shape(A_flat, _size_dims(sz)), A_rest
 end
 
 @inline function _batched_consume(A::AbstractArray, ::Tuple{})
+    A_flat, A_rest = _batched_split(A, 1)
     batch_axes = Base.tail(axes(A))
-    view(A, 1, batch_axes...), view(A, 2:size(A, 1), batch_axes...)
+    return view(A_flat, firstindex(A_flat, 1), batch_axes...), A_rest
+end
+
+@inline function _batched_split(A::AbstractArray, n::Integer)
+    stream_idxs = axes(A, 1)
+    if length(stream_idxs) < n
+        throw(ArgumentError("Variate streams too short during batched density evaluation"))
+    end
+    batch_axes = Base.tail(axes(A))
+    i0 = first(stream_idxs)
+    A_flat = view(A, i0:(i0 + n - 1), batch_axes...)
+    A_rest = view(A, (i0 + n):last(stream_idxs), batch_axes...)
+    return A_flat, A_rest
+end
+
+# Chunks of variates with more than one flat dimension are reshaped, the
+# batch dimensions are dynamic anyway:
+@inline _batched_chunk_shape(A_flat::AbstractArray, ::Tuple{IntegerLike}) = A_flat
+@inline function _batched_chunk_shape(A_flat::AbstractArray, dims::Tuple{Vararg{IntegerLike}})
+    reshape(A_flat, (map(dynamic, dims)..., Base.tail(size(A_flat))...))
 end
 
 function _batched_consume(::AbstractArray, sz::NoMSpaceElementSize)
