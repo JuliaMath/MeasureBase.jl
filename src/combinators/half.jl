@@ -20,9 +20,8 @@ unhalf(μ::Half) = μ.parent
     weightedmeasure(logtwo, basemeasure(unhalf(μ)))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
-    return abs(rand(rng, T, unhalf(μ)))
-end
+@inline rand_impl(ctx::GenContext, μ::Half) = abs(rand_impl(ctx, unhalf(μ)))
+@inline batched_rand_impl(ctx::GenContext, μ::Half, sz::Dims) = abs.(batched_rand_impl(ctx, unhalf(μ), sz))
 
 function logdensityof_impl(μ::Half, x)
     ld = logdensityof(unhalf(μ), x) - loghalf

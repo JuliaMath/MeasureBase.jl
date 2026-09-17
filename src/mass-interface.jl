@@ -22,6 +22,8 @@ for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
         Base.:*(::$T, ::$T) = $T()
+        Base.:*(x::Real, ::$T) = isfinite(x) ? $T() : UnknownMass()
+        Base.:*(::$T, x::Real) = isfinite(x) ? $T() : UnknownMass()
         Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
         # Disambiguation:
         Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()

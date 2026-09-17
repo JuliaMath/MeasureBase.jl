@@ -10,6 +10,8 @@ StdMeasure(::typeof(randn)) = StdNormal()
 
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 
+@inline massof(::StdMeasure) = static(1.0)
+
 @inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
 
 @inline transport_to_std(::Type{S}, ::S, x) where {S<:StdMeasure} = x

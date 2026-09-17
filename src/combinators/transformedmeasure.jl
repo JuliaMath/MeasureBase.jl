@@ -235,8 +235,21 @@ end
 
 massof(m::PushforwardMeasure) = massof(m.origin)
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
-    return ν.f(rand(rng, T, ν.origin))
+rand_impl(ctx::GenContext, ν::PushforwardMeasure) = ν.f(rand_impl(ctx, ν.origin))
+
+# Batches of pushforwards apply the function to the variates of a batch of
+# the origin, elementwise for scalar variates:
+function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::Dims)
+    _pushfwd_batched_rand(ctx, ν, sz, mspace_flatsize(ν.origin))
+end
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::Tuple{})
+    broadcast(ν.f, batched_rand_impl(ctx, ν.origin, sz))
+end
+function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, sz_orig::SizeLike)
+    stacked(map(ν.f, sliced(batched_rand_impl(ctx, ν.origin, sz), Val(length(sz_orig)))))
+end
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::NoMSpaceElementSize)
+    _batched_rand_pointwise(ctx, ν, sz)
 end
 
 ###############################################################################

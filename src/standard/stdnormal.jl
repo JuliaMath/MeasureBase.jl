@@ -14,7 +14,8 @@ export StdNormal
 
 @inline getdof(::StdNormal) = static(1)
 
-@inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)
+@inline rand_impl(ctx::GenContext, ::StdNormal) = randn(get_rng(ctx), get_precision(ctx))
+@inline batched_rand_impl(ctx::GenContext, ::StdNormal, sz::Dims) = _randn_bulk(ctx, sz)
 
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2

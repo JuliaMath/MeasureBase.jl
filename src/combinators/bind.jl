@@ -334,17 +334,15 @@ function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
 end
 
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::Bind) where {T<:Real}
-    a = rand(rng, T, μ.α)
-    b = rand(rng, T, _get_β_a(μ, a))
+function rand_impl(ctx::GenContext, μ::Bind)
+    a = rand_impl(ctx, μ.α)
+    b = rand_impl(ctx, _get_β_a(μ, a))
     return μ.f_c(a, b)
 end
 
-function Base.rand(rng::Random.AbstractRNG, μ::Bind)
-    a = rand(rng, μ.α)
-    b = rand(rng, _get_β_a(μ, a))
-    return μ.f_c(a, b)
-end
+# The secondary measure depends on the primary variate, so batches are
+# generated variate by variate:
+batched_rand_impl(ctx::GenContext, μ::Bind, sz::Dims) = _batched_rand_pointwise(ctx, μ, sz)
 
 
 # Transport consumes the variate parts of the primary and secondary

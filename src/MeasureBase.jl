@@ -59,6 +59,8 @@ using StaticThings:
 
 import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
+using HeterogeneousComputing:
+    GenContext, AbstractComputeUnit, CPUnit, get_rng, get_precision, get_compute_unit, allocate_array
 
 using ArraysOfArrays:
     ArrayOfSimilarArrays, VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays,
@@ -186,6 +188,7 @@ include("mspace.jl")
 include("getdof.jl")
 include("standard/stdmeasure.jl")
 include("transport.jl")
+include("rand.jl")
 include("proxies.jl")
 include("parameterized.jl")
 include("domains.jl")
@@ -227,8 +230,6 @@ include("combinators/bind.jl")
 include("combinators/half.jl")
 
 #include("implicitmaps.jl")
-
-include("rand.jl")
 
 include("measure_operators.jl")
 

@@ -51,28 +51,44 @@ function Pretty.tile(μ::PowerMeasure)
     return Pretty.pair_layout(arg1, arg2; sep = " ^ ")
 end
 
-# ToDo: Make rand return static arrays for statically-sized power measures.
-
 function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
     CartesianIndices(map(asnonstatic, axs))
 end
 
-function Base.rand(
-    rng::AbstractRNG,
-    ::Type{T},
-    d::PowerMeasure{M},
-) where {T,M<:AbstractMeasure}
-    axs, base_d = pwr_axes(d), pwr_base(d)
-    map(_cartidxs(axs)) do _
-        rand(rng, T, base_d)
-    end
+# Variates of powers are generated as one flat batch of variates of the
+# innermost base measure, in the layout of the flat variate storage:
+
+rand_impl(ctx::GenContext, μ::PowerMeasure) = _pwr_rand(ctx, μ, mspace_flatsize(μ))
+
+function _pwr_rand(ctx::GenContext, μ::PowerMeasure, sz_flat::SizeLike)
+    ν, _ = _pwr_unwrap(μ)
+    _pwr_variate(μ, batched_rand_impl(ctx, ν, _pwr_batch_dims(sz_flat, mspace_flatsize(ν))))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::PowerMeasure) where {T}
-    axs, base_d = pwr_axes(d), pwr_base(d)
-    map(_cartidxs(axs)) do _
-        rand(rng, base_d)
-    end
+function _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::NoMSpaceElementSize)
+    ν = pwr_base(μ)
+    map(_ -> rand_impl(ctx, ν), _cartidxs(pwr_axes(μ)))
+end
+
+# The power dimensions of a flat size, after the flat dimensions of the
+# innermost base measure:
+@inline function _pwr_batch_dims(sz_flat::SizeLike, sz_base::SizeLike)
+    dims = map(dynamic, _size_dims(sz_flat))
+    n = length(sz_base)
+    ntuple(i -> dims[n + i], Val(length(dims) - n))
+end
+
+function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::Dims)
+    _pwr_batched_rand(ctx, μ, sz, mspace_flatsize(μ))
+end
+
+function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, sz_flat::SizeLike)
+    ν, _ = _pwr_unwrap(μ)
+    batched_rand_impl(ctx, ν, (_pwr_batch_dims(sz_flat, mspace_flatsize(ν))..., sz...))
+end
+
+function _pwr_batched_rand(::GenContext, μ::PowerMeasure, ::Dims, ::NoMSpaceElementSize)
+    throw(ArgumentError("Batched random variate generation for powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
 end
 
 marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)

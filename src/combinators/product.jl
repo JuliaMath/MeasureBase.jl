@@ -28,49 +28,10 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::AbstractProductMeasure) where {T}
-    mar = marginals(d)
-    _rand_product(rng, T, mar, eltype(mar))
-end
+rand_impl(ctx::GenContext, d::AbstractProductMeasure) = map(Base.Fix1(_marginal_rand, ctx), marginals(d))
 
-function _rand_product(
-    rng::AbstractRNG,
-    ::Type{T},
-    mar,
-    ::Type{M},
-) where {T,M<:AbstractMeasure}
-    map(mar) do dⱼ
-        rand(rng, T, dⱼ)
-    end
-end
-
-function _rand_product(
-    rng::AbstractRNG,
-    ::Type{T},
-    mar::ReadonlyMappedArray,
-    ::Type{M},
-) where {T,M<:AbstractMeasure}
-    mappedarray(mar.data) do dⱼ
-        rand(rng, T, mar.f(dⱼ))
-    end |> collect
-end
-
-function _rand_product(rng::AbstractRNG, ::Type{T}, mar, ::Type{M}) where {T,M}
-    map(mar) do dⱼ
-        rand(rng, dⱼ)
-    end
-end
-
-function _rand_product(
-    rng::AbstractRNG,
-    ::Type{T},
-    mar::ReadonlyMappedArray,
-    ::Type{M},
-) where {T,M}
-    mappedarray(mar.data) do dⱼ
-        rand(rng, mar.f(dⱼ))
-    end |> collect
-end
+@inline _marginal_rand(ctx::GenContext, m::AbstractMeasure) = rand_impl(ctx, m)
+@inline _marginal_rand(ctx::GenContext, d) = rand(get_rng(ctx), d)
 
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     @eval @inline function $head(d::AbstractProductMeasure, x)
@@ -307,14 +268,6 @@ end
 
 export rand!
 using Random: rand!, GLOBAL_RNG
-
-function _rand(rng::AbstractRNG, ::Type{T}, d::ProductMeasure, mar::AbstractArray) where {T}
-    elT = typeof(rand(rng, T, first(mar)))
-
-    sz = size(mar)
-    x = Array{elT,length(sz)}(undef, sz)
-    rand!(rng, d, x)
-end
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     _all_insupport(broadcast(_insupport_bool ∘ insupport, marginals(d), x))

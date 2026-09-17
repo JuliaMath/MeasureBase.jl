@@ -125,20 +125,40 @@ end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::SuperpositionMeasure) where {T}
-    components = values(μ.components)
-    masses = map(massof, components)
+function _component_masses(μ::SuperpositionMeasure)
+    masses = map(massof, values(μ.components))
     total = sum(masses)
     total isa AbstractUnknownMass && throw(
         ArgumentError("Cannot sample from a superposition of measures of unknown mass"),
     )
-    threshold = rand(rng) * dynamic(total)
+    return map(dynamic, masses), dynamic(total)
+end
+
+function rand_impl(ctx::GenContext, μ::SuperpositionMeasure)
+    components = values(μ.components)
+    masses, total = _component_masses(μ)
+    threshold = rand(get_rng(ctx), get_precision(ctx)) * total
     csum = zero(threshold)
     for (mass, c) in zip(masses, components)
-        csum += dynamic(mass)
-        csum >= threshold && return rand(rng, T, c)
+        csum += mass
+        csum >= threshold && return rand_impl(ctx, c)
     end
-    return rand(rng, T, last(components))
+    return rand_impl(ctx, last(components))
+end
+
+# Batches of superpositions draw a batch from each component and select
+# by mass, branch-free:
+function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::Dims)
+    components = values(μ.components)
+    masses, total = _component_masses(μ)
+    thresholds = _rand_bulk(ctx, sz) .* total
+    X = batched_rand_impl(ctx, first(components), sz)
+    csum = first(masses)
+    for (mass, c) in Iterators.drop(zip(masses, components), 1)
+        X = ifelse.(thresholds .<= csum, X, batched_rand_impl(ctx, c, sz))
+        csum += mass
+    end
+    return X
 end
 
 @inline function insupport(d::SuperpositionMeasure, x)

@@ -41,7 +41,7 @@ import PDMats
 using IrrationalConstants: log2π, invsqrt2π
 using LogExpFunctions: logistic
 
-using HeterogeneousComputing: real_numtype
+using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
 
 using Static: True, False, StaticInt, static, dynamic
 using StaticThings: asnonstatic

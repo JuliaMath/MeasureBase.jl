@@ -15,7 +15,11 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 @inline Base.convert(::Type{Distribution{F,S}}, m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
 
 
-Base.rand(rng::AbstractRNG, ::Type{T}, m::DistributionMeasure) where {T<:Real} = convert_realtype(T, rand(m.obj))
+MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure) =
+    convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
+
+MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::Dims) =
+    _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, sz)
 
 function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
     convert_realtype(T, reshape(rand(rng, d, prod(sz)), sz...))
@@ -33,14 +37,6 @@ function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) w
     flatview(ArrayOfSimilarArrays(convert_realtype(T, rand(rng, d, sz))))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, m::PowerMeasure{<:DistributionMeasure{<:ArrayLikeVariate{0}}, NTuple{N,Base.OneTo{Int}}}) where {T<:Real,N}
-    _flat_powrand(rng, T, m.parent.obj, map(length, m.axes))
-end
-
-function Base.rand(rng::AbstractRNG, ::Type{T}, m::PowerMeasure{<:DistributionMeasure{<:ArrayLikeVariate{M}}, NTuple{N,Base.OneTo{Int}}}) where {T<:Real,M,N}
-    flat_data = _flat_powrand(rng, T, m.parent.obj, map(length, m.axes))
-    ArrayOfSimilarArrays{T,M,N}(flat_data)
-end
 
 
 @inline DensityInterface.densityof(m::DistributionMeasure) = densityof(m.obj)

@@ -30,9 +30,9 @@ end
     _lazy_add(_logweight_for(d.logweight, A), batched_logdensityof_impl(basemeasure(d), A))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
-    rand(rng, T, basemeasure(μ))
-end
+@inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
+@inline batched_rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure, sz::Dims) =
+    batched_rand_impl(ctx, basemeasure(μ), sz)
 
 testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basemeasure(μ))
 

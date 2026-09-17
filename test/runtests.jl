@@ -35,6 +35,8 @@ include("combinators/implicitlymapped.jl")
 include("combinators/combined.jl")
 include("combinators/bind.jl")
 
+include("rand.jl")
+
 include("distributions/test_distributions.jl")
 
 include("test_docs.jl")

@@ -12,7 +12,8 @@ end
 @inline logdensity_def(::StdUniform, x) = zero(x)
 @inline basemeasure(::StdUniform) = LebesgueBase()
 
-Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdUniform) where {T} = rand(rng, T)
+@inline rand_impl(ctx::GenContext, ::StdUniform) = rand(get_rng(ctx), get_precision(ctx))
+@inline batched_rand_impl(ctx::GenContext, ::StdUniform, sz::Dims) = _rand_bulk(ctx, sz)
 
 massof(::StdUniform, s::Interval) = massof(Lebesgue(0.0 .. 1.0), s)
 

@@ -216,16 +216,19 @@ function logdensityof_with_rest(μ::CombinedMeasure{typeof(merge)}, x::NamedTupl
 end
 
 
-function Base.rand(rng::Random.AbstractRNG, ::Type{T}, μ::CombinedMeasure) where {T<:Real}
-    a = rand(rng, T, μ.α)
-    b = rand(rng, T, μ.β)
-    return μ.f_c(a, b)
-end
+rand_impl(ctx::GenContext, μ::CombinedMeasure) = μ.f_c(rand_impl(ctx, μ.α), rand_impl(ctx, μ.β))
 
-function Base.rand(rng::Random.AbstractRNG, μ::CombinedMeasure)
-    a = rand(rng, μ.α)
-    b = rand(rng, μ.β)
-    return μ.f_c(a, b)
+# Batches of vcat-combined measures are concatenated along the streams:
+function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(vcat)}, sz::Dims)
+    _combined_batched_rand(ctx, μ, sz, mspace_flatsize(μ.α), mspace_flatsize(μ.β))
+end
+function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, sz_a::SizeLike, sz_b::SizeLike)
+    A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), sz_a)
+    B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), sz_b)
+    return vcat(A, B)
+end
+function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::Any, ::Any)
+    _batched_rand_pointwise(ctx, μ, sz)
 end
 
 

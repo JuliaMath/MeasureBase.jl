@@ -33,8 +33,13 @@ function gentype(μ::SpikeMixture)
     gentype(μ.m)
 end
 
-function Base.rand(rng::AbstractRNG, T::Type, μ::SpikeMixture)
-    return (rand(rng, T) < μ.w) * rand(rng, T, μ.m)
+function rand_impl(ctx::GenContext, μ::SpikeMixture)
+    return (rand(get_rng(ctx), get_precision(ctx)) < μ.w) * rand_impl(ctx, μ.m)
+end
+
+function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::Dims)
+    X = batched_rand_impl(ctx, μ.m, sz)
+    return ifelse.(_rand_bulk(ctx, sz) .< μ.w, X, zero(eltype(X)))
 end
 
 testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
