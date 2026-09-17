@@ -51,3 +51,8 @@ insupport(d::Dirac, x) = x == d.x
     @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
     x
 end
+
+# Dirac measures have no degrees of freedom:
+@inline transport_to_std(::Type{S}, ::Dirac, x) where {S<:StdMeasure} = SVector{0,Bool}()
+@inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
+@inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z

@@ -75,9 +75,10 @@ end
 @inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = 1
 
 # Delegate transport to the wrapped distribution:
-@inline MeasureBase.transport_origin(m::DistributionMeasure) = m.obj
-@inline MeasureBase.to_origin(::DistributionMeasure, y) = y
-@inline MeasureBase.from_origin(::DistributionMeasure, x) = x
+@inline MeasureBase.transport_to_std(::Type{S}, m::DistributionMeasure, x) where {S<:StdMeasure} =
+    MeasureBase.transport_to_std(S, m.obj, x)
+@inline MeasureBase.transport_from_std(::Type{S}, m::DistributionMeasure, z) where {S<:StdMeasure} =
+    MeasureBase.transport_from_std(S, m.obj, z)
 
 @inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
 @inline MeasureBase.params(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))

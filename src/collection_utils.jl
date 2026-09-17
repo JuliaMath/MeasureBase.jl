@@ -31,21 +31,11 @@ Base.@propagate_inbounds function _get_or_view(A::AbstractVector, from::IntegerL
 end
 
 Base.@propagate_inbounds function _get_or_view(
-    A::AbstractVector,
-    ::StaticInteger{from},
-    ::StaticInteger{until},
-) where {from,until}
-    SVector{until - from + 1}(view(A, from:until))
-end
-
-# ToDo: Specialize for StaticVector instead of SVector?
-Base.@propagate_inbounds function _get_or_view(
-    A::SVector,
-    from::StaticInteger,
-    until::StaticInteger,
-)
-    # ToDo: Improve implementation:
-    SVector(_get_or_view(Tuple(A), from, until))
+    A::StaticVector,
+    from::StaticInteger{F},
+    until::StaticInteger{U},
+) where {F,U}
+    SVector{U - F + 1,eltype(A)}(_get_or_view(Tuple(A), from, until))
 end
 
 Base.@propagate_inbounds function _get_or_view(tpl::Tuple, from::IntegerLike, until::IntegerLike)

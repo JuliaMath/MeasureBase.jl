@@ -287,3 +287,84 @@ function checked_arg(
 ) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
+
+
+# Transport marginal by marginal, the standard variates of the marginals
+# are concatenated in order:
+
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:Tuple}, x::Tuple) where {S<:StdMeasure}
+    _flatten_to_rv(map((m, xi) -> _as_stdstream(transport_to_std(S, m, xi)), marginals(μ), x))
+end
+
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where {S<:StdMeasure,names}
+    transport_to_std(S, productmeasure(values(marginals(μ))), values(x))
+end
+
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray}, x::AbstractArray) where {S<:StdMeasure}
+    _flat_std_of(broadcast(_ToStd{S}(), marginals(μ), x))
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, z::AbstractVector) where {S<:StdMeasure}
+    _marginals_from_std_with_rest(S, marginals(μ), z)
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, z::AbstractVector) where {S<:StdMeasure,names}
+    ys, z_rest = _marginals_from_std_with_rest(S, values(marginals(μ)), z)
+    return NamedTuple{names}(ys), z_rest
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray}, z::AbstractVector) where {S<:StdMeasure}
+    _array_product_from_std_with_rest(S, μ, z, fast_dof(μ))
+end
+@inline function _array_product_from_std_with_rest(::Type{S}, μ, z, n::IntegerLike) where {S}
+    _from_std_with_rest_bydof(S, μ, z, n)
+end
+function _array_product_from_std_with_rest(::Type{S}, μ, z, ::AbstractNoDOF) where {S}
+    _marginals_from_std_with_rest(S, marginals(μ), z)
+end
+
+# Marginals with scalar variates transport in a single broadcast:
+function transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, z::AbstractVector) where {S<:StdMeasure,M}
+    _array_product_from_std(S, μ, z, mspace_flatsize(M))
+end
+function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Tuple{}) where {S}
+    mar = marginals(μ)
+    broadcast(_FromStd{S}(), mar, maybestatic_reshape(z, maybestatic_size(mar)))
+end
+function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Any) where {S}
+    ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
+    if !isempty(z_rest)
+        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of product measure"))
+    end
+    return ys
+end
+
+function _marginals_from_std_with_rest(::Type{S}, νs::Tuple{Vararg{Any}}, z::AbstractVector) where {S}
+    y1, z_rest = transport_from_std_with_rest(S, νs[1], z)
+    y2_end, z_final_rest = _marginals_from_std_with_rest(S, Base.tail(νs), z_rest)
+    return (y1, y2_end...), z_final_rest
+end
+
+_marginals_from_std_with_rest(::Type{S}, ::Tuple{}, z::AbstractVector) where {S} = (), z
+
+function _marginals_from_std_with_rest(::Type{S}, νs::AbstractArray{M}, z::AbstractVector) where {S,M}
+    idxs = eachindex(νs)
+    if isconcretetype(M)
+        # The variate type is uniform, so the loop is type stable (the type
+        # of the remaining stream stays invariant under repeated view-taking):
+        y1, z_rest = transport_from_std_with_rest(S, νs[first(idxs)], z)
+        ys = similar(νs, typeof(y1))
+        ys[first(idxs)] = y1
+        for i in Iterators.drop(idxs, 1)
+            ys[i], z_rest = transport_from_std_with_rest(S, νs[i], z_rest)
+        end
+        return ys, z_rest
+    else
+        ys_any = Vector{Any}(undef, length(idxs))
+        z_rest = z
+        for (j, i) in enumerate(idxs)
+            ys_any[j], z_rest = transport_from_std_with_rest(S, νs[i], z_rest)
+        end
+        return [y for y in ys_any], z_rest
+    end
+end

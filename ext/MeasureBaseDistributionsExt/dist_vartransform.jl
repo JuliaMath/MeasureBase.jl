@@ -14,3 +14,21 @@ _std_dist_for(::Type{D}, μ::Any) where {D<:_AnyStdDistribution} = _std_dist(_st
 
 MeasureBase.transport_to(::Type{NU}, μ) where {NU<:_AnyStdDistribution} = transport_to(_std_dist_for(NU, μ), μ)
 MeasureBase.transport_to(ν, ::Type{MU}) where {MU<:_AnyStdDistribution} = transport_to(ν, _std_dist_for(MU, ν))
+
+# Disambiguation between the type forms of standard measures and distributions:
+function MeasureBase.transport_to(::Type{NU}, ::Type{MU}) where {NU<:_AnyStdDistribution,MU<:_AnyStdDistribution}
+    _throw_two_std_types()
+end
+function MeasureBase.transport_to(::Type{NU}, ::Type{MU}) where {NU<:StdMeasure,MU<:_AnyStdDistribution}
+    _throw_two_std_types()
+end
+function MeasureBase.transport_to(::Type{NU}, ::Type{MU}) where {NU<:_AnyStdDistribution,MU<:StdMeasure}
+    _throw_two_std_types()
+end
+function _throw_two_std_types()
+    throw(
+        ArgumentError(
+            "Can't construct a transport function between the types of two standard measures, need a measure instance on one side",
+        ),
+    )
+end

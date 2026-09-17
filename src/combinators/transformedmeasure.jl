@@ -201,11 +201,17 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
-@inline transport_origin(ν::PushforwardMeasure) = ν.origin
-@inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-@inline to_origin(ν::PushforwardMeasure, y) = ν.finv(y)
+# Pushforwards transport via their origin:
+@inline transport_to_std(::Type{S}, ν::PushforwardMeasure, y) where {S<:StdMeasure} =
+    transport_to_std(S, ν.origin, ν.finv(y))
+@inline transport_from_std(::Type{S}, ν::PushforwardMeasure, z) where {S<:StdMeasure} =
+    ν.f(transport_from_std(S, ν.origin, z))
+@inline function transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, ν.origin, z)
+    return ν.f(x), z_rest
+end
 
-massof(m::PushforwardMeasure) = massof(transport_origin(m))
+massof(m::PushforwardMeasure) = massof(m.origin)
 
 function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
     return ν.f(rand(rng, T, ν.origin))

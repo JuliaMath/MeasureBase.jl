@@ -6,7 +6,7 @@ using Reexport
 
 using MeasureBase: basemeasure_depth, proxy, istrue
 using MeasureBase: insupport, basemeasure_sequence
-using MeasureBase: transport_to, NoTransport
+using MeasureBase: transport_to
 
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
@@ -90,9 +90,8 @@ function test_transport(ν, μ)
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
-        @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)
         f = transport_to(ν, μ)
-        y = f(x)
+        y = @inferred f(x)
         @test structisapprox(@inferred(inverse(f)(y)), x)
         @test @inferred(with_logabsdet_jacobian(f, x)) isa Tuple{supertype(y),Real}
         @test @inferred(with_logabsdet_jacobian(inverse(f), y)) isa Tuple{supertype(x),Real}

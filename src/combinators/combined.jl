@@ -228,16 +228,39 @@ function Base.rand(rng::Random.AbstractRNG, μ::CombinedMeasure)
 end
 
 
-function transport_to_mvstd(ν_inner::StdMeasure, μ::CombinedMeasure, ab)
-    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
-    y1 = transport_to_mvstd(ν_inner, tpm_α, a)
-    y2 = transport_to_mvstd(ν_inner, μ.β, b)
-    return vcat(y1, y2)
+# Transport consumes the variate parts of both component measures in a
+# single pass, analogous to density evaluation:
+
+transport_to_std(::Type{S}, μ::CombinedMeasure, ab) where {S<:StdMeasure} = _combined_to_std(S, μ.f_c, μ, ab)
+
+function _combined_to_std(::Type{S}, f_c, μ::CombinedMeasure, ab) where {S}
+    tpm_α, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
+    vcat(_as_stdstream(transport_to_std(S, tpm_α, a)), _as_stdstream(transport_to_std(S, μ.β, b)))
 end
 
+function _combined_to_std(::Type{S}, ::Union{typeof(vcat),typeof(merge)}, μ::CombinedMeasure, ab) where {S}
+    z, _, x_rest = transport_to_std_with_rest(S, μ, ab)
+    if !isempty(x_rest)
+        throw(ArgumentError("Variate too long during transport of a combined measure"))
+    end
+    return z
+end
 
-function transport_from_mvstd_with_rest(ν::CombinedMeasure, μ_inner::StdMeasure, x)
-    a, x2 = transport_from_mvstd_with_rest(ν.α, μ_inner, x)
-    b, x_rest = transport_from_mvstd_with_rest(ν.β, μ_inner, x2)
-    return ν.f_c(a, b), x_rest
+function transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector) where {S<:StdMeasure}
+    z_a, _, x2 = transport_to_std_with_rest(S, μ.α, x)
+    z_b, _, x_rest = transport_to_std_with_rest(S, μ.β, x2)
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return vcat(z_a, z_b), x_μ, x_rest
+end
+
+function transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(merge)}, x::NamedTuple) where {S<:StdMeasure}
+    z_a, a, x2 = transport_to_std_with_rest(S, μ.α, x)
+    z_b, b, x_rest = transport_to_std_with_rest(S, μ.β, x2)
+    return vcat(z_a, z_b), merge(a, b), x_rest
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::AbstractVector) where {S<:StdMeasure}
+    a, z2 = transport_from_std_with_rest(S, μ.α, z)
+    b, z_rest = transport_from_std_with_rest(S, μ.β, z2)
+    return μ.f_c(a, b), z_rest
 end

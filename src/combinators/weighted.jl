@@ -68,8 +68,14 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
 
-# TODO: Transports must preserve mass
-transport_origin(ν::WeightedMeasure) = ν.base
-
-to_origin(w::WeightedMeasure, y) = y
-from_origin(w::WeightedMeasure, x) = x
+# Weighted measures transport like their base:
+@inline transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, x) where {S<:StdMeasure} =
+    transport_to_std(S, basemeasure(μ), x)
+@inline transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, z) where {S<:StdMeasure} =
+    transport_from_std(S, basemeasure(μ), z)
+@inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::AbstractVector) where {S<:StdMeasure} =
+    transport_to_std_with_rest(S, basemeasure(μ), x)
+@inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::NamedTuple) where {S<:StdMeasure} =
+    transport_to_std_with_rest(S, basemeasure(μ), x)
+@inline transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, z::AbstractVector) where {S<:StdMeasure} =
+    transport_from_std_with_rest(S, basemeasure(μ), z)

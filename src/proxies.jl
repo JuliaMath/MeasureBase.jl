@@ -26,10 +26,6 @@ macro useproxy(M)
         @inline $MeasureBase.getdof(μ::$M) = getdof(proxy(μ))
         @inline $MeasureBase.fast_dof(μ::$M) = fast_dof(proxy(μ))
 
-        @inline $MeasureBase.transport_origin(μ::$M) = transport_origin(proxy(μ))
-        @inline $MeasureBase.to_origin(μ::$M, y) = to_origin(proxy(μ), y)
-        @inline $MeasureBase.from_origin(μ::$M, x) = from_origin(proxy(μ), x)
-
         @inline $MeasureBase.localmeasure(μ::$M, x) = localmeasure(proxy(μ), x)
         @inline $MeasureBase.transportmeasure(μ::$M, x) = transportmeasure(proxy(μ), x)
 

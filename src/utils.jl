@@ -183,8 +183,12 @@ convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
 convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
     map(Base.Fix1(convert_realtype, T), x)
 
-# Distributions implementation hooks:
-function _trafo_cdf_impl end
+# Distributions implementation hooks, specialized for dual numbers in the
+# ForwardDiff extension:
+function _trafo_logcdf_impl end
+function _trafo_logccdf_impl end
 function _trafo_quantile_impl end
-function _trafo_quantile_impl_generic end
+function _trafo_cquantile_impl end
+function _dist_quantile end
+function _dist_cquantile end
 function _dist_params_numtype end

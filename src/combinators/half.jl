@@ -7,7 +7,7 @@ end
 @inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
 @inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
 @inline mspace_flatsize(::Type{<:Half{M}}) where {M} = mspace_flatsize(M)
-@inline preferred_stdmeasure(::Type{MU}) where {MU<:Half} = NoStdTransport{MU}
+@inline preferred_stdmeasure(::Type{<:Half}) = StdUniform
 
 function Base.show(io::IO, μ::Half)
     print(io, "Half")
@@ -49,5 +49,5 @@ function invsmf(μ::Half, p)
     invsmf(μ.parent, (p + 1) / 2)
 end
 
-transport_def(μ::Half, ::StdUniform, p) = invsmf(μ, p)
-transport_def(::StdUniform, μ::Half, x) = smf(μ, x)
+@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = smf(μ, x)
+@inline transport_from_std(::Type{StdUniform}, μ::Half, p) = invsmf(μ, p)

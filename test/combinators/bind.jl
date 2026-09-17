@@ -65,14 +65,14 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         xy_reco = transport_to(μ, StdUniform()^3)(y)
         @test xy_reco ≈ xy
 
-        # Transport between two measures of unknown DOF (mvstd pivot):
+        # Transport between two measures of unknown DOF (standard pivot):
         μ2 = mbind(f_βv, StdUniform()^1, vcat)
         xy2 = transport_to(μ2, μ)(xy)
         @test xy2 isa AbstractVector{<:Real} && length(xy2) == 3
         @test transport_to(μ, μ2)(xy2) ≈ xy
         @test logdensityof(μ2, xy2) isa Real
 
-        # Transport between known-DOF and unknown-DOF measures (mvstd pivot):
+        # Transport between known-DOF and unknown-DOF measures (standard pivot):
         ν_known = productmeasure((StdNormal(), StdNormal(), StdNormal()))
         z = transport_to(ν_known, μ)(xy)
         @test z isa Tuple{Vararg{Real,3}}
@@ -107,7 +107,7 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         yP = rand(stblrng(), Float64, P)
         z = transport_to(StdUniform()^6, P)(yP)
         @test z isa AbstractVector{<:Real} && length(z) == 6
-        yP_reco, rest = MeasureBase.transport_from_mvstd_with_rest(P, StdUniform(), z)
+        yP_reco, rest = MeasureBase.transport_from_std_with_rest(StdUniform, P, z)
         @test yP_reco isa Vector{<:AbstractVector{Float64}}
         @test yP_reco ≈ yP && isempty(rest)
         @test logdensityof(P, yP) ≈ logdensityof(μ, yP[1]) + logdensityof(μ, yP[2])

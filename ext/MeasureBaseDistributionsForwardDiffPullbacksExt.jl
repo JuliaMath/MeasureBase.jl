@@ -3,7 +3,7 @@
 module MeasureBaseDistributionsForwardDiffPullbacksExt
 
 import MeasureBase
-using MeasureBase: StdMeasure, transport_def
+using MeasureBase: StdMeasure, transport_to_std, transport_from_std
 
 import Distributions
 using Distributions: Distribution, Univariate
@@ -11,15 +11,12 @@ using Distributions: Distribution, Univariate
 import ChainRulesCore
 using ForwardDiffPullbacks: fwddiff
 
-# Use ForwardDiff for univariate transformations:
-@inline function ChainRulesCore.rrule(::typeof(transport_def), ν::Distribution{Univariate}, μ::Distribution{Univariate}, x::Any)
-    ChainRulesCore.rrule(fwddiff(transport_def), ν, μ, x)
+# Use ForwardDiff for univariate transports:
+@inline function ChainRulesCore.rrule(::typeof(transport_to_std), ::Type{S}, d::Distribution{Univariate}, x::Any) where {S<:StdMeasure}
+    ChainRulesCore.rrule(fwddiff(transport_to_std), S, d, x)
 end
-@inline function ChainRulesCore.rrule(::typeof(transport_def), ν::StdMeasure, μ::Distribution{Univariate}, x::Any)
-    ChainRulesCore.rrule(fwddiff(transport_def), ν, μ, x)
-end
-@inline function ChainRulesCore.rrule(::typeof(transport_def), ν::Distribution{Univariate}, μ::StdMeasure, x::Any)
-    ChainRulesCore.rrule(fwddiff(transport_def), ν, μ, x)
+@inline function ChainRulesCore.rrule(::typeof(transport_from_std), ::Type{S}, d::Distribution{Univariate}, z::Any) where {S<:StdMeasure}
+    ChainRulesCore.rrule(fwddiff(transport_from_std), S, d, z)
 end
 
 end # module MeasureBaseDistributionsForwardDiffPullbacksExt

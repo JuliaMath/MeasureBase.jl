@@ -48,8 +48,8 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
         _test_gradient(x -> sum(transport_to(StdNormal()^3, asmeasure(pd))(x)), [0.4, 0.8, 1.5])
 
         dirich = Dirichlet([2.0, 3.0, 4.0])
-        _test_gradient(u -> MeasureBase.from_origin(dirich, u)[1], [0.3, 0.7])
-        _test_gradient(x -> sum(MeasureBase.to_origin(dirich, vcat(x, 1 - sum(x)))), [0.28, 0.23])
+        _test_gradient(u -> MeasureBase.transport_from_std(StdUniform, dirich, u)[1], [0.3, 0.7])
+        _test_gradient(x -> sum(MeasureBase.transport_to_std(StdUniform, dirich, vcat(x, 1 - sum(x)))), [0.28, 0.23])
     end
 
     @testset "logdensityof gradients" begin

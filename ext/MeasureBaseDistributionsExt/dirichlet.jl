@@ -5,8 +5,6 @@ const DirichletMeasure = AsMeasure{<:Dirichlet}
 MeasureBase.getdof(d::Dirichlet) = length(d) - 1
 MeasureBase.getdof(m::DirichletMeasure) = getdof(m.obj)
 
-MeasureBase.transport_origin(d::Dirichlet) = StdUniform()^getdof(d)
-
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Dirichlet}) = StdUniform
 
 
@@ -18,7 +16,7 @@ end
 
 _a_times_one_minus_b(a::Real, b::Real) = a * (1 - b)
 
-function MeasureBase.from_origin(ν::Dirichlet, x)
+function MeasureBase.transport_from_std(::Type{StdUniform}, ν::Dirichlet, x)
     # See M. J. Betancourt, "Cruising The Simplex: Hamiltonian Monte Carlo and the Dirichlet Distribution",
     # https://arxiv.org/abs/1010.3436
 
@@ -52,7 +50,7 @@ function _dirichlet_variate_to_beta_v(y::AbstractVector{<:Real})
     return beta_v
 end
 
-function MeasureBase.to_origin(ν::Dirichlet, y)
+function MeasureBase.transport_to_std(::Type{StdUniform}, ν::Dirichlet, y)
     @_adignore @argcheck length(ν) == length(y)
     αs = _dropfront(_rev_cumsum(ν.alpha))
     βs = _dropback(ν.alpha)

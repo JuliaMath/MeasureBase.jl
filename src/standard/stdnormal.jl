@@ -1,5 +1,5 @@
-using SpecialFunctions: erfc, erfcinv
-using IrrationalConstants: invsqrt2, log2π
+using SpecialFunctions: erfc, erfcinv, logerfc
+using IrrationalConstants: invsqrt2, log2π, logtwo
 
 struct StdNormal <: StdMeasure end
 

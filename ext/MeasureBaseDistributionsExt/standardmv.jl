@@ -4,8 +4,6 @@
 MeasureBase.getdof(d::AbstractMvNormal) = length(d)
 MeasureBase.getdof(m::AsMeasure{<:AbstractMvNormal}) = getdof(m.obj)
 
-MeasureBase.transport_origin(ν::MvNormal) = StandardDist{Normal}(length(ν))
-
 @inline MeasureBase.preferred_stdmeasure(::Type{<:AbstractMvNormal}) = StdNormal
 
 _cholesky_L(A) = cholesky(A).L
@@ -13,16 +11,12 @@ _cholesky_L(A::Diagonal{<:Real}) = Diagonal(sqrt.(diag(A)))
 _cholesky_L(A::PDMats.PDiagMat{<:Real}) = Diagonal(sqrt.(A.diag))
 _cholesky_L(A::PDMats.ScalMat{<:Real}) = Diagonal(Fill(sqrt(A.value), A.dim))
 
-function MeasureBase.from_origin(ν::MvNormal, x)
-    A = _cholesky_L(ν.Σ)
-    b = ν.μ
-    muladd(A, x, b)
+function MeasureBase.transport_to_std(::Type{StdNormal}, d::MvNormal, x)
+    _cholesky_L(d.Σ) \ (x - d.μ)
 end
 
-function MeasureBase.to_origin(ν::MvNormal, y)
-    A = _cholesky_L(ν.Σ)
-    b = ν.μ
-    A \ (y - b)
+function MeasureBase.transport_from_std(::Type{StdNormal}, d::MvNormal, z)
+    muladd(_cholesky_L(d.Σ), z, d.μ)
 end
 
 

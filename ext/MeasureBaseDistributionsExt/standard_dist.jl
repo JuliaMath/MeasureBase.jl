@@ -33,8 +33,6 @@ function Base.show(io::IO, d::StandardDist{D}) where {D}
 end
 
 
-@inline MeasureBase.transport_def(::MU, μ::MU, x) where {MU<:StandardDist{<:Any,0}} = x
-
 for (A, B) in [
     (Uniform, StdUniform),
     (Exponential, StdExponential),
@@ -43,8 +41,10 @@ for (A, B) in [
 ]
     @eval begin
         @inline MeasureBase.preferred_stdmeasure(::Type{<:StandardDist{$A}}) = $B
-        @inline MeasureBase.transport_origin(d::StandardDist{$A,0}) = $B()
-        @inline MeasureBase.transport_origin(d::StandardDist{$A,N}) where {N} = $B()^size(d)
+        @inline MeasureBase.transport_to_std(::Type{$B}, ::StandardDist{$A,0}, x) = x
+        @inline MeasureBase.transport_from_std(::Type{$B}, ::StandardDist{$A,0}, z) = z
+        @inline MeasureBase.transport_to_std(::Type{$B}, ::StandardDist{$A}, x::AbstractArray) = vec(x)
+        @inline MeasureBase.transport_from_std(::Type{$B}, d::StandardDist{$A}, z::AbstractVector) = reshape(z, size(d))
 
         # StandardDist{$A} and $B are equivalent as measures, so convert
         # instead of wrapping:
@@ -60,10 +60,6 @@ for (A, B) in [
         Base.convert(::Type{Distribution}, m::PowerMeasure{$B}) = Distributions.Distribution(m)
     end
 end
-
-@inline MeasureBase.to_origin(ν::StandardDist, y) = y
-@inline MeasureBase.from_origin(ν::StandardDist, x) = x
-
 
 @inline nonstddist(::StandardDist{D,0}) where {D} = D(Distributions.params(D())...)
 @inline function nonstddist(d::StandardDist{D,N}) where {D,N}

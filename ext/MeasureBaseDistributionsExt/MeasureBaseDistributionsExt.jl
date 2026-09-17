@@ -17,12 +17,12 @@ using MeasureBase: StdMeasure, StdUniform, StdExponential, StdLogistic, StdNorma
 using MeasureBase: PowerMeasure, WeightedMeasure, SuperpositionMeasure, PushforwardMeasure
 using MeasureBase: basemeasure, rootmeasure, testvalue, productmeasure, pushfwd, superpose
 using MeasureBase: getdof, checked_arg, massof
-using MeasureBase: transport_to, transport_def, transport_origin, from_origin, to_origin
-using MeasureBase: NoTransportOrigin, NoTransport
+using MeasureBase: transport_to, transport_def, transport_to_std, transport_from_std
 using MeasureBase: Reshape
 using MeasureBase: convert_realtype, _fwddiff, @_adignore
 import MeasureBase:
-    _dist_params_numtype, _trafo_cdf_impl, _trafo_quantile_impl, _trafo_quantile_impl_generic
+    _dist_params_numtype, _trafo_logcdf_impl, _trafo_logccdf_impl,
+    _trafo_quantile_impl, _trafo_cquantile_impl, _dist_quantile, _dist_cquantile
 using MeasureBase: _pushfront, _pushback, _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
 
 import Distributions
@@ -38,6 +38,7 @@ import StatsFuns
 import PDMats
 
 using IrrationalConstants: log2π, invsqrt2π
+using LogExpFunctions: logistic
 
 using HeterogeneousComputing: real_numtype
 

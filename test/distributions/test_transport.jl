@@ -6,12 +6,13 @@ using LinearAlgebra
 using InverseFunctions, ChangesOfVariables
 using Distributions, ArraysOfArrays
 using StableRNGs
+using LogExpFunctions: logit
 import ForwardDiff, Zygote
 import PDMats
 
-using MeasureBase: transport_to, transport_def, transport_origin
-using MeasureBase: StdUniform, StdNormal, StdExponential
-using .MeasureBaseDistributionsExt: _trafo_cdf, _trafo_quantile
+using MeasureBase: transport_to, transport_def
+using MeasureBase: StdUniform, StdNormal, StdExponential, StdLogistic
+using .MeasureBaseDistributionsExt: _trafo_logcdf, _trafo_logccdf, _trafo_quantile, _trafo_cquantile
 
 include("getjacobian.jl")
 
@@ -20,12 +21,12 @@ include("getjacobian.jl")
     function test_back_and_forth(trg, src)
         @testset "transform $(typeof(trg).name) <-> $(typeof(src).name)" begin
             x = rand(src)
-            y = transport_def(trg, src, x)
-            src_v_reco = transport_def(src, trg, y)
+            y = transport_to(trg, src)(x)
+            src_v_reco = transport_to(src, trg)(y)
 
             @test x ≈ src_v_reco
-            
-            f = x -> transport_def(trg, src, x)
+
+            f = x -> transport_to(trg, src)(x)
             ref_ladj = logpdf(src, x) - logpdf(trg, y)
             @test ref_ladj ≈ logabsdet(getjacobian(f, x))[1]
         end
@@ -115,12 +116,47 @@ include("getjacobian.jl")
 
     @testset "Custom cdf and quantile for dual numbers" begin
         Dual = ForwardDiff.Dual
+        dual_normal = Normal(Dual(0, 1, 0, 0), Dual(1, 0, 1, 0))
+        dual_x = Dual(0.5, 0, 0, 1)
+        dual_p = Dual(0.3, 0, 0, 1)
 
-        @test isapprox(_trafo_cdf(Normal(Dual(0, 1, 0, 0), Dual(1, 0, 1, 0)), Dual(0.5, 0, 0, 1)), cdf(Normal(Dual(0, 1, 0, 0), Dual(1, 0, 1, 0)), Dual(0.5, 0, 0, 1)), rtol = 10^-6)
-        @test isapprox(_trafo_cdf(Normal(0, 1), Dual(0.5, 1)), cdf(Normal(0, 1), Dual(0.5, 1)), rtol = 10^-6)
+        @test isapprox(_trafo_logcdf(dual_normal, dual_x), logcdf(dual_normal, dual_x), rtol = 10^-6)
+        @test isapprox(_trafo_logcdf(Normal(0, 1), Dual(0.5, 1)), logcdf(Normal(0, 1), Dual(0.5, 1)), rtol = 10^-6)
+        @test isapprox(_trafo_logccdf(dual_normal, dual_x), logccdf(dual_normal, dual_x), rtol = 10^-6)
+        @test isapprox(_trafo_logccdf(Normal(0, 1), Dual(0.5, 1)), logccdf(Normal(0, 1), Dual(0.5, 1)), rtol = 10^-6)
 
-        @test isapprox(_trafo_quantile(Normal(0, 1), Dual(0.5, 1)), quantile(Normal(0, 1), Dual(0.5, 1)), rtol = 10^-6)
-        @test isapprox(_trafo_quantile(Normal(Dual(0, 1, 0, 0), Dual(1, 0, 1, 0)), Dual(0.5, 0, 0, 1)), quantile(Normal(Dual(0, 1, 0, 0), Dual(1, 0, 1, 0)), Dual(0.5, 0, 0, 1)), rtol = 10^-6)
+        @test isapprox(_trafo_quantile(Normal(0, 1), Dual(0.3, 1)), quantile(Normal(0, 1), Dual(0.3, 1)), rtol = 10^-6)
+        @test isapprox(_trafo_quantile(dual_normal, dual_p), quantile(dual_normal, dual_p), rtol = 10^-6)
+        @test isapprox(_trafo_cquantile(Normal(0, 1), Dual(0.3, 1)), cquantile(Normal(0, 1), Dual(0.3, 1)), rtol = 10^-6)
+        @test isapprox(_trafo_cquantile(dual_normal, dual_p), cquantile(dual_normal, dual_p), rtol = 10^-6)
+
+        # Distributions whose cdf doesn't support dual numbers natively:
+        beta = Beta(2.0, 3.0)
+        dlogitcdf(d, x) = pdf(d, x) / (cdf(d, x) * ccdf(d, x))
+        @test ForwardDiff.derivative(x -> transport_to(StdLogistic(), beta)(x), 0.3) ≈ dlogitcdf(beta, 0.3)
+        x_b = transport_to(beta, StdLogistic())(-0.4)
+        @test ForwardDiff.derivative(l -> transport_to(beta, StdLogistic())(l), -0.4) ≈ inv(dlogitcdf(beta, x_b))
+    end
+
+    @testset "tails of univariate transports" begin
+        # Bounded and heavy-lower-tailed distributions lose the lower tail in
+        # their quantile functions, so the ranges differ:
+        for (d, ls) in [
+            (Normal(0.3, 1.7), [-700.0, -40.0, -8.0, 0.0, 8.0, 40.0, 700.0]),
+            (Weibull(0.7, 1.3), [-40.0, -8.0, 0.0, 8.0, 40.0, 700.0]),
+            (truncated(Normal(0.2, 1.1), -3.0, 2.5), [-8.0, 0.0, 8.0]),
+        ]
+            for l in ls
+                x = transport_to(d, StdLogistic())(l)
+                @test insupport(d, x)
+                @test isapprox(transport_to(StdLogistic(), d)(x), l, rtol = 1e-6, atol = 1e-12)
+            end
+        end
+        for z in [-8.0, 8.0, 37.0]
+            x = transport_to(Weibull(0.7, 1.3), StdNormal())(z)
+            @test isfinite(x) && x > 0
+            @test transport_to(StdNormal(), Weibull(0.7, 1.3))(x) ≈ z rtol = 1e-6
+        end
     end
 
     @testset "trafo autodiff pullbacks" begin

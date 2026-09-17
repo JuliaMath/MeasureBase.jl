@@ -161,3 +161,101 @@ checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 massof(m::PowerMeasure) = massof(m.parent)^prod(m.axes)
 
 
+# Transport: the standard variate of a power is the flat vector of the
+# standard variates of its base measure, in the order of the flat variate
+# storage.
+
+function transport_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray) where {S<:StdMeasure}
+    _pwr_to_std(S, μ, x, _flat_storage(x), mspace_flatsize(μ))
+end
+
+# Flat storage of known flat size: transport the variates of the innermost
+# base measure over the flat storage.
+function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, x_flat::AbstractArray, sz_flat::SizeLike) where {S}
+    ν, _ = _pwr_unwrap(μ)
+    _check_flatsize(x_flat, sz_flat)
+    _pwr_to_std_flat(S, ν, x_flat, mspace_flatsize(ν))
+end
+
+@inline function _pwr_to_std_flat(::Type{S}, ν, x_flat::AbstractArray, ::Tuple{}) where {S}
+    _flat_std_of(broadcast(Base.Fix1(_ToStd{S}(), ν), x_flat))
+end
+
+@inline function _pwr_to_std_flat(::Type{S}, ν, x_flat::AbstractArray, sz::SizeLike) where {S}
+    _flat_std_of(map(Base.Fix1(_ToStd{S}(), ν), sliced(x_flat, Val(length(sz)))))
+end
+
+# Otherwise transport the variates of the base measure one by one:
+function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, ::Any, ::Any) where {S}
+    _flat_std_of(map(Base.Fix1(_ToStd{S}(), pwr_base(μ)), x))
+end
+
+function transport_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector) where {S<:StdMeasure}
+    _check_stdlength(z, fast_dof(μ))
+    _pwr_from_std(S, μ, z, mspace_flatsize(μ))
+end
+
+function _pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, sz_flat::SizeLike) where {S}
+    ν, _ = _pwr_unwrap(μ)
+    _pwr_variate(μ, _pwr_from_std_flat(S, ν, z, sz_flat, mspace_flatsize(ν)))
+end
+
+# Base measures of unknown variate size are transported one by one:
+function _pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, ::NoMSpaceElementSize) where {S}
+    ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
+    if !isempty(z_rest)
+        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of power measure"))
+    end
+    return ys
+end
+
+@inline function _check_stdlength(z::AbstractVector, n::IntegerLike)
+    if maybestatic_length(z) != n
+        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of measure"))
+    end
+    return nothing
+end
+@inline _check_stdlength(::AbstractVector, ::AbstractNoDOF) = nothing
+
+@inline function _pwr_from_std_flat(::Type{S}, ν, z::AbstractVector, sz_flat, ::Tuple{}) where {S}
+    maybestatic_reshape(broadcast(Base.Fix1(_FromStd{S}(), ν), z), sz_flat)
+end
+
+@inline function _pwr_from_std_flat(::Type{S}, ν, z::AbstractVector, sz_flat, sz_ν::SizeLike) where {S}
+    n_variates = size2length(sz_flat) ÷ size2length(sz_ν)
+    maybestatic_reshape(stacked(_pwr_from_std_chunks(S, ν, z, n_variates, fast_dof(ν))), sz_flat)
+end
+
+function _pwr_from_std_chunks(::Type{S}, ν, z::AbstractVector, n_variates, dof_ν::IntegerLike) where {S}
+    chunks = sliced(maybestatic_reshape(z, (dof_ν, n_variates)), Val(1))
+    map(Base.Fix1(_FromStd{S}(), ν), chunks)
+end
+
+function _pwr_from_std_chunks(::Type{S}, ν, z::AbstractVector, n_variates, ::AbstractNoDOF) where {S}
+    ys, z_rest = _marginals_from_std_with_rest(S, FillArrays.Fill(ν, n_variates), z)
+    if !isempty(z_rest)
+        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of power measure"))
+    end
+    return ys
+end
+
+# Powers of measures without fast degrees of freedom transport their
+# elements sequentially:
+function transport_from_std_with_rest(::Type{S}, μ::PowerMeasure, z::AbstractVector) where {S<:StdMeasure}
+    _pwr_from_std_with_rest(S, μ, z, fast_dof(μ))
+end
+@inline _pwr_from_std_with_rest(::Type{S}, μ, z, n::IntegerLike) where {S} = _from_std_with_rest_bydof(S, μ, z, n)
+function _pwr_from_std_with_rest(::Type{S}, μ, z, ::AbstractNoDOF) where {S}
+    _marginals_from_std_with_rest(S, marginals(μ), z)
+end
+
+# The nested variate layout of a power over its flat storage:
+@inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
+@inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, mspace_flatsize(ν))
+@inline _nest_leaf(A::AbstractArray, ::Tuple{}) = A
+@inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A
+@inline _nest_leaf(A::AbstractArray{<:Any,N}, sz::SizeLike) where {N} = _nest_leaf(A, Val(length(sz)), Val(N))
+@inline _nest_leaf(A::AbstractArray, ::Val{N}, ::Val{N}) where {N} = A
+@inline _nest_leaf(A::AbstractArray, ::Val{M}, ::Val) where {M} = sliced(A, Val(M))
+@inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = sliced(B, Val(length(pwr_axes(ν))))
+@inline _pwr_nest(ν, B::AbstractArray) = B

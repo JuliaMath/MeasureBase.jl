@@ -3,48 +3,60 @@
 
 @inline MeasureBase.getdof(::Distribution{Univariate}) = static(1)
 
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Distribution{Univariate,Continuous}}) = StdUniform
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Exponential}) = StdExponential
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Logistic}) = StdLogistic
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Normal}) = StdNormal
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Distributions.AffineDistribution{<:Any,<:Any,D}}) where {D} = MeasureBase.preferred_stdmeasure(D)
-
 @inline MeasureBase.check_dof(a::Distribution{Univariate}, b::Distribution{Univariate}) = nothing
-
-
-# Generic transformations to/from StdUniform via cdf/quantile:
-
 
 _dist_params_numtype(d::Distribution) = real_numtype(typeof(Distributions.params(d)))
 
-
-@inline _trafo_cdf(d::Distribution{Univariate,Continuous}, x::Number) =
-    _trafo_cdf_impl(_dist_params_numtype(d), d, x)
-
-@inline _trafo_cdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
-    Distributions.cdf(d, x)
-
-
-@inline _trafo_quantile(d::Distribution{Univariate,Continuous}, u::Number) =
-    _trafo_quantile_impl(_dist_params_numtype(d), d, u)
-
-@inline _trafo_quantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, u::Number) =
-    _trafo_quantile_impl_generic(d, u)
-
-
-@inline _trafo_quantile_impl_generic(d::Distribution{Univariate,Continuous}, u::Number) =
-    Distributions.quantile(d, u)
-
-# Workaround for Beta dist, current quantile implementation only supports Float64:
-@inline function _trafo_quantile_impl_generic(d::Beta{T}, u::Union{Integer,AbstractFloat}) where {T<:Union{Integer,AbstractFloat}}
-    Distributions.quantile(d, convert(promote_type(Float64, typeof(u)), u))
+@inline function _result_numtype(d::Distribution{Univariate}, x::T) where {T<:Number}
+    float(promote_type(T, _dist_params_numtype(d)))
 end
 
-# Workaround for rounding errors that can result in quantile values outside of support of Truncated:
-@inline function _trafo_quantile_impl_generic(d::Distributions.Truncated{<:Distribution{Univariate,Continuous}}, u::Real)
-    x = Distributions.quantile(d, u)
-    T = typeof(x)
+
+# Generic transports between univariate continuous distributions and
+# StdLogistic: the log-cdf and log-ccdf keep both tails accurate on the way
+# to the standard measure, quantile and complementary quantile on the way
+# back. The implementation hooks are specialized for dual numbers in the
+# ForwardDiff extension.
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Distribution{Univariate,Continuous}}) = StdLogistic
+
+@inline _trafo_logcdf(d::Distribution{Univariate,Continuous}, x::Number) =
+    _trafo_logcdf_impl(_dist_params_numtype(d), d, x)
+@inline _trafo_logccdf(d::Distribution{Univariate,Continuous}, x::Number) =
+    _trafo_logccdf_impl(_dist_params_numtype(d), d, x)
+@inline _trafo_quantile(d::Distribution{Univariate,Continuous}, p::Number) =
+    _trafo_quantile_impl(_dist_params_numtype(d), d, p)
+@inline _trafo_cquantile(d::Distribution{Univariate,Continuous}, p::Number) =
+    _trafo_cquantile_impl(_dist_params_numtype(d), d, p)
+
+@inline _trafo_logcdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
+    Distributions.logcdf(d, x)
+@inline _trafo_logccdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
+    Distributions.logccdf(d, x)
+@inline _trafo_quantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, p::Number) =
+    _dist_quantile(d, p)
+@inline _trafo_cquantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, p::Number) =
+    _dist_cquantile(d, p)
+
+@inline _dist_quantile(d::Distribution{Univariate,Continuous}, p::Number) = Distributions.quantile(d, p)
+@inline _dist_cquantile(d::Distribution{Univariate,Continuous}, p::Number) = Distributions.cquantile(d, p)
+
+# The quantile implementation of Beta only supports Float64:
+const _Float64Compatible = Union{Integer,AbstractFloat}
+@inline function _dist_quantile(d::Beta{<:_Float64Compatible}, p::_Float64Compatible)
+    Distributions.quantile(d, convert(promote_type(Float64, typeof(p)), p))
+end
+@inline function _dist_cquantile(d::Beta{<:_Float64Compatible}, p::_Float64Compatible)
+    Distributions.cquantile(d, convert(promote_type(Float64, typeof(p)), p))
+end
+
+# Rounding errors can push quantiles of truncated distributions slightly
+# outside of their support:
+const _Truncated = Distributions.Truncated{<:Distribution{Univariate,Continuous}}
+@inline _dist_quantile(d::_Truncated, p::Real) = _clamp_to_support(d, Distributions.quantile(d, p))
+@inline _dist_cquantile(d::_Truncated, p::Real) = _clamp_to_support(d, Distributions.cquantile(d, p))
+
+function _clamp_to_support(d::_Truncated, x::T) where {T<:Real}
     min_x = T(minimum(d))
     max_x = T(maximum(d))
     if x < min_x && isapprox(x, min_x, atol = 4 * eps(T))
@@ -56,89 +68,68 @@ end
     end
 end
 
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
+    R = _result_numtype(d, x)
+    l = _trafo_logcdf(d, x) - _trafo_logccdf(d, x)
+    ifelse(Distributions.insupport(d, x), convert(R, l), convert(R, NaN))
+end
 
-@inline function _result_numtype(d::Distribution{Univariate}, x::T) where {T<:Number}
-    float(promote_type(T, _dist_params_numtype(d)))
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
+    R = _result_numtype(d, l)
+    # From the side that keeps the tail:
+    x = l < zero(l) ? _trafo_quantile(d, logistic(l)) : _trafo_cquantile(d, logistic(-l))
+    convert(R, x)
 end
 
 
-@inline function MeasureBase.transport_def(::StdUniform, μ::Distribution{Univariate,Continuous}, x)
-    R = _result_numtype(μ, x)
-    y = _trafo_cdf(μ, x)
-    ifelse(Distributions.insupport(μ, x), convert(R, y), convert(R, NaN))
+# Location-scale families of standard measures transport by their affine map:
+
+@inline function _affine_to_std(d::Distribution{Univariate}, x::Number)
+    z = (x - Distributions.location(d)) / Distributions.scale(d)
+    convert(_result_numtype(d, x), z)
 end
 
-
-@inline function MeasureBase.transport_def(ν::Distribution{Univariate,Continuous}, ::StdUniform, x::T) where {T}
-    R = _result_numtype(ν, x)
-    TF = float(T)
-    # Avoid x ≈ 0 and x ≈ 1 to avoid infinite variate values for target
-    # distributions with infinite support, keep the quantile argument valid
-    # for out-of-range x (the result is masked to NaN then):
-    clamped_x = clamp(convert(TF, x), zero(TF), one(TF))
-    mod_x = ifelse(x ≈ 0, zero(TF) + eps(TF), ifelse(x ≈ 1, one(TF) - eps(TF), clamped_x))
-    y = _trafo_quantile(ν, mod_x)
-    ifelse((zero(x) <= x) & (x <= one(x)), convert(R, y), convert(R, NaN))
+@inline function _std_to_affine(d::Distribution{Univariate}, z::Number)
+    x = muladd(z, Distributions.scale(d), Distributions.location(d))
+    convert(_result_numtype(d, z), x)
 end
 
-
-# Use standard measures as transformation origin for scaled/translated equivalents:
-
-function _origin_to_affine(ν::Distribution{Univariate}, y::T) where {T<:Number}
-    trg_offs, trg_scale = Distributions.location(ν), Distributions.scale(ν)
-    x = muladd(y, trg_scale, trg_offs)
-    convert(_result_numtype(ν, y), x)
-end
-
-function _affine_to_origin(μ::Distribution{Univariate}, x::T) where {T<:Number}
-    src_offs, src_scale = Distributions.location(μ), Distributions.scale(μ)
-    y = (x - src_offs) / src_scale
-    convert(_result_numtype(μ, x), y)
-end
-
-for (A, B) in [
+for (D, S) in [
     (Uniform, StdUniform),
     (Logistic, StdLogistic),
     (Normal, StdNormal)
 ]
     @eval begin
-        @inline MeasureBase.transport_origin(::$A) = $B()
-        @inline MeasureBase.to_origin(ν::$A, y) = _affine_to_origin(ν, y)
-        @inline MeasureBase.from_origin(ν::$A, x) = _origin_to_affine(ν, x)
+        @inline MeasureBase.preferred_stdmeasure(::Type{<:$D}) = $S
+        @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _affine_to_std(d, x)
+        @inline MeasureBase.transport_from_std(::Type{$S}, d::$D, z) = _std_to_affine(d, z)
     end
 end
 
-@inline MeasureBase.transport_origin(::Exponential) = StdExponential()
-@inline MeasureBase.to_origin(ν::Exponential, y) = Distributions.scale(ν) \ y
-@inline MeasureBase.from_origin(ν::Exponential, x) = Distributions.scale(ν) * x
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Exponential}) = StdExponential
+@inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Exponential, x) =
+    convert(_result_numtype(d, x), Distributions.scale(d) \ x)
+@inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Exponential, z) =
+    convert(_result_numtype(d, z), Distributions.scale(d) * z)
 
 
-# Use the underlying distribution as transformation origin for affine
-# transformed distributions:
+# Affine transformed distributions transport via the underlying distribution:
 
-@inline MeasureBase.transport_origin(d::Distributions.AffineDistribution) = d.ρ
-@inline MeasureBase.from_origin(d::Distributions.AffineDistribution, x) = muladd(d.σ, x, d.μ)
-@inline MeasureBase.to_origin(d::Distributions.AffineDistribution, y) = d.σ \ (y - d.μ)
+const _AffineDist = Distributions.AffineDistribution
 
+@inline MeasureBase.preferred_stdmeasure(::Type{<:_AffineDist{<:Any,<:Any,D}}) where {D} =
+    MeasureBase.preferred_stdmeasure(D)
 
-
-# Transform between univariate and single-element power measure
-
-function MeasureBase.transport_def(ν::Distribution{Univariate}, μ::PowerMeasure{<:StdMeasure}, x)
-    return transport_def(ν, μ.parent, only(x))
+@inline function MeasureBase.transport_to_std(::Type{S}, d::_AffineDist, x) where {S<:StdMeasure}
+    transport_to_std(S, d.ρ, d.σ \ (x - d.μ))
 end
-
-function MeasureBase.transport_def(ν::PowerMeasure{<:StdMeasure}, μ::Distribution{Univariate}, x)
-    return Fill(transport_def(ν.parent, μ, only(x)), map(length, ν.axes)...)
+@inline function MeasureBase.transport_from_std(::Type{S}, d::_AffineDist, z) where {S<:StdMeasure}
+    muladd(d.σ, transport_from_std(S, d.ρ, z), d.μ)
 end
-
-
-# Transform between univariate and single-element standard multivariate
-
-function MeasureBase.transport_def(ν::Distribution{Univariate}, μ::StandardDist{D,1}, x) where {D}
-    return transport_def(ν, StandardDist{D}(), only(x))
+# Disambiguation with the generic univariate transports:
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::_AffineDist, x)
+    transport_to_std(StdLogistic, d.ρ, d.σ \ (x - d.μ))
 end
-
-function MeasureBase.transport_def(ν::StandardDist{D,1}, μ::Distribution{Univariate}, x) where {D}
-    return Fill(transport_def(StandardDist{D}(), μ, only(x)), size(ν)...)
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::_AffineDist, z)
+    muladd(d.σ, transport_from_std(StdLogistic, d.ρ, z), d.μ)
 end

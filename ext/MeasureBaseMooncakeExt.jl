@@ -7,7 +7,7 @@ import Mooncake
 using Mooncake: @zero_derivative, MinimalCtx
 
 using MeasureBase: isneginf, isposinf, _adignore_call
-using MeasureBase: check_dof, require_insupport, _origin_depth
+using MeasureBase: check_dof, require_insupport
 
 # Unlike Zygote, Mooncake differentiates the collection utilities
 # (`_pushfront`, etc., mutating code in general), `checked_arg` and
@@ -20,7 +20,6 @@ using MeasureBase: check_dof, require_insupport, _origin_depth
 @zero_derivative MinimalCtx Tuple{typeof(_adignore_call),Any}
 
 @zero_derivative MinimalCtx Tuple{typeof(require_insupport),Any,Any}
-@zero_derivative MinimalCtx Tuple{typeof(_origin_depth),Any}
 @zero_derivative MinimalCtx Tuple{typeof(check_dof),Any,Any}
 
 end # module MeasureBaseMooncakeExt
