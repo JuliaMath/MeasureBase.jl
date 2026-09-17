@@ -7,6 +7,8 @@ MeasureBase.getdof(m::DirichletMeasure) = getdof(m.obj)
 
 MeasureBase.transport_origin(d::Dirichlet) = StdUniform()^getdof(d)
 
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Dirichlet}) = StdUniform
+
 
 
 function _dirichlet_beta_trafo(α::Real, β::Real, x::Real)

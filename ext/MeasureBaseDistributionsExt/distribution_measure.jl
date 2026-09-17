@@ -66,6 +66,8 @@ end
 @inline MeasureBase.mspace_elsize(m::DistributionMeasure) = MeasureBase.mspace_elsize(m.obj)
 @inline MeasureBase.mspace_flatsize(m::DistributionMeasure) = MeasureBase.mspace_flatsize(m.obj)
 
+@inline MeasureBase.preferred_stdmeasure(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D)
+
 @inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = 1
 
 # Delegate transport to the wrapped distribution:

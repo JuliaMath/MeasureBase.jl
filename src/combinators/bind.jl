@@ -241,6 +241,8 @@ function _bind_tpm_sc(::Type{Pair}, μ::Bind, xy::Pair)
 end
 
 const _BindBy{FC} = Bind{<:Any,<:AbstractMeasure,FC}
+
+@inline preferred_stdmeasure(::Type{<:Bind{<:Any,M}}) where {M} = preferred_stdmeasure(M)
 _bind_tpm_sc(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector) =
     _bind_tpm_sc_cat(f_c, μ, xy)
 _bind_tpm_sc(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple) =

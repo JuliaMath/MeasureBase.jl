@@ -42,6 +42,7 @@ for (A, B) in [
     (Normal, StdNormal)
 ]
     @eval begin
+        @inline MeasureBase.preferred_stdmeasure(::Type{<:StandardDist{$A}}) = $B
         @inline MeasureBase.transport_origin(d::StandardDist{$A,0}) = $B()
         @inline MeasureBase.transport_origin(d::StandardDist{$A,N}) where {N} = $B()^size(d)
 

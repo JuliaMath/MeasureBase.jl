@@ -118,6 +118,10 @@ struct CombinedMeasure{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMe
     β::MB
 end
 
+@inline function preferred_stdmeasure(::Type{<:CombinedMeasure{<:Any,MA,MB}}) where {MA,MB}
+    promote_stdmeasure(preferred_stdmeasure(MA), preferred_stdmeasure(MB))
+end
+
 
 @inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
 

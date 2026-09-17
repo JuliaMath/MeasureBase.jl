@@ -3,6 +3,13 @@
 
 @inline MeasureBase.getdof(::Distribution{Univariate}) = static(1)
 
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Distribution{Univariate,Continuous}}) = StdUniform
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Exponential}) = StdExponential
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Logistic}) = StdLogistic
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Normal}) = StdNormal
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Distributions.AffineDistribution{<:Any,<:Any,D}}) where {D} = MeasureBase.preferred_stdmeasure(D)
+
 @inline MeasureBase.check_dof(a::Distribution{Univariate}, b::Distribution{Univariate}) = nothing
 
 
