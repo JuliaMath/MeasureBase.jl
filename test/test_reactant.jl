@@ -1,19 +1,21 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
-# Reactant smoke tests, not part of the default test suite. Run with
-# `julia --project=test/reactant test/reactant/runtests.jl` after
-# instantiating that project, or include this file in an environment that
-# provides Reactant. The backend defaults to the CPU, set the environment
-# variable `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it.
+# Reactant tests. Reactant isn't a static test dependency (it only
+# supports 64-bit Linux and macOS), runtests.jl adds it on the fly where
+# supported. The backend defaults to the CPU, set the environment variable
+# `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it; the file can
+# also be run standalone in an environment that provides Reactant.
 
 using Test
 using Reactant
 using MeasureBase
-using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac
+using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac, asmeasure
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
 using MeasureBase: mcombine
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
-using Distributions: Normal, Exponential, Uniform, Beta
+using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
+using Distributions: Poisson, MvNormal, Dirichlet
+using MeasureBase.InverseFunctions: inverse
 
 Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
 
@@ -106,5 +108,33 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> transport_to(StdNormal(), StdUniform()).(x), rand(10))
         test_traced(x -> transport_to(Normal(2, 3), StdNormal()).(x), x)
         test_traced(x -> transport_to(StdNormal(), Exponential(2.0)).(x), rand(10))
+    end
+
+    # Distribution parameters stay constants, Distributions' parameter
+    # structs can't hold traced arrays:
+    @testset "wrapped distributions" begin
+        for d in (Normal(0.3, 1.7), Uniform(-1.0, 2.5), Exponential(0.7), Logistic(0.2, 1.3), Cauchy(0.1, 0.8), Laplace(-0.4, 1.1), LogNormal(0.2, 0.6), Weibull(1.4, 0.9), Gamma(2.3, 1.2), Beta(2.5, 3.5))
+            m = asmeasure(d)
+            xd = rand(d, 10)
+            test_traced(x -> logdensities(m, x), xd)
+            f = transport_to(StdNormal(), m)
+            if d isa Union{Gamma,Beta}
+                # SpecialFunctions' incomplete gamma and beta functions have no Reactant methods:
+                @test_broken @jit((x -> copy(f.(x)))(Reactant.to_rarray(xd))) isa AbstractArray
+            else
+                test_traced(x -> f.(x), xd)
+                test_traced(z -> inverse(f).(z), randn(10))
+            end
+        end
+        test_traced(x -> logdensities(asmeasure(Poisson(2.7)), x), Float64.(rand(Poisson(2.7), 10)))
+        mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
+        mm = asmeasure(mvn)
+        Xm = rand(mvn, 10)
+        test_traced(X -> logdensities(mm, X), Xm)
+        test_traced(X -> flatview(transport_to(StdNormal()^2, mm).(sliced(X, Val(1)))), Xm)
+        test_traced(Z -> flatview(transport_to(mm, StdNormal()^2).(sliced(Z, Val(1)))), randn(2, 10))
+        dir = Dirichlet([2.0, 3.0, 4.0, 1.5])
+        md = asmeasure(dir)
+        test_traced(X -> logdensities(md, X), rand(dir, 10))
     end
 end
