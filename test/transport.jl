@@ -9,7 +9,7 @@ using MeasureBase: weightedmeasure, mcombine
 using StaticArrays: SVector
 using Static: static
 using LogExpFunctions: logit
-using ArraysOfArrays: sliced, flatview
+using ArraysOfArrays: sliced, flatview, fused
 using JLArrays
 
 @testset "transport_to" begin
@@ -175,7 +175,18 @@ using JLArrays
         h = transport_to(StdUniform()^(2, 3), (StdNormal()^2)^3)
         Xh = randn(2, 3, 4)
         @test flatview(h.(Xh)) ≈ stack([h(Xh[:, :, i]) for i in 1:4])
-        @test flatview(inverse(h).(h.(Xh))) ≈ Xh
+        @test flatview(fused(inverse(h).(h.(Xh)))) ≈ Xh
+        Yh = h.(Xh)
+        Xh_reco = inverse(h).(Yh)
+        @test Xh_reco[2] == inverse(h)(Yh[2])
+        @test Xh_reco[2] isa AbstractVector && length(Xh_reco[2]) == 3 && Xh_reco[2][1] isa AbstractVector
+
+        X3 = randn(3, 4, 5)
+        Y3 = g.(X3)
+        @test size(Y3) == (4, 5) && size(flatview(Y3)) == (3, 4, 5)
+        @test Y3[2, 3] ≈ g(X3[:, 2, 3])
+        @test f.(SVector(0.3, 0.6, 0.9)) isa SVector{3,Float64}
+        @test g.(Xn .+ 0.0) == g.(Xn)
 
         P = MeasureBase.ProductMeasure([weightedmeasure(log(i), StdNormal()) for i in 1:3])
         p = transport_to(StdUniform()^3, P)
@@ -211,6 +222,8 @@ using JLArrays
         Pj = MeasureBase.ProductMeasure(JLArray([weightedmeasure(log(i), StdNormal()) for i in 1:3]))
         pj = transport_to(StdUniform()^3, Pj)
         @test Array(flatview(pj.(sliced(JLArray(Xp), Val(1))))) ≈ flatview(Yp)
+        Yej = pf.(JLArray(Xe))
+        @test Yej isa JLArray && Array(Yej) ≈ pf.(Xe)
     end
 
     @testset "transport for products" begin

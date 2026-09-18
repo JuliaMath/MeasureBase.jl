@@ -245,10 +245,7 @@ end
 @inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::Tuple{})
     broadcast(ν.f, batched_rand_impl(ctx, ν.origin, sz))
 end
-function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, sz_orig::SizeLike)
-    stacked(map(ν.f, sliced(batched_rand_impl(ctx, ν.origin, sz), Val(length(sz_orig)))))
-end
-@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::NoMSpaceElementSize)
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::Any)
     _batched_rand_pointwise(ctx, ν, sz)
 end
 

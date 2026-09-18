@@ -149,9 +149,12 @@ end
 # Batches of superpositions draw a batch from each component and select
 # by mass, branch-free:
 function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::Dims)
+    _superpose_batched_rand(ctx, μ, sz, mspace_flatsize(μ))
+end
+function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::Dims, sz_flat::SizeLike)
     components = values(μ.components)
     masses, total = _component_masses(μ)
-    thresholds = _rand_bulk(ctx, sz) .* total
+    thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, sz_flat)
     X = batched_rand_impl(ctx, first(components), sz)
     csum = first(masses)
     for (mass, c) in Iterators.drop(zip(masses, components), 1)
@@ -160,6 +163,8 @@ function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::Dims)
     end
     return X
 end
+_superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::Dims, ::NoMSpaceElementSize) =
+    _batched_rand_pointwise(ctx, μ, sz)
 
 @inline function insupport(d::SuperpositionMeasure, x)
     mapreduce(c -> _insupport_mask(insupport(c, x)), |, values(d.components))

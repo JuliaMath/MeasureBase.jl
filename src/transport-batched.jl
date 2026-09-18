@@ -12,7 +12,7 @@ of variates of the standard measure type `S`.
 
 The default implementation broadcasts the point transport for measures
 with scalar variates and maps it over the variate slices of `X`
-otherwise.
+otherwise, in a host loop.
 """
 function batched_transport_to_std end
 
@@ -44,6 +44,10 @@ end
 Batched form of [`MeasureBase.transport_from_std`](@ref): transports the
 batch `Z` of variates of the standard measure type `S`, of size
 `(getdof(μ), batch dims...)`, to a flat batch of variates of `μ`.
+
+The default implementation broadcasts the point transport for measures
+with scalar variates and maps it over the columns of `Z` otherwise, in a
+host loop.
 """
 function batched_transport_from_std end
 
@@ -72,7 +76,8 @@ Batched form of [`MeasureBase.transport_to_std_with_rest`](@ref) for a
 batch `X` of flat vector streams (first dimension along the streams).
 
 Returns a tuple `(Z, X_μ, X_rest)` of the batch of standard variates, the
-rows consumed from the streams and the unconsumed rest of the streams.
+batch of variates of `μ` consumed from the streams and the unconsumed rest
+of the streams.
 """
 function batched_transport_to_std_with_rest end
 
@@ -139,18 +144,34 @@ end
 
 # Broadcasting a transport function over an array of variates with flat
 # storage, or over the flat storage of a batch, transports the batch as a
-# whole. Variates of the target measure come out in their flat form.
+# whole. Fused broadcast arguments are materialized first, static arrays
+# are transported point by point.
 function Broadcast.broadcasted(f::TransportFunction, X::AbstractArray)
     _broadcast_transport(f, X, _flat_storage(X), mspace_flatsize(f.μ), mspace_flatsize(f.ν))
 end
 
+function Broadcast.broadcasted(f::TransportFunction, bc::Broadcast.Broadcasted)
+    Broadcast.broadcasted(f, Broadcast.materialize(bc))
+end
+
+Broadcast.broadcasted(f::TransportFunction, X::StaticArray) = map(_Pointwise(f), X)
+
 function _broadcast_transport(f::TransportFunction, X, X_flat::AbstractArray, sz_μ::SizeLike, sz_ν::SizeLike)
     _check_flatsize(X_flat, sz_μ)
     Y_flat = batched_transport_def(f.ν, f.μ, X_flat)
-    return _batch_variates(Y_flat, sz_ν)
+    return _batch_variates(Y_flat, f.ν)
 end
 
-_broadcast_transport(f::TransportFunction, X, ::Any, ::Any, ::Any) = map(f, X)
+_broadcast_transport(f::TransportFunction, X, ::Any, ::Any, ::Any) = map(_Pointwise(f), X)
 
-@inline _batch_variates(Y::AbstractArray, ::Tuple{}) = Y
-@inline _batch_variates(Y::AbstractArray, sz::SizeLike) = sliced(Y, Val(length(sz)))
+# Prevents re-entering the broadcast hook from `map` implementations that
+# broadcast (e.g. GPU arrays):
+struct _Pointwise{F} <: Function
+    f::F
+end
+@inline (p::_Pointwise)(x) = p.f(x)
+
+# The batch of variates in the layout of the target measure over the flat
+# result, nested powers included:
+@inline _batch_variates(Y::AbstractArray, ν) = _nest_leaf(Y, mspace_flatsize(ν))
+@inline _batch_variates(Y::AbstractArray, ν::PowerMeasure) = sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))

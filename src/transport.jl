@@ -12,9 +12,12 @@ to `rand(ν)`. `f` supports `InverseFunctions.inverse` and
 
 Measures are transported via standard measures: `x` is transported to the
 standard measure type that the preferences of `ν` and `μ` promote to (see
-[`MeasureBase.preferred_stdmeasure`](@ref)) and from there to `ν`. A
-standard measure type like `StdUniform` or `StdNormal` may also be used
-directly as the source or target:
+[`MeasureBase.preferred_stdmeasure`](@ref)) and from there to `ν`.
+Broadcasting `f` over an array of variates with flat storage (see
+[`MeasureBase.mspace_flatsize`](@ref)), or over the flat storage of a
+batch of variates, transports the whole batch at once. A standard measure
+type like `StdUniform` or `StdNormal` may also be used directly as the
+source or target:
 
 ```julia
 transport_to(StdNormal, μ)

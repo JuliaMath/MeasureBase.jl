@@ -12,7 +12,7 @@ using MeasureBase
 using MeasureBase: GenContext
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac, Lebesgue
 using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd, testvalue
-using MeasureBase: rand_impl, batched_rand_impl
+using MeasureBase: rand_impl, batched_rand_impl, massof, isnormalized
 
 @testset "rand" begin
     stblrng() = StableRNG(789990641)
@@ -42,6 +42,9 @@ using MeasureBase: rand_impl, batched_rand_impl
     end
 
     @testset "test values" begin
+        @test testvalue(mcombine(vcat, StdNormal()^2, StdUniform()^3)) == [0.0, 0.0, 0.5, 0.5, 0.5]
+        @test rand(MeasureBase.ConstantRNG(), Float64, StdUniform()^3) == fill(0.5, 3)
+        @test rand(MeasureBase.ConstantRNG(), Float32, StdLogistic()^2) == zeros(Float32, 2)
         @test testvalue(StdNormal()) == 0
         @test testvalue(Float32, StdUniform()) === 0.5f0
         @test testvalue(StdExponential()^3) == ones(3)
@@ -101,6 +104,16 @@ using MeasureBase: rand_impl, batched_rand_impl
         @test xb isa AbstractVector && length(xb) == 4
         Xb = rand(stblrng(), μb^3)
         @test Xb isa AbstractVector && length(Xb) == 3 && all(x -> length(x) == 4, Xb)
+
+        ctx = GenContext{Float64}(stblrng())
+        spd = superpose(weightedmeasure(log(0.5), Dirac([1.0, 2.0])), weightedmeasure(log(0.5), Dirac([3.0, 4.0])))
+        Xspd = batched_rand_impl(ctx, spd, (6,))
+        @test size(Xspd) == (2, 6) && all(c -> c == [1.0, 2.0] || c == [3.0, 4.0], eachcol(Xspd))
+        Xsm = batched_rand_impl(ctx, SpikeMixture(StdNormal()^3, 0.5), (4,))
+        @test size(Xsm) == (3, 4) && all(c -> all(iszero, c) || !any(iszero, c), eachcol(Xsm))
+        @test massof(StdNormal()) == 1 && massof(StdUniform()^3) == 1 && massof(weightedmeasure(log(2.0), StdNormal()^2)) ≈ 2
+        @test isnormalized(StdNormal()) && isnormalized(StdExponential()^(2, 2)) && !isnormalized(2.0 * StdNormal())
+        @test !isnormalized(Lebesgue())
 
         d = Dirac([1.0, 2.0])
         @test rand(d^2) == [[1.0, 2.0], [1.0, 2.0]]

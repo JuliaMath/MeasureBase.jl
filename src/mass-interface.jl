@@ -107,7 +107,7 @@ Check whether `norm(x, p) == 1`.
 """
 isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
-isone(::AbstractUnknownMass) = false
+Base.isone(::AbstractUnknownMass) = false
 
 function massof(m, s)
     _default_massof_impl(m, s, rootmeasure(m))

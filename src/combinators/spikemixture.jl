@@ -38,9 +38,14 @@ function rand_impl(ctx::GenContext, μ::SpikeMixture)
 end
 
 function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::Dims)
-    X = batched_rand_impl(ctx, μ.m, sz)
-    return ifelse.(_rand_bulk(ctx, sz) .< μ.w, X, zero(eltype(X)))
+    _spike_batched_rand(ctx, μ, sz, mspace_flatsize(μ.m))
 end
+function _spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::Dims, sz_flat::SizeLike)
+    X = batched_rand_impl(ctx, μ.m, sz)
+    return ifelse.(_batch_mask(_rand_bulk(ctx, sz) .< μ.w, sz_flat), X, zero(eltype(X)))
+end
+_spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::Dims, ::NoMSpaceElementSize) =
+    _batched_rand_pointwise(ctx, μ, sz)
 
 testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
 

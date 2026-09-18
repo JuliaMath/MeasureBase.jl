@@ -12,7 +12,8 @@ Generate a random variate of `μ`.
 The generative context `ctx` (see `HeterogeneousComputing.GenContext`)
 determines the random number generator, the numerical precision (`Float64`
 by default) and the compute unit that array-valued variates are generated
-on. The variates of powers of measures are generated in one batch.
+on. The variates of powers of measures with a known flat variate size are
+generated in one batch.
 
 Measure types should specialize [`MeasureBase.rand_impl`](@ref) and
 [`MeasureBase.batched_rand_impl`](@ref) instead of `rand`.
@@ -45,10 +46,10 @@ function rand_impl(ctx::GenContext, μ)
 end
 
 @inline function _rand_via_std(ctx::GenContext, μ, ::Type{S}, ::IntegerLike, ::Tuple{}) where {S<:StdMeasure}
-    transport_from_std(S, μ, rand_impl(ctx, S()))
+    convert_realtype(get_precision(ctx), transport_from_std(S, μ, rand_impl(ctx, S())))
 end
 @inline function _rand_via_std(ctx::GenContext, μ, ::Type{S}, n::IntegerLike, ::Any) where {S<:StdMeasure}
-    transport_from_std(S, μ, _rand_std(ctx, S, (dynamic(n),)))
+    convert_realtype(get_precision(ctx), transport_from_std(S, μ, _rand_std(ctx, S, (dynamic(n),))))
 end
 @inline function _rand_via_std(ctx::GenContext, μ, ::Type{AnyStdMeasure}, n::IntegerLike, sz)
     _rand_via_std(ctx, μ, StdUniform, n, sz)
@@ -63,7 +64,8 @@ end
 
 Generate a batch of random variates of `μ` of batch size `sz` in flat
 form, an array of size `(flat variate dims..., sz...)` (see
-[`MeasureBase.mspace_flatsize`](@ref)).
+[`MeasureBase.mspace_flatsize`](@ref)). Measures with variates of
+unknown flat size only support batches of scalar variates.
 
 The default implementation draws a batch of variates of the preferred
 standard measure of `μ` and transports it to `μ`, or generates the
@@ -76,7 +78,7 @@ function batched_rand_impl(ctx::GenContext, μ, sz::Dims)
 end
 
 function _batched_rand_via_std(ctx::GenContext, μ, sz::Dims, ::Type{S}, n::IntegerLike, ::SizeLike) where {S<:StdMeasure}
-    batched_transport_from_std(S, μ, _rand_std(ctx, S, (dynamic(n), sz...)))
+    convert_realtype(get_precision(ctx), batched_transport_from_std(S, μ, _rand_std(ctx, S, (dynamic(n), sz...))))
 end
 @inline function _batched_rand_via_std(ctx::GenContext, μ, sz::Dims, ::Type{AnyStdMeasure}, n::IntegerLike, sz_flat::SizeLike)
     _batched_rand_via_std(ctx, μ, sz, StdUniform, n, sz_flat)
@@ -114,11 +116,17 @@ end
 @inline _randexp_bulk(ctx::GenContext, sz::Dims, ::AbstractComputeUnit) = -log1p.(-_rand_bulk(ctx, sz))
 
 # Test values use a constant RNG, which only draws single values:
-const _ConstantContext = GenContext{<:Any,<:Any,ConstantRNG}
+const _ConstantContext = GenContext{<:AbstractFloat,<:AbstractComputeUnit,ConstantRNG}
 @inline _rand_bulk(ctx::_ConstantContext, sz::Dims) = _const_bulk(ctx, rand(ConstantRNG(), get_precision(ctx)), sz)
 @inline _randn_bulk(ctx::_ConstantContext, sz::Dims) = _const_bulk(ctx, randn(ConstantRNG(), get_precision(ctx)), sz)
 @inline _randexp_bulk(ctx::_ConstantContext, sz::Dims) = _const_bulk(ctx, randexp(ConstantRNG(), get_precision(ctx)), sz)
 @inline _const_bulk(ctx::GenContext, x, sz::Dims) = fill!(allocate_array(ctx, typeof(x), sz), x)
+
+# A mask over the batch dimensions, aligned with a flat batch of variates:
+@inline _batch_mask(mask::AbstractArray, ::Tuple{}) = mask
+@inline function _batch_mask(mask::AbstractArray, sz_flat::SizeLike)
+    reshape(mask, (ntuple(_ -> 1, Val(length(sz_flat)))..., size(mask)...))
+end
 
 # A batch of copies of a constant variate:
 function _const_batch(ctx::GenContext, x, sz::Dims)

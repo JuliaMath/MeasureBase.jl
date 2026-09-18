@@ -233,6 +233,17 @@ include("getjacobian.jl")
         h = transport_to(StdNormal()^3, asmeasure(pd))
         Xp = rand(StableRNG(789990641), pd, 5)
         @test stack(h.(sliced(Xp, Val(1)))) ≈ stack(map(h, eachcol(Xp)))
+        pn = product_distribution([Normal(1.0, 2.0), Normal(0.0, 3.0), Normal(2.0, 1.0)])
+        mn = asmeasure(pn)
+        @test MeasureBase.mspace_flatsize(mn) == (3,)
+        hn = transport_to(StdUniform()^3, mn)
+        Xn = rand(StableRNG(789990641), pn, 4)
+        Yn = hn.(sliced(Xn, Val(1)))
+        @test flatview(Yn) ≈ stack(map(hn, eachcol(Xn)))
+        @test flatview(inverse(hn).(Yn)) ≈ Xn
+        @test eltype(rand(StableRNG(1), Float32, mn)) == Float32
+        @test eltype(flatview(rand(StableRNG(1), Float32, mn^3))) == Float32
+        @test eltype(rand(StableRNG(1), Float32, asmeasure(pd))) == Float32
     end
 
     @testset "MvNormal covariance representations" begin
