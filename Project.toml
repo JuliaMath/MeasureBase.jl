@@ -39,6 +39,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Tricks = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
 
 [weakdeps]
+AffineMaps = "2c83c9a8-abf5-4329-a0d7-deffaf474661"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -50,6 +51,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [extensions]
+MeasureBaseAffineMapsExt = "AffineMaps"
 MeasureBaseChainRulesCoreExt = "ChainRulesCore"
 MeasureBaseDistributionsExt = ["Distributions", "StatsBase", "StatsFuns", "PDMats"]
 MeasureBaseDistributionsChainRulesCoreExt = ["Distributions", "ChainRulesCore"]
@@ -63,6 +65,7 @@ MeasureBaseReactantExt = "Reactant"
 
 [compat]
 Adapt = "3.7, 4"
+AffineMaps = "0.3"
 StructArrays = "0.6.18, 0.7"
 ArgCheck = "1, 2"
 ArraysOfArrays = "1.3"

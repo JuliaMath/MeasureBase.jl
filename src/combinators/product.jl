@@ -339,27 +339,27 @@ function checked_arg(μ::ProductMeasure{<:NTuple{N,Any}}, x::NTuple{N,Any}) wher
 end
 
 # Variates of array products are arrays of marginal variates or, for
-# marginals with array variates of known size, their flat storage:
+# marginals with array variates of declared rank, their flat storage:
 @propagate_inbounds function checked_arg(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {M}
-    @boundscheck _check_product_arg(marginals(μ), x, mspace_flatsize(M))
+    @boundscheck _check_product_arg(marginals(μ), x, _static_ndims_of(mspace_ndims(M)))
     return x
 end
 
-@inline _check_product_arg(mar, x::AbstractArray, ::Tuple{}) = _check_marginal_count(mar, x)
-@inline _check_product_arg(mar, x::AbstractArray{<:Number}, ::NoMSpaceElementSize) = _check_marginal_count(mar, x)
-@inline function _check_product_arg(mar, x::AbstractArray, ::NoMSpaceElementSize)
+@inline function _check_product_arg(mar, x::AbstractArray, ::Any)
     _check_marginal_count(mar, x)
     foreach(checked_arg, mar, x)
     return nothing
 end
-@inline function _check_product_arg(mar, x::AbstractArray, sz_m::SizeLike)
-    if size(x) == size(mar)
-        foreach(checked_arg, mar, x)
-    elseif size(x) != (Tuple(sz_m)..., size(mar)...)
+@inline function _check_product_arg(mar::AbstractArray{<:Any,N}, x::AbstractArray{<:Number}, ::StaticInteger{0}) where {N}
+    _check_marginal_count(mar, x)
+end
+@inline function _check_product_arg(mar::AbstractArray{<:Any,N}, x::AbstractArray{<:Number}, ::StaticInteger{K}) where {N,K}
+    if ndims(x) != K + N || ntuple(i -> size(x, K + i), Val(N)) != size(mar)
         _throw_marginal_mismatch()
     end
     return nothing
 end
+@inline _check_product_arg(mar, x::AbstractArray{<:Number}, ::NoMSpaceElementSize) = _check_marginal_count(mar, x)
 
 
 function checked_arg(
@@ -371,7 +371,8 @@ end
 
 
 # Transport marginal by marginal, the standard variates of the marginals
-# are concatenated in order:
+# are concatenated in order. Batches of tuple and named tuple variates are
+# tuples resp. named tuples of batches.
 
 function transport_to_std(::Type{S}, μ::ProductMeasure{<:Tuple}, x::Tuple) where {S<:StdMeasure}
     _flatten_to_rv(map((m, xi) -> _as_stdstream(transport_to_std(S, m, xi)), marginals(μ), x))
@@ -381,16 +382,21 @@ function transport_to_std(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, x:
     transport_to_std(S, productmeasure(values(marginals(μ))), values(x))
 end
 
-function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_to_std(S, μ, x, Val(isconcretetype(M)))
+function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:Tuple}, X::Tuple) where {S<:StdMeasure}
+    _vcat_std(map((m, Xi) -> batched_transport_to_std(S, m, Xi), marginals(μ), X))
 end
-function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{true}) where {S}
-    _flat_std_of(_materialize(_marginal_broadcast(_ToStd{S}(), marginals(μ), x)))
+
+function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {S<:StdMeasure,names}
+    batched_transport_to_std(S, productmeasure(values(marginals(μ))), values(X))
 end
-# Marginals of mixed types may have standard variates of mixed shapes:
-function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{false}) where {S}
-    zs = [_as_stdstream(transport_to_std(S, m, xi)) for (m, xi) in zip(marginals(μ), x)]
-    isempty(zs) ? SVector{0,Bool}() : reduce(vcat, zs)
+
+@inline _vcat_std(Zs::Tuple) = vcat(Zs...)
+@inline _vcat_std(::Tuple{}) = SVector{0,Bool}()
+
+function transport_from_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, μ, z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return x
 end
 
 function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, z::AbstractVector) where {S<:StdMeasure}
@@ -402,31 +408,37 @@ function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple
     return NamedTuple{names}(ys), z_rest
 end
 
-function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray}, z::AbstractVector) where {S<:StdMeasure}
-    _array_product_from_std_with_rest(S, μ, z, fast_dof(μ))
-end
-@inline function _array_product_from_std_with_rest(::Type{S}, μ, z, n::IntegerLike) where {S}
-    _from_std_with_rest_bydof(S, μ, z, n)
-end
-function _array_product_from_std_with_rest(::Type{S}, μ, z, ::AbstractNoDOF) where {S}
-    _marginals_from_std_with_rest(S, marginals(μ), z)
+function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, Z::AbstractArray) where {S<:StdMeasure}
+    X, Z_rest = batched_transport_from_std_with_rest(S, μ, Z, ())
+    size(Z_rest, 1) == 0 || _throw_std_length_mismatch()
+    return X
 end
 
-# Marginals with scalar variates transport in a single broadcast:
-function transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, z::AbstractVector) where {S<:StdMeasure,M}
-    _array_product_from_std(S, μ, z, mspace_flatsize(M))
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _tuple_product_from_std_with_rest(S, μ, Z, sz)
 end
-function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Tuple{}) where {S}
-    mar = marginals(μ)
-    _materialize(_marginal_broadcast(_FromStd{S}(), mar, maybestatic_reshape(z, maybestatic_size(mar))))
+
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure,names}
+    Xs, Z_rest = _tuple_product_from_std_with_rest(S, productmeasure(values(marginals(μ))), Z, sz)
+    return NamedTuple{names}(Xs), Z_rest
 end
-function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Any) where {S}
-    ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
-    if !isempty(z_rest)
-        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of product measure"))
-    end
-    return ys
+
+# One variate per stream is consumed marginal by marginal, several per
+# stream via the degrees of freedom of the whole product:
+function _tuple_product_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, ::Tuple{}) where {S}
+    _marginals_batched_from_std_with_rest(S, marginals(μ), Z)
 end
+function _tuple_product_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims) where {S}
+    _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
+end
+
+function _marginals_batched_from_std_with_rest(::Type{S}, νs::Tuple{Vararg{Any}}, Z::AbstractArray) where {S}
+    X1, Z_rest = batched_transport_from_std_with_rest(S, νs[1], Z, ())
+    X2_end, Z_final_rest = _marginals_batched_from_std_with_rest(S, Base.tail(νs), Z_rest)
+    return (X1, X2_end...), Z_final_rest
+end
+
+_marginals_batched_from_std_with_rest(::Type{S}, ::Tuple{}, Z::AbstractArray) where {S} = (), Z
 
 function _marginals_from_std_with_rest(::Type{S}, νs::Tuple{Vararg{Any}}, z::AbstractVector) where {S}
     y1, z_rest = transport_from_std_with_rest(S, νs[1], z)
@@ -458,35 +470,131 @@ function _marginals_from_std_with_rest(::Type{S}, νs::AbstractArray{M}, z::Abst
     end
 end
 
-# Batched transport of array products with scalar-variate marginals in one
-# broadcast, the marginals align with the leading dimension of the batch:
 
-# Marginals of concrete type with scalar variates and a standard transport
-# have one degree of freedom each, so the batch aligns with the marginals:
-@inline function _fused_marginals(::Type{M}) where {M}
-    Val(isconcretetype(M) && mspace_flatsize(M) === () && preferred_stdmeasure(M) isa Type{<:StdMeasure})
-end
+# Array products: marginals of scalar variates with one degree of freedom
+# each transport in a single broadcast (the marginals align with the leading
+# dimensions of the batch), other marginals one by one over their slices of
+# the batch.
+
+@inline _fused_marginals(::Type{M}) where {M} = Val(isconcretetype(M) && _unit_dof(M) === static(true))
 
 function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_batched_to_std(S, μ, X, _fused_marginals(M))
+    _array_product_batched_to_std(S, μ, X, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
 end
-function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{true}) where {S}
-    _check_flatsize(X, maybestatic_size(marginals(μ)))
-    _as_stream_batch(_materialize(_marginal_broadcast(_ToStd{S}(), marginals(μ), X)), maybestatic_size(marginals(μ)))
+function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{true}, ::Any) where {S}
+    mar = marginals(μ)
+    _check_flatsize(X, maybestatic_size(mar))
+    _as_stream_batch(_materialize(_marginal_broadcast(_ToStd{S}(), mar, X)), static(ndims(mar)))
 end
-function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{false}) where {S}
-    _batched_to_std(S, μ, X, mspace_flatsize(μ))
+function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{false}, ::StaticInteger{K}) where {S,K}
+    mar = marginals(μ)
+    n_batch = ndims(X) - K - ndims(mar)
+    n_batch >= 0 || _throw_size_mismatch()
+    _marginals_to_std_loop(S, mar, X, Val(K), Val(n_batch))
+end
+@noinline function _array_product_batched_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::Val{false}, ::NoMSpaceElementSize) where {S,M}
+    throw(ArgumentError("Batched transport of products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
+end
+
+function _marginals_to_std_loop(::Type{S}, mar::AbstractArray{<:Any,N}, X::AbstractArray, ::Val{K}, ::Val{B}) where {S,N,K,B}
+    ntuple(i -> size(X, K + i), Val(N)) == size(mar) || _throw_size_mismatch()
+    lead = ntuple(_ -> Colon(), Val(K))
+    trail = ntuple(_ -> Colon(), Val(B))
+    zs = map(i -> batched_transport_to_std(S, mar[i], view(X, lead..., Tuple(i)..., trail...)), vec(CartesianIndices(mar)))
+    isempty(zs) ? similar(X, (0, ntuple(i -> size(X, K + N + i), Val(B))...)) : reduce(vcat, zs)
 end
 
 function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_batched_from_std(S, μ, Z, _fused_marginals(M))
+    _array_product_batched_from_std(S, μ, Z, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
 end
-function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{true}) where {S}
+function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{true}, ::Any) where {S}
     mar = marginals(μ)
-    _materialize(_marginal_broadcast(_FromStd{S}(), mar, reshape(Z, (map(dynamic, maybestatic_size(mar))..., Base.tail(size(Z))...))))
+    size(Z, 1) == length(mar) || _throw_std_length_mismatch()
+    _materialize(_marginal_broadcast(_FromStd{S}(), mar, _reshape_batch(Z, (_batch_dims(mar)..., Base.tail(_batch_dims(Z))...))))
 end
-function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{false}) where {S}
-    _batched_from_std(S, μ, Z, mspace_flatsize(μ))
+function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{false}, ::StaticInteger{K}) where {S,K}
+    X, Z_rest = _marginals_from_std_loop(S, marginals(μ), Z, Val(K))
+    size(Z_rest, 1) == 0 || _throw_std_length_mismatch()
+    return X
+end
+@noinline function _array_product_batched_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::Val{false}, ::NoMSpaceElementSize) where {S,M}
+    throw(ArgumentError("Batched transport to products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
+end
+
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure,M}
+    _array_product_batched_from_std_with_rest(S, μ, Z, sz, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
+end
+function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims, ::Val{true}, ::Any) where {S}
+    _batched_from_std_bydof(S, μ, Z, sz, length(marginals(μ)))
+end
+function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, ::Tuple{}, ::Val{false}, ::StaticInteger{K}) where {S,K}
+    _marginals_from_std_loop(S, marginals(μ), Z, Val(K))
+end
+function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims, ::Val{false}, ::StaticInteger{K}) where {S,K}
+    _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
+end
+@noinline function _array_product_batched_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::Dims, ::Val{false}, ::NoMSpaceElementSize) where {S,M}
+    throw(ArgumentError("Batched transport to products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
+end
+
+# The marginals consume the streams one after the other, their variates
+# fill the batch `(marginal variate dims..., product dims..., batch dims...)`:
+function _marginals_from_std_loop(::Type{S}, mar::AbstractArray{<:Any,N}, Z::AbstractArray, ::Val{K}) where {S,N,K}
+    idxs = vec(CartesianIndices(mar))
+    batch_dims = Base.tail(size(Z))
+    lead = ntuple(_ -> Colon(), Val(K))
+    trail = ntuple(_ -> Colon(), Val(length(batch_dims)))
+    if isempty(idxs)
+        return similar(Z, (ntuple(_ -> 0, Val(K))..., size(mar)..., batch_dims...)), Z
+    end
+    X1, Z_rest = batched_transport_from_std_with_rest(S, mar[idxs[1]], Z, ())
+    X = similar(Z, eltype(X1), (ntuple(i -> size(X1, i), Val(K))..., size(mar)..., batch_dims...))
+    X[lead..., Tuple(idxs[1])..., trail...] = X1
+    for i in idxs[2:end]
+        Xi, Z_rest = batched_transport_from_std_with_rest(S, mar[i], Z_rest, ())
+        X[lead..., Tuple(i)..., trail...] = Xi
+    end
+    return X, Z_rest
+end
+
+# Point transport of array products: arrays of marginal variates with flat
+# storage and flat variates go through the batched kernels, marginals
+# without a declared variate rank transport one by one.
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {S<:StdMeasure,M}
+    _array_product_to_std(S, μ, x, _flat_storage(x), _static_ndims_of(mspace_ndims(M)))
+end
+@inline function _array_product_to_std(::Type{S}, μ, x::AbstractArray, x_flat::AbstractArray, ::StaticInteger) where {S}
+    _single_std(batched_transport_to_std(S, μ, x_flat))
+end
+function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Any, ::Any) where {S}
+    _check_marginal_count(marginals(μ), x)
+    zs = [_as_stdstream(transport_to_std(S, m, xi)) for (m, xi) in zip(marginals(μ), x)]
+    isempty(zs) ? SVector{0,Bool}() : reduce(vcat, zs)
+end
+
+# Marginals with variates of fixed size and declared rank yield a nested
+# view of the flat variate batch, others transport marginal by marginal:
+function transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, z::AbstractVector) where {S<:StdMeasure,M}
+    _array_product_from_std(S, μ, z, fixed_stream_size(M), _static_ndims_of(mspace_ndims(M)))
+end
+@inline function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::True, k::StaticInteger) where {S}
+    _nest_leaf(batched_transport_from_std(S, μ, z), k)
+end
+function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Any, ::Any) where {S}
+    ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return ys
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, z::AbstractVector) where {S<:StdMeasure,M}
+    _array_product_from_std_with_rest(S, μ, z, fixed_stream_size(M), _static_ndims_of(mspace_ndims(M)))
+end
+function _array_product_from_std_with_rest(::Type{S}, μ, z::AbstractVector, ::True, k::StaticInteger) where {S}
+    X, z_rest = batched_transport_from_std_with_rest(S, μ, z, ())
+    return _nest_leaf(X, k), z_rest
+end
+function _array_product_from_std_with_rest(::Type{S}, μ, z::AbstractVector, ::Any, ::Any) where {S}
+    _marginals_from_std_with_rest(S, marginals(μ), z)
 end
 
 

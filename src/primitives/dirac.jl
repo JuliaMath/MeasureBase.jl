@@ -58,14 +58,19 @@ end
 @inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
 @inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
 
+@inline batched_transport_to_std(::Type{S}, ::Dirac, ::Number) where {S<:StdMeasure} = SVector{0,Bool}()
 function batched_transport_to_std(::Type{S}, μ::Dirac, X::AbstractArray) where {S<:StdMeasure}
     n = length(_value_flatsize(μ.x))
     similar(X, Bool, (0, ntuple(i -> size(X, n + i), Val(ndims(X) - n))...))
 end
 
 function batched_transport_from_std(::Type{S}, μ::Dirac, Z::AbstractArray) where {S<:StdMeasure}
-    X = similar(Z, eltype(μ.x), (size(μ.x)..., Base.tail(size(Z))...))
-    X .= μ.x
+    _const_variates(μ.x, Z)
+end
+@inline _const_variates(x::Number, ::AbstractVector) = x
+function _const_variates(x, Z::AbstractArray)
+    X = similar(Z, eltype(x), (size(x)..., Base.tail(size(Z))...))
+    X .= x
     return X
 end
 

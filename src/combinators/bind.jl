@@ -392,3 +392,23 @@ function transport_from_std_with_rest(::Type{S}, μ::Bind, z::AbstractVector) wh
     b, z_rest = transport_from_std_with_rest(S, _get_β_a(μ, a), z2)
     return μ.f_c(a, b), z_rest
 end
+
+function transport_from_std(::Type{S}, μ::Bind, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, μ, z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return x
+end
+
+# The secondary measure depends on the primary variate, so batches of
+# streams are consumed stream by stream (by the outermost stream
+# combinator, see `fixed_stream_size`):
+function batched_transport_to_std_with_rest(::Type{S}, μ::Bind, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _bind_to_std_with_rest(S, μ, X, sz)
+end
+function _bind_to_std_with_rest(::Type{S}, μ::Bind, x::AbstractVector, ::Tuple{}) where {S}
+    z, _, x_rest = transport_to_std_with_rest(S, μ, x)
+    return z, x_rest
+end
+@noinline function _bind_to_std_with_rest(::Type{S}, ::Bind, ::AbstractArray, ::Dims) where {S}
+    throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
+end

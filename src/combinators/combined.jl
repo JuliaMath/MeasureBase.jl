@@ -249,11 +249,11 @@ rand_impl(ctx::GenContext, μ::CombinedMeasure) = μ.f_c(rand_impl(ctx, μ.α), 
 
 # Batches of vcat-combined measures are concatenated along the streams:
 function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(vcat)}, sz::Dims)
-    _combined_batched_rand(ctx, μ, sz, mspace_flatsize(μ.α), mspace_flatsize(μ.β))
+    _combined_batched_rand(ctx, μ, sz, _static_ndims(μ.α), _static_ndims(μ.β))
 end
-function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, sz_a::SizeLike, sz_b::SizeLike)
-    A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), sz_a)
-    B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), sz_b)
+function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, k_a::StaticInteger, k_b::StaticInteger)
+    A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), k_a)
+    B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), k_b)
     return vcat(A, B)
 end
 function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::Any, ::Any)
@@ -298,38 +298,79 @@ function transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::Abstrac
     return μ.f_c(a, b), z_rest
 end
 
-
-# Batched transport consumes the variate parts of both component measures
-# along batches of streams:
-
-function batched_transport_to_std(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray) where {S<:StdMeasure}
-    Z, _, X_rest = batched_transport_to_std_with_rest(S, μ, X)
-    if size(X_rest, 1) != 0
-        throw(ArgumentError("Variate streams too long during batched transport of a combined measure"))
-    end
-    return Z
+function transport_from_std(::Type{S}, μ::CombinedMeasure, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, μ, z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return x
 end
 
-function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray) where {S<:StdMeasure}
-    Z_a, _, X2 = batched_transport_to_std_with_rest(S, μ.α, X)
-    Z_b, _, X_rest = batched_transport_to_std_with_rest(S, μ.β, X2)
-    X_μ, _ = _batched_split(X, size(X, 1) - size(X_rest, 1))
-    return vcat(Z_a, Z_b), X_μ, X_rest
+
+# Batches of vcat-combined variates are batches of streams: with fixed
+# component sizes the whole batch is consumed in fused operations,
+# otherwise stream by stream.
+
+function batched_transport_to_std(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray) where {S<:StdMeasure}
+    _combined_batched_to_std(S, μ, X, fixed_stream_size(μ))
+end
+function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, X::AbstractArray, ::True) where {S}
+    Z, X_rest = batched_transport_to_std_with_rest(S, μ, X, ())
+    size(X_rest, 1) == 0 || _throw_stream_too_long()
+    return Z
+end
+function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, x::AbstractVector, ::False) where {S}
+    _combined_batched_to_std(S, μ, x, static(true))
+end
+function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, X::AbstractArray, ::False) where {S}
+    stacked(map(x -> _combined_batched_to_std(S, μ, x, static(true)), sliced(X, Val(1))))
+end
+
+function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _combined_to_std_with_rest(S, μ, X, sz)
+end
+function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, ::Tuple{}) where {S}
+    Z_a, X2 = batched_transport_to_std_with_rest(S, μ.α, X, ())
+    Z_b, X_rest = batched_transport_to_std_with_rest(S, μ.β, X2, ())
+    return vcat(Z_a, Z_b), X_rest
+end
+
+# Several variates per stream interleave the component parts, so the rows
+# of each variate are split by the fixed component sizes:
+function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, sz::Dims) where {S}
+    n_rows = _fixed_stream_length(μ.α) + _fixed_stream_length(μ.β)
+    X_μ, X_rest = _batched_split(X, n_rows * prod(sz))
+    Z, _ = _combined_to_std_with_rest(S, μ, reshape(X_μ, (n_rows, sz..., Base.tail(size(X_μ))...)), ())
+    return _merge_multiplicity(Z, sz), X_rest
 end
 
 function batched_transport_from_std(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray) where {S<:StdMeasure}
-    X, Z_rest = batched_transport_from_std_with_rest(S, μ, Z)
-    if size(Z_rest, 1) != 0
-        throw(ArgumentError("Length of standard variates doesn't match degrees of freedom of a combined measure"))
-    end
+    _combined_batched_from_std(S, μ, Z, fixed_stream_size(μ))
+end
+function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::True) where {S}
+    X, Z_rest = batched_transport_from_std_with_rest(S, μ, Z, ())
+    size(Z_rest, 1) == 0 || _throw_std_length_mismatch()
     return X
 end
+function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, z::AbstractVector, ::False) where {S}
+    transport_from_std(S, μ, z)
+end
+function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::False) where {S}
+    stacked(map(z -> transport_from_std(S, μ, z), sliced(Z, Val(1))))
+end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray) where {S<:StdMeasure}
-    A, Z2 = batched_transport_from_std_with_rest(S, μ.α, Z)
-    B, Z_rest = batched_transport_from_std_with_rest(S, μ.β, Z2)
-    X = vcat(_as_stream_batch(A, mspace_flatsize(μ.α)), _as_stream_batch(B, mspace_flatsize(μ.β)))
-    return X, Z_rest
+function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _combined_from_std_with_rest(S, μ, Z, sz)
+end
+# Single streams yield a variate via the point protocol:
+function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::AbstractVector, ::Tuple{}) where {S}
+    transport_from_std_with_rest(S, μ, z)
+end
+function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::Tuple{}) where {S}
+    A, Z2 = batched_transport_from_std_with_rest(S, μ.α, Z, ())
+    B, Z_rest = batched_transport_from_std_with_rest(S, μ.β, Z2, ())
+    return vcat(_as_stream_batch(A, _static_ndims(μ.α)), _as_stream_batch(B, _static_ndims(μ.β))), Z_rest
+end
+function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, sz::Dims) where {S}
+    _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
 end
 
 Adapt.adapt_structure(to, μ::CombinedMeasure) = mcombine(μ.f_c, Adapt.adapt(to, μ.α), Adapt.adapt(to, μ.β))

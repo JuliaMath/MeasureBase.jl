@@ -136,11 +136,23 @@ end
 # Batched kernels: the base kernel runs over the flat batch, the power then
 # sums the leading dimensions of the result that belong to its axes.
 @inline function _powered_kernel(f::F, μ::PowerMeasure, X) where {F}
-    _check_pwr_batch(X, mspace_flatsize(μ))
+    _check_pwr_batch(X, μ)
     _sum_leading_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
 end
-@inline _check_pwr_batch(X::AbstractArray, sz_flat::SizeLike) = _check_flatsize(X, sz_flat)
-@inline _check_pwr_batch(X, ::Any) = nothing
+
+# Flat batches of powers have the power dimensions after the variate
+# dimensions of the base measure (where the rank of the base is known):
+@inline _check_pwr_batch(X::AbstractArray, μ::PowerMeasure) = _check_pwr_dims(X, _static_ndims(pwr_base(μ)), _dynamic_dims(pwr_size(μ)), false)
+@inline _check_pwr_batch(::Any, ::PowerMeasure) = nothing
+@inline function _check_pwr_dims(X::AbstractArray, ::StaticInteger{K}, dims::Dims, exact::Bool) where {K}
+    n = length(dims)
+    if (exact ? ndims(X) != K + n : ndims(X) < K + n) || ntuple(i -> size(X, K + i), Val(length(dims))) != dims
+        _throw_size_mismatch()
+    end
+    return nothing
+end
+@inline _check_pwr_dims(::AbstractArray, ::NoMSpaceElementSize, ::Dims, ::Bool) = nothing
+@inline _dynamic_dims(sz::SizeLike) = map(dynamic, _size_dims(sz))
 @inline batched_logdensityof_impl(μ::PowerMeasure, X) = _powered_kernel(logdensityof_impl, μ, X)
 @inline batched_logdensity_def(μ::PowerMeasure, X) = _powered_kernel(logdensity_def, μ, X)
 
@@ -151,20 +163,16 @@ end
 @inline logdensity_def(μ::PowerMeasure, x) = _powered_point(logdensity_def, μ, x)
 
 @inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray{<:Number}) where {F}
-    _check_pwr_variate(μ, x, mspace_flatsize(μ))
     _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
 end
 @inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray) where {F}
+    _check_pwr_shape(μ, x)
     _powered_point_nested(f, μ, x, _flat_storage(x))
 end
 @inline function _powered_point_nested(f::F, μ::PowerMeasure, x, x_flat::AbstractArray) where {F}
-    _check_pwr_variate(μ, x, mspace_flatsize(μ))
     _point_result(_materialize(_batched_kernel(f, μ, x_flat)), μ)
 end
 function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {F}
-    if maybestatic_size(x) != pwr_size(μ)
-        _throw_size_mismatch()
-    end
     ν = pwr_base(μ)
     sum(_PointLogd(f, ν), x; init = zero(_logd_numtype(x)))
 end
@@ -172,15 +180,8 @@ end
     throw(ArgumentError("Variates of powers of measures must be arrays"))
 end
 
-# Flat variates must match the flat size where it is known, nested variates
-# the power's shape:
-@inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray{<:Number}, sz_flat::SizeLike)
-    if !_matches_flatsize(maybestatic_size(x), sz_flat) && maybestatic_size(x) != pwr_size(μ)
-        _throw_size_mismatch()
-    end
-    return nothing
-end
-@inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray, ::Any)
+# Nested variates have the power's shape:
+@inline function _check_pwr_shape(μ::PowerMeasure, x::AbstractArray)
     if maybestatic_size(x) != pwr_size(μ)
         _throw_size_mismatch()
     end
@@ -235,17 +236,18 @@ end
 
 # Variates may be nested arrays of the power's shape or their flat storage:
 @propagate_inbounds function checked_arg(μ::PowerMeasure, x::AbstractArray{<:Any})
-    @boundscheck begin
-        sz_x = maybestatic_size(x)
-        if sz_x != pwr_size(μ) && !_matches_flatsize(sz_x, mspace_flatsize(μ))
-            _throw_size_mismatch()
-        end
-    end
+    @boundscheck _check_pwr_variate(μ, x)
     return x
 end
 
-@inline _matches_flatsize(sz_x, sz_flat::SizeLike) = Tuple(sz_x) == Tuple(sz_flat)
-@inline _matches_flatsize(sz_x, ::NoMSpaceElementSize) = false
+@inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray)
+    if maybestatic_size(x) != pwr_size(μ)
+        _check_pwr_flat(x, _static_ndims(pwr_base(μ)), _dynamic_dims(pwr_size(μ)))
+    end
+    return nothing
+end
+@inline _check_pwr_flat(x::AbstractArray, k::StaticInteger, dims::Dims) = _check_pwr_dims(x, k, dims, true)
+@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::Dims) = _throw_size_mismatch()
 
 checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
@@ -253,81 +255,82 @@ massof(m::PowerMeasure) = massof(m.parent)^dynamic(size2length(pwr_size(m)))
 
 
 # Transport: the standard variate of a power is the flat vector of the
-# standard variates of its base measure, in the order of the flat variate
-# storage.
+# standard variates of its innermost base measure, in the order of the flat
+# variate storage. Batches transport over the flat storage `(base variate
+# dims..., power dims..., batch dims...)`.
 
-function transport_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray) where {S<:StdMeasure}
-    _pwr_to_std(S, μ, x, _flat_storage(x), mspace_flatsize(μ))
+function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray) where {S<:StdMeasure}
+    _check_pwr_batch(X, μ)
+    ν, n = _pwr_unwrap(μ)
+    _merge_leading_dims(batched_transport_to_std(S, ν, X), static(1) + n)
 end
 
-# Flat storage of known flat size: transport the variates of the innermost
-# base measure over the flat storage.
-function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, x_flat::AbstractArray, sz_flat::SizeLike) where {S}
+function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray) where {S<:StdMeasure}
     ν, _ = _pwr_unwrap(μ)
-    _check_flatsize(x_flat, sz_flat)
-    _pwr_to_std_flat(S, ν, x_flat, mspace_flatsize(ν))
+    dims = _pwr_dims(μ)
+    n_rows = _batch_dims(Z)[1]
+    dof_ν = _base_dof(n_rows, prod(dims))
+    dof_ν * prod(dims) == n_rows || _throw_std_length_mismatch()
+    batched_transport_from_std(S, ν, _reshape_batch(Z, (dof_ν, dims..., Base.tail(_batch_dims(Z))...)))
 end
 
-@inline function _pwr_to_std_flat(::Type{S}, ν, x_flat::AbstractArray, ::Tuple{}) where {S}
-    _flat_std_of(broadcast(Base.Fix1(_ToStd{S}(), ν), x_flat))
-end
+# Empty powers leave the degrees of freedom of the base undetermined:
+@inline _base_dof(n_rows::IntegerLike, n_pwr::IntegerLike) = n_rows ÷ max(n_pwr, one(n_pwr))
 
-@inline function _pwr_to_std_flat(::Type{S}, ν, x_flat::AbstractArray, sz::SizeLike) where {S}
-    _flat_std_of(map(Base.Fix1(_ToStd{S}(), ν), sliced(x_flat, Val(length(sz)))))
-end
+# All power dimensions of nested powers, innermost first:
+@inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., _size_dims(pwr_size(μ))...)
+@inline _pwr_dims(ν) = ()
 
-# Otherwise transport the variates of the base measure one by one:
-function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, ::Any, ::Any) where {S}
+# Point transport: flat variates are batches with zero batch dimensions,
+# nested variates without flat storage transport element by element.
+function transport_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray) where {S<:StdMeasure}
+    _pwr_to_std(S, μ, x, _flat_storage(x))
+end
+@inline function _pwr_to_std(::Type{S}, μ::PowerMeasure, x, x_flat::AbstractArray) where {S}
+    _single_std(batched_transport_to_std(S, μ, x_flat))
+end
+function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {S}
+    _check_pwr_shape(μ, x)
     _flat_std_of(map(Base.Fix1(_ToStd{S}(), pwr_base(μ)), x))
 end
 
 function transport_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector) where {S<:StdMeasure}
-    _check_stdlength(z, fast_dof(μ))
-    _pwr_from_std(S, μ, z, mspace_flatsize(μ))
+    _pwr_variate(μ, batched_transport_from_std(S, μ, z))
 end
 
-function _pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, sz_flat::SizeLike) where {S}
-    ν, _ = _pwr_unwrap(μ)
-    _pwr_variate(μ, _pwr_from_std_flat(S, ν, z, sz_flat, mspace_flatsize(ν)))
+# Streams: a power consumes the variates of its base measure with its size
+# as additional multiplicity. Bases without fixed variate sizes are
+# consumed element by element, for single streams.
+function batched_transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _pwr_to_std_with_rest(S, μ, X, sz, fixed_stream_size(pwr_base(μ)))
+end
+@inline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::Dims, ::True) where {S}
+    batched_transport_to_std_with_rest(S, pwr_base(μ), X, (_dynamic_dims(pwr_size(μ))..., sz...))
+end
+function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False) where {S}
+    z, _, x_rest = transport_to_std_with_rest(S, μ, x)
+    return z, x_rest
+end
+@noinline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::Dims, ::False) where {S}
+    throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
-# Base measures of unknown variate size are transported one by one:
-function _pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, ::NoMSpaceElementSize) where {S}
-    ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
-    if !isempty(z_rest)
-        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of power measure"))
+function transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector) where {S<:StdMeasure}
+    _pwr_point_to_std_with_rest(S, μ, x, fixed_stream_size(pwr_base(μ)))
+end
+function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::True) where {S}
+    x_μ, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
+    return _as_stdstream(transport_to_std(S, μ, x_μ)), x_μ, x_rest
+end
+function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::False) where {S}
+    ν = pwr_base(μ)
+    zs = Vector{Any}(undef, length(marginals(μ)))
+    x_rest = x
+    for i in eachindex(zs)
+        zs[i], _, x_rest = transport_to_std_with_rest(S, ν, x_rest)
     end
-    return ys
-end
-
-@inline function _check_stdlength(z::AbstractVector, n::IntegerLike)
-    if maybestatic_length(z) != n
-        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of measure"))
-    end
-    return nothing
-end
-@inline _check_stdlength(::AbstractVector, ::AbstractNoDOF) = nothing
-
-@inline function _pwr_from_std_flat(::Type{S}, ν, z::AbstractVector, sz_flat, ::Tuple{}) where {S}
-    maybestatic_reshape(broadcast(Base.Fix1(_FromStd{S}(), ν), z), sz_flat)
-end
-
-@inline function _pwr_from_std_flat(::Type{S}, ν, z::AbstractVector, sz_flat, sz_ν::SizeLike) where {S}
-    n_variates = size2length(sz_flat) ÷ size2length(sz_ν)
-    maybestatic_reshape(stacked(_pwr_from_std_chunks(S, ν, z, n_variates, fast_dof(ν))), sz_flat)
-end
-
-function _pwr_from_std_chunks(::Type{S}, ν, z::AbstractVector, n_variates, dof_ν::IntegerLike) where {S}
-    chunks = sliced(maybestatic_reshape(z, (dof_ν, n_variates)), Val(1))
-    map(Base.Fix1(_FromStd{S}(), ν), chunks)
-end
-
-function _pwr_from_std_chunks(::Type{S}, ν, z::AbstractVector, n_variates, ::AbstractNoDOF) where {S}
-    ys, z_rest = _marginals_from_std_with_rest(S, FillArrays.Fill(ν, n_variates), z)
-    if !isempty(z_rest)
-        throw(ArgumentError("Length of standard variate doesn't match degrees of freedom of power measure"))
-    end
-    return ys
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return reduce(vcat, [z for z in zs]), x_μ, x_rest
 end
 
 # Powers of measures without fast degrees of freedom transport their
@@ -342,66 +345,12 @@ end
 
 # The nested variate layout of a power over its flat storage:
 @inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
-@inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, mspace_flatsize(ν))
-@inline _nest_leaf(A::AbstractArray, ::Tuple{}) = A
+@inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, _static_ndims(ν))
+@inline _nest_leaf(A::AbstractArray, ::StaticInteger{0}) = A
 @inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A
-@inline _nest_leaf(A::AbstractArray{<:Any,N}, sz::SizeLike) where {N} = _nest_leaf(A, Val(length(sz)), Val(N))
-@inline _nest_leaf(A::AbstractArray, ::Val{N}, ::Val{N}) where {N} = A
-@inline _nest_leaf(A::AbstractArray, ::Val{M}, ::Val) where {M} = sliced(A, Val(M))
+@inline _nest_leaf(A::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = A
+@inline _nest_leaf(A::AbstractArray, ::StaticInteger{K}) where {K} = sliced(A, Val(K))
 @inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = sliced(B, Val(length(pwr_axes(ν))))
 @inline _pwr_nest(ν, B::AbstractArray) = B
-
-# Batched transport over the flat storage `(base variate dims..., power
-# dims..., batch dims...)`:
-
-function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray) where {S<:StdMeasure}
-    _pwr_batched_to_std(S, μ, X, mspace_flatsize(μ))
-end
-
-function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz_flat::SizeLike) where {S}
-    ν, _ = _pwr_unwrap(μ)
-    _check_flatsize(X, sz_flat)
-    n_flat = length(sz_flat)
-    Z = _pwr_batched_to_std_flat(S, ν, X, mspace_flatsize(ν))
-    batch_dims = ntuple(i -> size(X, n_flat + i), Val(ndims(X) - n_flat))
-    return reshape(Z, (dynamic(fast_dof(μ)), batch_dims...))
-end
-
-function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::NoMSpaceElementSize) where {S}
-    throw(ArgumentError("Batched transport of powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
-end
-
-@inline function _pwr_batched_to_std_flat(::Type{S}, ν, X::AbstractArray, ::Tuple{}) where {S}
-    broadcast(Base.Fix1(_ToStd{S}(), ν), X)
-end
-
-@inline function _pwr_batched_to_std_flat(::Type{S}, ν, X::AbstractArray, sz::SizeLike) where {S}
-    stacked(map(Base.Fix1(_ToStd{S}(), ν), sliced(X, Val(length(sz)))))
-end
-
-function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray) where {S<:StdMeasure}
-    _pwr_batched_from_std(S, μ, Z, mspace_flatsize(μ))
-end
-
-function _pwr_batched_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray, sz_flat::SizeLike) where {S}
-    ν, _ = _pwr_unwrap(μ)
-    batch_dims = Base.tail(size(Z))
-    X = _pwr_batched_from_std_flat(S, ν, Z, batch_dims, mspace_flatsize(ν))
-    return reshape(X, (map(dynamic, _size_dims(sz_flat))..., batch_dims...))
-end
-
-function _pwr_batched_from_std(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::NoMSpaceElementSize) where {S}
-    throw(ArgumentError("Batched transport to powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
-end
-
-@inline function _pwr_batched_from_std_flat(::Type{S}, ν, Z::AbstractArray, batch_dims, ::Tuple{}) where {S}
-    broadcast(Base.Fix1(_FromStd{S}(), ν), Z)
-end
-
-@inline function _pwr_batched_from_std_flat(::Type{S}, ν, Z::AbstractArray, batch_dims, sz::SizeLike) where {S}
-    n_variates = size(Z, 1) ÷ dynamic(fast_dof(ν))
-    chunks = sliced(reshape(Z, (dynamic(fast_dof(ν)), n_variates, batch_dims...)), Val(1))
-    stacked(map(Base.Fix1(_FromStd{S}(), ν), chunks))
-end
 
 Adapt.adapt_structure(to, μ::PowerMeasure) = PowerMeasure(Adapt.adapt(to, pwr_base(μ)), pwr_axes(μ))

@@ -19,6 +19,7 @@ include("shape_contract.jl")
 include("logdensities.jl")
 include("numtype.jl")
 include("transport.jl")
+include("transport_batched.jl")
 include("smf.jl")
 include("domains.jl")
 

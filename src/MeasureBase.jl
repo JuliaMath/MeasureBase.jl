@@ -126,6 +126,10 @@ struct AsMeasure{T} <: AbstractMeasure
     AsMeasure{T}(obj::T) where {T} = new(obj)
 end
 
+# Struct arrays of wrapped objects rebuild elements via ConstructionBase:
+ConstructionBase.constructorof(::Type{<:AsMeasure}) = _asmeasure
+_asmeasure(obj) = AsMeasure{typeof(obj)}(obj)
+
 Base.:(==)(a::AsMeasure, b::AsMeasure) = a.obj == b.obj
 Base.isapprox(a::AsMeasure, b::AsMeasure; kwargs...) = isapprox(a.obj, b.obj; kwargs...)
 

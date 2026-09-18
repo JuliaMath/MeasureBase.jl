@@ -293,7 +293,8 @@ end
     reshape(X_flat, (dims..., Base.tail(size(X_flat))...))
 end
 
-@inline function _batched_split(A::AbstractArray, n_rows::Integer)
+@inline function _batched_split(A::AbstractArray, n::IntegerLike)
+    n_rows = dynamic(n)
     stream_idxs = axes(A, 1)
     if length(stream_idxs) < n_rows
         throw(ArgumentError("Variate streams too short during batched evaluation"))

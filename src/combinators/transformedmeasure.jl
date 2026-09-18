@@ -106,6 +106,11 @@ end
 @inline _ndims_of_size_type(::Type{StaticArrays.Size{S}}, ::Type) where {S} = length(S)
 @inline _ndims_of_size_type(::Type, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
 
+# Pushforwards by elementwise functions keep the variate rank of their
+# origin:
+const _ElementwisePushfwd{M,S} = PushforwardMeasure{<:Base.BroadcastFunction,<:Base.BroadcastFunction,M,S}
+@inline mspace_ndims(::Type{MU}) where {M,MU<:_ElementwisePushfwd{M}} = mspace_ndims(M)
+
 const _NonBijectivePusfwdMeasure{M<:PushforwardMeasure,S<:PushFwdStyle} = Union{
     PushforwardMeasure{<:Any,<:NoInverse,M,S},
     PushforwardMeasure{<:NoInverse,<:Any,M,S},
@@ -184,6 +189,36 @@ for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :log
     end
 end
 
+# Pushforwards by elementwise functions evaluate densities over flat
+# batches, the log-abs-det-Jacobian terms sum over the variate dimensions
+# of the origin:
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval function $bhead(ν::_ElementwisePushfwd{M,<:AdaptRootMeasure}, Y) where {M}
+        _elementwise_pushfwd_ld($head, ν, Y, _static_ndims(ν.origin))
+    end
+    @eval function $bhead(ν::_ElementwisePushfwd{M,<:PushfwdRootMeasure}, Y) where {M}
+        _batched_kernel($head, ν.origin, broadcast(ν.finv.f, Y))
+    end
+end
+
+function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, k::StaticInteger) where {F}
+    f_inv = ν.finv.f
+    ℓ = _batched_kernel(f, ν.origin, broadcast(f_inv, Y))
+    ladj = _sum_leading_dims(broadcast(_LadjOf(f_inv), Y), k)
+    return _lazy_combine_ladj(ℓ, ladj)
+end
+function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, ::NoMSpaceElementSize) where {F}
+    _default_batched_kernel(f, ν, Y, _static_ndims(ν))
+end
+
+struct _LadjOf{F} <: Function
+    f::F
+end
+@inline (k::_LadjOf)(y) = last(with_logabsdet_jacobian(k.f, y))
+
+@inline _lazy_combine_ladj(ℓ::Number, ladj::Number) = _combine_logd_with_ladj(ℓ, ladj)
+@inline _lazy_combine_ladj(ℓ, ladj) = Broadcast.instantiate(Broadcast.broadcasted(_combine_logd_with_ladj, ℓ, ladj))
+
 # Checking insupport via the origin would require a potentially costly
 # transformation of x:
 insupport(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
@@ -225,26 +260,27 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
     return ν.f(x), z_rest
 end
 
-# Batched transport for pushforwards of measures with scalar variates, the
-# functions apply elementwise then:
-function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray) where {S<:StdMeasure}
-    _pushfwd_batched_to_std(S, ν, Y, mspace_flatsize(ν.origin))
+# Batches of pushforwards apply the functions to flat batches of the
+# origin, elementwise for `Base.BroadcastFunction`s and variate by variate
+# (in a host loop) otherwise. The AffineMaps extension adds affine maps.
+function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y) where {S<:StdMeasure}
+    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, _static_ndims(ν)))
 end
-@inline function _pushfwd_batched_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray, ::Tuple{}) where {S}
-    batched_transport_to_std(S, ν.origin, broadcast(ν.finv, Y))
-end
-@inline function _pushfwd_batched_to_std(::Type{S}, ν::PushforwardMeasure, Y::AbstractArray, ::Any) where {S}
-    _batched_to_std(S, ν, Y, mspace_flatsize(ν))
+function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
+    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _static_ndims(ν.origin))
 end
 
-function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
-    _pushfwd_batched_from_std(S, ν, Z, mspace_flatsize(ν.origin))
-end
-@inline function _pushfwd_batched_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, ::Tuple{}) where {S}
-    broadcast(ν.f, batched_transport_from_std(S, ν.origin, Z))
-end
-@inline function _pushfwd_batched_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, ::Any) where {S}
-    _batched_from_std(S, ν, Z, mspace_flatsize(ν))
+# Apply `f` to a flat batch of variates of rank `k`:
+@inline _apply_batched(f, X, k) = _apply_generic(unwrap(f), X, k)
+@inline _apply_generic(f, X, k) = _apply_by_rank(f, X, k)
+@inline _apply_generic(f::Base.BroadcastFunction, X, k) = broadcast(f.f, X)
+@inline _apply_by_rank(f, X, ::StaticInteger{0}) = broadcast(f, X)
+@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{0}) = broadcast(f, X)
+@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{K}) where {K} = _apply_to_slices(f, X, Val(K))
+@inline _apply_to_slices(f, X::AbstractArray{<:Any,K}, ::Val{K}) where {K} = f(X)
+@inline _apply_to_slices(f, X::AbstractArray, ::Val{K}) where {K} = stacked(map(f, sliced(X, Val(K))))
+@noinline function _apply_by_rank(f, X, ::NoMSpaceElementSize)
+    throw(ArgumentError("Applying functions of type $(nameof(typeof(f))) to batches of variates requires MeasureBase.mspace_ndims to be declared for the measure"))
 end
 
 massof(m::PushforwardMeasure) = massof(m.origin)
@@ -252,14 +288,14 @@ massof(m::PushforwardMeasure) = massof(m.origin)
 rand_impl(ctx::GenContext, ν::PushforwardMeasure) = ν.f(rand_impl(ctx, ν.origin))
 
 # Batches of pushforwards apply the function to the variates of a batch of
-# the origin, elementwise for scalar variates:
+# the origin:
 function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::Dims)
-    _pushfwd_batched_rand(ctx, ν, sz, mspace_flatsize(ν.origin))
+    _pushfwd_batched_rand(ctx, ν, sz, _static_ndims(ν.origin))
 end
-@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::Tuple{})
-    broadcast(ν.f, batched_rand_impl(ctx, ν.origin, sz))
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, k::StaticInteger)
+    _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k)
 end
-@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::Any)
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::Dims, ::NoMSpaceElementSize)
     _batched_rand_pointwise(ctx, ν, sz)
 end
 

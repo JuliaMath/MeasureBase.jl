@@ -13,9 +13,9 @@ to `rand(ν)`. `f` supports `InverseFunctions.inverse` and
 Measures are transported via standard measures: `x` is transported to the
 standard measure type that the preferences of `ν` and `μ` promote to (see
 [`MeasureBase.preferred_stdmeasure`](@ref)) and from there to `ν`.
-Broadcasting `f` over an array of variates with flat storage (see
-[`MeasureBase.mspace_flatsize`](@ref)), or over the flat storage of a
-batch of variates, transports the whole batch at once. A standard measure
+Broadcasting `f` over an array of variates with flat storage, or over
+the flat storage of a batch of variates (see
+[`MeasureBase.mspace_ndims`](@ref)), transports the whole batch at once. A standard measure
 type like `StdUniform` or `StdNormal` may also be used directly as the
 source or target:
 
@@ -33,12 +33,16 @@ the measure has degrees of freedom otherwise.
 To support transport for a measure type, specialize
 [`MeasureBase.transport_to_std`](@ref) and
 [`MeasureBase.transport_from_std`](@ref) for its preferred standard measure
-type. Measures whose variates are composed of the variates of other
-measures specialize the stream forms
+type, and declare [`MeasureBase.mspace_ndims`](@ref) for array variates.
+Measure types with array variates should also implement the batched forms
+[`MeasureBase.batched_transport_to_std`](@ref) and
+[`MeasureBase.batched_transport_from_std`](@ref), which transport whole
+batches of variates. Measures whose variates are composed of the variates
+of other measures specialize the stream forms
 [`MeasureBase.transport_to_std_with_rest`](@ref) and
-[`MeasureBase.transport_from_std_with_rest`](@ref) instead.
-[`MeasureBase.transport_def`](@ref) may be specialized for pairs of
-measure types with a direct transport.
+[`MeasureBase.transport_from_std_with_rest`](@ref) instead (and their
+batched forms). [`MeasureBase.transport_def`](@ref) may be specialized
+for pairs of measure types with a direct transport.
 """
 function transport_to end
 export transport_to
@@ -280,8 +284,8 @@ function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, ::AbstractN
 end
 
 # Scalar-variate measures take their standard variate as a number:
-@inline _chunk_as_variate(μ, z) = _chunk_as_variate(z, mspace_flatsize(μ))
-@inline _chunk_as_variate(z::AbstractVector, ::Tuple{}) = z[begin]
+@inline _chunk_as_variate(μ, z) = _chunk_as_variate(z, _static_ndims(μ))
+@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}) = z[begin]
 @inline _chunk_as_variate(z::AbstractVector, ::Any) = z
 
 
@@ -315,10 +319,10 @@ end
 
 function _std_tp_partner(::Type{M}, μ) where {M<:StdMeasure}
     m = asmeasure(μ)
-    _std_tp_partner_bysize(M, mspace_flatsize(m), m)
+    _std_tp_partner_byrank(M, _static_ndims(m), m)
 end
-_std_tp_partner_bysize(::Type{M}, ::Tuple{}, μ) where {M<:StdMeasure} = M()
-_std_tp_partner_bysize(::Type{M}, ::Any, μ) where {M<:StdMeasure} = M()^some_dof(μ)
+_std_tp_partner_byrank(::Type{M}, ::StaticInteger{0}, μ) where {M<:StdMeasure} = M()
+_std_tp_partner_byrank(::Type{M}, ::Any, μ) where {M<:StdMeasure} = M()^some_dof(μ)
 
 
 # Element-wise transport kernels for broadcasts and maps:
