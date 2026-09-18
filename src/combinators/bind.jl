@@ -281,7 +281,11 @@ rootmeasure(::Bind) =
 
 basemeasure(::Bind) = throw(ArgumentError("basemeasure is not available for Bind"))
 
-testvalue(::Bind) = throw(ArgumentError("testvalue is not available for Bind"))
+# Test values follow the primary test value through the secondary measure:
+function testvalue(::Type{T}, μ::Bind) where {T}
+    a = testvalue(T, μ.α)
+    _combine_variates(μ.f_c, a, testvalue(T, _get_β_a(μ, a)))
+end
 
 logdensity_def(::Bind, x) =
     throw(ArgumentError("logdensity_def is not available for Bind"))
@@ -336,19 +340,25 @@ function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
     return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
 
-function batched_logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector, ::Tuple{})
+function batched_logdensityof_with_rest(μ::Bind, x::AbstractVector, ::Tuple{})
     ℓ, _, x_rest = logdensityof_with_rest(μ, x)
     return ℓ, x_rest
 end
 
 batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = _streamwise_ld(logdensityof_impl, μ, X)
+
+# Batches of streams containing binds are consumed stream by stream (by
+# the outermost stream combinator, see `fixed_stream_size`):
+@noinline function batched_logdensityof_with_rest(::Bind, ::AbstractArray, ::Dims)
+    throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
+end
 batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, x::AbstractVector) = _bind_ld_impl(vcat, μ, x)
 
 
 function rand_impl(ctx::GenContext, μ::Bind)
     a = rand_impl(ctx, μ.α)
     b = rand_impl(ctx, _get_β_a(μ, a))
-    return μ.f_c(a, b)
+    return _combine_variates(μ.f_c, a, b)
 end
 
 # The secondary measure depends on the primary variate, so batches are
@@ -390,7 +400,7 @@ end
 function transport_from_std_with_rest(::Type{S}, μ::Bind, z::AbstractVector) where {S<:StdMeasure}
     a, z2 = transport_from_std_with_rest(S, μ.α, z)
     b, z_rest = transport_from_std_with_rest(S, _get_β_a(μ, a), z2)
-    return μ.f_c(a, b), z_rest
+    return _combine_variates(μ.f_c, a, b), z_rest
 end
 
 function transport_from_std(::Type{S}, μ::Bind, z::AbstractVector) where {S<:StdMeasure}

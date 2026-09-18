@@ -58,13 +58,17 @@ end
 @inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
 @inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
 
+# Batched kernels cover Dirac measures with numbers and numeric arrays as
+# flat variates, others have no declared variate rank:
+const _FlatDirac = Dirac{<:Union{Number,AbstractArray{<:Number}}}
+
 @inline batched_transport_to_std(::Type{S}, ::Dirac, ::Number) where {S<:StdMeasure} = SVector{0,Bool}()
-function batched_transport_to_std(::Type{S}, μ::Dirac, X::AbstractArray) where {S<:StdMeasure}
+function batched_transport_to_std(::Type{S}, μ::_FlatDirac, X::AbstractArray) where {S<:StdMeasure}
     n = length(_value_flatsize(μ.x))
     similar(X, Bool, (0, ntuple(i -> size(X, n + i), Val(ndims(X) - n))...))
 end
 
-function batched_transport_from_std(::Type{S}, μ::Dirac, Z::AbstractArray) where {S<:StdMeasure}
+function batched_transport_from_std(::Type{S}, μ::_FlatDirac, Z::AbstractArray) where {S<:StdMeasure}
     _const_variates(μ.x, Z)
 end
 @inline _const_variates(x::Number, ::AbstractVector) = x
@@ -74,14 +78,16 @@ function _const_variates(x, Z::AbstractArray)
     return X
 end
 
-@inline mspace_ndims(::Type{<:Dirac{<:AbstractArray{<:Any,N}}}) where {N} = N
+@inline mspace_ndims(::Type{<:Dirac{<:AbstractArray{<:Number,N}}}) where {N} = N
 
 # Batches of array variates: all elements of a variate must match.
-function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Any,N}}, X::AbstractArray) where {N}
+function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Number,N}}, X::AbstractArray) where {N}
     matches = _all_leading_dims(X .== μ.x, static(N))
     ifelse.(matches, zero(_logd_numtype(X)), _neg_inf_logd(X))
 end
-batched_logdensity_def(μ::Dirac{<:AbstractArray}, X::AbstractArray) = _zero_logd_batch(X, static(ndims(μ.x)))
+function batched_logdensity_def(μ::Dirac{<:AbstractArray{<:Number}}, X::AbstractArray)
+    _zero_logd_batch(X, static(ndims(μ.x)))
+end
 
 @inline _all_leading_dims(A::AbstractArray{Bool,N}, ::StaticInteger{N}) where {N} = all(A)
 @inline function _all_leading_dims(A::AbstractArray{Bool}, ::StaticInteger{N}) where {N}

@@ -42,7 +42,7 @@ end
 @inline _generic_powermeasure_stage2(μ::AbstractMeasure, exponent::Tuple) =
     PowerMeasure(μ, exponent)
 
-@inline function _generic_powermeasure_stage2(μ::Dirac, exponent::Tuple)
+@inline function _generic_powermeasure_stage2(μ::Dirac{<:Number}, exponent::Tuple)
     Dirac(maybestatic_fill(μ.x, exponent))
 end
 
@@ -65,7 +65,7 @@ Examples:
 ```julia
 productmeasure((StdNormal(), StdExponential()))
 productmeasure((a = StdNormal(), b = StdExponential()))
-productmeasure([pushfwd(Base.Fix1(*, scale), StdExponential()) for scale in 0.1:0.2:2])
+productmeasure([pushfwd(AffineMaps.Mul(scale), StdExponential()) for scale in 0.1:0.2:2])
 ```
 """
 function productmeasure end
@@ -135,9 +135,12 @@ function _marginal_storage(mar::AbstractArray{T}) where {T}
 end
 _marginal_storage(mar::StructArray) = mar
 
+# Function objects stay opaque columns, their wrappers (e.g. `Base.Fix1`)
+# can't be rebuilt from their fields via ConstructionBase:
 @inline function _unwrap_field(::Type{T}) where {T}
     isstructtype(T) && !Base.issingletontype(T) && fieldcount(T) > 0 &&
-        !(T <: Number) && !(T <: AbstractArray) && !(T <: Tuple) && !(T <: AbstractString) && !(T <: Symbol)
+        !(T <: Number) && !(T <: AbstractArray) && !(T <: Tuple) && !(T <: AbstractString) &&
+        !(T <: Symbol) && !(T <: Function)
 end
 
 @inline function _generic_productmeasure_impl(

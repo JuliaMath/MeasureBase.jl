@@ -23,10 +23,10 @@ or an array of numbers for measures with scalar variates), the flat storage
 of a batch (an array of numbers with the variate dimensions leading, see
 [`MeasureBase.mspace_ndims`](@ref)), or a tuple resp. `NamedTuple` of
 batches for measures with tuple resp. `NamedTuple` variates. Returns an
-array over the batch dimensions, semantically equivalent to
-`logdensityof.(Ref(μ), X)` for arrays of variates. Batches with flat
-storage are evaluated in fused operations, compatible with GPU and traced
-arrays.
+array over the batch dimensions (a number for a single variate),
+semantically equivalent to `logdensityof.(Ref(μ), X)` for arrays of
+variates. Batches with flat storage are evaluated in fused operations,
+compatible with GPU and traced arrays.
 
 Measure types implement [`MeasureBase.batched_logdensityof_impl`](@ref).
 """
@@ -126,6 +126,8 @@ struct NoFlatStorage end
 end
 @inline _flat_storage_bymode(::AbstractArray, ::UnknownSplitMode) = NoFlatStorage()
 @inline _flat_storage_bymode(::AbstractArray, ::NonSplitMode) = NoFlatStorage()
+# Ragged batches (e.g. `VectorOfArrays`) are evaluated variate by variate:
+@inline _flat_storage_bymode(::AbstractArray, ::AbstractPartMode) = NoFlatStorage()
 
 @inline _flat_storage(X::StructArray{<:Union{Tuple,NamedTuple}}) = _components_storage(StructArrays.components(X))
 @inline function _flat_storage(X::AbstractArray{<:Union{Tuple,NamedTuple}})
@@ -173,13 +175,16 @@ end
     throw(ArgumentError("Batched density kernel returned a result of size $sz_result for a batch of size $sz_batch, the variate dimensions of the measure don't match the batch"))
 end
 
-# Point evaluation: array variates go through the batched kernel with zero
-# batch dimensions, other variates through the point kernel. A batched
-# kernel that returns an array for a single variate has taken the variate
-# for a batch: the variate doesn't fit the measure, or the measure lacks a
-# batched kernel for array variates.
-@inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+# Point evaluation: array variates of measures with a declared variate rank
+# go through the batched kernel with zero batch dimensions, other variates
+# through the point kernel. A batched kernel that returns an array for a
+# single variate has taken the variate for a batch: the variate doesn't
+# fit the measure, or the measure lacks a batched kernel for array
+# variates.
+@inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_ld_byrank(f, μ, x, _static_ndims(μ))
 @inline _point_ld(f::F, μ, x) where {F} = f(μ, x)
+@inline _point_ld_byrank(f::F, μ, x, ::StaticInteger) where {F} = _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+@inline _point_ld_byrank(f::F, μ, x, ::NoMSpaceElementSize) where {F} = f(μ, x)
 @inline _point_ld(f::F, μ::PrimitiveMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
 
 @inline _point_result(ℓ::Number, μ) = ℓ
@@ -220,7 +225,7 @@ end
 @inline _sum_leading_dims_lazy(bc::_LazyBroadcast, ::StaticInteger{0}, ::StaticInteger{0}) = bc
 @inline _sum_leading_dims_lazy(bc::_EagerReducibleBroadcast, ::StaticInteger{0}, ::StaticInteger{0}) = bc
 @inline function _sum_leading_dims_lazy(bc::_EagerReducibleBroadcast, ::StaticInteger{N}, ::StaticInteger{N}) where {N}
-    isempty(bc) ? sum(copy(bc)) : sum(bc)
+    length(bc) == 0 ? sum(copy(bc)) : sum(bc)
 end
 @inline _sum_leading_dims_lazy(bc::_LazyBroadcast, ::StaticInteger{N}, ::StaticInteger{N}) where {N} = sum(copy(bc))
 @inline function _sum_leading_dims_lazy(bc::_LazyBroadcast, n::StaticInteger, ::StaticInteger)
@@ -247,6 +252,9 @@ end
 end
 @inline _zero_logd_batch(X::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = zero(_logd_numtype(X))
 @inline _zero_logd_batch(x::Number, ::StaticInteger{0}) = zero(_logd_numtype(x))
+@noinline function _zero_logd_batch(X, ::NoMSpaceElementSize{MU}) where {MU}
+    throw(ArgumentError("Batched density evaluation for measures of type $(nameof(MU)) requires MeasureBase.mspace_ndims to be declared for the type or MeasureBase.batched_logdensity_def to be implemented"))
+end
 
 
 # Streams: variates of composed measures are consumed from flat vector
@@ -268,7 +276,9 @@ kernel evaluation, the default implementation does so for the variate size
 given by [`MeasureBase.mspace_flatsize`](@ref) or
 [`MeasureBase.some_mspace_elsize`](@ref). Measure types with variates of
 value-dependent size implement `batched_logdensityof_with_rest` for
-`sz == ()` themselves, they can only be evaluated stream by stream.
+single streams and `sz == ()` themselves and report
+`MeasureBase.fixed_stream_size` as false, so that the enclosing stream
+combinators consume batches stream by stream.
 """
 function batched_logdensityof_with_rest end
 
@@ -288,27 +298,38 @@ function _stream_ld_with_rest(f::F, μ, X::AbstractArray, sz::Dims) where {F}
     return _consumed_ld(f, μ, X_μ, vsz), X_rest
 end
 
-# Scalar variates are consumed as `(1, sz..., batch dims...)` and the leading
-# dimension is summed out, so that no rank-0 arrays arise:
-@inline _consumed_ld(f::F, μ, X_μ, ::Tuple{}) where {F} = _sum_leading_dims(_batched_kernel(f, μ, X_μ), static(1))
+# Scalar variates are consumed as `(1, sz..., batch dims...)`, their
+# leading dimension is dropped before the kernel runs:
+@inline _consumed_ld(f::F, μ, X_μ, ::Tuple{}) where {F} = _batched_kernel(f, μ, _drop_stdstream_dim(X_μ))
 @inline _consumed_ld(f::F, μ, X_μ, ::SizeLike) where {F} = _batched_kernel(f, μ, X_μ)
 
 # Consume `prod(sz)` variates of flat size `vsz` from the leading rows of a
 # batch of streams as a flat batch `(vsz..., sz..., batch dims...)`; scalar
-# variates as `(1, sz..., batch dims...)`:
+# variates as `(1, sz..., batch dims...)`. Static sizes keep static
+# streams static.
 @inline function _batched_consume(X::AbstractArray, vsz::SizeLike, sz::Dims)
     dims = _consumed_dims(vsz)
-    n_rows = prod(dims) * prod(sz)
-    X_flat, X_rest = _batched_split(X, n_rows)
+    X_flat, X_rest = _batched_split(X, _chunk_rows(prod(dims), sz))
     return _reshape_consumed(X_flat, (dims..., sz...)), X_rest
 end
-@inline _consumed_dims(::Tuple{}) = (1,)
-@inline _consumed_dims(vsz::SizeLike) = map(dynamic, _size_dims(vsz))
+@inline _consumed_dims(::Tuple{}) = (static(1),)
+@inline _consumed_dims(vsz::SizeLike) = _size_dims(vsz)
+@inline _chunk_rows(n::IntegerLike, ::Tuple{}) = n
+@inline _chunk_rows(n::IntegerLike, sz::Dims) = dynamic(n) * prod(sz)
 
-@inline _reshape_consumed(X_flat::AbstractArray, ::Tuple{Int}) = X_flat
-@inline function _reshape_consumed(X_flat::AbstractArray, dims::Tuple{Vararg{Int}})
-    reshape(X_flat, (dims..., Base.tail(size(X_flat))...))
+@inline _reshape_consumed(X_flat::AbstractArray, ::Tuple{IntegerLike}) = X_flat
+@inline function _reshape_consumed(X_flat::AbstractArray, dims::Tuple{Vararg{IntegerLike}})
+    _reshape_batch(X_flat, (dims..., Base.tail(_batch_dims(X_flat))...))
 end
+
+# Sizes as tuples of (maybe static) integers, reshapes that keep static
+# arrays static, and the leading dimension of a batch of streams:
+@inline _batch_dims(A::AbstractArray) = _size_dims(maybestatic_size(A))
+@inline _reshape_batch(A::AbstractArray, dims::Tuple) = reshape(A, map(dynamic, dims))
+@inline _reshape_batch(A::StaticArray, dims::Tuple{Vararg{StaticInteger}}) = maybestatic_reshape(A, dims)
+@inline _as_stdstream_batch(Z::AbstractArray) = _reshape_batch(Z, (static(1), _batch_dims(Z)...))
+@inline _as_stdstream_batch(z::Number) = SVector(z)
+@inline _drop_stdstream_dim(Z::AbstractArray) = _reshape_batch(Z, Base.tail(_batch_dims(Z)))
 
 @inline function _batched_split(A::AbstractArray, n::IntegerLike)
     n_rows = dynamic(n)
@@ -323,7 +344,7 @@ end
     return A_flat, A_rest
 end
 
-# Static streams split into static chunks:
+# Static streams split into static chunks for static row counts:
 @inline function _batched_split(A::StaticVector, n_rows::StaticInteger{N}) where {N}
     idxs = maybestatic_eachindex(A)
     i0 = maybestatic_first(idxs)

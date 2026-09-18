@@ -47,6 +47,14 @@ end
 @inline DensityInterface.logdensityof(m::DistributionMeasure) = logdensityof(m.obj)
 
 @inline MeasureBase.logdensity_def(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
+
+# Distributions evaluate flat batches of array variates (the trailing
+# dimensions are batch dimensions) directly:
+for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
+    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{N}}, X::AbstractArray{<:Real}) where {N}
+        Distributions.logpdf(m.obj, X)
+    end
+end
 @inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
 @inline MeasureBase.insupport(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x)
 

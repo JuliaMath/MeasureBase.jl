@@ -245,7 +245,17 @@ function logdensityof_with_rest(μ::CombinedMeasure{typeof(merge)}, x::NamedTupl
 end
 
 
-rand_impl(ctx::GenContext, μ::CombinedMeasure) = μ.f_c(rand_impl(ctx, μ.α), rand_impl(ctx, μ.β))
+rand_impl(ctx::GenContext, μ::CombinedMeasure) = _combine_variates(μ.f_c, rand_impl(ctx, μ.α), rand_impl(ctx, μ.β))
+
+# Variates of vcat-combined measures are flat streams, nested variates of
+# the components (e.g. of powers of measures with value-dependent sizes)
+# are flattened:
+@inline _combine_variates(f_c, a, b) = f_c(a, b)
+@inline _combine_variates(::typeof(vcat), a, b) = vcat(_flat_stream(a), _flat_stream(b))
+@inline _flat_stream(x::Number) = x
+@inline _flat_stream(x::AbstractArray{<:Number}) = vec(x)
+@inline _flat_stream(x::AbstractArray) = reduce(vcat, map(_flat_stream, x))
+@inline _flat_stream(x::Union{Tuple,NamedTuple}) = reduce(vcat, map(_flat_stream, values(x)))
 
 batched_rand_impl(ctx::GenContext, μ::CombinedMeasure, sz::Dims) = _batched_rand_pointwise(ctx, μ, sz)
 
@@ -256,16 +266,14 @@ end
 
 # Batches of vcat-combined measures are concatenated along the streams:
 function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(vcat)}, sz::Dims)
-    _combined_batched_rand(ctx, μ, sz, _static_ndims(μ.α), _static_ndims(μ.β))
+    _combined_batched_rand(ctx, μ, sz, fixed_stream_size(μ))
 end
-function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, k_a::StaticInteger, k_b::StaticInteger)
-    A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), k_a)
-    B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), k_b)
+function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::True)
+    A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), μ.α)
+    B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), μ.β)
     return vcat(A, B)
 end
-function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::Any, ::Any)
-    _batched_rand_pointwise(ctx, μ, sz)
-end
+_combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::False) = _batched_rand_pointwise(ctx, μ, sz)
 
 
 # Transport consumes the variate parts of both component measures in a
@@ -302,7 +310,7 @@ end
 function transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::AbstractVector) where {S<:StdMeasure}
     a, z2 = transport_from_std_with_rest(S, μ.α, z)
     b, z_rest = transport_from_std_with_rest(S, μ.β, z2)
-    return μ.f_c(a, b), z_rest
+    return _combine_variates(μ.f_c, a, b), z_rest
 end
 
 function transport_from_std(::Type{S}, μ::CombinedMeasure, z::AbstractVector) where {S<:StdMeasure}
@@ -372,9 +380,17 @@ function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, z::Abstrac
     transport_from_std_with_rest(S, μ, z)
 end
 function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::Tuple{}) where {S}
+    _combined_batch_from_std_with_rest(S, μ, Z, fixed_stream_size(μ))
+end
+function _combined_batch_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::True) where {S}
     A, Z2 = batched_transport_from_std_with_rest(S, μ.α, Z, ())
     B, Z_rest = batched_transport_from_std_with_rest(S, μ.β, Z2, ())
-    return vcat(_as_stream_batch(A, _static_ndims(μ.α)), _as_stream_batch(B, _static_ndims(μ.β))), Z_rest
+    return vcat(_as_stream_batch(A, μ.α), _as_stream_batch(B, μ.β)), Z_rest
+end
+# Components without fixed variate sizes are consumed stream by stream:
+function _combined_batch_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::False) where {S}
+    results = map(z -> transport_from_std_with_rest(S, μ, z), sliced(Z, Val(1)))
+    return stacked(map(first, results)), stacked(map(last, results))
 end
 function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, sz::Dims) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))

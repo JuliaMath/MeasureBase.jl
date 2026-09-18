@@ -191,7 +191,7 @@ MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
         @test ℓ ≈ vec(sum(stdnormal_ld.(X[1:2, :]), dims = 1))
         @test size(A_rest) == (3, 6)
         ℓ2, A_rest2 = MeasureBase.batched_logdensityof_with_rest(StdNormal(), X, (2,))
-        @test ℓ2 ≈ stdnormal_ld.(X[1:2, :]) && size(A_rest2) == (3, 6)
+        @test MeasureBase._materialize(ℓ2) ≈ stdnormal_ld.(X[1:2, :]) && size(A_rest2) == (3, 6)
         @test_throws ArgumentError logdensities(m, vcat(X, rand(1, 6)))
 
         m3 = mcombine(vcat, StdNormal(), mcombine(vcat, StdExponential()^2, StdLogistic()))

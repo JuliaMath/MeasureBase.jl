@@ -30,7 +30,7 @@ end
     _lazy_add(_logweight_for(d.logweight, X), batched_logdensityof_impl(basemeasure(d), X))
 end
 @inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
-    _lazy_add(_logweight_for(d.logweight, X), _zero_logd_batch(X, mspace_ndims(basemeasure(d))))
+    _lazy_add(_logweight_for(d.logweight, X), _zero_logd_batch(X, _static_ndims(basemeasure(d))))
 end
 
 @inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))

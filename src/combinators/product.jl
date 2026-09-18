@@ -67,6 +67,14 @@ end
 proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
     powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
 
+# Array products with fused kernels draw their variates in one batch (also
+# on devices):
+function rand_impl(ctx::GenContext, d::ProductMeasure{<:AbstractArray{M}}) where {M}
+    _array_product_rand(ctx, d, _fused_marginals(M))
+end
+_array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{true}) = batched_rand_impl(ctx, d, ())
+_array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+
 # Batches of tuple and named tuple products are tuples resp. named tuples
 # of marginal batches:
 function batched_rand_impl(ctx::GenContext, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, sz::Dims)
@@ -281,8 +289,9 @@ end
 # TODO: Better `map` support in MappedArrays
 _map(f, args...) = map(f, args...)
 _map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
-# Variates of struct array marginals are collected into plain arrays:
-_map(f, x::StructArray) = map(f, collect(x))
+# `map` over a struct array builds struct arrays of the results, variates
+# of the marginals are wanted as plain arrays:
+_map(f, x::StructArray) = [f(m) for m in x]
 
 function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))
@@ -405,6 +414,34 @@ function transport_from_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTup
     x, z_rest = transport_from_std_with_rest(S, μ, z)
     isempty(z_rest) || _throw_std_length_mismatch()
     return x
+end
+
+# Streams of tuple product variates are consumed marginal by marginal:
+function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x::AbstractVector) where {S<:StdMeasure}
+    z, x_rest = _marginals_to_std_with_rest(S, values(marginals(μ)), x)
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return z, x_μ, x_rest
+end
+
+function batched_transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+    _tuple_product_to_std_with_rest(S, μ, X, sz)
+end
+function _tuple_product_to_std_with_rest(::Type{S}, μ, X::AbstractArray, ::Tuple{}) where {S}
+    _marginals_to_std_with_rest(S, values(marginals(μ)), X)
+end
+function _tuple_product_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::Dims) where {S}
+    X_v, X_rest = _split_stream_variates(μ, X, sz)
+    Z, _ = _marginals_to_std_with_rest(S, values(marginals(μ)), X_v)
+    return _merge_multiplicity(Z, sz), X_rest
+end
+
+function _marginals_to_std_with_rest(::Type{S}, νs::Tuple{Vararg{Any}}, X::AbstractArray) where {S}
+    Z1, X_rest = batched_transport_to_std_with_rest(S, νs[1], X, ())
+    Z2_end, X_final_rest = _marginals_to_std_with_rest(S, Base.tail(νs), X_rest)
+    return vcat(Z1, Z2_end), X_final_rest
+end
+function _marginals_to_std_with_rest(::Type{S}, νs::Tuple{Any}, X::AbstractArray) where {S}
+    batched_transport_to_std_with_rest(S, νs[1], X, ())
 end
 
 function transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, z::AbstractVector) where {S<:StdMeasure}
@@ -608,12 +645,33 @@ end
 
 # Streams: tuple products consume marginal by marginal, so marginals of
 # value-dependent size are supported for a single variate per stream.
+# Several variates per stream are split by the fixed stream length of the
+# product.
 function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, X::AbstractArray, ::Tuple{})
     _marginals_ld_with_rest(marginals(μ), X)
 end
 function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, x::AbstractVector, ::Tuple{})
     _marginals_ld_with_rest(marginals(μ), x)
 end
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, X::AbstractArray, sz::Dims)
+    X_v, X_rest = _split_stream_variates(μ, X, sz)
+    ℓ, _ = _marginals_ld_with_rest(marginals(μ), X_v)
+    return ℓ, X_rest
+end
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, X::AbstractArray, sz::Dims) where {names}
+    batched_logdensityof_with_rest(productmeasure(values(marginals(μ))), X, sz)
+end
+
+# The rows of `prod(sz)` variates of fixed stream length, as a batch of
+# streams `(stream length, sz..., batch dims...)`:
+function _split_stream_variates(μ, X::AbstractArray, sz::Dims)
+    n_rows = _fixed_stream_length(μ)
+    X_μ, X_rest = _batched_split(X, n_rows * prod(sz))
+    return reshape(X_μ, (n_rows, sz..., Base.tail(size(X_μ))...)), X_rest
+end
+
+@inline _fixed_stream_length(μ::ProductMeasure{<:Tuple}) = sum(_fixed_stream_length, marginals(μ))
+@inline _fixed_stream_length(μ::ProductMeasure{<:NamedTuple}) = sum(_fixed_stream_length, values(marginals(μ)))
 function _marginals_ld_with_rest(ms::Tuple, X::AbstractArray)
     ℓ1, X2 = batched_logdensityof_with_rest(ms[1], X, ())
     ℓ_rest, X_rest = _marginals_ld_with_rest(Base.tail(ms), X2)

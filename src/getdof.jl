@@ -94,8 +94,12 @@ function some_dof(μ)
 end
 
 _try_direct_dof(::AbstractMeasure, dof::IntegerLike) = dof
-_try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF) =
-    _try_local_dof(μ, some_dof(_some_localmeasure(μ)))
+function _try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF)
+    μ_local = _some_localmeasure(μ)
+    # A local measure of the same type would recurse forever:
+    typeof(μ_local) === typeof(μ) && _try_local_dof(μ, NoDOF{typeof(μ)}())
+    _try_local_dof(μ, some_dof(μ_local))
+end
 
 _try_local_dof(::AbstractMeasure, dof::IntegerLike) = dof
 _try_local_dof(μ::AbstractMeasure, ::AbstractNoDOF) =

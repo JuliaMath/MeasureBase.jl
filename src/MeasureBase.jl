@@ -65,7 +65,7 @@ using HeterogeneousComputing:
 using ArraysOfArrays:
     ArrayOfSimilarArrays, VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays,
     VectorOfSimilarVectors, flatview, fused, stacked, sliced, getsplitmode,
-    is_memordered_splitmode, AbstractSplitMode, UnknownSplitMode, NonSplitMode
+    is_memordered_splitmode, AbstractSplitMode, AbstractPartMode, UnknownSplitMode, NonSplitMode
 
 using OneTwoMany: firstarg, secondarg
 

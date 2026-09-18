@@ -105,7 +105,22 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-@inline mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple} = _add_ndims(mspace_ndims(M), fieldcount(A))
+# Numeric flat variates of powers of measures with fixed stream sizes but
+# no variate rank (e.g. tuple products) are streams:
+@inline function mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}
+    _pwr_ndims(mspace_ndims(M), fieldcount(A), fixed_stream_size(M))
+end
+@inline _pwr_ndims(n::Integer, k::Integer, ::Any) = n + k
+@inline _pwr_ndims(::NoMSpaceElementSize, ::Integer, ::True) = 1
+@inline _pwr_ndims(n::NoMSpaceElementSize, ::Integer, ::False) = n
+
+# Local measures of powers at nested variates are products of the local
+# measures of the elements:
+@inline localmeasure(μ::PowerMeasure, ::AbstractArray{<:Number}) = μ
+function localmeasure(μ::PowerMeasure, x::AbstractArray)
+    size(x) == _dynamic_dims(pwr_size(μ)) || return μ
+    productmeasure(map(Base.Fix1(localmeasure, pwr_base(μ)), x))
+end
 @inline fixed_stream_size(::Type{<:PowerMeasure{M}}) where {M} = fixed_stream_size(M)
 
 # The innermost base measure of nested powers and the total number of power
@@ -120,8 +135,22 @@ end
 # sums the leading dimensions of the result that belong to its axes.
 @inline function _powered_kernel(f::F, μ::PowerMeasure, X) where {F}
     _check_pwr_batch(X, μ)
+    _powered_kernel_impl(f, μ, X, _static_ndims(pwr_base(μ)))
+end
+@inline function _powered_kernel_impl(f::F, μ::PowerMeasure, X, ::Any) where {F}
     _sum_leading_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
 end
+# Numeric batches of powers of bases without a variate rank are batches of
+# streams:
+@inline function _powered_kernel_impl(::typeof(logdensityof_impl), μ::PowerMeasure, X::AbstractArray{<:Number}, ::NoMSpaceElementSize)
+    _powered_stream_kernel(μ, X, fixed_stream_size(pwr_base(μ)))
+end
+function _powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::True)
+    ℓ, X_rest = batched_logdensityof_with_rest(μ, X, ())
+    size(X_rest, 1) == 0 || _throw_stream_too_long()
+    return ℓ
+end
+_powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::False) = _streamwise_ld(logdensityof_impl, μ, X)
 
 # Flat batches of powers have the power dimensions after the variate
 # dimensions of the base measure (where the rank of the base is known):
@@ -172,14 +201,30 @@ end
 end
 
 # Streams: a power consumes its size times the variates of the base measure
-# and sums the base results over its axes.
+# and sums the base results over its axes. Bases without fixed variate
+# sizes are consumed element by element, for single streams.
 function batched_logdensityof_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
-    _powered_ld_with_rest(μ, X, sz)
+    _powered_ld_with_rest(μ, X, sz, fixed_stream_size(pwr_base(μ)))
 end
-batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz::Tuple{}) = _powered_ld_with_rest(μ, x, sz)
-function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
-    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (map(dynamic, _size_dims(pwr_size(μ)))..., sz...))
+function batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz::Tuple{})
+    _powered_ld_with_rest(μ, x, sz, fixed_stream_size(pwr_base(μ)))
+end
+function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims, ::True)
+    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (_dynamic_dims(pwr_size(μ))..., sz...))
     return _sum_leading_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
+end
+function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False)
+    ν = pwr_base(μ)
+    ℓ = zero(_logd_numtype(x))
+    x_rest = x
+    for _ in 1:length(marginals(μ))
+        ℓ_i, _, x_rest = logdensityof_with_rest(ν, x_rest)
+        ℓ += ℓ_i
+    end
+    return ℓ, x_rest
+end
+@noinline function _powered_ld_with_rest(μ::PowerMeasure, ::AbstractArray, ::Dims, ::False)
+    throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
 # Support checks of powers run over the flat variate storage where the
@@ -192,6 +237,13 @@ end
 @inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::StaticInteger{0})
     ν, _ = _pwr_unwrap(μ)
     _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x_flat))
+end
+@inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::StaticInteger{K}) where {K}
+    ν, _ = _pwr_unwrap(μ)
+    _all_insupport(map(_insupport_bool ∘ Base.Fix1(insupport, ν), sliced(x_flat, Val(K))))
+end
+@inline function _powered_insupport(μ::PowerMeasure, x, ::AbstractArray{<:Number}, ::NoMSpaceElementSize)
+    NoFastInsupport{typeof(μ)}()
 end
 @inline _powered_insupport(μ::PowerMeasure, x, ::Any, ::Any) = _powered_insupport_elementwise(pwr_base(μ), x)
 
@@ -241,8 +293,21 @@ massof(m::PowerMeasure) = massof(m.parent)^dynamic(size2length(pwr_size(m)))
 
 function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray) where {S<:StdMeasure}
     _check_pwr_batch(X, μ)
+    _pwr_batched_to_std(S, μ, X, _static_ndims(pwr_base(μ)))
+end
+function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::Union{Tuple,NamedTuple}) where {S<:StdMeasure}
+    _pwr_batched_to_std(S, μ, X, nothing)
+end
+@inline function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, X, ::Any) where {S}
     ν, n = _pwr_unwrap(μ)
     _merge_leading_dims(batched_transport_to_std(S, ν, X), static(1) + n)
+end
+# Numeric batches of powers of bases without a variate rank are batches of
+# streams:
+function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray{<:Number}, ::NoMSpaceElementSize) where {S}
+    Z, X_rest = batched_transport_to_std_with_rest(S, μ, X, ())
+    size(X_rest, 1) == 0 || _throw_stream_too_long()
+    return Z
 end
 
 function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArray) where {S<:StdMeasure}
@@ -299,8 +364,18 @@ function transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVect
     _pwr_point_to_std_with_rest(S, μ, x, fixed_stream_size(pwr_base(μ)))
 end
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::True) where {S}
+    _pwr_point_to_std_with_rest(S, μ, x, _static_ndims(pwr_base(μ)))
+end
+function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::StaticInteger) where {S}
     x_μ, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
     return _as_stdstream(transport_to_std(S, μ, x_μ)), x_μ, x_rest
+end
+# Bases without a variate rank (tuple products) consume streams via the
+# batched protocol:
+function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::NoMSpaceElementSize) where {S}
+    z, x_rest = _pwr_to_std_with_rest(S, μ, x, (), static(true))
+    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return z, x_μ, x_rest
 end
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::False) where {S}
     ν = pwr_base(μ)
@@ -321,6 +396,11 @@ end
 @inline _pwr_from_std_with_rest(::Type{S}, μ, z, n::IntegerLike) where {S} = _from_std_with_rest_bydof(S, μ, z, n)
 function _pwr_from_std_with_rest(::Type{S}, μ, z, ::AbstractNoDOF) where {S}
     _marginals_from_std_with_rest(S, marginals(μ), z)
+end
+
+# The stream length of a power with a base of fixed stream length:
+@inline function _fixed_stream_length(μ::PowerMeasure)
+    _fixed_stream_length(pwr_base(μ)) * prod(_dynamic_dims(pwr_size(μ)))
 end
 
 # The nested variate layout of a power over its flat storage, batches of
