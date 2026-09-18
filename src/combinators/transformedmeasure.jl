@@ -101,6 +101,8 @@ end
     _ndims_of_size_type(VS, MU)
 end
 @inline _ndims_of_size_type(::Type{<:Tuple{Vararg{Any,N}}}, ::Type) where {N} = N
+@inline mspace_flatsize(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,Tuple{}}}) = ()
+@inline mspace_flatsize(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,StaticArrays.Size{S}}}) where {S} = StaticArrays.Size(S)
 @inline _ndims_of_size_type(::Type{StaticArrays.Size{S}}, ::Type) where {S} = length(S)
 @inline _ndims_of_size_type(::Type, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
 
@@ -330,3 +332,7 @@ function _pullback_impl(f, μ, style = AdaptRootMeasure())
 end
 
 @deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
+
+function Adapt.adapt_structure(to, ν::PushforwardMeasure)
+    PushforwardMeasure(Adapt.adapt(to, ν.f), Adapt.adapt(to, ν.finv), Adapt.adapt(to, ν.origin), ν.style, ν.varsize)
+end

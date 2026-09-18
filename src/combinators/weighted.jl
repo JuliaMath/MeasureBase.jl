@@ -93,3 +93,5 @@ insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
     batched_transport_to_std_with_rest(S, basemeasure(μ), X)
 @inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
     batched_transport_from_std_with_rest(S, basemeasure(μ), Z)
+
+Adapt.adapt_structure(to, μ::WeightedMeasure) = WeightedMeasure(μ.logweight, Adapt.adapt(to, μ.base))

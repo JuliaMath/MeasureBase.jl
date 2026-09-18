@@ -222,8 +222,7 @@ end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{0}) where {F}
     mar = marginals(μ)
     _check_flatsize(X, maybestatic_size(mar))
-    ld = Broadcast.instantiate(Broadcast.broadcasted(_DynamicPointLogd(f), mar, X))
-    _sum_leading_dims(ld, static(ndims(mar)))
+    _sum_leading_dims(_marginal_broadcast(_DynamicPointLogd(f), mar, X), static(ndims(mar)))
 end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{K}) where {F,K}
     _marginal_slices_ld(f, marginals(μ), X, Val(K), Val(ndims(X) - K - ndims(marginals(μ))))
@@ -321,7 +320,16 @@ fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
 # Sums over static DOFs of tuples fold at compile time, arrays of marginals
 # are summed dynamically (also on GPU arrays):
 @inline _sum_dofs(f, mar) = sum(f, mar)
-@inline _sum_dofs(f, mar::AbstractArray) = mapreduce(_dynamic_dof ∘ f, +, mar; init = 0)
+@inline _sum_dofs(f, mar::AbstractArray{M}) where {M} = _sum_dofs(f, mar, _unit_dof(M))
+@inline _sum_dofs(f, mar::AbstractArray, ::True) = length(mar)
+@inline _sum_dofs(f, mar::AbstractArray, ::False) = mapreduce(_dynamic_dof ∘ f, +, mar; init = 0)
+
+# Marginals with scalar variates and a standard transport have one degree
+# of freedom each, so their total needs no reduction over the marginals
+# (which may live on a device):
+@inline function _unit_dof(::Type{M}) where {M}
+    static(mspace_ndims(M) === 0 && preferred_stdmeasure(M) isa Type{<:StdMeasure})
+end
 @inline _sum_dofs(f, mar::StaticArray) = mapreduce(f, +, mar; init = static(0))
 @inline _dynamic_dof(n::IntegerLike) = dynamic(n)
 @inline _dynamic_dof(nodof::AbstractNoDOF) = nodof
@@ -377,7 +385,7 @@ function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, x::
     _array_product_to_std(S, μ, x, Val(isconcretetype(M)))
 end
 function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{true}) where {S}
-    _flat_std_of(broadcast(_ToStd{S}(), marginals(μ), x))
+    _flat_std_of(_materialize(_marginal_broadcast(_ToStd{S}(), marginals(μ), x)))
 end
 # Marginals of mixed types may have standard variates of mixed shapes:
 function _array_product_to_std(::Type{S}, μ, x::AbstractArray, ::Val{false}) where {S}
@@ -410,7 +418,7 @@ function transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, z
 end
 function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Tuple{}) where {S}
     mar = marginals(μ)
-    broadcast(_FromStd{S}(), mar, maybestatic_reshape(z, maybestatic_size(mar)))
+    _materialize(_marginal_broadcast(_FromStd{S}(), mar, maybestatic_reshape(z, maybestatic_size(mar))))
 end
 function _array_product_from_std(::Type{S}, μ, z::AbstractVector, ::Any) where {S}
     ys, z_rest = _marginals_from_std_with_rest(S, marginals(μ), z)
@@ -434,7 +442,7 @@ function _marginals_from_std_with_rest(::Type{S}, νs::AbstractArray{M}, z::Abst
         # The variate type is uniform, so the loop is type stable (the type
         # of the remaining stream stays invariant under repeated view-taking):
         y1, z_rest = transport_from_std_with_rest(S, νs[first(idxs)], z)
-        ys = similar(νs, typeof(y1))
+        ys = similar(Array{typeof(y1)}, axes(νs))
         ys[first(idxs)] = y1
         for i in Iterators.drop(idxs, 1)
             ys[i], z_rest = transport_from_std_with_rest(S, νs[i], z_rest)
@@ -464,7 +472,7 @@ function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{
 end
 function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{true}) where {S}
     _check_flatsize(X, maybestatic_size(marginals(μ)))
-    _as_stream_batch(broadcast(_ToStd{S}(), marginals(μ), X), maybestatic_size(marginals(μ)))
+    _as_stream_batch(_materialize(_marginal_broadcast(_ToStd{S}(), marginals(μ), X)), maybestatic_size(marginals(μ)))
 end
 function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{false}) where {S}
     _batched_to_std(S, μ, X, mspace_flatsize(μ))
@@ -475,7 +483,7 @@ function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArra
 end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{true}) where {S}
     mar = marginals(μ)
-    broadcast(_FromStd{S}(), mar, reshape(Z, (map(dynamic, maybestatic_size(mar))..., Base.tail(size(Z))...)))
+    _materialize(_marginal_broadcast(_FromStd{S}(), mar, reshape(Z, (map(dynamic, maybestatic_size(mar))..., Base.tail(size(Z))...))))
 end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{false}) where {S}
     _batched_from_std(S, μ, Z, mspace_flatsize(μ))
@@ -511,3 +519,50 @@ end
 @inline function fixed_stream_size(::Type{<:ProductMeasure{NamedTuple{names,M}}}) where {names,M<:Tuple}
     fixed_stream_size(ProductMeasure{M})
 end
+
+
+# Broadcasts over struct arrays of marginals run over their leaf columns,
+# the marginals are rebuilt from the column values inside the kernel:
+
+@inline _leaf_columns(sa::StructArray) = _leaf_columns_of(values(StructArrays.components(sa)))
+@inline _leaf_columns_of(cs::Tuple) = (_leaf_columns_of(first(cs))..., _leaf_columns_of(Base.tail(cs))...)
+@inline _leaf_columns_of(::Tuple{}) = ()
+@inline _leaf_columns_of(c::StructArray) = _leaf_columns(c)
+@inline _leaf_columns_of(c::AbstractArray{T}) where {T} = Base.issingletontype(T) ? () : (c,)
+
+@generated function _rebuild_element(::Type{SA}, vals::Tuple) where {SA<:StructArray}
+    expr, _ = _rebuild_expr(SA, 1)
+    return expr
+end
+function _rebuild_expr(::Type{SA}, i::Int) where {T,N,C,SA<:StructArray{T,N,C}}
+    args = Any[]
+    for CT in C.parameters[2].parameters
+        if CT <: StructArray
+            e, i = _rebuild_expr(CT, i)
+            push!(args, e)
+        elseif Base.issingletontype(eltype(CT))
+            push!(args, :($(eltype(CT).instance)))
+        else
+            push!(args, :(vals[$i]))
+            i += 1
+        end
+    end
+    return :(constructorof($T)($(args...))), i
+end
+
+struct _WithElement{SA,G} <: Function
+    g::G
+end
+_WithElement{SA}(g::G) where {SA,G} = _WithElement{SA,G}(g)
+@inline function (k::_WithElement{SA})(args::Vararg{Any,N}) where {SA,N}
+    k.g(_rebuild_element(SA, Base.front(args)), args[end])
+end
+
+@inline function _marginal_broadcast(g::G, mar::AbstractArray, X) where {G}
+    Broadcast.instantiate(Broadcast.broadcasted(g, mar, X))
+end
+@inline function _marginal_broadcast(g::G, mar::StructArray, X) where {G}
+    Broadcast.instantiate(Broadcast.broadcasted(_WithElement{typeof(mar)}(g), _leaf_columns(mar)..., X))
+end
+
+Adapt.adapt_structure(to, μ::ProductMeasure) = ProductMeasure(Adapt.adapt(to, marginals(μ)))

@@ -403,3 +403,5 @@ end
     chunks = sliced(reshape(Z, (dynamic(fast_dof(ν)), n_variates, batch_dims...)), Val(1))
     stacked(map(Base.Fix1(_FromStd{S}(), ν), chunks))
 end
+
+Adapt.adapt_structure(to, μ::PowerMeasure) = PowerMeasure(Adapt.adapt(to, pwr_base(μ)), pwr_axes(μ))

@@ -34,6 +34,7 @@ include("combinators/reshape.jl")
 include("combinators/implicitlymapped.jl")
 include("combinators/combined.jl")
 include("combinators/bind.jl")
+include("combinators/product.jl")
 
 include("rand.jl")
 

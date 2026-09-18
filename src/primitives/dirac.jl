@@ -82,3 +82,5 @@ batched_logdensity_def(μ::Dirac{<:AbstractArray}, X::AbstractArray) = _zero_log
 @inline function _all_leading_dims(A::AbstractArray{Bool}, ::StaticInteger{N}) where {N}
     dropdims(all(A; dims = ntuple(identity, Val(N))); dims = ntuple(identity, Val(N)))
 end
+
+Adapt.adapt_structure(to, μ::Dirac) = Dirac(Adapt.adapt(to, μ.x))

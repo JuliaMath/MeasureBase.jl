@@ -69,6 +69,10 @@ using ArraysOfArrays:
 
 using OneTwoMany: firstarg, secondarg
 
+using StructArrays: StructArray
+import StructArrays
+import Adapt
+
 export gentype
 
 export AbstractMeasure

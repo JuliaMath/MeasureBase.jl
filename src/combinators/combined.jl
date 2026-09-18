@@ -331,3 +331,5 @@ function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typ
     X = vcat(_as_stream_batch(A, mspace_flatsize(μ.α)), _as_stream_batch(B, mspace_flatsize(μ.β)))
     return X, Z_rest
 end
+
+Adapt.adapt_structure(to, μ::CombinedMeasure) = mcombine(μ.f_c, Adapt.adapt(to, μ.α), Adapt.adapt(to, μ.β))

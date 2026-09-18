@@ -117,10 +117,27 @@ function _generic_productmeasure_impl(mar::AbstractArray{T}) where {T}
     if Base.issingletontype(T)
         powermeasure(instance(T), axes(mar))
     elseif T <: AbstractMeasure
-        ProductMeasure(mar)
+        ProductMeasure(_marginal_storage(mar))
     else
-        ProductMeasure(map(asmeasure, mar))
+        ProductMeasure(_marginal_storage(map(asmeasure, mar)))
     end
+end
+
+# Arrays of parameterized isbits marginals are stored as struct arrays, so
+# that batched kernels broadcast over the numeric parameter columns (also
+# on GPUs and in traced code):
+function _marginal_storage(mar::AbstractArray{T}) where {T}
+    if isconcretetype(T) && isbitstype(T) && !Base.issingletontype(T)
+        StructArray(mar; unwrap = _unwrap_field)
+    else
+        mar
+    end
+end
+_marginal_storage(mar::StructArray) = mar
+
+@inline function _unwrap_field(::Type{T}) where {T}
+    isstructtype(T) && !Base.issingletontype(T) && fieldcount(T) > 0 &&
+        !(T <: Number) && !(T <: AbstractArray) && !(T <: Tuple) && !(T <: AbstractString) && !(T <: Symbol)
 end
 
 @inline function _generic_productmeasure_impl(
