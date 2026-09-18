@@ -162,7 +162,10 @@ products gives plain arrays); vcat-combined and bind variates are flat;
 
 ## Verification
 
-Full suite (Aqua, extensions, doctests) on CPU with JLArrays cases.
+Full suite (Aqua, extensions, doctests) on CPU with JLArrays cases and
+a FixedSizeArrays transparency check (fixed-size inputs give fixed-size
+outputs; FixedSizeArrays stays a test dependency, allocating fixed-size
+variates by default is a HeterogeneousComputing decision for later).
 `test/test_reactant.jl` runs as part of the suite on 64-bit Linux and
 macOS with stable Julia, adding Reactant on demand as MGVI does (backend
 via `MEASUREBASE_REACTANT_BACKEND`). `test/cuda` is opt-in. Both run
