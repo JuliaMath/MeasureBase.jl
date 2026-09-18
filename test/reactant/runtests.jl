@@ -3,7 +3,8 @@
 # Reactant smoke tests, not part of the default test suite. Run with
 # `julia --project=test/reactant test/reactant/runtests.jl` after
 # instantiating that project, or include this file in an environment that
-# provides Reactant.
+# provides Reactant. The backend defaults to the CPU, set the environment
+# variable `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it.
 
 using Test
 using Reactant
@@ -14,17 +15,22 @@ using MeasureBase: mcombine
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Exponential, Uniform, Beta
 
-Reactant.set_default_backend("cpu")
+Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
 
-# Compiles `f` for traced copies of `args` and compares with the plain result:
+# Compiles `f` for traced copies of `args` and compares with the plain
+# result. Array results are copied inside the compiled function, so that
+# views and reshapes of device arrays come back as plain device arrays:
 function test_traced(f, args...; kwargs...)
     expected = f(args...)
     traced_args = map(Reactant.to_rarray, args)
-    result = @jit f(traced_args...)
+    g = (xs...) -> _contiguous(f(xs...))
+    result = @jit g(traced_args...)
     @test _plain(result) ≈ _plain(expected) nans = true
     return result
 end
 
+_contiguous(x::AbstractArray) = copy(x)
+_contiguous(x) = x
 _plain(x::AbstractArray) = Array(x)
 _plain(x::Number) = Float64(x)
 

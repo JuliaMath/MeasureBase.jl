@@ -28,7 +28,7 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
-rand_impl(ctx::GenContext, d::AbstractProductMeasure) = map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+rand_impl(ctx::GenContext, d::AbstractProductMeasure) = _map(Base.Fix1(_marginal_rand, ctx), marginals(d))
 
 @inline _marginal_rand(ctx::GenContext, m::AbstractMeasure) = rand_impl(ctx, m)
 @inline _marginal_rand(ctx::GenContext, d) = convert_realtype(get_precision(ctx), rand(get_rng(ctx), d))
@@ -281,6 +281,8 @@ end
 # TODO: Better `map` support in MappedArrays
 _map(f, args...) = map(f, args...)
 _map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
+# Variates of struct array marginals are collected into plain arrays:
+_map(f, x::StructArray) = map(f, collect(x))
 
 function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))

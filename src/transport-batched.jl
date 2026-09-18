@@ -243,6 +243,17 @@ function _broadcast_transport(f::TransportFunction, X, X_flat::AbstractArray, ::
     return _batch_variates(Y_flat, f.ν, Val(K))
 end
 
+# Batches of tuple and named tuple variates are tuples of batches, the
+# target layout follows from the target measure:
+function _broadcast_transport(f::TransportFunction, X, X_flat::Union{Tuple,NamedTuple}, ::Any, ::Any)
+    _structured_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
+end
+function _broadcast_transport(f::TransportFunction{<:ProductMeasure{<:Union{Tuple,NamedTuple}}}, X, X_flat::AbstractArray, ::StaticInteger, ::NoMSpaceElementSize)
+    _structured_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
+end
+@inline _structured_variates(Y::Union{Tuple,NamedTuple}, ν) = _pwr_variate(ν, Y)
+@inline _structured_variates(Y::AbstractArray, ν) = _batch_variates(Y, ν, Val(dynamic(_static_ndims(ν))))
+
 _broadcast_transport(f::TransportFunction, X, ::Any, ::Any, ::Any) = map(_Pointwise(f), X)
 
 # Prevents re-entering the broadcast hook from `map` implementations that
@@ -253,8 +264,10 @@ end
 @inline (p::_Pointwise)(x) = p.f(x)
 
 # The batch of variates in the layout of the target measure over the flat
-# result, nested powers included:
+# result, nested powers included, batches of tuple variates as struct
+# arrays:
 @inline _batch_variates(Y::AbstractArray, ν, ::Val{K}) where {K} = _nest_batch(Y, Val(K))
+@inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν, ::Val) = _pwr_variate(ν, Y)
 @inline function _batch_variates(Y::AbstractArray, ν::PowerMeasure, ::Val)
     sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
 end

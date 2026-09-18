@@ -152,7 +152,7 @@ end
     _check_pwr_shape(μ, x)
     _powered_point_nested(f, μ, x, _flat_storage(x))
 end
-@inline function _powered_point_nested(f::F, μ::PowerMeasure, x, x_flat::AbstractArray) where {F}
+@inline function _powered_point_nested(f::F, μ::PowerMeasure, x, x_flat::Union{AbstractArray,Tuple,NamedTuple}) where {F}
     _point_result(_materialize(_batched_kernel(f, μ, x_flat)), μ)
 end
 function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {F}
@@ -182,20 +182,17 @@ function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
     return _sum_leading_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
 end
 
-# Support checks of powers run over the flat variate storage where the base
-# measure has scalar variates, elementwise otherwise:
+# Support checks of powers run over the flat variate storage where the
+# innermost base measure has scalar variates, elementwise otherwise:
 @inline function insupport(μ::PowerMeasure, x::AbstractArray)
-    _powered_insupport(μ, x, _flat_storage(x), mspace_flatsize(μ))
+    ν, _ = _pwr_unwrap(μ)
+    _powered_insupport(μ, x, _flat_storage(x), _static_ndims(ν))
 end
 
-@inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::SizeLike)
+@inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::StaticInteger{0})
     ν, _ = _pwr_unwrap(μ)
-    _powered_insupport_flat(ν, x_flat, mspace_flatsize(ν))
-end
-@inline function _powered_insupport_flat(ν, x_flat::AbstractArray, ::Tuple{})
     _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x_flat))
 end
-@inline _powered_insupport_flat(ν, x_flat::AbstractArray, ::Any) = _powered_insupport_elementwise(ν, x_flat)
 @inline _powered_insupport(μ::PowerMeasure, x, ::Any, ::Any) = _powered_insupport_elementwise(pwr_base(μ), x)
 
 @inline function _powered_insupport_elementwise(ν, x::AbstractArray)
