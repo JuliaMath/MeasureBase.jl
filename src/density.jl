@@ -230,6 +230,10 @@ logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
+# Density measures evaluate the base measure and the integrand directly,
+# the base measure validates array variates:
+@inline _point_ld(f::F, μ::DensityMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
+
 function logdensityof_impl(μ::DensityMeasure, x::Any)
     integrand, μ_base = μ.f, μ.base
     base_logval = dynamic(logdensityof(μ_base, x))

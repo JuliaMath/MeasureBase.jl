@@ -235,7 +235,14 @@ end
 @inline _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{0}, ::StaticInteger{0}) = A
 @inline _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{N}, ::StaticInteger{N}) where {N} = sum(A)
 @inline function _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{N}, ::StaticInteger) where {N}
-    dropdims(_sum_dims_seq(A, static(N)); dims = ntuple(identity, Val(N)))
+    _drop_leading_dims(_sum_dims_seq(A, static(N)), static(N))
+end
+
+# Drops the leading `N` (singleton) dimensions by reshaping, which keeps
+# static arrays static and infers where `dropdims` doesn't:
+@inline function _drop_leading_dims(A::AbstractArray, ::StaticInteger{N}) where {N}
+    dims = _batch_dims(A)
+    _reshape_batch(A, ntuple(i -> dims[N + i], Val(length(dims) - N)))
 end
 @inline _sum_dims_seq(A::AbstractArray, ::StaticInteger{0}) = A
 @inline function _sum_dims_seq(A::AbstractArray, ::StaticInteger{N}) where {N}

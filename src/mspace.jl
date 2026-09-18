@@ -15,7 +15,7 @@ For a measure `μ` over an array-valued measurable space, return the size of
 the arrays that are the elements of the space, `()` for scalar variates.
 
 The size is static where it is known statically. Returns
-[`NoMSpaceElementSize{typeof(μ)}()`](@ref) if the elements of the space
+[`NoMSpaceElementSize{typeof(μ)}()`](@ref NoMSpaceElementSize) if the elements of the space
 are not arrays of one common size, e.g. for structured variates or variates
 whose size depends on the value, or if the size can not be determined
 efficiently.
@@ -36,7 +36,7 @@ variates.
 
 Variates of powers of measures with array-valued variates are nested
 arrays, their flat storage has the size of the inner arrays followed by
-the size of the power. Returns [`NoMSpaceElementSize{typeof(μ)}()`](@ref)
+the size of the power. Returns [`NoMSpaceElementSize{typeof(μ)}()`](@ref NoMSpaceElementSize)
 if the variates of `μ` have no flat storage of a common size.
 
 See also [`mspace_elsize`](@ref).

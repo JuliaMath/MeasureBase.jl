@@ -52,7 +52,7 @@ A common mathematical notation for pullback in measure theory is
 ``f \circ μ``, but as `∘` is used for function composition in Julia and as
 `f` semantically acts point-wise on sets, we use `⊙`.
 
-Also see [f ⋄ μ](@ref), the pushforward operator.
+Also see `f ⋄ μ`, the pushforward operator.
 """
 ⊙(ν::AbstractMeasure, f) = pullbck(f, ν)
 export ⊙

@@ -1,6 +1,12 @@
 using SpecialFunctions: erfc, erfcinv, logerfc
 using IrrationalConstants: invsqrt2, log2π, logtwo
 
+"""
+    StdNormal <: StdMeasure
+
+The standard normal measure, the normal distribution with zero mean and
+unit variance as a measure.
+"""
 struct StdNormal <: StdMeasure end
 
 export StdNormal

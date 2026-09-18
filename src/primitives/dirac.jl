@@ -91,7 +91,7 @@ end
 
 @inline _all_leading_dims(A::AbstractArray{Bool,N}, ::StaticInteger{N}) where {N} = all(A)
 @inline function _all_leading_dims(A::AbstractArray{Bool}, ::StaticInteger{N}) where {N}
-    dropdims(all(A; dims = ntuple(identity, Val(N))); dims = ntuple(identity, Val(N)))
+    _drop_leading_dims(all(A; dims = ntuple(identity, Val(N))), static(N))
 end
 
 Adapt.adapt_structure(to, μ::Dirac) = Dirac(Adapt.adapt(to, μ.x))

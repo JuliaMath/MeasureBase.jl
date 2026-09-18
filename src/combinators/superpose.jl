@@ -179,10 +179,13 @@ end
     args = [:(mspace_ndims($T)) for T in C.parameters]
     :(_common_ndims(($(args...),), MU))
 end
-@inline function _common_ndims(ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU}
-    all(==(first(ns)), ns) ? first(ns) : NoMSpaceElementSize{MU}()
-end
+# Pairwise comparisons fold to a constant rank where `all` doesn't (Julia 1.10):
+@inline _common_ndims(ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU} = _common_ndims_of(first(ns), Base.tail(ns), MU)
 @inline _common_ndims(::Tuple, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
+@inline _common_ndims_of(n::Integer, ::Tuple{}, ::Type) = n
+@inline function _common_ndims_of(n::Integer, ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU}
+    n == first(ns) ? _common_ndims_of(n, Base.tail(ns), MU) : NoMSpaceElementSize{MU}()
+end
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple} = _common_scalar_flatsize(C)
 @generated function _common_scalar_flatsize(::Type{C}) where {C<:Tuple}

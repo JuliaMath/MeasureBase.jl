@@ -1,3 +1,9 @@
+"""
+    StdUniform <: StdMeasure
+
+The standard uniform measure on the unit interval, the uniform
+distribution on `[0, 1]` as a measure.
+"""
 struct StdUniform <: StdMeasure end
 
 export StdUniform

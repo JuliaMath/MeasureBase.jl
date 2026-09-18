@@ -1,3 +1,9 @@
+"""
+    StdLogistic <: StdMeasure
+
+The standard logistic measure, the logistic distribution with zero
+location and unit scale as a measure.
+"""
 struct StdLogistic <: StdMeasure end
 
 export StdLogistic

@@ -1,3 +1,9 @@
+"""
+    StdExponential <: StdMeasure
+
+The standard exponential measure, the exponential distribution with unit
+scale as a measure.
+"""
 struct StdExponential <: StdMeasure end
 
 export StdExponential
