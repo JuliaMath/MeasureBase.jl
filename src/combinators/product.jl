@@ -67,6 +67,12 @@ end
 proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
     powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
 
+# Batches of tuple and named tuple products are tuples resp. named tuples
+# of marginal batches:
+function batched_rand_impl(ctx::GenContext, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, sz::Dims)
+    map(m -> batched_rand_impl(ctx, m, sz), marginals(μ))
+end
+
 # Batches of tuple and named tuple variates are tuples resp. named tuples
 # of batches, the marginal densities add up lazily:
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]

@@ -38,6 +38,7 @@ include("combinators/bind.jl")
 include("combinators/product.jl")
 
 include("rand.jl")
+include("rand_batched.jl")
 
 include("distributions/test_distributions.jl")
 

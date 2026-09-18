@@ -56,40 +56,23 @@ function _cartidxs(axs::Tuple{Vararg{AbstractUnitRange,N}}) where {N}
 end
 
 # Variates of powers are generated as one flat batch of variates of the
-# innermost base measure, in the layout of the flat variate storage:
+# base measure, with the power's size as additional batch dimensions. Base
+# measures without fixed variate sizes generate their variates one by one.
 
-rand_impl(ctx::GenContext, μ::PowerMeasure) = _pwr_rand(ctx, μ, mspace_flatsize(μ))
-
-function _pwr_rand(ctx::GenContext, μ::PowerMeasure, sz_flat::SizeLike)
-    ν, _ = _pwr_unwrap(μ)
-    _pwr_variate(μ, batched_rand_impl(ctx, ν, _pwr_batch_dims(sz_flat, mspace_flatsize(ν))))
-end
-
-function _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::NoMSpaceElementSize)
+rand_impl(ctx::GenContext, μ::PowerMeasure) = _pwr_rand(ctx, μ, fixed_stream_size(pwr_base(μ)))
+_pwr_rand(ctx::GenContext, μ::PowerMeasure, ::True) = _pwr_variate(μ, batched_rand_impl(ctx, μ, ()))
+function _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::False)
     ν = pwr_base(μ)
     map(_ -> rand_impl(ctx, ν), _cartidxs(pwr_axes(μ)))
 end
 
-# The power dimensions of a flat size, after the flat dimensions of the
-# innermost base measure:
-@inline function _pwr_batch_dims(sz_flat::SizeLike, sz_base::SizeLike)
-    dims = map(dynamic, _size_dims(sz_flat))
-    n = length(sz_base)
-    ntuple(i -> dims[n + i], Val(length(dims) - n))
-end
-
 function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::Dims)
-    _pwr_batched_rand(ctx, μ, sz, mspace_flatsize(μ))
+    _pwr_batched_rand(ctx, μ, sz, fixed_stream_size(pwr_base(μ)))
 end
-
-function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, sz_flat::SizeLike)
-    ν, _ = _pwr_unwrap(μ)
-    batched_rand_impl(ctx, ν, (_pwr_batch_dims(sz_flat, mspace_flatsize(ν))..., sz...))
+function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, ::True)
+    batched_rand_impl(ctx, pwr_base(μ), (_dynamic_dims(pwr_size(μ))..., sz...))
 end
-
-function _pwr_batched_rand(::GenContext, μ::PowerMeasure, ::Dims, ::NoMSpaceElementSize)
-    throw(ArgumentError("Batched random variate generation for powers of measures of type $(nameof(typeof(pwr_base(μ)))) requires a known variate size"))
-end
+_pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, ::False) = _batched_rand_pointwise(ctx, μ, sz)
 
 marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
@@ -343,9 +326,18 @@ function _pwr_from_std_with_rest(::Type{S}, μ, z, ::AbstractNoDOF) where {S}
     _marginals_from_std_with_rest(S, marginals(μ), z)
 end
 
-# The nested variate layout of a power over its flat storage:
-@inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
+# The nested variate layout of a power over its flat storage, batches of
+# tuple variates become struct arrays:
+@inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_variate_impl(μ, A)
+@inline _pwr_variate(μ::PowerMeasure, A::Union{Tuple,NamedTuple}) = _pwr_variate_impl(μ, A)
+@inline _pwr_variate_impl(μ::PowerMeasure, A) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
 @inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, _static_ndims(ν))
+@inline function _pwr_variate(ν::ProductMeasure{<:Tuple}, X::Tuple)
+    StructArray(map((m, Xi) -> _nest_leaf(Xi, _static_ndims(m)), marginals(ν), X))
+end
+@inline function _pwr_variate(ν::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {names}
+    StructArray(NamedTuple{names}(map((m, Xi) -> _nest_leaf(Xi, _static_ndims(m)), values(marginals(ν)), values(X))))
+end
 @inline _nest_leaf(A::AbstractArray, ::StaticInteger{0}) = A
 @inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A
 @inline _nest_leaf(A::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = A

@@ -21,19 +21,23 @@ MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure) =
 MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::Dims) =
     _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, sz)
 
-function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
+# A single variate for zero batch dimensions, flat batches otherwise:
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, rand(rng, d))
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real} = _flat_powrand_batch(rng, T, d, sz)
+
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
     convert_realtype(T, reshape(rand(rng, d, prod(sz)), sz...))
 end
 
-function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{1}}, sz::Dims) where {T<:Real}
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{1}}, sz::Dims) where {T<:Real}
     convert_realtype(T, reshape(rand(rng, d, prod(sz)), size(d)..., sz...))
 end
 
-function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::ReshapedDistribution{N,<:Any,<:Distribution{<:ArrayLikeVariate{1}}}, sz::Dims) where {T<:Real,N}
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::ReshapedDistribution{N,<:Any,<:Distribution{<:ArrayLikeVariate{1}}}, sz::Dims) where {T<:Real,N}
     convert_realtype(T, reshape(rand(rng, d.dist, prod(sz)), d.dims..., sz...))
 end
 
-function _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real}
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real}
     flatview(ArrayOfSimilarArrays(convert_realtype(T, rand(rng, d, sz))))
 end
 
