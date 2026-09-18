@@ -223,6 +223,8 @@ basemeasure(μ::DensityMeasure) = μ.base
 @inline mspace_elsize(μ::DensityMeasure) = mspace_elsize(μ.base)
 @inline mspace_flatsize(μ::DensityMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:DensityMeasure{<:Any,B}}) where {B} = mspace_flatsize(B)
+@inline mspace_ndims(::Type{<:DensityMeasure{<:Any,B}}) where {B} = mspace_ndims(B)
+@inline fixed_stream_size(::Type{<:DensityMeasure{<:Any,B}}) where {B} = fixed_stream_size(B)
 
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 

@@ -72,25 +72,37 @@ export PushforwardMeasure
     Users should not call `PushforwardMeasure` directly. Instead call or add
     methods to `pushfwd`.
 """
-struct PushforwardMeasure{F,I,M,S<:PushFwdStyle} <: AbstractPushforward
+struct PushforwardMeasure{F,I,M,S<:PushFwdStyle,VS} <: AbstractPushforward
     f::F
     finv::I
     origin::M
     style::S
+    varsize::VS
 
-    function PushforwardMeasure{F,I,M,S}(
-        f::F,
-        finv::I,
-        origin::M,
-        style::S,
-    ) where {F,I,M,S<:PushFwdStyle}
-        new{F,I,M,S}(f, finv, origin, style)
-    end
-
-    function PushforwardMeasure(f, finv, origin::M, style::S) where {M,S<:PushFwdStyle}
-        new{Core.Typeof(f),Core.Typeof(finv),M,S}(f, finv, origin, style)
+    function PushforwardMeasure(f, finv, origin::M, style::S, varsize::VS) where {M,S<:PushFwdStyle,VS}
+        new{Core.Typeof(f),Core.Typeof(finv),M,S,VS}(f, finv, origin, style, varsize)
     end
 end
+
+# The size of the variates of a pushforward follows from a test value of
+# the origin, where the origin has variates of known size:
+@inline function _pushfwd_varsize(f, μ)
+    _pushfwd_varsize(f, μ, mspace_flatsize(μ))
+end
+@inline _pushfwd_varsize(f, μ, ::SizeLike) = _value_flatsize(f(testvalue(μ)))
+@inline _pushfwd_varsize(f, μ, ::NoMSpaceElementSize) = NoMSpaceElementSize{typeof(μ)}()
+
+@inline mspace_elsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
+@inline mspace_flatsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
+@inline _value_or_unknown(sz::SizeLike, ν) = sz
+@inline _value_or_unknown(::NoMSpaceElementSize, ν) = NoMSpaceElementSize{typeof(ν)}()
+@inline fixed_stream_size(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,VS}}) where {VS} = static(VS <: SizeLike)
+@inline function mspace_ndims(::Type{MU}) where {VS,MU<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,VS}}
+    _ndims_of_size_type(VS, MU)
+end
+@inline _ndims_of_size_type(::Type{<:Tuple{Vararg{Any,N}}}, ::Type) where {N} = N
+@inline _ndims_of_size_type(::Type{StaticArrays.Size{S}}, ::Type) where {S} = length(S)
+@inline _ndims_of_size_type(::Type, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
 
 const _NonBijectivePusfwdMeasure{M<:PushforwardMeasure,S<:PushFwdStyle} = Union{
     PushforwardMeasure{<:Any,<:NoInverse,M,S},
@@ -272,7 +284,7 @@ export pushfwd
 @inline pushfwd(::typeof(identity), μ) = μ
 @inline pushfwd(::typeof(identity), μ, ::PushFwdStyle) = μ
 
-_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style)
+_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style, _pushfwd_varsize(f, μ))
 
 function _pushfwd_impl(
     f,
@@ -282,7 +294,7 @@ function _pushfwd_impl(
     orig_μ = μ.origin
     new_f = fcomp(f, μ.f)
     new_f_inv = fcomp(μ.finv, inverse(f))
-    PushforwardMeasure(new_f, new_f_inv, orig_μ, style)
+    PushforwardMeasure(new_f, new_f_inv, orig_μ, style, _pushfwd_varsize(new_f, orig_μ))
 end
 
 # Simplifications for Dirac and WeightedMeasure origins are defined in

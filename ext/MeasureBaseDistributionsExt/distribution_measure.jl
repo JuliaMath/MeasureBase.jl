@@ -64,6 +64,8 @@ end
 @inline MeasureBase.mspace_elsize(m::DistributionMeasure) = MeasureBase.mspace_elsize(m.obj)
 @inline MeasureBase.mspace_flatsize(m::DistributionMeasure) = MeasureBase.mspace_flatsize(m.obj)
 @inline MeasureBase.mspace_flatsize(::Type{<:Distribution{Univariate}}) = ()
+@inline MeasureBase.mspace_ndims(::Type{<:Distribution{<:ArrayLikeVariate{N}}}) where {N} = N
+@inline MeasureBase.mspace_ndims(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.mspace_ndims(D)
 @inline MeasureBase.mspace_flatsize(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.mspace_flatsize(D)
 
 @inline MeasureBase.preferred_stdmeasure(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D)

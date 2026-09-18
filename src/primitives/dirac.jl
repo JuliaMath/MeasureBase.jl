@@ -68,3 +68,17 @@ function batched_transport_from_std(::Type{S}, μ::Dirac, Z::AbstractArray) wher
     X .= μ.x
     return X
 end
+
+@inline mspace_ndims(::Type{<:Dirac{<:AbstractArray{<:Any,N}}}) where {N} = N
+
+# Batches of array variates: all elements of a variate must match.
+function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Any,N}}, X::AbstractArray) where {N}
+    matches = _all_leading_dims(X .== μ.x, static(N))
+    ifelse.(matches, zero(_logd_numtype(X)), _neg_inf_logd(X))
+end
+batched_logdensity_def(μ::Dirac{<:AbstractArray}, X::AbstractArray) = _zero_logd_batch(X, static(ndims(μ.x)))
+
+@inline _all_leading_dims(A::AbstractArray{Bool,N}, ::StaticInteger{N}) where {N} = all(A)
+@inline function _all_leading_dims(A::AbstractArray{Bool}, ::StaticInteger{N}) where {N}
+    dropdims(all(A; dims = ntuple(identity, Val(N))); dims = ntuple(identity, Val(N)))
+end

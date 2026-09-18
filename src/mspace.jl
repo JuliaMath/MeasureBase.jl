@@ -100,3 +100,30 @@ Composite measures use it to determine the flat size of their variates
 without inspecting each component.
 """
 @inline mspace_flatsize(::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
+
+
+"""
+    MeasureBase.mspace_ndims(::Type{MU})
+    MeasureBase.mspace_ndims(μ)
+
+The number of dimensions of the flat variates of measures of type `MU`,
+`0` for scalar variates, or a [`MeasureBase.NoMSpaceElementSize`](@ref)
+if unknown.
+
+Batched kernels rely on it to tell the variate dimensions of a flat batch
+from its batch dimensions. It follows from
+[`MeasureBase.mspace_flatsize`](@ref) where that is known, measure types
+with array variates of dynamic size declare it directly.
+"""
+function mspace_ndims end
+
+@inline mspace_ndims(::Type{MU}) where {MU} = _ndims_of_size(mspace_flatsize(MU), MU)
+@inline mspace_ndims(μ::MU) where {MU} = _ndims_of_size(mspace_flatsize(μ), MU, mspace_ndims(MU))
+
+@inline _ndims_of_size(sz::SizeLike, ::Type) = length(_size_dims(sz))
+@inline _ndims_of_size(::NoMSpaceElementSize, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
+@inline _ndims_of_size(sz::SizeLike, ::Type, ::Any) = length(_size_dims(sz))
+@inline _ndims_of_size(::NoMSpaceElementSize, ::Type, n) = n
+
+@inline _add_ndims(n::Integer, k::Integer) = n + k
+@inline _add_ndims(n::NoMSpaceElementSize, ::Integer) = n

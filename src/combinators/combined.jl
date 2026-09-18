@@ -169,15 +169,13 @@ function _combined_ld_impl(::Type{Pair}, μ::CombinedMeasure, ab::Pair)
     logdensityof(μ.α, ab.first) + logdensityof(μ.β, ab.second)
 end
 
-function _combined_ld_impl(::Union{typeof(vcat),typeof(merge)}, μ::CombinedMeasure, ab)
-    ℓ, x_μ, x_rest = logdensityof_with_rest(μ, ab)
-    if !isempty(x_rest)
-        throw(
-            ArgumentError(
-                "Variate too long during density evaluation of a combined measure",
-            ),
-        )
-    end
+function _combined_ld_impl(::typeof(vcat), μ::CombinedMeasure, ab::AbstractVector)
+    _point_result(_materialize(_combined_batched_ld(μ, ab, static(true))), μ)
+end
+
+function _combined_ld_impl(::typeof(merge), μ::CombinedMeasure, ab::NamedTuple)
+    ℓ, _, x_rest = logdensityof_with_rest(μ, ab)
+    isempty(x_rest) || _throw_stream_too_long()
     return ℓ
 end
 
@@ -186,20 +184,51 @@ function _combined_ld_impl(f_c, μ::CombinedMeasure, ab)
     return logdensityof(tpm_α, a) + logdensityof(μ.β, b)
 end
 
-function batched_logdensityof_impl(μ::CombinedMeasure{typeof(vcat)}, A::AbstractArray)
-    ℓ, _, A_rest = batched_logdensityof_with_rest(μ, A)
-    if size(A_rest, 1) != 0
-        throw(ArgumentError("Variate streams too long during batched density evaluation of a combined measure"))
-    end
-    return ℓ
+@inline mspace_ndims(::Type{<:CombinedMeasure{typeof(vcat)}}) = 1
+@inline function fixed_stream_size(::Type{<:CombinedMeasure{<:Any,MA,MB}}) where {MA,MB}
+    static(fixed_stream_size(MA) === static(true) && fixed_stream_size(MB) === static(true))
 end
 
-function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, A::AbstractArray)
-    ℓ_a, _, A2 = batched_logdensityof_with_rest(μ.α, A)
-    ℓ_b, _, A_rest = batched_logdensityof_with_rest(μ.β, A2)
-    n_μ = size(A, 1) - size(A_rest, 1)
-    A_μ = view(A, 1:n_μ, Base.tail(axes(A))...)
-    return _lazy_add(ℓ_a, ℓ_b), A_μ, A_rest
+# Batches of vcat-combined variates are batches of streams: with fixed
+# component sizes the whole batch is consumed in fused operations,
+# otherwise stream by stream.
+@inline function batched_logdensityof_impl(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray)
+    _combined_batched_ld(μ, X, fixed_stream_size(μ))
+end
+function _combined_batched_ld(μ::CombinedMeasure, X::AbstractArray, ::True)
+    ℓ, X_rest = batched_logdensityof_with_rest(μ, X, ())
+    size(X_rest, 1) == 0 || _throw_stream_too_long()
+    return ℓ
+end
+_combined_batched_ld(μ::CombinedMeasure, X::AbstractVector, ::False) = _combined_batched_ld(μ, X, static(true))
+_combined_batched_ld(μ::CombinedMeasure, X::AbstractArray, ::False) = _streamwise_ld(logdensityof_impl, μ, X)
+
+function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, ::Tuple{})
+    _combined_ld_with_rest(μ, X)
+end
+batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector, ::Tuple{}) = _combined_ld_with_rest(μ, x)
+function _combined_ld_with_rest(μ::CombinedMeasure, X::AbstractArray)
+    ℓ_a, X2 = batched_logdensityof_with_rest(μ.α, X, ())
+    ℓ_b, X_rest = batched_logdensityof_with_rest(μ.β, X2, ())
+    return _lazy_add(ℓ_a, ℓ_b), X_rest
+end
+
+# Several variates per stream interleave the component parts, so the rows
+# of each variate are split by the fixed component sizes:
+function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::Dims)
+    n_a, n_b = _fixed_stream_length(μ.α), _fixed_stream_length(μ.β)
+    X_μ, X_rest = _batched_split(X, (n_a + n_b) * prod(sz))
+    X_v = reshape(X_μ, (n_a + n_b, sz..., Base.tail(size(X_μ))...))
+    X_a, X_b = _batched_split(X_v, n_a)
+    ℓ_a, _ = batched_logdensityof_with_rest(μ.α, X_a, ())
+    ℓ_b, _ = batched_logdensityof_with_rest(μ.β, X_b, ())
+    return _lazy_add(ℓ_a, ℓ_b), X_rest
+end
+
+@inline _fixed_stream_length(μ) = _fixed_stream_length(μ, mspace_flatsize(μ))
+@inline _fixed_stream_length(μ, sz::SizeLike) = dynamic(size2length(sz))
+@noinline function _fixed_stream_length(μ, ::NoMSpaceElementSize)
+    throw(ArgumentError("Consuming several variates per stream requires measures of type $(nameof(typeof(μ))) to have a known variate size"))
 end
 
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)

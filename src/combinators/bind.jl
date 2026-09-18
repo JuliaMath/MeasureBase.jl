@@ -305,10 +305,8 @@ function _bind_ld_impl(::Type{Pair}, μ::Bind, xy::Pair)
 end
 
 function _bind_ld_impl(::Union{typeof(vcat),typeof(merge)}, μ::Bind, xy)
-    ℓ, x_μ, x_rest = logdensityof_with_rest(μ, xy)
-    if !isempty(x_rest)
-        throw(ArgumentError("Variate too long during density evaluation of a bind"))
-    end
+    ℓ, _, x_rest = logdensityof_with_rest(μ, xy)
+    isempty(x_rest) || _throw_stream_too_long()
     return ℓ
 end
 
@@ -319,6 +317,11 @@ function _bind_ld_impl(@nospecialize(f_c), @nospecialize(μ::Bind), @nospecializ
         ),
     )
 end
+
+# The secondary measure depends on the primary variate, so streams are
+# consumed one by one:
+@inline fixed_stream_size(::Type{<:Bind}) = static(false)
+@inline mspace_ndims(::Type{<:_BindBy{typeof(vcat)}}) = 1
 
 function logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
@@ -332,6 +335,14 @@ function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
     ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a(μ, a), x2)
     return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
+
+function batched_logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector, ::Tuple{})
+    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
+    return ℓ, x_rest
+end
+
+batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = _streamwise_ld(logdensityof_impl, μ, X)
+batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, x::AbstractVector) = _bind_ld_impl(vcat, μ, x)
 
 
 function rand_impl(ctx::GenContext, μ::Bind)

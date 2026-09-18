@@ -7,6 +7,8 @@ end
 @inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
 @inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
 @inline mspace_flatsize(::Type{<:Half{M}}) where {M} = mspace_flatsize(M)
+@inline mspace_ndims(::Type{<:Half{M}}) where {M} = mspace_ndims(M)
+@inline fixed_stream_size(::Type{<:Half{M}}) where {M} = fixed_stream_size(M)
 @inline preferred_stdmeasure(::Type{<:Half}) = StdUniform
 
 function Base.show(io::IO, μ::Half)

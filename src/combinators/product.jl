@@ -40,6 +40,7 @@ for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :log
     end
 end
 
+
 # Variates of products are collections of marginal variates, with the same
 # structure as the marginals:
 @inline function _check_marginal_count(mar::AbstractArray, x::AbstractArray)
@@ -65,6 +66,18 @@ end
 
 proxy(μ::ProductMeasure{<:FillArrays.Fill}) =
     powermeasure(_fill_value(marginals(μ)), _fill_axes(marginals(μ)))
+
+# Batches of tuple and named tuple variates are tuples resp. named tuples
+# of batches, the marginal densities add up lazily:
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval @inline function $bhead(μ::ProductMeasure{<:Tuple}, X::Tuple)
+        _lazy_sum(map((m, Xi) -> _batched_kernel($head, m, Xi), marginals(μ), X))
+    end
+    @eval @inline function $bhead(μ::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {names}
+        _lazy_sum(map((m, Xi) -> _batched_kernel($head, m, Xi), values(marginals(μ)), values(X)))
+    end
+end
+@inline _lazy_sum(ℓs::Tuple) = reduce(_lazy_add, ℓs)
 
 # Relative densities between products evaluate marginal-wise. Support
 # checks happen at the logdensity_rel level for the whole products, so the
@@ -187,35 +200,50 @@ marginals(μ::ProductMeasure) = μ.marginals
     _cat_sizes(mspace_flatsize(M), maybestatic_size(marginals(μ)))
 end
 
-# Batched densities over flat storage `(marginal flat dims..., product
+@inline function mspace_ndims(::Type{<:ProductMeasure{<:AbstractArray{M,N}}}) where {M,N}
+    _add_ndims(mspace_ndims(M), N)
+end
+@inline fixed_stream_size(::Type{<:ProductMeasure{<:AbstractArray{M}}}) where {M} = fixed_stream_size(M)
+
+# Batched kernels over flat storage `(marginal variate dims..., product
 # dims..., batch dims...)`. Marginals with scalar variates align with the
 # leading dimensions of the batch, so one broadcast evaluates all marginal
 # densities. Marginals with array variates are evaluated one by one over
 # their slices of the batch.
-@inline function batched_logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M,N}}, A::AbstractArray) where {M,N}
-    _product_batched_ld(μ, A, mspace_flatsize(M), Val(N), Val(isconcretetype(M)))
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval @inline function $bhead(μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {M}
+        _array_product_kernel($head, μ, X, _static_ndims_of(mspace_ndims(M)))
+    end
 end
 
-@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Tuple{}, ::Val{N}, ::Val{true}) where {N}
-    ld = Broadcast.instantiate(Broadcast.broadcasted(dynamic ∘ logdensityof_impl, marginals(μ), A))
-    _sum_leading_dims(ld, static(N))
+@inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, k::Integer) where {F}
+    _array_product_kernel(f, μ, X, static(k))
+end
+@inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{0}) where {F}
+    mar = marginals(μ)
+    _check_flatsize(X, maybestatic_size(mar))
+    ld = Broadcast.instantiate(Broadcast.broadcasted(_DynamicPointLogd(f), mar, X))
+    _sum_leading_dims(ld, static(ndims(mar)))
+end
+@inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{K}) where {F,K}
+    _marginal_slices_ld(f, marginals(μ), X, Val(K), Val(ndims(X) - K - ndims(marginals(μ))))
+end
+@noinline function _array_product_kernel(::F, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::NoMSpaceElementSize) where {F,M}
+    throw(ArgumentError("Batched density evaluation of products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
 end
 
-@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, sz_m::SizeLike, ::Val{N}, ::Val{true}) where {N}
-    _marginal_slices_ld(marginals(μ), A, Val(length(sz_m)), Val(ndims(A) - length(sz_m) - N))
+struct _DynamicPointLogd{F} <: Function
+    f::F
 end
+@inline (k::_DynamicPointLogd)(m, x) = _dynamic_logd(k.f(m, x), x)
 
-@inline function _product_batched_ld(μ::ProductMeasure, A::AbstractArray, ::Any, ::Val, ::Val)
-    _batched_ld_generic(logdensityof_impl, μ, A)
-end
-
-function _marginal_slices_ld(mar::AbstractArray{<:Any,N}, A::AbstractArray, ::Val{K}, ::Val{B}) where {N,K,B}
+function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray, ::Val{K}, ::Val{B}) where {F,N,K,B}
     if ndims(A) != K + N + B || ntuple(i -> size(A, K + i), Val(N)) != size(mar)
         _throw_size_mismatch()
     end
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
-    ld(i) = _materialize(batched_logdensityof_impl(mar[i], view(A, lead..., Tuple(i)..., trail...)))
+    ld(i) = _materialize(_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
     init = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
     return mapreduce(ld, +, CartesianIndices(mar); init = init)
 end
@@ -223,20 +251,27 @@ end
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
 @inline _zero_logd(A::AbstractArray, dims::Tuple) = fill!(similar(A, _logd_numtype(A), dims), 0)
 
-# The point density of array products with array-variate marginals accepts
-# the flat variate storage `(marginal flat dims..., product dims...)`:
+# Point densities of array products at numeric variates go through the
+# batched kernel where the variate rank of the marginals is known,
+# marginal by marginal otherwise:
+@inline _point_ld(f::F, μ::AbstractProductMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
 @inline function logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
-    _array_product_ld(μ, x, mspace_flatsize(M))
+    _array_product_ld(logdensityof_impl, μ, x, mspace_ndims(M))
 end
-@inline _array_product_ld(μ::ProductMeasure, x::AbstractArray, ::Tuple{}) = _array_product_ld_nested(μ, x)
-@inline _array_product_ld(μ::ProductMeasure, x::AbstractArray, ::NoMSpaceElementSize) = _array_product_ld_nested(μ, x)
-@inline function _array_product_ld(μ::ProductMeasure, x::AbstractArray, sz_m::SizeLike)
-    _marginal_slices_ld(marginals(μ), x, Val(length(sz_m)), Val(0))
+@inline function logdensity_def(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
+    _array_product_ld(logdensity_def, μ, x, mspace_ndims(M))
 end
-@inline function _array_product_ld_nested(μ::ProductMeasure, x::AbstractArray)
+@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::Integer) where {F}
+    _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+end
+@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::NoMSpaceElementSize) where {F}
+    _array_product_ld_nested(f, μ, x)
+end
+@inline function _array_product_ld_nested(f::F, μ::ProductMeasure, x::AbstractArray) where {F}
     _check_marginal_count(marginals(μ), x)
-    mapreduce(logdensityof, +, marginals(μ), x)
+    mapreduce(_PointLogd(f, nothing), +, marginals(μ), x)
 end
+@inline (k::_PointLogd{F,Nothing})(m, x) where {F} = _point_ld(k.f, m, x)
 
 # TODO: Better `map` support in MappedArrays
 _map(f, args...) = map(f, args...)
@@ -444,4 +479,35 @@ function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{
 end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{false}) where {S}
     _batched_from_std(S, μ, Z, mspace_flatsize(μ))
+end
+
+
+# Streams: tuple products consume marginal by marginal, so marginals of
+# value-dependent size are supported for a single variate per stream.
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, X::AbstractArray, ::Tuple{})
+    _marginals_ld_with_rest(marginals(μ), X)
+end
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, x::AbstractVector, ::Tuple{})
+    _marginals_ld_with_rest(marginals(μ), x)
+end
+function _marginals_ld_with_rest(ms::Tuple, X::AbstractArray)
+    ℓ1, X2 = batched_logdensityof_with_rest(ms[1], X, ())
+    ℓ_rest, X_rest = _marginals_ld_with_rest(Base.tail(ms), X2)
+    return _lazy_add(ℓ1, ℓ_rest), X_rest
+end
+function _marginals_ld_with_rest(ms::Tuple{Any}, X::AbstractArray)
+    batched_logdensityof_with_rest(ms[1], X, ())
+end
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, X::AbstractArray, sz::Tuple{}) where {names}
+    batched_logdensityof_with_rest(productmeasure(values(marginals(μ))), X, sz)
+end
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, x::AbstractVector, sz::Tuple{}) where {names}
+    batched_logdensityof_with_rest(productmeasure(values(marginals(μ))), x, sz)
+end
+
+@inline function fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple}
+    static(all(T -> fixed_stream_size(T) === static(true), M.parameters))
+end
+@inline function fixed_stream_size(::Type{<:ProductMeasure{NamedTuple{names,M}}}) where {names,M<:Tuple}
+    fixed_stream_size(ProductMeasure{M})
 end

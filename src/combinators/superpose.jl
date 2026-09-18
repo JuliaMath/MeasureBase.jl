@@ -172,6 +172,17 @@ end
 
 
 @inline mspace_flatsize(μ::SuperpositionMeasure) = mspace_flatsize(typeof(μ))
+
+# The variate rank of a superposition is the common rank of its components:
+@inline mspace_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = mspace_ndims(eltype(C))
+@generated function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
+    args = [:(mspace_ndims($T)) for T in C.parameters]
+    :(_common_ndims(($(args...),), MU))
+end
+@inline function _common_ndims(ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU}
+    all(==(first(ns)), ns) ? first(ns) : NoMSpaceElementSize{MU}()
+end
+@inline _common_ndims(::Tuple, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple} = _common_scalar_flatsize(C)
 @generated function _common_scalar_flatsize(::Type{C}) where {C<:Tuple}

@@ -28,7 +28,7 @@ To compute log-density relative to `basemeasure(m)` or *define* a log-density
 To compute a log-density relative to a specific base-measure, see
 `logdensity_rel`.
 """
-@inline logdensityof(μ::AbstractMeasure, x) = logdensityof_impl(μ, x)
+@inline logdensityof(μ::AbstractMeasure, x) = _point_ld(logdensityof_impl, μ, x)
 
 """
     MeasureBase.logdensityof_impl(μ::AbstractMeasure, x)
@@ -76,41 +76,31 @@ end
 """
     MeasureBase.logdensityof_with_rest(μ::AbstractMeasure, x)
 
-Compute the log-density of `μ` at the beginning of `x`, a flat stream of
-variate content that may extend beyond the variate of `μ`.
+Consume the variate of `μ` at the beginning of the flat vector stream `x`
+(or the named entries of the `NamedTuple` `x`) and compute its log-density.
 
-`x` must either be a vector that starts with the (flattened) variate of `μ`
-(for measures combined via `vcat`) or a `NamedTuple` whose first properties
-constitute the variate of `μ` (for measures combined via `merge`).
-
-Returns a tuple `(ℓ, x_μ, x_rest)` of the log-density `ℓ`, the variate
-`x_μ` of `μ` consumed from the stream, and the unconsumed rest of the
-stream.
-
-Measure types whose variate size depends on measure values, like
-[`mbind`](@ref) results, implement density calculation via
-`logdensityof_with_rest` instead of
-[`logdensityof_impl`](@ref MeasureBase.logdensityof_impl).
-
-The default implementation determines the size resp. the property names of
-the variate via [`some_mspace_elsize`](@ref MeasureBase.some_mspace_elsize)
-resp. `testvalue` and delegates to `logdensityof_impl`.
+Returns a tuple `(ℓ, x_μ, x_rest)` of the log-density, the consumed variate
+`x_μ` and the unconsumed rest of `x`. Measures whose variates have a fixed
+size consume that size (see [`MeasureBase.mspace_flatsize`](@ref) and
+[`MeasureBase.some_mspace_elsize`](@ref)), measures with variates of
+value-dependent size implement the consumption themselves. Batches of
+streams are consumed by [`MeasureBase.batched_logdensityof_with_rest`](@ref).
 """
 function logdensityof_with_rest end
 
 function logdensityof_with_rest(μ::AbstractMeasure, x::AbstractVector)
     a, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
+    return _point_ld(logdensityof_impl, μ, a), a, x_rest
+end
+
+function logdensityof_with_rest(μ::AbstractMeasure, x::NamedTuple)
+    a, x_rest = _split_after(x, Val(_mspace_names(μ)))
     return logdensityof_impl(μ, a), a, x_rest
 end
 
 @inline _stream_consume_size(μ) = _stream_consume_size(μ, mspace_flatsize(μ))
 @inline _stream_consume_size(μ, sz::SizeLike) = sz
 @inline _stream_consume_size(μ, ::NoMSpaceElementSize) = some_mspace_elsize(μ)
-
-function logdensityof_with_rest(μ::AbstractMeasure, x::NamedTuple)
-    a, x_rest = _split_after(x, Val(_mspace_names(μ)))
-    return logdensityof_impl(μ, a), a, x_rest
-end
 
 _mspace_names(μ::AbstractMeasure) = keys(testvalue(μ))
 

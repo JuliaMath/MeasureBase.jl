@@ -26,8 +26,11 @@ _logweight(::AbstractMeasure) = 0
     _logweight_for(d.logweight, x) + logdensityof_impl(basemeasure(d), x)
 end
 
-@inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, A::AbstractArray)
-    _lazy_add(_logweight_for(d.logweight, A), batched_logdensityof_impl(basemeasure(d), A))
+@inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, X)
+    _lazy_add(_logweight_for(d.logweight, X), batched_logdensityof_impl(basemeasure(d), X))
+end
+@inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
+    _lazy_add(_logweight_for(d.logweight, X), _zero_logd_batch(X, mspace_ndims(basemeasure(d))))
 end
 
 @inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
@@ -46,6 +49,8 @@ end
 @inline mspace_elsize(μ::WeightedMeasure) = mspace_elsize(μ.base)
 @inline mspace_flatsize(μ::WeightedMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
+@inline mspace_ndims(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_ndims(M)
+@inline fixed_stream_size(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
 
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 

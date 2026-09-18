@@ -50,7 +50,8 @@ using AffineMaps: Mul
         @test mpab isa MeasureBase.CombinedMeasure
         x = vcat(randn(2), rand(2))
         @test logdensityof(mpab, x) ≈ logdensityof(mab, x)
-        @test_throws ArgumentError logdensities(mpab, vcat(randn(2, 3), rand(2, 3)))
+        Xab = vcat(randn(2, 3), rand(2, 3))
+        @test logdensities(mpab, Xab) ≈ [logdensityof(mpab, x) for x in eachcol(Xab)]
     end
 
     @testset "CombinedMeasure" begin

@@ -122,12 +122,81 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
-# Densities of powers are evaluated by the batched density machinery over
-# the flat variate storage (see density-batched.jl):
+@inline mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple} = _add_ndims(mspace_ndims(M), fieldcount(A))
+@inline fixed_stream_size(::Type{<:PowerMeasure{M}}) where {M} = fixed_stream_size(M)
 
-@inline logdensityof_impl(μ::PowerMeasure, x) = _powered_ld(logdensityof_impl, μ, x)
-@inline logdensity_def(μ::PowerMeasure, x) = _powered_ld(logdensity_def, μ, x)
-@inline batched_logdensityof_impl(μ::PowerMeasure, A::AbstractArray) = _batched_ld(logdensityof_impl, μ, A)
+# The innermost base measure of nested powers and the total number of power
+# dimensions:
+@inline _pwr_unwrap(μ) = (μ, static(0))
+@inline function _pwr_unwrap(μ::PowerMeasure)
+    ν, n = _pwr_unwrap(pwr_base(μ))
+    ν, n + static(length(pwr_axes(μ)))
+end
+
+# Batched kernels: the base kernel runs over the flat batch, the power then
+# sums the leading dimensions of the result that belong to its axes.
+@inline function _powered_kernel(f::F, μ::PowerMeasure, X) where {F}
+    _check_pwr_batch(X, mspace_flatsize(μ))
+    _sum_leading_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
+end
+@inline _check_pwr_batch(X::AbstractArray, sz_flat::SizeLike) = _check_flatsize(X, sz_flat)
+@inline _check_pwr_batch(X, ::Any) = nothing
+@inline batched_logdensityof_impl(μ::PowerMeasure, X) = _powered_kernel(logdensityof_impl, μ, X)
+@inline batched_logdensity_def(μ::PowerMeasure, X) = _powered_kernel(logdensity_def, μ, X)
+
+# Point evaluation: flat variates are batches with zero batch dimensions,
+# nested variates without flat storage sum the point densities of the base.
+@inline _point_ld(f::F, μ::PowerMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
+@inline logdensityof_impl(μ::PowerMeasure, x) = _powered_point(logdensityof_impl, μ, x)
+@inline logdensity_def(μ::PowerMeasure, x) = _powered_point(logdensity_def, μ, x)
+
+@inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray{<:Number}) where {F}
+    _check_pwr_variate(μ, x, mspace_flatsize(μ))
+    _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+end
+@inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray) where {F}
+    _powered_point_nested(f, μ, x, _flat_storage(x))
+end
+@inline function _powered_point_nested(f::F, μ::PowerMeasure, x, x_flat::AbstractArray) where {F}
+    _check_pwr_variate(μ, x, mspace_flatsize(μ))
+    _point_result(_materialize(_batched_kernel(f, μ, x_flat)), μ)
+end
+function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {F}
+    if maybestatic_size(x) != pwr_size(μ)
+        _throw_size_mismatch()
+    end
+    ν = pwr_base(μ)
+    sum(_PointLogd(f, ν), x; init = zero(_logd_numtype(x)))
+end
+@noinline function _powered_point(::F, ::PowerMeasure, x) where {F}
+    throw(ArgumentError("Variates of powers of measures must be arrays"))
+end
+
+# Flat variates must match the flat size where it is known, nested variates
+# the power's shape:
+@inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray{<:Number}, sz_flat::SizeLike)
+    if !_matches_flatsize(maybestatic_size(x), sz_flat) && maybestatic_size(x) != pwr_size(μ)
+        _throw_size_mismatch()
+    end
+    return nothing
+end
+@inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray, ::Any)
+    if maybestatic_size(x) != pwr_size(μ)
+        _throw_size_mismatch()
+    end
+    return nothing
+end
+
+# Streams: a power consumes its size times the variates of the base measure
+# and sums the base results over its axes.
+function batched_logdensityof_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
+    _powered_ld_with_rest(μ, X, sz)
+end
+batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz::Tuple{}) = _powered_ld_with_rest(μ, x, sz)
+function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
+    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (map(dynamic, _size_dims(pwr_size(μ)))..., sz...))
+    return _sum_leading_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
+end
 
 # Support checks of powers run over the flat variate storage where the base
 # measure has scalar variates, elementwise otherwise:

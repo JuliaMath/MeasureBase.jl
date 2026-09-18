@@ -82,9 +82,13 @@ of the streams.
 function batched_transport_to_std_with_rest end
 
 function batched_transport_to_std_with_rest(::Type{S}, μ, X::AbstractArray) where {S<:StdMeasure}
-    X_μ, X_rest = _batched_consume(X, mspace_flatsize(μ))
-    return batched_transport_to_std(S, μ, X_μ), X_μ, X_rest
+    vsz = _stream_consume_size(μ)
+    X_μ, X_rest = _batched_consume(X, vsz, ())
+    X_v = _consumed_variates(X_μ, vsz)
+    return batched_transport_to_std(S, μ, X_v), X_v, X_rest
 end
+@inline _consumed_variates(X_μ::AbstractArray, ::Tuple{}) = _drop_stdstream_dim(X_μ)
+@inline _consumed_variates(X_μ::AbstractArray, ::SizeLike) = X_μ
 
 
 """
