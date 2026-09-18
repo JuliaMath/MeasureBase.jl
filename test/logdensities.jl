@@ -24,6 +24,9 @@ MeasureBase.basemeasure(::VecTestMeasure) = LebesgueBase()^2
 MeasureBase.insupport(::VecTestMeasure, x) = true
 MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
 
+# `@allocated` at top level reports a boxed result on Julia 1.10:
+_allocated(f::F, args::Vararg{Any,N}) where {F,N} = @allocated f(args...)
+
 @testset "logdensities" begin
     @testset "scalar variates" begin
         X = randn(10)
@@ -125,10 +128,10 @@ MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
         m3 = StdNormal()^static(3)
         xs = @SVector randn(3)
         @test @inferred(logdensityof(m3, xs)) ≈ sum(stdnormal_ld, xs)
-        @test @allocated(logdensityof(m3, xs)) == 0
+        @test _allocated(logdensityof, m3, xs) == 0
         xd = randn(3)
         @test @inferred(logdensityof(StdNormal()^3, xd)) ≈ sum(stdnormal_ld, xd)
-        @test @allocated(logdensityof(StdNormal()^3, xd)) == 0
+        @test _allocated(logdensityof, StdNormal()^3, xd) == 0
         Xs = @SMatrix randn(3, 4)
         @test @inferred(logdensities(m3, Xs)) ≈ vec(sum(stdnormal_ld.(Xs), dims = 1))
         @test logdensities(m3, Xs) isa SVector{4}
@@ -148,7 +151,7 @@ MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
         @test @inferred(logdensities(w, X)) ≈ [logdensityof(w, x) for x in eachcol(X)]
         xw = randn(3)
         @test @inferred(logdensityof(w, xw)) ≈ log(0.3) + sum(stdnormal_ld, xw)
-        @test @allocated(logdensityof(w, xw)) == 0
+        @test _allocated(logdensityof, w, xw) == 0
 
         ms = [weightedmeasure(log(i), StdNormal()) for i in 1:4]
         prod4 = productmeasure(ms)
@@ -156,7 +159,7 @@ MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
         @test @inferred(MeasureBase.mspace_elsize(prod4)) == (4,)
         xp = randn(4)
         @test @inferred(logdensityof(prod4, xp)) ≈ sum(log(i) + stdnormal_ld(xp[i]) for i in 1:4)
-        @test @allocated(logdensityof(prod4, xp)) == 0
+        @test _allocated(logdensityof, prod4, xp) == 0
         Xp = randn(4, 7)
         @test @inferred(logdensities(prod4, Xp)) ≈ [logdensityof(prod4, x) for x in eachcol(Xp)]
         @test logdensities(prod4, sliced(Xp, 1)) ≈ logdensities(prod4, Xp)
