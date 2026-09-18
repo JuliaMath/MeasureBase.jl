@@ -183,6 +183,27 @@ convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
 convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
     map(Base.Fix1(convert_realtype, T), x)
 
+# Regularized incomplete gamma and beta functions and their inverses, with
+# the log-densities of the standard gamma and beta distributions for their
+# derivatives. Implemented in the Distributions extension, differentiated
+# with respect to the variate resp. probability argument in the autodiff
+# extensions:
+function _gamma_cdf end
+function _gamma_quantile end
+function _beta_cdf end
+function _beta_quantile end
+function _gamma_logpdf end
+function _beta_logpdf end
+function _gamma_cdf_impl end
+function _gamma_quantile_impl end
+function _beta_cdf_impl end
+function _beta_quantile_impl end
+
+# The dual number type among the arguments of such a function, `Nothing`
+# for plain numbers (the ForwardDiff extension adds dual numbers):
+@inline _dualtag() = Nothing
+@inline _dualtag(::Number, rest::Number...) = _dualtag(rest...)
+
 # Distributions implementation hooks, specialized for dual numbers in the
 # ForwardDiff extension:
 function _trafo_logcdf_impl end

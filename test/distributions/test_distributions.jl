@@ -21,5 +21,6 @@ using .MeasureBaseDistributionsExt:
     include("test_standard_normal.jl")
     include("test_conversions.jl")
     include("test_transport.jl")
+    include("test_device_kernels.jl")
     include("test_mooncake.jl")
 end

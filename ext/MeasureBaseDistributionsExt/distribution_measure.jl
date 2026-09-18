@@ -15,11 +15,19 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 @inline Base.convert(::Type{Distribution{F,S}}, m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
 
 
-MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure) =
-    convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
+# Distributions' samplers run on the CPU, variates on other compute units
+# are generated from standard variates via the transports:
+MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure) = _dist_rand(ctx, m, get_compute_unit(ctx))
+MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::Dims) = _dist_batched_rand(ctx, m, sz, get_compute_unit(ctx))
 
-MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::Dims) =
+_dist_rand(ctx::GenContext, m::DistributionMeasure, ::CPUnit) =
+    convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
+_dist_rand(ctx::GenContext, m::DistributionMeasure, ::AbstractComputeUnit) =
+    MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
+_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::Dims, ::CPUnit) =
     _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, sz)
+_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::Dims, ::AbstractComputeUnit) =
+    MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
 
 # A single variate for zero batch dimensions, flat batches otherwise:
 _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, rand(rng, d))
@@ -49,10 +57,14 @@ end
 @inline MeasureBase.logdensity_def(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
 
 # Distributions evaluate flat batches of array variates (the trailing
-# dimensions are batch dimensions) directly:
-for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
-    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{N}}, X::AbstractArray{<:Real}) where {N}
+# dimensions are batch dimensions) directly, univariate wrappers broadcast
+# their point kernels:
+for (bhead, phead) in ((:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def))
+    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{N}}, X::AbstractArray) where {N}
         Distributions.logpdf(m.obj, X)
+    end
+    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{0}}, X::AbstractArray)
+        MeasureBase._scalar_kernel_broadcast(MeasureBase.$phead, m, X)
     end
 end
 @inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)

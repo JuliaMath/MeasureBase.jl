@@ -9,13 +9,14 @@ using CUDA
 using Adapt: adapt
 using HeterogeneousComputing: GenContext, AbstractComputeUnit
 using MeasureBase
-using MeasureBase: StdNormal, StdUniform, StdExponential, Dirac
+using MeasureBase: StdNormal, StdUniform, StdExponential, Dirac, asmeasure
 using MeasureBase: productmeasure, pushfwd, mcombine, weightedmeasure, superpose, SpikeMixture
 using MeasureBase: batched_rand_impl
 using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
 using AffineMaps: Mul, MulAdd
-using Distributions: Normal
+using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
+using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
 
 CUDA.allowscalar(false)
 
@@ -100,9 +101,39 @@ _plain(x::Tuple) = map(_plain, x)
         @test_broken Array(logdensities(νac, CuArray(Ya))) ≈ logdensities(νa, Ya)
     end
 
+    @testset "wrapped distributions" begin
+        for d in (Normal(0.3, 1.7), Uniform(-1.0, 2.5), Exponential(0.7), Logistic(0.2, 1.3), Cauchy(0.1, 0.8), Laplace(-0.4, 1.1), LogNormal(0.2, 0.6), Weibull(1.4, 0.9), Gamma(2.3, 1.2), Beta(2.5, 3.5))
+            m = asmeasure(d)
+            xd = rand(d, 20)
+            test_cuda(x -> logdensities(m, x), xd)
+            f = transport_to(StdNormal(), m)
+            if d isa Beta
+                # SpecialFunctions' incomplete beta function doesn't compile for GPUs:
+                @test_broken Array(f.(CuArray(xd))) ≈ f.(xd)
+            else
+                test_cuda(x -> f.(x), xd)
+                test_cuda(z -> inverse(f).(z), randn(20))
+            end
+        end
+        for d in (Poisson(2.7), Bernoulli(0.3))
+            test_cuda(x -> logdensities(asmeasure(d), x), Float64.(rand(d, 20)))
+        end
+        mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
+        mm = asmeasure(mvn)
+        Xm = rand(mvn, 20)
+        test_cuda((m, X) -> logdensities(m, X), mm, Xm)
+        test_cuda((m, X) -> flatview(transport_to(StdNormal()^2, m).(sliced(X, Val(1)))), mm, Xm)
+        test_cuda((m, Z) -> flatview(transport_to(m, StdNormal()^2).(sliced(Z, Val(1)))), mm, randn(2, 20))
+        dir = Dirichlet([2.0, 3.0, 4.0, 1.5])
+        md = asmeasure(dir)
+        Xd = rand(dir, 20)
+        test_cuda((m, X) -> logdensities(m, X), md, Xd)
+        @test_broken flatview(transport_to(StdUniform()^3, cu_copy(md)).(sliced(CuArray(Xd), Val(1)))) isa CuArray
+    end
+
     @testset "random variates" begin
         ctx = GenContext{Float32}(AbstractComputeUnit(CUDA.device()), CUDA.default_rng())
-        for μ in (StdNormal(), StdUniform(), StdExponential(), StdNormal()^3, (StdNormal()^2)^3, weightedmeasure(0.3, StdNormal()^2), mcombine(vcat, StdNormal()^2, StdUniform()^1), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), superpose(StdNormal(), StdUniform()), SpikeMixture(StdNormal(), 0.5))
+        for μ in (StdNormal(), StdUniform(), StdExponential(), StdNormal()^3, (StdNormal()^2)^3, weightedmeasure(0.3, StdNormal()^2), mcombine(vcat, StdNormal()^2, StdUniform()^1), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), superpose(StdNormal(), StdUniform()), SpikeMixture(StdNormal(), 0.5), asmeasure(Normal(0.3, 1.7)), asmeasure(Weibull(1.4, 0.9)), cu_copy(asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3]))))
             X = batched_rand_impl(ctx, μ, (100,))
             @test X isa CuArray{Float32}
             ℓ = logdensities(μ, X)

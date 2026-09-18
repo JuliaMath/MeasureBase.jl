@@ -2,7 +2,8 @@
 
 module MeasureBaseDistributionsExt
 
-using LinearAlgebra: Diagonal, diag, dot, cholesky
+using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, diag, dot, cholesky
+import Adapt
 
 import Random
 using Random: AbstractRNG, rand!
@@ -25,11 +26,13 @@ import MeasureBase:
     _dist_params_numtype, _trafo_logcdf_impl, _trafo_logccdf_impl,
     _trafo_quantile_impl, _trafo_cquantile_impl, _dist_quantile, _dist_cquantile
 using MeasureBase: _pushfront, _pushback, _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
+using MeasureBase: _gamma_cdf, _gamma_quantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf, _dualtag
 
 import Distributions
 using Distributions: Distribution, VariateForm, ValueSupport, ContinuousDistribution
 using Distributions: Univariate, Multivariate, ArrayLikeVariate, Continuous, Discrete
 using Distributions: Uniform, Exponential, Logistic, Normal
+using Distributions: Cauchy, Laplace, LogNormal, Weibull, Gamma, Poisson, Bernoulli
 using Distributions: MvNormal, AbstractMvNormal, Beta, Dirichlet
 using Distributions: ReshapedDistribution, AbstractMixtureModel
 
@@ -39,9 +42,10 @@ import StatsFuns
 import PDMats
 
 using IrrationalConstants: log2π, invsqrt2π
-using LogExpFunctions: logistic
+using LogExpFunctions: logistic, log1pexp
+using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, beta_inc_inv
 
-using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
+using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision, get_compute_unit, CPUnit, AbstractComputeUnit
 
 using Static: True, False, StaticInt, static, dynamic
 using StaticThings: asnonstatic
@@ -58,11 +62,13 @@ include("standard_normal.jl")
 include("distribution_measure.jl")
 include("dist_vartransform.jl")
 include("univariate.jl")
+include("families.jl")
 include("standardmv.jl")
 include("product.jl")
 include("reshaped.jl")
 include("mixture.jl")
 include("dirichlet.jl")
+include("multivariate.jl")
 include("dirac.jl")
 
 end # module MeasureBaseDistributionsExt

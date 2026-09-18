@@ -122,19 +122,29 @@ dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
 - Weighted, restricted, density measures, Half: forward plus weights or
   masks. Superpositions and spike mixtures: one batch per component,
   masks aligned with the variate dimensions. Dirac: constant batches.
-- Distributions extension: univariate via `StdLogistic` (log-cdf and
-  quantile), location-scale families via their affine map, `MvNormal` via
-  Cholesky factors, array-variate batches via `logpdf(d, X)`.
+- Distributions extension: the main univariate families (Normal,
+  Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull,
+  Gamma, Beta, Poisson, Bernoulli) get branch-free density formulas and
+  transports to the standard measure matching their shape (`families.jl`),
+  other univariate distributions go via `StdLogistic` (log-cdf and
+  quantile). `MvNormal` works on column batches through its Cholesky
+  factor, `Dirichlet` through stick-breaking Beta transports with `cumsum`
+  and `cumprod` along the variate dimension (`multivariate.jl`). Incomplete
+  gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
+  (and quantiles), whose ForwardDiff and ChainRules derivatives come from
+  the densities. Draws use the Distributions samplers on the CPU and the
+  standard transports on other compute units. Remaining array-variate
+  distributions batch via `logpdf(d, X)` on the host.
 
 ## Changes relative to `master`
 
-Twenty commits since `c773afe`: variate size contract and
+Commits since `c773afe`: variate size contract and
 `preferred_stdmeasure`, densities over flat storage, branch-free
 evaluation, Reactant smoke tests, structural batched kernels, transport
 rebuilt on standard measures, batched transport and the broadcast hook,
 rand via `GenContext`, then the batched-first redesign (density core,
-struct array products, transport, random variates, structured batches)
-and the review fixes.
+struct array products, transport, random variates, structured batches),
+the review fixes, and device-friendly kernels for wrapped Distributions.
 
 Removed: `transport_origin`/`to_origin`/`from_origin` and the origin
 machinery, `NoTransport`, `transport_to_mvstd`, per-measure
@@ -152,18 +162,25 @@ products gives plain arrays); vcat-combined and bind variates are flat;
 
 ## Verification
 
-Full suite (Aqua, extensions, doctests) on CPU with JLArrays cases;
-`test/reactant` (opt-in, backend via `MEASUREBASE_REACTANT_BACKEND`) and
-`test/cuda` (opt-in) run locally on the GB10, both green at HEAD except
-one expected-broken CUDA case (AffineMaps Jacobian on device).
+Full suite (Aqua, extensions, doctests) on CPU with JLArrays cases.
+`test/test_reactant.jl` runs as part of the suite on 64-bit Linux and
+macOS with stable Julia, adding Reactant on demand as MGVI does (backend
+via `MEASUREBASE_REACTANT_BACKEND`). `test/cuda` is opt-in. Both run
+locally on the GB10, green at HEAD except one expected-broken CUDA case
+(AffineMaps Jacobian on device).
 
 ## Known gaps and open decisions
 
 - Upstream: AffineMaps lacks `Adapt` rules and device/traced Jacobians;
-  Distributions isn't device-aware; ChangesOfVariables has no rules for
-  `Base.Fix1`/`Fix2` arithmetic; HeterogeneousComputing has no Reactant
-  compute unit; JLArrays has no RNG; Reactant rejects traced
-  `VectorOfArrays` and empty batches.
+  Distributions isn't device-aware and its parameter structs (PDMats,
+  `Dirichlet`) can't hold traced arrays, so under Reactant distribution
+  parameters stay constants; SpecialFunctions' incomplete beta and gamma
+  functions don't compile for GPUs or Reactant, so Beta and Dirichlet
+  transports and draws (Gamma under Reactant too) stay on the CPU;
+  ChangesOfVariables has no rules for `Base.Fix1`/`Fix2` arithmetic;
+  HeterogeneousComputing has no Reactant compute unit; JLArrays has no
+  RNG and no triangular solves; Reactant rejects traced `VectorOfArrays`
+  and empty batches.
 - Decisions pending: one convention for out-of-support inputs (NaN mask
   vs. DomainError vs. AssertionError), `Half` tails via log-ccdf, device
   random variate infrastructure and `rand!`, Tier-1 static variates,
