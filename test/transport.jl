@@ -12,6 +12,8 @@ using LogExpFunctions: logit
 using ArraysOfArrays: sliced, flatview, fused
 using JLArrays
 
+include("testutils.jl")
+
 @testset "transport_to" begin
     for (f, μ) in [
         (logit, StdUniform())
@@ -90,11 +92,11 @@ using JLArrays
     @testset "scalar and static transports" begin
         f = transport_to(StdNormal(), StdUniform())
         @test @inferred(f(0.3)) isa Float64
-        @test @allocated(f(0.3)) == 0
+        @test allocations_of(f, 0.3) == 0
         g = transport_to(StdExponential()^static(3), StdNormal()^static(3))
         xs = SVector(0.1, -0.4, 2.0)
         @test @inferred(g(xs)) isa SVector{3,Float64}
-        @test @allocated(g(xs)) == 0
+        @test allocations_of(g, xs) == 0
         @test inverse(g)(g(xs)) ≈ xs
         h = transport_to(StdNormal()^3, StdUniform()^3)
         @test h(Float32[0.1, 0.5, 0.9]) isa Vector{Float32}

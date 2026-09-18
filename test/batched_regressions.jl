@@ -29,6 +29,8 @@ end
 MeasureBase.InverseFunctions.inverse(f::Scale) = Scale(inv(f.s))
 MeasureBase.ChangesOfVariables.with_logabsdet_jacobian(f::Scale, x) = (f(x), log(abs(f.s)))
 
+include("testutils.jl")
+
 @testset "batched regressions" begin
     @testset "products of function-wrapper marginals" begin
         pm = productmeasure([pushfwd(Scale(s), StdExponential()) for s in 0.1:0.2:0.9])
@@ -111,10 +113,10 @@ MeasureBase.ChangesOfVariables.with_logabsdet_jacobian(f::Scale, x) = (f(x), log
         m1 = mcombine(vcat, StdNormal(), StdExponential()^static(2))
         x1 = SVector(0.1, 0.2, 0.3)
         @test logdensityof(m1, x1) ≈ logdensityof(StdNormal(), 0.1) + logdensityof(StdExponential()^2, [0.2, 0.3])
-        @test @allocated(logdensityof(m1, x1)) == 0
+        @test allocations_of(logdensityof, m1, x1) == 0
         m2 = mcombine(vcat, StdNormal()^static(2), StdExponential()^static(3))
         x2 = SVector(0.1, 0.2, 0.3, 0.4, 0.5)
-        @test @allocated(logdensityof(m2, x2)) == 0
+        @test allocations_of(logdensityof, m2, x2) == 0
         g = transport_to(StdUniform()^3, StdNormal()^3)
         v = randn(3)
         @test g.(SVector{3}(v))[] ≈ g(v)
