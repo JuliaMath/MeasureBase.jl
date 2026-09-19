@@ -1,23 +1,30 @@
-using SpecialFunctions: erfc, erfcinv
-using IrrationalConstants: invsqrt2, log2π
+using SpecialFunctions: erfc, erfcinv, logerfc
+using IrrationalConstants: invsqrt2, log2π, logtwo
 
+"""
+    StdNormal <: StdMeasure
+
+The standard normal measure, the normal distribution with zero mean and
+unit variance as a measure.
+"""
 struct StdNormal <: StdMeasure end
 
 export StdNormal
 
 @inline insupport(::StdNormal, x) = true
 
-@inline logdensityof(::StdNormal, x) = (-x^2 - log2π) / 2
+@inline logdensityof_impl(::StdNormal, x) = (-x^2 - log2π) / 2
 
 @inline logdensity_def(::StdNormal, x) = -x^2 / 2
 @inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), LebesgueBase())
 
 @inline getdof(::StdNormal) = static(1)
 
-@inline Base.rand(rng::Random.AbstractRNG, ::Type{T}, ::StdNormal) where {T} = randn(rng, T)
+@inline rand_impl(ctx::GenContext, ::StdNormal) = randn(get_rng(ctx), get_precision(ctx))
+@inline batched_rand_impl(ctx::GenContext, ::StdNormal, sz::Dims) = _randn_bulk(ctx, sz)
 
 Φ(z) = erfc(-z * invsqrt2) / 2
-Φinv(p) = -erfcinv(2 * p) * sqrt2
+Φinv(p) = -erfcinv(2 * clamp(p, zero(p), one(p))) * sqrt2
 
 InverseFunctions.inverse(::typeof(Φ)) = Φinv
 InverseFunctions.inverse(::typeof(Φinv)) = Φ
@@ -28,5 +35,5 @@ invsmf(::StdNormal, p) = Φinv(p)
 smf(::StdNormal) = Φ
 invsmf(::StdNormal) = Φinv
 
-transport_def(::StdNormal, ::StdUniform, p) = Φinv(p)
+transport_def(::StdNormal, μ::StdUniform, p) = _nan_outside(μ, p, Φinv(p))
 transport_def(::StdUniform, ::StdNormal, x) = Φ(x)

@@ -1,4 +1,4 @@
-d = ∫exp(x -> -x^2, Lebesgue(ℝ))
+d = mintegrate_exp(x -> -x^2, Lebesgue(ℝ))
 
 # function draw2(μ)
 #     x = rand(μ)
@@ -75,11 +75,6 @@ testbroken_measures = [
     end
 end
 
-# @testset "TransitionKernel" begin
-#     κ = MeasureBase.kernel(MeasureBase.Dirac, identity)
-#     @test rand(κ(1.1)) == 1.1
-# end
-
 @testset "SpikeMixture" begin
     @test rand(SpikeMixture(Dirac(0), 0.5)) == 0
     @test rand(SpikeMixture(Dirac(1), 1.0)) == 1
@@ -120,11 +115,12 @@ end
 end
 
 @testset "powers" begin
-    @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
-    @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
+    @test logdensityof(Lebesgue()^3, [2, 2, 2]) == logdensityof(Lebesgue()^(3,), fill(2, 3))
+    @test logdensityof(Lebesgue()^3, fill(2, 3)) ==
+          logdensityof(Lebesgue()^(3, 1), fill(2, 3, 1))
 end
 
-NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
+NormalMeasure() = mintegrate_exp(x -> -0.5x^2, Lebesgue(ℝ))
 
 @testset "Half" begin
     HalfNormal() = Half(NormalMeasure())
@@ -135,12 +131,10 @@ end
 
 @testset "Likelihood" begin
     ℓ = Likelihood(3) do (μ,)
-        ∫exp(Lebesgue(ℝ)) do x
+        mintegrate_exp(Lebesgue(ℝ)) do x
             -(x - μ)^2
         end
     end
-
-    @inferred logdensityof(Lebesgue() ⊙ ℓ, 2.0)
 end
 
 # @testset "Likelihood" begin
@@ -196,13 +190,46 @@ end
     f2 = x -> sqrt(abs(sum(x)))
     f3 = x -> 2 * sum(x)
     f4 = x -> sum(sqrt.(abs.(x)))
-    m = @inferred ∫exp(f1, ∫exp(f2, ∫exp(f3, ∫exp(f4, StdUniform()^3))))
+    m = @inferred mintegrate_exp(f1, mintegrate_exp(f2, mintegrate_exp(f3, mintegrate_exp(f4, StdUniform()^3))))
 
     for x in [Float32[0.7, 0.2, 0.5], Float32[-0.7, 0.2, 0.5]]
         @test @inferred(logdensityof(m, x)) isa Float32
         @test logdensityof(m, x) ≈
               f1(x) + f2(x) + f3(x) + f4(x) + logdensityof(StdUniform()^3, x)
     end
+end
+
+@testset "logdensityof_with_rest" begin
+    StdNormal = MeasureBase.StdNormal
+    x = [0.3, 0.7, 0.2, 0.9, 0.5]
+
+    # Scalar variates consume one stream element:
+    @test MeasureBase.mspace_elsize(StdNormal()) == ()
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal(), x)
+    @test a == 0.3 && length(x_rest) == 4
+    @test ℓ ≈ logdensityof(StdNormal(), 0.3)
+
+    # Vector variates:
+    @test MeasureBase.mspace_elsize(StdNormal()^2) == (2,)
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal()^2, x)
+    @test a == [0.3, 0.7] && length(x_rest) == 3
+    @test ℓ ≈ logdensityof(StdNormal()^2, [0.3, 0.7])
+
+    # Multi-rank variates are consumed in flattened form and reshaped:
+    @test MeasureBase.mspace_elsize(StdNormal()^(2, 2)) == (2, 2)
+    ℓ, a, x_rest = MeasureBase.logdensityof_with_rest(StdNormal()^(2, 2), x)
+    @test a == [0.3 0.2; 0.7 0.9] && length(x_rest) == 1
+    @test ℓ ≈ logdensityof(StdNormal()^(2, 2), a)
+
+    @test MeasureBase.mspace_elsize(Dirac([1, 2])) == (2,)
+end
+
+@testset "hash follows equality" begin
+    a = productmeasure([Dirac([1.0, 2.0]), StdNormal()])
+    b = productmeasure([Dirac([1.0, 2.0]), StdNormal()])
+    @test a == b && hash(a) == hash(b)
+    f, g = transport_to(StdUniform()^1, a), transport_to(StdUniform()^1, b)
+    @test f == g && hash(f) == hash(g)
 end
 
 @testset "logdensity_rel" begin
@@ -223,18 +250,41 @@ end
     @test logdensity_rel(Lebesgue(), Dirac(0.0) + Lebesgue(), 1.0) == 0.0
 
     @test isnan(logdensity_rel(Dirac(0), Dirac(1), 2))
+
+    # The generic implementation descends the base measure chains of both
+    # measures in lockstep, type-stably and with symbolic cancellation of
+    # shared chain suffixes:
+    let μW = MeasureBase.weightedmeasure(0.7, MeasureBase.StdNormal())
+        StdNormal, StdUniform, StdExponential =
+            MeasureBase.StdNormal, MeasureBase.StdUniform, MeasureBase.StdExponential
+        @test @inferred(logdensity_rel(μW, StdNormal(), 0.5)) ≈ 0.7
+        @test @inferred(logdensity_rel(StdNormal(), μW, 0.5)) ≈ -0.7
+        @test @inferred(logdensity_rel(StdNormal(), StdUniform(), 0.5)) ≈
+              logdensityof(StdNormal(), 0.5)
+        p1 = productmeasure((StdNormal(), StdExponential()))
+        p2 = productmeasure((StdUniform(), StdExponential()))
+        @test @inferred(logdensity_rel(p1, p2, (0.5, 0.5))) ≈
+              logdensityof(StdNormal(), 0.5)
+
+        # Incompatible root measures result in an informative exception:
+        @test_throws ArgumentError logdensity_rel(
+            productmeasure((StdNormal(),)),
+            StdNormal()^1,
+            (0.5,),
+        )
+    end
 end
 
 @testset "Density measures and Radon-Nikodym" begin
     x = randn()
     f(x) = x^2
-    @test log(𝒹(∫exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
+    @test log(density_rel(mintegrate_exp(f, Lebesgue()), Lebesgue())(x)) ≈ f(x)
 
-    let f = 𝒹(∫exp(x -> x^2, Lebesgue()), Lebesgue())
+    let f = density_rel(mintegrate_exp(x -> x^2, Lebesgue()), Lebesgue())
         @test log(f(x)) ≈ x^2
     end
 
-    let f = log𝒹(∫exp(x -> x^2, NormalMeasure()), NormalMeasure())
+    let f = logdensity_rel(mintegrate_exp(x -> x^2, NormalMeasure()), NormalMeasure())
         @test f(x) ≈ x^2
     end
 end

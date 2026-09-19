@@ -5,8 +5,8 @@ using Reexport
 @reexport using MeasureBase
 
 using MeasureBase: basemeasure_depth, proxy, istrue
-using MeasureBase: insupport, basemeasure_sequence, commonbase
-using MeasureBase: transport_to, NoTransport
+using MeasureBase: insupport, basemeasure_sequence
+using MeasureBase: transport_to
 
 using DensityInterface: logdensityof
 using InverseFunctions: inverse
@@ -21,7 +21,6 @@ export basemeasure_depth
 export proxy
 export insupport
 export basemeasure_sequence
-export commonbase
 
 using Test
 
@@ -64,7 +63,7 @@ function test_interface(μ::M) where {M}
             # testvalue, logdensityof
 
             x = @inferred testvalue(Float64, μ)
-            β = @inferred basemeasure(μ, x)
+            β = @inferred basemeasure(μ)
 
             ℓμ = @inferred logdensityof(μ, x)
             ℓβ = @inferred logdensityof(β, x)
@@ -91,9 +90,8 @@ function test_transport(ν, μ)
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
-        @test !(@inferred(transport_to(ν, μ)(x)) isa NoTransport)
         f = transport_to(ν, μ)
-        y = f(x)
+        y = @inferred f(x)
         @test structisapprox(@inferred(inverse(f)(y)), x)
         @test @inferred(with_logabsdet_jacobian(f, x)) isa Tuple{supertype(y),Real}
         @test @inferred(with_logabsdet_jacobian(inverse(f), y)) isa Tuple{supertype(x),Real}
@@ -110,7 +108,7 @@ function test_smf(μ, n = 100)
     @testset "smf($μ)" begin
         # Get `n` sorted uniforms in O(n) time
         p = rand(n)
-        p .+= 0:n-1
+        p .+= 0:(n-1)
         p .*= inv(n)
 
         F(x) = smf(μ, x)
@@ -119,7 +117,8 @@ function test_smf(μ, n = 100)
         @assert issorted(p)
         x = invsmf.(μ, p)
         @test issorted(x)
-        @test all(istrue ∘ insupport(μ), x)
+        # insupport may return a non-Bool "don't know" (NoFastInsupport):
+        @test all(x_i -> insupport(μ, x_i) != false, x)
 
         @test all((Finv ∘ F).(x) .≈ x)
 

@@ -1,11 +1,30 @@
 """
-    MeasureBase.NoDOF{MU}
+    abstract type MeasureBase.AbstractNoDOF{MU}
+
+Abstract supertype for [`NoDOF`](@ref) and [`NoFastDOF`](@ref).
+"""
+abstract type AbstractNoDOF{MU} end
+
+Base.:+(nodof::AbstractNoDOF) = nodof
+Base.:+(::IntegerLike, nodof::AbstractNoDOF) = nodof
+Base.:+(nodof::AbstractNoDOF, ::IntegerLike) = nodof
+Base.:+(nodof::AbstractNoDOF, ::AbstractNoDOF) = nodof
+
+Base.:*(nodof::AbstractNoDOF) = nodof
+Base.:*(::IntegerLike, nodof::AbstractNoDOF) = nodof
+Base.:*(nodof::AbstractNoDOF, ::IntegerLike) = nodof
+Base.:*(nodof::AbstractNoDOF, ::AbstractNoDOF) = nodof
+
+
+"""
+    MeasureBase.NoDOF{MU} <: AbstractNoDOF{MU}
 
 Indicates that there is no way to compute degrees of freedom of a measure
 of type `MU` with the given information, e.g. because the DOF are not
 a global property of the measure.
 """
-struct NoDOF{MU} end
+struct NoDOF{MU} <: AbstractNoDOF{MU} end
+
 
 """
     getdof(μ)
@@ -22,22 +41,90 @@ Also see [`check_dof`](@ref).
 function getdof end
 
 # Prevent infinite recursion:
-@inline _default_getdof(::Type{MU}, ::MU) where {MU} = NoDOF{MU}
+@inline _default_getdof(::Type{MU}, ::MU) where {MU} = NoDOF{MU}()
 @inline _default_getdof(::Type{MU}, mu_base) where {MU} = getdof(mu_base)
 
 @inline getdof(μ::MU) where {MU} = _default_getdof(MU, basemeasure(μ))
+
+
+"""
+    MeasureBase.NoFastDOF{MU} <: AbstractNoDOF{MU}
+
+Indicates that there is no way to compute the degrees of freedom of a
+measure of type `MU` efficiently.
+"""
+struct NoFastDOF{MU} <: AbstractNoDOF{MU} end
+
+
+"""
+    fast_dof(μ::MU)
+
+Returns the effective number of degrees of freedom of variates of
+measure `μ`, if it can be computed efficiently, otherwise
+returns [`NoFastDOF{MU}()`](@ref).
+
+Defaults to `getdof(μ)` and should be specialized for measures for
+which DOF can't be computed instantly.
+
+Also see [`getdof`](@ref) and [`check_dof`](@ref).
+"""
+function fast_dof end
+export fast_dof
+
+fast_dof(μ) = getdof(μ)
+
+
+"""
+    MeasureBase.some_dof(μ::AbstractMeasure)
+
+Get the DOF at some unspecified point of measure `μ`.
+
+Use with caution!
+
+In general, use [`getdof(μ)`](@ref) instead. `some_dof` is useful for
+measures that are expected to have a constant DOF over their whole
+space, but for which there is no way to compute it (or prove that
+the DOF is constant over the measurable space).
+"""
+function some_dof end
+
+function some_dof(μ)
+    m = asmeasure(μ)
+    _try_direct_dof(m, getdof(m))
+end
+
+_try_direct_dof(::AbstractMeasure, dof::IntegerLike) = dof
+function _try_direct_dof(μ::AbstractMeasure, ::AbstractNoDOF)
+    μ_local = _some_localmeasure(μ)
+    # A local measure of the same type would recurse forever:
+    typeof(μ_local) === typeof(μ) && _try_local_dof(μ, NoDOF{typeof(μ)}())
+    _try_local_dof(μ, some_dof(μ_local))
+end
+
+_try_local_dof(::AbstractMeasure, dof::IntegerLike) = dof
+_try_local_dof(μ::AbstractMeasure, ::AbstractNoDOF) =
+    throw(ArgumentError("Can't determine DOF for measure of type $(nameof(typeof(μ)))"))
+
+_some_localmeasure(μ::AbstractMeasure) = localmeasure(μ, testvalue(μ))
+
 
 """
     MeasureBase.check_dof(ν, μ)::Nothing
 
 Check if `ν` and `μ` have the same effective number of degrees of freedom
-according to [`MeasureBase.getdof`](@ref).
+according to [`MeasureBase.fast_dof`](@ref).
+
+Does not throw an exception if the DOF of `ν` or `μ` can't be computed
+efficiently.
 """
 function check_dof end
 
 function check_dof(ν, μ)
-    n_ν = getdof(ν)
-    n_μ = getdof(μ)
+    n_ν = fast_dof(ν)
+    n_μ = fast_dof(μ)
+    if n_ν isa AbstractNoDOF || n_μ isa AbstractNoDOF
+        return nothing
+    end
     if n_ν != n_μ
         throw(
             ArgumentError(
@@ -61,12 +148,15 @@ struct NoArgCheck{MU,T} end
 
 Return `x` if `x` is a valid variate of `μ`, throw an `ArgumentError` if not,
 return `NoArgCheck{MU,T}()` if not check can be performed.
+
+Only the shape and type of `x` are checked, never its value: values
+outside the support are valid arguments of densities and transports.
 """
 function checked_arg end
 
 # Prevent infinite recursion:
 @propagate_inbounds function _default_checked_arg(::Type{MU}, ::MU, ::T) where {MU,T}
-    NoArgCheck{MU,T}
+    NoArgCheck{MU,T}()
 end
 @propagate_inbounds function _default_checked_arg(::Type{MU}, mu_base, x) where {MU}
     checked_arg(mu_base, x)

@@ -4,6 +4,10 @@ export Counting, CountingBase
 
 struct CountingBase <: PrimitiveMeasure end
 
+@inline mspace_elsize(::CountingBase) = ()
+@inline mspace_flatsize(::CountingBase) = ()
+@inline mspace_flatsize(::Type{CountingBase}) = ()
+
 insupport(::CountingBase, x) = true
 
 struct Counting{T} <: AbstractMeasure
@@ -12,18 +16,23 @@ struct Counting{T} <: AbstractMeasure
     Counting(supp) = new{Core.Typeof(supp)}(supp)
 end
 
-@inline function logdensityof(μ::Counting, x::Real)
+@inline function logdensityof_impl(μ::Counting, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupport(μ, x), zero(R))
 end
 
-@inline logdensityof(μ::Counting, x) = insupport(μ, x) ? 0.0 : -Inf
+@inline logdensityof_impl(μ::Counting, x) = _checksupport(insupport(μ, x), 0.0)
 
 @inline logdensity_def(μ::Counting, x) = logdensityof(μ, x)
 
 basemeasure(::Counting) = CountingBase()
 
 Counting() = Counting(ℤ)
+
+@inline mspace_elsize(μ::Counting) = _valueset_elsize(μ.support)
+@inline mspace_flatsize(μ::Counting) = _valueset_flatsize(μ.support)
+@inline mspace_flatsize(::Type{<:Counting{IntegerValues}}) = ()
+@inline mspace_flatsize(::Type{<:Counting{<:BoundedInts}}) = ()
 
 testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 
@@ -40,3 +49,8 @@ insupport(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
 
 massof(::CountingBase, s::Set) = length(s)
+
+# ToDo: Would this be correct?
+# @inline mdomain(::CountingBase) = IntegerValues()
+
+@inline mdomain(::Counting{DomainType}) where {DomainType} = DomainType()

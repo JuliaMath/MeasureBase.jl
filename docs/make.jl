@@ -12,7 +12,7 @@ DocMeta.setdocmeta!(MeasureBase, :DocTestSetup, :(using MeasureBase); recursive 
 
 makedocs(
     sitename = "MeasureBase",
-    modules = [MeasureBase],
+    modules = [MeasureBase, MeasureBase.MeasureOperators],
     format = Documenter.HTML(
         prettyurls = !("local" in ARGS),
         canonical = "https://juliamath.github.io/MeasureBase.jl/stable/",

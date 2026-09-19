@@ -4,6 +4,10 @@ export Lebesgue
 
 struct LebesgueBase <: PrimitiveMeasure end
 
+@inline mspace_elsize(::LebesgueBase) = ()
+@inline mspace_flatsize(::LebesgueBase) = ()
+@inline mspace_flatsize(::Type{LebesgueBase}) = ()
+
 massof(::LebesgueBase, s::Interval) = width(s)
 
 testvalue(::LebesgueBase) = 0.0
@@ -12,13 +16,13 @@ insupport(::LebesgueBase, x) = true
 
 insupport(::LebesgueBase) = Returns(true)
 
-logdensity_def(::LebesgueBase, ::CountingBase, x) = -Inf
+logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = _neg_inf_logd(x)
 
-logdensity_def(::CountingBase, ::LebesgueBase, x) = Inf
+logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = -_neg_inf_logd(x)
 
 @inline getdof(::LebesgueBase) = static(1)
 
-@inline checked_arg(::LebesgueBase, x::Real) = x
+@inline checked_arg(::LebesgueBase, x::Number) = x
 
 @propagate_inbounds function checked_arg(::LebesgueBase, x::Any)
     @boundscheck throw(ArgumentError("Invalid variate type for measure"))
@@ -26,12 +30,12 @@ end
 
 massof(::LebesgueBase) = static(Inf)
 
-function _massof(m, s::Interval, ::LebesgueBase)
+function _default_massof_impl(m, s::AbstractInterval, ::LebesgueBase)
     mass = massof(m)
     nu = mass * StdUniform()
     f = transport_to(nu, m)
-    a = f(minimum(s))
-    b = f(maximum(s))
+    a = f(leftendpoint(s))
+    b = f(rightendpoint(s))
     return mass * abs(b - a)
 end
 
@@ -48,10 +52,15 @@ gentype(::Lebesgue) = Float64
 
 Lebesgue() = Lebesgue(ℝ)
 
+@inline mspace_elsize(μ::Lebesgue) = _valueset_elsize(μ.support)
+@inline mspace_flatsize(μ::Lebesgue) = _valueset_flatsize(μ.support)
+@inline mspace_flatsize(::Type{<:Lebesgue{RealValues}}) = ()
+@inline mspace_flatsize(::Type{<:Lebesgue{<:IntervalSets.AbstractInterval}}) = ()
+
 testvalue(::Type{T}, d::Lebesgue) where {T} = testvalue(T, d.support)::T
 
 proxy(d::Lebesgue) = restrict(in(d.support), LebesgueBase())
-proxy(::Lebesgue{MeasureBase.RealNumbers}) = LebesgueBase()
+proxy(::Lebesgue{MeasureBase.RealValues}) = LebesgueBase()
 
 @useproxy Lebesgue
 
@@ -61,37 +70,37 @@ Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
 insupport(μ::Lebesgue, x) = x ∈ μ.support
 
-insupport(::Lebesgue{RealNumbers}, ::Real) = true
+insupport(::Lebesgue{RealValues}, ::Real) = true
 
-@inline function logdensityof(μ::Lebesgue, x::Real)
+@inline function logdensityof_impl(μ::Lebesgue, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupport(μ, x), zero(R))
 end
 
-@inline logdensityof(μ::Lebesgue, x) = insupport(μ, x) ? 0.0 : -Inf
+@inline logdensityof_impl(μ::Lebesgue, x) = _checksupport(insupport(μ, x), 0.0)
 
-massof(::Lebesgue{RealNumbers}, s::Interval) = width(s)
+massof(::Lebesgue{RealValues}, s::Interval) = width(s)
 
 # Example: 
 # julia> Lebesgue(𝕀)(0.2..5)
 # 0.8
-function massof(μ::Lebesgue{<:BoundedReals}, s::Interval)
-    a = μ.support.lower
-    b = μ.support.upper
+function massof(μ::Lebesgue{<:AbstractInterval}, s::Interval)
+    a, b = endpoints(μ.support)
     left = max(s.left, a)
     right = min(s.right, b)
     w = right - left
     max(w, zero(w))
 end
 
-function smf(μ::Lebesgue{<:BoundedReals}, x)
-    clamp(x, μ.support.lower, μ.support.upper)
+function smf(μ::Lebesgue{<:AbstractInterval}, x)
+    a, b = endpoints(μ.support)
+    clamp(x, a, b)
 end
 
-smf(::Lebesgue{RealNumbers}, x) = x
-smf(::Lebesgue{RealNumbers}) = identity
-invsmf(::Lebesgue{RealNumbers}, x) = x
-invsmf(::Lebesgue{RealNumbers}) = identity
+smf(::Lebesgue{<:RealValues}, x) = x
+smf(::Lebesgue{<:RealValues}) = identity
+invsmf(::Lebesgue{<:RealValues}, x) = x
+invsmf(::Lebesgue{<:RealValues}) = identity
 
 smf(::LebesgueBase, x) = x
 smf(::LebesgueBase) = identity

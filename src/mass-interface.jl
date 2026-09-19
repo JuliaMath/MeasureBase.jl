@@ -22,7 +22,12 @@ for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
         Base.:*(::$T, ::$T) = $T()
-        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+        Base.:*(x::Real, ::$T) = isfinite(x) ? $T() : UnknownMass()
+        Base.:*(::$T, x::Real) = isfinite(x) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
+        # Disambiguation:
+        Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Rational) = isfinite(k) ? $T() : UnknownMass()
     end
 end
 
@@ -65,7 +70,7 @@ finite, or we may know nothing at all about it. For these cases, it will return
 `UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
 exists, it defaults to `UnknownMass`.
 """
-massof(m::AbstractMeasure) = UnknownMass(m)
+massof(::AbstractMeasure) = UnknownMass()
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P
@@ -102,10 +107,10 @@ Check whether `norm(x, p) == 1`.
 """
 isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
-isone(::AbstractUnknownMass) = false
+Base.isone(::AbstractUnknownMass) = false
 
 function massof(m, s)
-    _massof(m, s, rootmeasure(m))
+    _default_massof_impl(m, s, rootmeasure(m))
 end
 
 """
@@ -116,4 +121,16 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+function massof(μ, a_b::AbstractInterval)
+    _smf_interval_massof(μ, smf(μ, rightendpoint(a_b)), smf(μ, leftendpoint(a_b)))
+end
+
+_smf_interval_massof(μ, smf_r, smf_l) = smf_r - smf_l
+
+function _smf_interval_massof(μ, ::NoSMF, ::NoSMF)
+    throw(
+        ArgumentError(
+            "Can't compute the mass over an interval for a measure of type $(nameof(typeof(μ))), no statistical measure function available",
+        ),
+    )
+end
