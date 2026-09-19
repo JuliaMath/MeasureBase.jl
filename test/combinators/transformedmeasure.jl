@@ -5,6 +5,9 @@ using MeasureBase: pushfwd, StdUniform, StdExponential, StdLogistic
 using MeasureBase: pushfwd, PushforwardMeasure
 using MeasureBase: transport_to, unsafe_logdensityof
 using MeasureBase: productmeasure, mbind
+import Zygote
+using InverseFunctions: inverse
+using ChangesOfVariables: with_logabsdet_jacobian
 import Statistics: var
 using DensityInterface: logdensityof
 using LogExpFunctions
@@ -187,5 +190,18 @@ end
         @test MeasureBase.mspace_flatsize(ν) == (3,)
         @test MeasureBase.mspace_ndims(typeof(ν)) == 1
         @test MeasureBase.mspace_flatsize(pushfwd(x -> x, mbind(x -> StdNormal()^(x > 0 ? 1 : 2), StdNormal()))) isa MeasureBase.NoMSpaceElementSize
+    end
+
+    @testset "construction inside differentiated functions" begin
+        flat(x::Tuple) = vcat(x[1], x[2])
+        unflat(v::AbstractVector) = (v[1], v[2:end])
+        InverseFunctions.inverse(::typeof(flat)) = unflat
+        InverseFunctions.inverse(::typeof(unflat)) = flat
+        ChangesOfVariables.with_logabsdet_jacobian(::typeof(flat), x) = (flat(x), zero(eltype(x[2])))
+        ChangesOfVariables.with_logabsdet_jacobian(::typeof(unflat), v) = (unflat(v), zero(eltype(v)))
+        Pt = productmeasure((StdNormal(), StdUniform()^2))
+        g(v) = logdensityof(pushfwd(flat, Pt), v)
+        v = [0.3, 0.2, 0.7]
+        @test Zygote.gradient(g, v)[1] ≈ [-0.3, 0.0, 0.0]
     end
 end

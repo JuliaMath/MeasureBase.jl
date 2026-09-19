@@ -3,7 +3,7 @@
 module MeasureBaseChainRulesCoreExt
 
 using MeasureBase
-using ChainRulesCore: NoTangent, ZeroTangent
+using ChainRulesCore: NoTangent, ZeroTangent, @non_differentiable
 import ChainRulesCore
 
 # = utils ====================================================================
@@ -72,6 +72,11 @@ end
 
 
 # = insupport & friends ======================================================
+
+# Variate layouts are type-level information:
+using MeasureBase: fixed_stream_size, _pushfwd_varsize
+@non_differentiable fixed_stream_size(::Type)
+@non_differentiable _pushfwd_varsize(f, μ)
 
 using MeasureBase: check_dof, require_insupport, checked_arg, _checksupport
 
