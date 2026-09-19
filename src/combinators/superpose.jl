@@ -84,8 +84,8 @@ function logdensity_def(s::SuperpositionMeasure, x)
     αs = map(basemeasure, cs)
     terms = map(cs, αs) do cᵢ, αᵢ
         ℓᵢ = _dynamic_logd(logdensity_def(cᵢ, x), x)
-        log_dΣα_dαᵢ = _logsumexp_components(map(cs, αs) do cⱼ, αⱼ
-            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupport(cⱼ, x))
+        log_dΣα_dαᵢ = _logsumexp_components(map(αs) do αⱼ
+            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupport(αⱼ, x))
         end)
         _masked_logd(ℓᵢ - log_dΣα_dαᵢ, insupport(cᵢ, x))
     end

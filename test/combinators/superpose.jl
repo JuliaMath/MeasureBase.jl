@@ -9,13 +9,19 @@ using MeasureBase: superpose, weightedmeasure, StdNormal
     μs = μ + ν
     @test μs isa SuperpositionMeasure{<:Tuple{Dirac,Dirac}}
     @test μs == SuperpositionMeasure((μ, ν)) == superpose(μ, ν)
-    @test density_def(μs, 0) == 1.0
+    @test density_def(μs, 0) == 0.5
     @test basemeasure(μs) == CountingBase() + CountingBase()
+    @test densityof(μs, 0) == 1.0
 
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
-    @test density_def(μs, 0) == 1.0
+    @test density_def(μs, 0) == 0.5
     @test basemeasure(μs) == weightedmeasure(log(2), CountingBase())
+    @test densityof(μs, 0) == 1.0
+    # Base measures of components count wherever they have mass, not only
+    # where the component itself does:
+    @test logdensityof(superpose(StdNormal(), StdUniform()), -1.0) ≈ logdensityof(StdNormal(), -1.0)
+    @test logdensityof(superpose(StdNormal(), StdUniform()), 0.5) ≈ log(exp(logdensityof(StdNormal(), 0.5)) + 1)
 
     # Dirac equality is not decidable from types, so no weighted collapse:
     μ2 = μ + μ
