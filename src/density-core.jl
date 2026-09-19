@@ -27,6 +27,15 @@ To compute log-density relative to `basemeasure(m)` or *define* a log-density
 
 To compute a log-density relative to a specific base-measure, see
 `logdensity_rel`.
+
+# Extended help
+
+Variates of the right shape and element type never throw: outside the
+support of `m` the result is `-Inf`, also for non-integer values of
+measures over counting measures and for infinite values. `NaN` inputs give
+`NaN` or `-Inf`. Variates of the wrong shape throw an `ArgumentError`.
+Implementations of `logdensityof_impl` and `unsafe_logdensityof` must not
+throw outside the support, since support masks evaluate both branches.
 """
 @inline logdensityof(μ::AbstractMeasure, x) = _point_ld(logdensityof_impl, μ, x)
 
@@ -72,6 +81,11 @@ end
 @inline _insupport_and(a::NoFastInsupport, ::NoFastInsupport) = a
 
 @inline _checksupport(cond, result) = ifelse(_insupport_mask(cond), result, oftype(result, -Inf))
+
+# Transports of variates outside the support of the source measure give
+# NaN. Both branches are evaluated, formulas must not throw outside the
+# support:
+@inline _nan_outside(μ, x, y) = ifelse(_insupport_mask(insupport(μ, x)), y, oftype(y, NaN))
 
 """
     MeasureBase.logdensityof_with_rest(μ::AbstractMeasure, x)

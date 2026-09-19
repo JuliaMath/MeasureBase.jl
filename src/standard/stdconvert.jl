@@ -13,8 +13,8 @@
     ifelse(z < zero(z), -log1p(-Φ(z)), -log(_normccdf(z)))
 end
 
-@inline function transport_def(::StdNormal, ::StdExponential, x)
-    ifelse(x < oftype(x, logtwo), Φinv(-expm1(-x)), -Φinv(exp(-x)))
+@inline function transport_def(::StdNormal, μ::StdExponential, x)
+    _nan_outside(μ, x, ifelse(x < oftype(x, logtwo), Φinv(-expm1(-x)), -Φinv(exp(-x))))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
@@ -23,7 +23,7 @@ end
     ifelse(l < zero(l), Φinv(logistic(l)), -Φinv(logistic(-l)))
 end
 
-@inline transport_def(::StdLogistic, ::StdExponential, x) = log(-expm1(-x)) + x
+@inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(abs(expm1(-x))) + x)
 
 @inline transport_def(::StdExponential, ::StdLogistic, l) = log1pexp(l)
 

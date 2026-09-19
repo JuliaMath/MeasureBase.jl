@@ -18,8 +18,8 @@ end
 @inline logdensity_def(::StdExponential, x) = -x
 @inline basemeasure(::StdExponential) = LebesgueBase()
 
-@inline transport_def(::StdUniform, μ::StdExponential, x) = -expm1(-x)
-@inline transport_def(::StdExponential, μ::StdUniform, x) = -log1p(-x)
+@inline transport_def(::StdUniform, μ::StdExponential, x) = _nan_outside(μ, x, -expm1(-x))
+@inline transport_def(::StdExponential, μ::StdUniform, x) = _nan_outside(μ, x, -log1p(-min(x, one(x))))
 
 @inline rand_impl(ctx::GenContext, ::StdExponential) = randexp(get_rng(ctx), get_precision(ctx))
 @inline batched_rand_impl(ctx::GenContext, ::StdExponential, sz::Dims) = _randexp_bulk(ctx, sz)

@@ -148,6 +148,9 @@ struct NoArgCheck{MU,T} end
 
 Return `x` if `x` is a valid variate of `μ`, throw an `ArgumentError` if not,
 return `NoArgCheck{MU,T}()` if not check can be performed.
+
+Only the shape and type of `x` are checked, never its value: values
+outside the support are valid arguments of densities and transports.
 """
 function checked_arg end
 

@@ -22,6 +22,9 @@
 @inline _rows(Z::AbstractMatrix, r) = view(Z, r, :)
 @inline _masked(ℓ::Number, ins) = ifelse(ins, ℓ, oftype(ℓ, -Inf))
 @inline _masked(ℓ::AbstractArray, ins) = ifelse.(ins, ℓ, eltype(ℓ)(-Inf))
+@inline _nan_columns(Z::AbstractArray, ins) = ifelse.(_as_row(ins), Z, eltype(Z)(NaN))
+@inline _as_row(ins::Bool) = ins
+@inline _as_row(ins::AbstractVector) = reshape(ins, 1, :)
 
 
 # Multivariate normal: densities via the Cholesky factor of the covariance.
@@ -75,13 +78,16 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
         d = m.obj
         Xc = _as_columns(X)
         ℓ = _column_sums(identity, _clog.(d.alpha .- 1, abs.(Xc))) .- d.lmnB
-        tol = sqrt(eps(float(eltype(X))))
-        ins = _column_all(Xc .>= 0) .& (abs.(_column_sums(identity, Xc) .- 1) .<= tol)
-        _batch_results(_masked(ℓ, ins), X)
+        _batch_results(_masked(ℓ, _simplex_mask(Xc)), X)
     end
 end
 MeasureBase.logdensity_def(m::DirichletMeasure, x::AbstractVector) = MeasureBase.batched_logdensity_def(m, x)
 MeasureBase.unsafe_logdensityof(m::DirichletMeasure, x::AbstractVector) = MeasureBase.batched_logdensityof_impl(m, x)
+
+@inline function _simplex_mask(Xc::AbstractArray)
+    tol = sqrt(eps(float(eltype(Xc))))
+    _column_all(Xc .>= 0) .& (abs.(_column_sums(identity, Xc) .- 1) .<= tol)
+end
 
 # The stick-breaking Beta parameters, for the first `K - 1` components:
 @inline _stick_breaking_params(d::Dirichlet) = (_dropfront(_rev_cumsum(d.alpha)), _dropback(d.alpha))
@@ -94,17 +100,19 @@ function MeasureBase.batched_transport_to_std(::Type{StdUniform}, d::Dirichlet, 
     # The remaining mass before each component is the mass after it plus
     # the component itself:
     beta_v = _rows(rem, 1:(K - 1)) ./ (_rows(rem, 1:(K - 1)) .+ _rows(Xc, 1:(K - 1)))
-    _from_columns(_beta_cdf.(αs, βs, beta_v), X)
+    Z = _beta_cdf.(αs, βs, _unit_clamp.(beta_v))
+    _from_columns(_nan_columns(Z, _simplex_mask(Xc)), X)
 end
 
 function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet, Z::AbstractArray)
     K = length(d)
     αs, βs = _stick_breaking_params(d)
-    beta_v = _beta_quantile.(αs, βs, _as_columns(Z))
+    Zc = _as_columns(Z)
+    beta_v = _beta_quantile.(αs, βs, _unit_clamp.(Zc))
     cp = cumprod(beta_v; dims = 1)
     # Each component takes what its Beta variate leaves of the remaining mass:
     X = vcat(1 .- _rows(cp, 1:1), _rows(cp, 1:(K - 2)) .- _rows(cp, 2:(K - 1)), _rows(cp, (K - 1):(K - 1)))
-    _from_columns(X, Z)
+    _from_columns(_nan_columns(X, _column_all((Zc .>= 0) .& (Zc .<= 1))), Z)
 end
 MeasureBase.transport_to_std(::Type{StdUniform}, d::Dirichlet, x) = MeasureBase.batched_transport_to_std(StdUniform, d, x)
 MeasureBase.transport_from_std(::Type{StdUniform}, d::Dirichlet, z) = MeasureBase.batched_transport_from_std(StdUniform, d, z)

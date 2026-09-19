@@ -13,7 +13,7 @@ const _Families = Union{Normal,Uniform,Exponential,Logistic,Cauchy,Laplace,LogNo
 # not throw outside of the support, where their results are masked:
 @inline MeasureBase.logdensity_def(m::AsMeasure{<:_Families}, x) = _family_logd(m.obj, x)
 @inline MeasureBase.unsafe_logdensityof(m::AsMeasure{<:_Families}, x) = _family_logd(m.obj, x)
-@inline MeasureBase.insupport(m::AsMeasure{<:_Families}, x) = _family_insupport(m.obj, x)
+@inline MeasureBase.insupport(m::AsMeasure{<:_Families}, x) = _family_insupport(m.obj, x) & _finite_variate(m.obj, x)
 
 # `c * log(y)`, zero for `c == 0` also where `y == 0`:
 @inline _clog(c, y) = ifelse(iszero(c), zero(c * log(one(y))), c * log(y))
@@ -104,7 +104,8 @@ end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Cauchy}) = StdUniform
 @inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Cauchy, x) = 1 // 2 + atan((x - d.μ) / d.σ) / π
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p) = muladd(d.σ, tan(π * (p - 1 // 2)), d.μ)
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p) =
+    _nan_outside(StdUniform, p, muladd(d.σ, tan(π * (p - 1 // 2)), d.μ))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdUniform
 @inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Laplace, x)
@@ -113,21 +114,23 @@ end
 end
 @inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Laplace, p)
     u = p - 1 // 2
-    muladd(-d.θ * sign(u), log1p(-2 * abs(u)), d.μ)
+    _nan_outside(StdUniform, p, muladd(-d.θ * sign(u), log1p(-min(2 * abs(u), one(u))), d.μ))
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:LogNormal}) = StdNormal
-@inline MeasureBase.transport_to_std(::Type{StdNormal}, d::LogNormal, x) = (log(x) - d.μ) / d.σ
+@inline MeasureBase.transport_to_std(::Type{StdNormal}, d::LogNormal, x) = _nan_outside(d, x, (log(abs(x)) - d.μ) / d.σ)
 @inline MeasureBase.transport_from_std(::Type{StdNormal}, d::LogNormal, z) = exp(muladd(d.σ, z, d.μ))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Weibull}) = StdExponential
-@inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Weibull, x) = (x / d.θ)^d.α
-@inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Weibull, z) = d.θ * z^(1 / d.α)
+@inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Weibull, x) = _nan_outside(d, x, abs(x / d.θ)^d.α)
+@inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Weibull, z) = _nan_outside(StdExponential, z, d.θ * abs(z)^(1 / d.α))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Gamma}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Gamma, x) = _gamma_cdf(d.α, x / d.θ)
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Gamma, p) = d.θ * _gamma_quantile(d.α, p)
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Gamma, x) = _nan_outside(d, x, _gamma_cdf(d.α, abs(x / d.θ)))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Gamma, p) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _unit_clamp(p)))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Beta}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Beta, x) = _beta_cdf(d.α, d.β, x)
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _beta_quantile(d.α, d.β, p)
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Beta, x) = _nan_outside(d, x, _beta_cdf(d.α, d.β, _unit_clamp(x)))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _unit_clamp(p)))
+
+@inline _unit_clamp(x) = clamp(x, zero(x), one(x))

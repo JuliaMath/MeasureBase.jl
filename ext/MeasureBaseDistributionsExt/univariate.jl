@@ -94,8 +94,12 @@ end
     convert(_result_numtype(d, z), x)
 end
 
+# Transports outside the support of the source give NaN, the formulas
+# must not throw outside the support (see `MeasureBase._nan_outside`):
+@inline _nan_outside(d::Distribution, x, y) = MeasureBase._nan_outside(asmeasure(d), x, y)
+@inline _nan_outside(::Type{S}, z, y) where {S<:StdMeasure} = MeasureBase._nan_outside(S(), z, y)
+
 for (D, S) in [
-    (Uniform, StdUniform),
     (Logistic, StdLogistic),
     (Normal, StdNormal)
 ]
@@ -106,11 +110,15 @@ for (D, S) in [
     end
 end
 
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Uniform, x) = _nan_outside(d, x, _affine_to_std(d, x))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Uniform, z) = _nan_outside(StdUniform, z, _std_to_affine(d, z))
+
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Exponential}) = StdExponential
 @inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Exponential, x) =
-    convert(_result_numtype(d, x), Distributions.scale(d) \ x)
+    _nan_outside(d, x, convert(_result_numtype(d, x), Distributions.scale(d) \ x))
 @inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Exponential, z) =
-    convert(_result_numtype(d, z), Distributions.scale(d) * z)
+    _nan_outside(StdExponential, z, convert(_result_numtype(d, z), Distributions.scale(d) * z))
 
 
 # Affine transformed distributions transport via the underlying distribution:

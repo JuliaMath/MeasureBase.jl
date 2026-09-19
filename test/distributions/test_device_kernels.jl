@@ -32,7 +32,7 @@ using JLArrays
         @test all(map((a, b) -> a == b || a ≈ b || (isnan(a) && isnan(b)), logdensityof.(Ref(m), xs), ℓ_ref))
         @test logdensities(m, xs) ≈ ℓ_ref nans = true
         @test Array(logdensities(m, JLArray(xs))) ≈ ℓ_ref nans = true
-        @test insupport.(Ref(m), xs) == Distributions.insupport.(d, xs)
+        @test insupport.(Ref(m), xs) == (Distributions.insupport.(d, xs) .& isfinite.(xs))
 
         if d isa ContinuousUnivariateDistribution
             x = rand(stblrng(), d, 12)
@@ -111,4 +111,35 @@ using JLArrays
         Xr = batched_rand_impl(GenContext{Float64}(stblrng()), m, (200,))
         @test size(Xr) == (4, 200) && all(sum(Xr; dims = 1) .≈ 1)
     end
+end
+
+@testset "wrapped distributions outside the support" begin
+    for d in (Uniform(-1.0, 2.5), Exponential(0.7), LogNormal(0.2, 0.6), Weibull(1.4, 0.9), Gamma(2.3, 1.2), Beta(2.5, 3.5))
+        m = asmeasure(d)
+        x = minimum(d) - 1
+        @test logdensityof(m, x) == -Inf
+        @test isnan(transport_to(StdNormal(), m)(x))
+        @test isnan(transport_to(StdNormal(), m)(Inf)) || d isa Union{Exponential,LogNormal,Weibull,Gamma}
+        Y = Array(transport_to(StdNormal(), m).(JLArray([x, mean(d)])))
+        @test isnan(Y[1]) && !isnan(Y[2])
+    end
+    for d in (Cauchy(0.1, 0.8), Laplace(-0.4, 1.1), Gamma(2.3, 1.2), Beta(2.5, 3.5), Uniform(-1.0, 2.5))
+        f = transport_to(asmeasure(d), StdUniform())
+        @test isnan(f(1.5)) && isnan(f(-0.5)) && !isnan(f(0.3))
+        @test isequal(Array(f.(JLArray([1.5, 0.3]))), f.([1.5, 0.3]))
+    end
+    for d in (Exponential(0.7), Weibull(1.4, 0.9))
+        @test isnan(transport_to(asmeasure(d), StdExponential())(-1.0))
+    end
+    @test logdensityof(asmeasure(Rayleigh(2.0)), Inf) == -Inf
+    @test logdensityof(asmeasure(Poisson(2.7)), Inf) == -Inf
+    @test logdensityof(asmeasure(Poisson(2.7)), 1.5) == -Inf
+    @test logdensityof(asmeasure(Poisson(2.7)), -1.0) == -Inf
+    @test logdensityof(asmeasure(Bernoulli(0.3)), 0.5) == -Inf
+    md = asmeasure(Dirichlet([2.0, 3.0, 4.0, 1.5]))
+    @test all(isnan, transport_to(StdUniform()^3, md)([0.5, 0.5, 0.5, 0.5]))
+    @test all(isnan, transport_to(md, StdUniform()^3)([1.5, 0.5, 0.5]))
+    @test logdensityof(md, [0.5, 0.5, 0.5, 0.5]) == -Inf
+    Zd = flatview(transport_to(StdUniform()^3, md).(sliced([0.5 0.1; 0.5 0.2; 0.5 0.3; 0.5 0.4], Val(1))))
+    @test all(isnan, Zd[:, 1]) && !any(isnan, Zd[:, 2])
 end

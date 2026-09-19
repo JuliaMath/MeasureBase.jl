@@ -25,7 +25,4 @@ massof(::StdUniform, s::Interval) = massof(Lebesgue(0.0 .. 1.0), s)
 
 smf(::StdUniform, x) = clamp(x, zero(x), one(x))
 
-function invsmf(::StdUniform, p)
-    @assert zero(p) ≤ p ≤ one(p)
-    p
-end
+invsmf(d::StdUniform, p) = _nan_outside(d, p, p)

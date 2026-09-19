@@ -52,6 +52,14 @@ export transport_to
 
 Transport `x` from the measure `μ` to the measure `ν`, equivalent to
 `transport_to(ν, μ)(x)`.
+
+# Extended help
+
+Variates of the right shape never throw: outside the support of `μ` the
+result is `NaN` (elementwise for powers and products), values at the
+boundary of the support may map to infinite values. Variates of the wrong
+shape throw an `ArgumentError`. Transport implementations must not throw
+outside the support, since the `NaN` masks evaluate both branches.
 """
 transport_to(ν, μ, x) = transport_to(ν, μ)(x)
 

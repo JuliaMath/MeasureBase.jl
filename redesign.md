@@ -184,10 +184,30 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   HeterogeneousComputing has no Reactant compute unit; JLArrays has no
   RNG and no triangular solves; Reactant rejects traced `VectorOfArrays`
   and empty batches.
-- Decisions pending: one convention for out-of-support inputs (NaN mask
-  vs. DomainError vs. AssertionError), `Half` tails via log-ccdf, device
-  random variate infrastructure and `rand!`, Tier-1 static variates,
-  the `smart-constructors.jl` review (location-scale arrays as affine
+- Out-of-support convention (decided 2026-09-19): structural errors (wrong
+  rank, size, container or element kind) throw an `ArgumentError` from
+  `checked_arg` at the entry points; variates of the right shape never
+  throw: densities are `-Inf` outside the support (including non-integers
+  for counting-based measures and infinite values), transports are `NaN`
+  outside the support of the source (boundaries may map to `±Inf`), `NaN`
+  inputs give `NaN` or `-Inf`, relative densities keep `+Inf`/`-Inf`/`NaN`.
+  Kernels must not throw outside the support, since the masks evaluate
+  both branches (`abs`, `clamp`, `min` guards instead of `NaNMath`, which
+  isn't device-compatible). Downstream checks such as BAT's
+  `checked_logdensityof` stay downstream.
+- BAT's boundary tweaks (to discuss): adopted are infinite variates
+  outside the support of continuous wrapped distributions, `-Inf + Inf`
+  giving `-Inf` in pushforward densities and a zero Jacobian term where
+  both densities vanish. Not adopted: clamping uniform-direction inputs to
+  `[eps, 1 - eps]` (here `NaN` outside, `±Inf` or support edges at 0 and
+  1), replacing finite densities with infinite Jacobian terms by `-1e38`,
+  and re-evaluating densities an `eps` inside the support where
+  Distributions returns `NaN` (the family kernels are exact there).
+  Quantile results within `4 eps` of the support edges snap to the edges
+  only on the generic logistic path of wrapped distributions.
+- Decisions pending: `Half` tails via log-ccdf, device random variate
+  infrastructure and `rand!`, Tier-1 static variates, the
+  `smart-constructors.jl` review (location-scale arrays as affine
   pushforwards of powers), `_static_ndims` type-first vs. instance-first.
 - Polish before merge: docs pass, NEWS, history curation, version bump,
   remove this file.

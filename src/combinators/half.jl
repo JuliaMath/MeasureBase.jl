@@ -46,9 +46,8 @@ function smf(μ::Half, x)
 end
 
 function invsmf(μ::Half, p)
-    @assert zero(p) ≤ p ≤ one(p)
-    invsmf(μ.parent, (p + 1) / 2)
+    _nan_outside(StdUniform(), p, invsmf(μ.parent, (min(p, one(p)) + 1) / 2))
 end
 
-@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = smf(μ, x)
+@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, smf(μ, x))
 @inline transport_from_std(::Type{StdUniform}, μ::Half, p) = invsmf(μ, p)
