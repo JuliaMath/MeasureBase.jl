@@ -4,6 +4,7 @@ using MeasureBase
 using MeasureBase: pushfwd, StdUniform, StdExponential, StdLogistic
 using MeasureBase: pushfwd, PushforwardMeasure
 using MeasureBase: transport_to, unsafe_logdensityof
+using MeasureBase: productmeasure, mbind
 import Statistics: var
 using DensityInterface: logdensityof
 using LogExpFunctions
@@ -179,4 +180,12 @@ end
     @test PushfwdRootMeasure() isa PushFwdStyle
     @test MeasureBase.WithVolCorr === AdaptRootMeasure
     @test MeasureBase.NoVolCorr === PushfwdRootMeasure
+
+    @testset "output size of pushforwards of tuple products" begin
+        Pt = productmeasure((StdNormal(), StdUniform()^2))
+        ν = pushfwd(x -> vcat(x[1], x[2]), Pt)
+        @test MeasureBase.mspace_flatsize(ν) == (3,)
+        @test MeasureBase.mspace_ndims(typeof(ν)) == 1
+        @test MeasureBase.mspace_flatsize(pushfwd(x -> x, mbind(x -> StdNormal()^(x > 0 ? 1 : 2), StdNormal()))) isa MeasureBase.NoMSpaceElementSize
+    end
 end

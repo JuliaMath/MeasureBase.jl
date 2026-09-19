@@ -86,11 +86,13 @@ end
 
 # The size of the variates of a pushforward follows from a test value of
 # the origin, where the origin has variates of known size:
-@inline function _pushfwd_varsize(f, μ)
-    _pushfwd_varsize(f, μ, mspace_flatsize(μ))
+# The output size is learned from a test value whenever the origin's
+# variates have a fixed layout, which includes tuple products:
+@inline function _pushfwd_varsize(f, μ::MU) where {MU}
+    _pushfwd_varsize(f, μ, fixed_stream_size(MU))
 end
-@inline _pushfwd_varsize(f, μ, ::SizeLike) = _value_flatsize(f(testvalue(μ)))
-@inline _pushfwd_varsize(f, μ, ::NoMSpaceElementSize) = NoMSpaceElementSize{typeof(μ)}()
+@inline _pushfwd_varsize(f, μ, ::True) = _value_flatsize(f(testvalue(μ)))
+@inline _pushfwd_varsize(f, μ, ::False) = NoMSpaceElementSize{typeof(μ)}()
 
 @inline mspace_elsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
 @inline mspace_flatsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
