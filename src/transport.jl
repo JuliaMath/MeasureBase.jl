@@ -90,6 +90,7 @@ end
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
+Base.hash(f::TransportFunction, h::UInt) = hash(f.ν, hash(f.μ, hash(:TransportFunction, h)))
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
     return transport_def(f.ν, f.μ, checked_arg(f.μ, x))

@@ -10,6 +10,7 @@ function Pretty.tile(d::Dirac)
 end
 
 Base.:(==)(a::Dirac, b::Dirac) = a.x == b.x
+Base.hash(a::Dirac, h::UInt) = hash(a.x, hash(:Dirac, h))
 Base.isapprox(a::Dirac, b::Dirac; kwargs...) = isapprox(a.x, b.x; kwargs...)
 
 gentype(μ::Dirac{X}) where {X} = X

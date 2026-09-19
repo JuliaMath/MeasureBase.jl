@@ -224,6 +224,14 @@ end
     @test MeasureBase.mspace_elsize(Dirac([1, 2])) == (2,)
 end
 
+@testset "hash follows equality" begin
+    a = productmeasure([Dirac([1.0, 2.0]), StdNormal()])
+    b = productmeasure([Dirac([1.0, 2.0]), StdNormal()])
+    @test a == b && hash(a) == hash(b)
+    f, g = transport_to(StdUniform()^1, a), transport_to(StdUniform()^1, b)
+    @test f == g && hash(f) == hash(g)
+end
+
 @testset "logdensity_rel" begin
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 0.0) == Inf
     @test logdensity_rel(Dirac(0.0) + Lebesgue(), Dirac(1.0), 1.0) == -Inf
