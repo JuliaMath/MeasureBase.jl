@@ -688,9 +688,14 @@ function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}},
     batched_logdensityof_with_rest(productmeasure(values(marginals(μ))), x, sz)
 end
 
-@inline function fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple}
-    static(all(T -> fixed_stream_size(T) === static(true), M.parameters))
+# Folded pairwise over the marginal types, so that the result is a constant:
+@inline fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple} = _all_fixed_stream_sizes(M)
+@inline _all_fixed_stream_sizes(::Type{Tuple{}}) = static(true)
+@inline function _all_fixed_stream_sizes(::Type{M}) where {M<:Tuple}
+    _both(fixed_stream_size(Base.tuple_type_head(M)), _all_fixed_stream_sizes(Base.tuple_type_tail(M)))
 end
+@inline _both(::True, ::True) = static(true)
+@inline _both(::StaticBool, ::StaticBool) = static(false)
 @inline function fixed_stream_size(::Type{<:ProductMeasure{NamedTuple{names,M}}}) where {names,M<:Tuple}
     fixed_stream_size(ProductMeasure{M})
 end
