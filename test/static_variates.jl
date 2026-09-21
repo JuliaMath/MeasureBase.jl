@@ -8,10 +8,13 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential
-using MeasureBase: productmeasure, mbind, weightedmeasure, transport_to, logdensityof
+using MeasureBase: productmeasure, mbind, mcombine, weightedmeasure, transport_to, logdensityof
+using MeasureBase: batched_logdensityof_with_rest, batched_transport_to_std,
+    batched_transport_from_std, batched_transport_to_std_with_rest,
+    batched_transport_from_std_with_rest, _materialize
 using MeasureBase.InverseFunctions: inverse
-using ArraysOfArrays: ArrayOfSimilarArrays, flatview, sliced
-using StaticArrays: SVector, SMatrix
+using ArraysOfArrays: flatview, sliced
+using StaticArrays: SVector, SMatrix, Size
 using Static: static
 
 include("testutils.jl")
@@ -37,10 +40,13 @@ const static_model = mbind(static_kernel, static_primary, merge)
         @test @inferred(rand(StdUniform()^static(2))) isa SVector{2,Float64}
         @test @inferred(rand(StdExponential()^static(4))) isa SVector{4,Float64}
 
+        @test allocations_of(rand, StdNormal()^static(3)) == 0
+
         # Nested powers keep the flat `(base dims..., power dims...)` rule:
         x = @inferred(rand((StdNormal()^static(2))^static(3)))
-        @test x isa ArrayOfSimilarArrays{Float64,1,1,<:SMatrix{2,3}}
         @test flatview(x) isa SMatrix{2,3,Float64}
+        @test length(x) == 3 && all(xi -> xi isa SVector{2,Float64}, x)
+        @test reduce(hcat, x) == flatview(x)
 
         μ = StdNormal()^static(3)
         z = SVector(0.1, 0.2, 0.3)
@@ -76,6 +82,7 @@ const static_model = mbind(static_kernel, static_primary, merge)
         @test allocations_of(f, x) == 0
         @test allocations_of(f_inv, z) == 0
         @test allocations_of(logdensityof, μ, x) == 0
+        @test allocations_of(rand, μ) == 0
 
         # The model density is the sum of the component densities:
         x_a = (a = x.a, b = x.b)
@@ -106,6 +113,8 @@ const static_model = mbind(static_kernel, static_primary, merge)
         @test allocations_of(f, x) == 0
         @test allocations_of(f_inv, z) == 0
         @test allocations_of(logdensityof, μ, x) == 0
+        @test allocations_of(rand, μ) == 0
+        @test allocations_of(rand, productmeasure((a = StdNormal(), b = StdExponential()))) == 0
 
         # Tuple products behave the same way:
         μ_t = productmeasure((StdNormal(), StdUniform()^static(2)))
@@ -118,12 +127,48 @@ const static_model = mbind(static_kernel, static_primary, merge)
 
     @testset "batches of static variates" begin
         μ = StdNormal()^static(3)
-        X = SMatrix{3,4}(reshape(collect(1:12) ./ 10, 3, 4))
-        ℓ = logdensities(μ, X)
-        @test ℓ ≈ [logdensityof(μ, SVector{3}(X[:, i])) for i in 1:4]
-
         ν = StdUniform()^static(3)
+        X = SMatrix{3,4}(reshape(collect(1:12) ./ 10, 3, 4))
+
+        @test @inferred(logdensities(μ, X)) ≈
+              [logdensityof(μ, SVector{3}(X[:, i])) for i in 1:4]
+        @test allocations_of(logdensities, μ, X) == 0
+
+        Z = @inferred batched_transport_to_std(StdUniform, μ, X)
+        @test Z ≈ reduce(hcat, [transport_to(ν, μ)(SVector{3}(X[:, i])) for i in 1:4])
+        @test @inferred(batched_transport_from_std(StdUniform, μ, Z)) ≈ X
+
+        # The broadcast hook transports the whole batch at once:
         Y = transport_to(ν, μ).(sliced(X, Val(1)))
-        @test flatview(Y) ≈ reduce(hcat, [transport_to(ν, μ)(SVector{3}(X[:, i])) for i in 1:4])
+        @test flatview(Y) ≈ Z
+        @test Y[2] ≈ transport_to(ν, μ)(SVector{3}(X[:, 2]))
+    end
+
+    # Several variates per stream, with the multiplicity as a tuple of
+    # static integers and as a `StaticArrays.Size`:
+    @testset "static stream multiplicity" begin
+        μ = StdNormal()^static(2)
+        mc = mcombine(vcat, StdNormal()^static(2), StdUniform()^static(3))
+        x = SVector{4}(randn(4))
+        xc = SVector{10}(vcat(randn(2), rand(3), randn(2), rand(3)))
+        to_u = transport_to(StdUniform(), StdNormal())
+
+        for sz in ((static(2),), Size(2))
+            z, x_rest = batched_transport_to_std_with_rest(StdUniform, μ, x, sz)
+            @test z isa SVector{4,Float64} && isempty(x_rest)
+            @test z ≈ to_u.(x)
+            x_back, z_rest = batched_transport_from_std_with_rest(StdUniform, μ, z, sz)
+            @test x_back ≈ reshape(x, (2, 2)) && size(z_rest, 1) == 0
+
+            ℓ, x_ld_rest = batched_logdensityof_with_rest(μ, x, sz)
+            @test _materialize(ℓ) isa SVector{2,Float64} && isempty(x_ld_rest)
+            @test _materialize(ℓ) ≈ [logdensityof(μ, x[(2i - 1):(2i)]) for i in 1:2]
+
+            zc, xc_rest = batched_transport_to_std_with_rest(StdUniform, mc, xc, sz)
+            @test length(zc) == 10 && isempty(xc_rest)
+            ℓc, xc_ld_rest = batched_logdensityof_with_rest(mc, xc, sz)
+            @test isempty(xc_ld_rest)
+            @test _materialize(ℓc) ≈ [logdensityof(mc, xc[(5i - 4):(5i)]) for i in 1:2]
+        end
     end
 end
