@@ -1,50 +1,4 @@
 """
-    struct MeasureBase.NoTransportOrigin{NU}
-
-Indicates that no (default) pullback measure is available for measures of
-type `NU`.
-
-See [`MeasureBase.transport_origin`](@ref).
-"""
-struct NoTransportOrigin{NU} end
-
-"""
-    MeasureBase.transport_origin(ν)
-
-Default measure to pullback to resp. pushforward from when transforming
-between `ν` and another measure.
-"""
-function transport_origin end
-
-transport_origin(ν::NU) where {NU} = NoTransportOrigin{NU}()
-
-"""
-    MeasureBase.from_origin(ν, x)
-
-Push `x` from `MeasureBase.transport_origin(μ)` forward to `ν`.
-"""
-function from_origin end
-
-from_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
-
-"""
-    MeasureBase.to_origin(ν, y)
-
-Pull `y` from `ν` back to `MeasureBase.transport_origin(ν)`.
-"""
-function to_origin end
-
-to_origin(ν::NU, ::Any) where {NU} = NoTransportOrigin{NU}()
-
-"""
-    struct MeasureBase.NoTransport{NU,MU} end
-
-Indicates that no transformation from a measure of type `MU` to a measure of
-type `NU` could be found.
-"""
-struct NoTransport{NU,MU} end
-
-"""
     f = transport_to(ν, μ)
 
 Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_function)
@@ -52,161 +6,70 @@ Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_funct
 a value `y = f(x)` distributed according to a measure `ν`.
 
 The [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
-from `μ` under `f` is is equivalent to `ν`.
+from `μ` under `f` is equivalent to `ν`, so `f(rand(μ))` is equivalent
+to `rand(ν)`. `f` supports `InverseFunctions.inverse` and
+`ChangesOfVariables.with_logabsdet_jacobian`.
 
-If terms of random values this implies that `f(rand(μ))` is equivalent to
-`rand(ν)` (if `rand(μ)` and `rand(ν)` are supported).
-
-The resulting function `f` should support
-`ChangesOfVariables.with_logabsdet_jacobian(f, x)` if mathematically well-defined,
-so that densities of `ν` can be derived from densities of `μ` via `f` (using
-appropriate base measures).
-
-Returns NoTransportOrigin{typeof(ν),typeof(μ)} if no transformation from
-`μ` to `ν` can be found.
-
-To add transformation rules for a measure type `MyMeasure`, specialize
-
-* `MeasureBase.transport_def(ν::SomeStdMeasure, μ::CustomMeasure, x) = ...`
-* `MeasureBase.transport_def(ν::MyMeasure, μ::SomeStdMeasure, x) = ...`
-
-and/or
-
-* `MeasureBase.transport_origin(ν::MyMeasure) = SomeMeasure(...)`
-* `MeasureBase.from_origin(μ::MyMeasure, x) = y`
-* `MeasureBase.to_origin(μ::MyMeasure, y) = x`
-
-and ensure `MeasureBase.getdof(μ::MyMeasure)` is defined correctly.
-
-A standard measure type like `StdUniform`, `StdExponential` or
-`StdLogistic` may also be used as the source or target of the transform:
+Measures are transported via standard measures: `x` is transported to the
+standard measure type that the preferences of `ν` and `μ` promote to (see
+[`MeasureBase.preferred_stdmeasure`](@ref)) and from there to `ν`.
+Broadcasting `f` over an array of variates with flat storage, or over
+the flat storage of a batch of variates (see
+[`MeasureBase.mspace_ndims`](@ref)), transports the whole batch at once. A standard measure
+type like `StdUniform` or `StdNormal` may also be used directly as the
+source or target:
 
 ```julia
-f_to_uniform(StdUniform, μ)
-f_to_uniform(ν, StdUniform)
+transport_to(StdNormal, μ)
+transport_to(ν, StdNormal)
 ```
 
-Depending on [`getdof(μ)`](@ref) (resp. `ν`), an instance of the standard
-distribution itself or a power of it (e.g. `StdUniform()` or
-`StdUniform()^dof`) will be chosen as the transformation partner.
+The transport partner is then an instance of the standard measure for
+measures with scalar variates, and a power of it with as many elements as
+the measure has degrees of freedom otherwise.
+
+# Extended help
+
+To support transport for a measure type, specialize
+[`MeasureBase.transport_to_std`](@ref) and
+[`MeasureBase.transport_from_std`](@ref) for its preferred standard measure
+type, and declare [`MeasureBase.mspace_ndims`](@ref) for array variates.
+Measure types with array variates should also implement the batched forms
+[`MeasureBase.batched_transport_to_std`](@ref) and
+[`MeasureBase.batched_transport_from_std`](@ref), which transport whole
+batches of variates. Measures whose variates are composed of the variates
+of other measures specialize the stream forms
+[`MeasureBase.transport_to_std_with_rest`](@ref) and
+[`MeasureBase.transport_from_std_with_rest`](@ref) instead (and their
+batched forms). [`MeasureBase.transport_def`](@ref) may be specialized
+for pairs of measure types with a direct transport.
 """
 function transport_to end
+export transport_to
 
 """
     transport_to(ν, μ, x)
 
-Transport `x` from the measure `μ` to the measure `ν`
+Transport `x` from the measure `μ` to the measure `ν`, equivalent to
+`transport_to(ν, μ)(x)`.
+
+# Extended help
+
+Variates of the right shape never throw: outside the support of `μ` the
+result is `NaN` (elementwise for powers and products). Variates of the
+wrong shape throw an `ArgumentError`. Transport implementations must not
+throw outside the support, since the `NaN` masks evaluate both branches.
+
+Finite inputs give finite results: on the floating-point grid the
+endpoints of the unit interval stand for their nearest interior grid
+points (uniform inputs are clamped into the open interval before
+quantiles), and tail probabilities in log-space conversions never
+underflow to zero.
 """
 transport_to(ν, μ, x) = transport_to(ν, μ)(x)
 
 """
-    transport_def(ν, μ, x)
-
-Transforms a value `x` distributed according to `μ` to a value `y` distributed
-according to `ν`.
-
-If no specialized `transport_def(::MU, ::NU, ...)` is available then
-the default implementation of`transport_def(ν, μ, x)` uses the following
-strategy:
-
-* Evaluate [`transport_origin`](@ref) for μ and ν. Transform between
-  each and it's origin, if available, and use the origin(s) as intermediate
-  measures for another transformation.
-
-* If all else fails, try to transform from μ to a standard multivariate
-  uniform measure and then to ν.
-
-See [`transport_to`](@ref).
-"""
-function transport_def end
-
-function transport_def(ν, μ, x)
-    _transport_between_origins(ν, _origin_depth(ν), _origin_depth(μ), μ, x)
-end
-
-@inline function _origin_depth(ν::NU) where {NU}
-    ν_0 = ν
-    Base.Cartesian.@nexprs 10 i -> begin  # 10 is just some "big enough" number
-        ν_{i} = transport_origin(ν_{i - 1})
-        if ν_{i} isa NoTransportOrigin
-            return static(i - 1)
-        end
-    end
-    return static(10)
-end
-
-# If both both measures have no origin:
-function _transport_between_origins(ν, ::StaticInteger{0}, ::StaticInteger{0}, μ, x)
-    _transport_with_intermediate(ν, _transport_intermediate(ν, μ), μ, x)
-end
-
-@generated function _transport_between_origins(
-    ν,
-    ::StaticInteger{n_ν},
-    ::StaticInteger{n_μ},
-    μ,
-    x,
-) where {n_ν,n_μ}
-    prog = quote
-        μ0 = μ
-        x0 = x
-        ν0 = ν
-    end
-    for i in 1:n_μ
-        μ_i = Symbol(:μ, i)
-        μ_last = Symbol(:μ, i - 1)
-        push!(prog.args, :($μ_i = transport_origin($μ_last)))
-    end
-    for i in 1:n_μ
-        x_i = Symbol(:x, i)
-        x_last = Symbol(:x, i - 1)
-        μ_last = Symbol(:μ, i - 1)
-        push!(prog.args, :($x_i = to_origin($μ_last, $x_last)))
-    end
-    for i in 1:(n_ν)
-        ν_i = Symbol(:ν, i)
-        ν_last = Symbol(:ν, i - 1)
-        push!(prog.args, :($ν_i = transport_origin($ν_last)))
-    end
-    μ_im = Symbol(:μ, n_μ)
-    x_im = Symbol(:x, n_μ)
-    ν_im = Symbol(:ν, n_ν)
-    y_im = Symbol(:y, n_ν)
-    push!(prog.args, :($y_im = transport_def($ν_im, $μ_im, $x_im)))
-    for i in (n_ν-1):-1:0
-        y_i = Symbol(:y, i)
-        y_last = Symbol(:y, i + 1)
-        ν_last = Symbol(:ν, i)
-        push!(prog.args, :($y_i = from_origin($ν_last, $y_last)))
-    end
-    push!(prog.args, :(return y0))
-    return prog
-end
-
-@inline _transport_intermediate(ν, μ) = _transport_intermediate(getdof(ν), getdof(μ))
-@inline _transport_intermediate(::Integer, n_μ::Integer) = StdUniform()^n_μ
-@inline _transport_intermediate(::StaticInteger{1}, ::StaticInteger{1}) = StdUniform()
-
-_call_transport_def(ν, μ, x) = transport_def(ν, μ, x)
-_call_transport_def(::Any, ::Any, x::NoTransportOrigin) = x
-_call_transport_def(::Any, ::Any, x::NoTransport) = x
-
-function _transport_with_intermediate(ν, m, μ, x)
-    z = _call_transport_def(m, μ, x)
-    y = _call_transport_def(ν, m, z)
-    return y
-end
-
-# Prevent infinite recursion in case vartransform_intermediate doesn't change type:
-@inline function _transport_with_intermediate(::NU, ::NU, ::MU, ::Any) where {NU,MU}
-    NoTransport{NU,MU}()
-end
-@inline function _transport_with_intermediate(::NU, ::MU, ::MU, ::Any) where {NU,MU}
-    NoTransport{NU,MU}()
-end
-
-"""
-    struct TransportFunction <: Function
+    struct MeasureBase.TransportFunction <: Function
 
 Transforms a variate from one measure to a variate of another.
 
@@ -227,14 +90,15 @@ struct TransportFunction{NU,MU} <: Function
     end
 end
 
-@inline transport_to(ν, μ) = TransportFunction(ν, μ)
+@inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
 
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
+Base.hash(f::TransportFunction, h::UInt) = hash(f.ν, hash(f.μ, hash(:TransportFunction, h)))
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return _call_transport_def(f.ν, f.μ, checked_arg(f.μ, x))
+    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
 end
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
@@ -243,11 +107,11 @@ end
 
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
-    logpdf_src = logdensityof(f.μ, x)
-    logpdf_trg = logdensityof(f.ν, y)
-    ladj = logpdf_src - logpdf_trg
-    # If logpdf_src and logpdf_trg are -Inf setting lafj to zero is safe:
-    fixed_ladj = logpdf_src == logpdf_trg == -Inf ? zero(ladj) : ladj
+    logd_src = logdensityof(f.μ, x)
+    logd_trg = logdensityof(f.ν, y)
+    ladj = logd_src - logd_trg
+    # Both densities being -Inf leaves the Jacobian undefined, zero is a safe choice then:
+    fixed_ladj = ifelse(isneginf(logd_src) & isneginf(logd_trg), zero(ladj), ladj)
     return y, fixed_ladj
 end
 
@@ -274,3 +138,214 @@ function Base.show(io::IO, f::TransportFunction)
 end
 
 Base.show(io::IO, M::MIME"text/plain", f::TransportFunction) = show(io, f)
+
+
+"""
+    MeasureBase.transport_def(ν, μ, x)
+
+Transport a variate `x` of `μ` to a variate of `ν`.
+
+The default implementation transports `x` via the standard measure type the
+preferences of `ν` and `μ` promote to. Specialize `transport_def` for pairs
+of measure types with a direct transport.
+"""
+function transport_def end
+
+@inline transport_def(ν, μ, x) = _transport_via_std(_transport_pivot(ν, μ), ν, μ, x)
+
+function _transport_via_std(::Type{S}, ν, μ, x) where {S<:StdMeasure}
+    z = transport_to_std(S, μ, x)
+    y, z_rest = transport_from_std_with_rest(S, ν, _as_stdstream(z))
+    if !isempty(z_rest)
+        throw(ArgumentError("Degrees of freedom of source and target measure of a transport don't match"))
+    end
+    return y
+end
+
+@inline function _transport_pivot(ν, μ)
+    _concrete_pivot(promote_stdmeasure(preferred_stdmeasure(ν), preferred_stdmeasure(μ)), ν, μ)
+end
+@inline function _concrete_pivot(::Type{S}, ν, μ) where {S<:StdMeasure}
+    isconcretetype(S) || _throw_abstract_std(S)
+    return S
+end
+@inline _concrete_pivot(::Type{AnyStdMeasure}, ν, μ) = StdUniform
+function _concrete_pivot(::Type{<:NoStdTransport{MU}}, ν, μ) where {MU}
+    throw(ArgumentError("No transport between measures of type $(nameof(typeof(ν))) and $(nameof(typeof(μ))), measures of type $(nameof(MU)) have no transport via standard measures"))
+end
+
+# Standard variates of scalar-variate measures are scalars, streams of
+# standard variates are vectors:
+@inline _as_stdstream(z::AbstractVector) = z
+@inline _as_stdstream(z::Number) = SVector(z)
+
+
+"""
+    MeasureBase.transport_to_std(::Type{S}, μ, x)
+
+Transport a variate `x` of `μ` to a variate of the standard measure type
+`S`: a number if the variates of `μ` are scalars, a flat vector of length
+[`getdof(μ)`](@ref) otherwise.
+
+Measure types specialize `transport_to_std` for their preferred standard
+measure type (see [`MeasureBase.preferred_stdmeasure`](@ref)), the generic
+implementation converts between standard measure types.
+"""
+function transport_to_std end
+
+@inline function transport_to_std(::Type{S}, μ, x) where {S<:StdMeasure}
+    _to_std_via(S, preferred_stdmeasure(μ), μ, x)
+end
+
+@inline function _to_std_via(::Type{S}, ::Type{T}, μ, x) where {S<:StdMeasure,T<:StdMeasure}
+    stdconvert(S, T, transport_to_std(T, μ, x))
+end
+function _to_std_via(::Type{S}, ::Type{S}, μ, x) where {S<:StdMeasure}
+    throw(ArgumentError("Transport to $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
+function _to_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, x) where {S<:StdMeasure}
+    throw(ArgumentError("Transport to standard measures is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
+function _to_std_via(::Type{S}, ::Type, μ, x) where {S<:StdMeasure}
+    throw(ArgumentError("Measures of type $(nameof(typeof(μ))) have no transport via standard measures"))
+end
+
+
+"""
+    MeasureBase.transport_from_std(::Type{S}, μ, z)
+
+Transport a variate `z` of the standard measure type `S` to a variate of
+`μ`, the inverse of [`MeasureBase.transport_to_std`](@ref).
+"""
+function transport_from_std end
+
+@inline function transport_from_std(::Type{S}, μ, z) where {S<:StdMeasure}
+    _from_std_via(S, preferred_stdmeasure(μ), μ, z)
+end
+
+@inline function _from_std_via(::Type{S}, ::Type{T}, μ, z) where {S<:StdMeasure,T<:StdMeasure}
+    transport_from_std(T, μ, stdconvert(T, S, z))
+end
+function _from_std_via(::Type{S}, ::Type{S}, μ, z) where {S<:StdMeasure}
+    throw(ArgumentError("Transport from $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
+function _from_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, z) where {S<:StdMeasure}
+    throw(ArgumentError("Transport from standard measures is not implemented for measures of type $(nameof(typeof(μ)))"))
+end
+function _from_std_via(::Type{S}, ::Type, μ, z) where {S<:StdMeasure}
+    throw(ArgumentError("Measures of type $(nameof(typeof(μ))) have no transport via standard measures"))
+end
+
+
+"""
+    MeasureBase.transport_to_std_with_rest(::Type{S}, μ, x)
+
+Transport the variate of `μ` at the beginning of the stream `x` of
+variate content to the standard measure type `S`.
+
+Returns a tuple `(z, x_μ, x_rest)` of the flat vector `z` of standard
+variates, the variate `x_μ` of `μ` consumed from the stream and the
+unconsumed rest of the stream. See
+[`MeasureBase.logdensityof_with_rest`](@ref) for the stream conventions.
+
+The default implementation consumes a variate of the size given by
+[`MeasureBase.mspace_flatsize`](@ref) or
+[`MeasureBase.some_mspace_elsize`](@ref). Measure types whose variates are
+composed of the variates of other measures implement
+`transport_to_std_with_rest` instead of
+[`MeasureBase.transport_to_std`](@ref).
+"""
+function transport_to_std_with_rest end
+
+function transport_to_std_with_rest(::Type{S}, μ, x::AbstractVector) where {S<:StdMeasure}
+    x_μ, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
+    return _as_stdstream(transport_to_std(S, μ, x_μ)), x_μ, x_rest
+end
+
+function transport_to_std_with_rest(::Type{S}, μ, x::NamedTuple) where {S<:StdMeasure}
+    x_μ, x_rest = _split_after(x, Val(_mspace_names(μ)))
+    return _as_stdstream(transport_to_std(S, μ, x_μ)), x_μ, x_rest
+end
+
+
+"""
+    MeasureBase.transport_from_std_with_rest(::Type{S}, μ, z)
+
+Transport the beginning of the flat stream `z` of standard variates of type
+`S` to a variate of `μ`, consuming as many entries as `μ` requires.
+
+Returns a tuple `(x, z_rest)` of the variate `x` and the unconsumed rest of
+the stream. Measure types whose degrees of freedom depend on variate values
+implement `transport_from_std_with_rest` instead of
+[`MeasureBase.transport_from_std`](@ref).
+"""
+function transport_from_std_with_rest end
+
+function transport_from_std_with_rest(::Type{S}, μ, z::AbstractVector) where {S<:StdMeasure}
+    _from_std_with_rest_bydof(S, μ, z, fast_dof(μ))
+end
+
+function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, n::IntegerLike) where {S}
+    if maybestatic_length(z) < n
+        throw(ArgumentError("Stream of standard variates too short during transport"))
+    end
+    z_μ, z_rest = split_at(z, n)
+    return transport_from_std(S, μ, _chunk_as_variate(μ, z_μ)), z_rest
+end
+
+function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, ::AbstractNoDOF) where {S}
+    throw(ArgumentError("Transport from standard measures requires measures of type $(nameof(typeof(μ))) to implement MeasureBase.transport_from_std_with_rest"))
+end
+
+# Scalar-variate measures take their standard variate as a number:
+@inline _chunk_as_variate(μ, z) = _chunk_as_variate(z, _static_ndims(μ))
+@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}) = z[begin]
+@inline _chunk_as_variate(z::AbstractVector, ::Any) = z
+
+
+"""
+    transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+    transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+
+As a user convenience, a standard measure type like [`StdUniform`](@ref),
+[`StdExponential`](@ref), [`StdNormal`](@ref) or [`StdLogistic`](@ref)
+may be used directly as the source or target of a measure transport.
+
+The transport partner is an instance of the standard measure for measures
+with scalar variates, and a power of it with
+[`MeasureBase.some_dof(μ)`](@ref) (resp. `ν`) elements otherwise.
+"""
+function transport_to(ν, ::Type{MU}) where {MU<:StdMeasure}
+    transport_to(ν, _std_tp_partner(MU, ν))
+end
+
+function transport_to(::Type{NU}, μ) where {NU<:StdMeasure}
+    transport_to(_std_tp_partner(NU, μ), μ)
+end
+
+function transport_to(::Type{NU}, ::Type{MU}) where {NU<:StdMeasure,MU<:StdMeasure}
+    throw(
+        ArgumentError(
+            "Can't construct a transport function between the types of two standard measures, need a measure instance on one side",
+        ),
+    )
+end
+
+function _std_tp_partner(::Type{M}, μ) where {M<:StdMeasure}
+    m = asmeasure(μ)
+    _std_tp_partner_byrank(M, _static_ndims(m), m)
+end
+_std_tp_partner_byrank(::Type{M}, ::StaticInteger{0}, μ) where {M<:StdMeasure} = M()
+_std_tp_partner_byrank(::Type{M}, ::Any, μ) where {M<:StdMeasure} = M()^some_dof(μ)
+
+
+# Element-wise transport kernels for broadcasts and maps:
+struct _ToStd{S} <: Function end
+@inline (::_ToStd{S})(μ, x) where {S} = transport_to_std(S, μ, x)
+struct _FromStd{S} <: Function end
+@inline (::_FromStd{S})(μ, z) where {S} = transport_from_std(S, μ, z)
+
+# Flat vector of standard variates from an array of standard variates:
+@inline _flat_std_of(A::AbstractArray{<:Number}) = vec(A)
+@inline _flat_std_of(A::AbstractArray{<:AbstractVector}) = _flatten_to_rv(vec(A))
+@inline _flat_std_of(A::AbstractVector{<:AbstractVector}) = _flatten_to_rv(A)

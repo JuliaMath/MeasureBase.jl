@@ -20,8 +20,7 @@ For measures `μ` and `ν`, `Density(μ,ν)` represents the _density function_
 `dμ/dν`, also called the _Radon-Nikodym derivative_:
 https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
 
-Instead of calling this directly, users should call `density_rel(μ, ν)` or
-its abbreviated form, `𝒹(μ,ν)`.
+Instead of calling this directly, users should call `density_rel(μ, ν)`.
 """
 struct Density{M,B} <: AbstractDensity
     μ::M
@@ -31,16 +30,6 @@ end
 Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
 
 Base.log(d::Density) = log ∘ d
-
-export 𝒹
-
-"""
-    𝒹(μ, base)
-
-Compute the density (Radon-Nikodym derivative) of μ with respect to `base`. This
-is a shorthand form for `density_rel(μ, base)`.
-"""
-𝒹(μ, base) = density_rel(μ, base)
 
 density_rel(μ, base) = Density(μ, base)
 
@@ -61,8 +50,7 @@ For measures `μ` and `ν`, `LogDensity(μ,ν)` represents the _log-density func
 `log(dμ/dν)`, also called the _Radon-Nikodym derivative_:
 https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem#Radon%E2%80%93Nikodym_derivative
 
-Instead of calling this directly, users should call `logdensity_rel(μ, ν)` or
-its abbreviated form, `log𝒹(μ,ν)`.
+Instead of calling this directly, users should call `logdensity_rel(μ, ν)`.
 """
 struct LogDensity{M,B} <: AbstractDensity
     μ::M
@@ -72,16 +60,6 @@ end
 Base.:∘(::typeof(exp), d::LogDensity) = density_rel(d.μ, d.base)
 
 Base.exp(d::LogDensity) = exp ∘ d
-
-export log𝒹
-
-"""
-    log𝒹(μ, base)
-
-Compute the log-density (Radon-Nikodym derivative) of μ with respect to `base`.
-This is a shorthand form for `logdensity_rel(μ, base)`
-"""
-log𝒹(μ, base) = logdensity_rel(μ, base)
 
 logdensity_rel(μ, base) = LogDensity(μ, base)
 
@@ -98,12 +76,13 @@ DensityInterface.funcdensity(d::LogDensity) = throw(MethodError(funcdensity, (d,
         base    :: B
     end
 
-A `DensityMeasure` is a measure defined by a density or log-density with respect
-to some other "base" measure.
+A `DensityMeasure` is a measure defined by a density or log-density with
+respect to some other "base" measure.
 
-Users should not call `DensityMeasure` directly, but should instead call `∫(f,
-base)` (if `f` is a density function or `DensityInterface.IsDensity` object) or
-`∫exp(f, base)` (if `f` is a log-density function).
+Users should not instantiate `DensityMeasure` directly, but should instead
+call `mintegrate(f, base)` (if `f` is a density function or
+`DensityInterface.IsDensity` object) or `mintegrate_exp(f, base)` (if `f`
+is a log-density function).
 """
 struct DensityMeasure{F,B} <: AbstractMeasure
     f::F
@@ -116,78 +95,151 @@ struct DensityMeasure{F,B} <: AbstractMeasure
 end
 
 @inline function insupport(d::DensityMeasure, x)
-    insupport(d.base, x) == true && isfinite(logdensityof(getfield(d, :f), x))
+    _insupport_mask(insupport(d.base, x)) & isfinite(logdensityof(getfield(d, :f), x))
 end
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
-    result = Pretty.literal("DensityMeasure ∫(")
+    result = Pretty.literal("mintegrate(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")
     result *= Pretty.literal(")")
 end
 
-export ∫
 
 """
-    ∫(f, base::AbstractMeasure)
+    MeasureBase.as_integrand(f)
+    MeasureBase.as_integrand(density)
 
-Define a new measure in terms of a density `f` over some measure `base`.
+Make `f` or `density` (more) suitable as an integrand for
+[`mintegrate`](@ref).
+
+`mintegrate(obj, μ::AbstractMeasure)` automatically calls
+`as_integrand(obj)` internally.
+
+If a density is passed, it must implement the DensityInterface API.
+
+By default just returns `f` resp. `density`, but may be specialized for
+functions and densities that can profit from conversion to a form optimized
+for use in `mintegrate`.
+
+See also [`MeasureBase.as_likelihood`](@ref).
 """
-∫(f, base) = _densitymeasure(f, base, DensityKind(f))
+function as_integrand end
 
-_densitymeasure(f, base, ::IsDensity) = DensityMeasure(f, base)
-function _densitymeasure(f, base, ::HasDensity)
-    @error "`∫(f, base)` requires `DensityKind(f)` to be `IsDensity()` or `NoDensity()`."
+@inline as_integrand(obj) = _as_integrand_default_impl(obj, DensityKind(obj))
+
+@inline _as_integrand_default_impl(f, ::NoDensity) = funcdensity(f)
+
+@inline _as_integrand_default_impl(density, ::IsDensity) = density
+
+function _as_integrand_default_impl(obj, ::HasDensity)
+    throw(
+        ArgumentError(
+            "`MeasureBase.as_integrand(obj)` requires `DensityKind(obj)` to be `IsDensity()` or `NoDensity()`.",
+        ),
+    )
 end
-_densitymeasure(f, base, ::NoDensity) = DensityMeasure(funcdensity(f), base)
 
-export ∫exp
+
+@doc raw"""
+    mintegrate(f, μ::AbstractMeasure)::AbstractMeasure
+    mintegrate(density, μ::AbstractMeasure)::AbstractMeasure
+
+Returns a new measure that represents the indefinite
+[integral](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
+of `f` with respect to `μ`.
+
+If a density is passed, it must implement the DensityInterface API.
+
+`ν = mintegrate(f, μ)` generates a measure `ν` that has the mathematical
+interpretation
+
+```math
+\nu(A) = \int_A f(a) \, \rm{d}\mu(a)
+```
+"""
+function mintegrate end
+export mintegrate
+
+@inline mintegrate(obj, μ::AbstractMeasure) = DensityMeasure(as_integrand(obj), μ)
+
 
 """
-    ∫exp(f, base::AbstractMeasure)
+    MeasureBase.as_integrand_exp(log_f)
 
-Define a new measure in terms of a log-density `f` over some measure `base`.
+Convert the logarithm of an integrand to an integrand.
+
+See also [`MeasureBase.as_integrand`](@ref).
 """
-∫exp(f, base) = _logdensitymeasure(f, base, DensityKind(f))
+function as_integrand_exp end
 
-function _logdensitymeasure(f, base, ::IsDensity)
-    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == IsDensity()`. Use `∫(f, base)` instead."
+@inline as_integrand_exp(log_f) = _as_integrand_exp_default_impl(log_f, DensityKind(log_f))
+
+@inline _as_integrand_exp_default_impl(log_f, ::NoDensity) = logfuncdensity(log_f)
+
+function _as_integrand_exp_default_impl(log_f, ::IsDensity)
+    throw(
+        ArgumentError(
+            "`as_integrand_exp(log_f)` is not valid when `DensityKind(log_f) == IsDensity()`. Use `as_integrand(log_f)` instead.",
+        ),
+    )
 end
-function _logdensitymeasure(f, base, ::HasDensity)
-    @error "`∫exp(f, base)` is not valid when `DensityKind(f) == HasDensity()`."
+
+function _as_integrand_exp_default_impl(log_f, ::HasDensity)
+    throw(
+        ArgumentError(
+            "`as_integrand_exp(log_f)` is not valid when `DensityKind(log_f) == HasDensity()`.",
+        ),
+    )
 end
-_logdensitymeasure(f, base, ::NoDensity) = DensityMeasure(logfuncdensity(f), base)
+
+
+@doc raw"""
+    mintegrate_exp(log_f, μ::AbstractMeasure)
+
+Given a function `log_f` that semantically represents the log of a function
+`f`, `mintegrate_exp` returns a new measure that represents the indefinite
+[integral](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
+of `f` with respect to `μ`.
+
+`ν = mintegrate_exp(log_f, μ)` generates a measure `ν` that has the
+mathematical interpretation
+
+```math
+\nu(A) = \int_A e^{log(f(a))} \, \rm{d}\mu(a) = \int_A f(a) \, \rm{d}\mu(a)
+```
+
+Note that `exp(log_f(...))` is usually not run explicitly, calculations that
+involve the resulting measure are typically performed in log-space,
+internally.
+"""
+function mintegrate_exp end
+export mintegrate_exp
+
+mintegrate_exp(log_f, μ::AbstractMeasure) = DensityMeasure(as_integrand_exp(log_f), μ)
+
 
 basemeasure(μ::DensityMeasure) = μ.base
+
+@inline mspace_elsize(μ::DensityMeasure) = mspace_elsize(μ.base)
+@inline mspace_flatsize(μ::DensityMeasure) = mspace_flatsize(μ.base)
+@inline mspace_flatsize(::Type{<:DensityMeasure{<:Any,B}}) where {B} = mspace_flatsize(B)
+@inline mspace_ndims(::Type{<:DensityMeasure{<:Any,B}}) where {B} = mspace_ndims(B)
+@inline fixed_stream_size(::Type{<:DensityMeasure{<:Any,B}}) where {B} = fixed_stream_size(B)
 
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 
-function logdensityof(μ::DensityMeasure, x::Any)
+# Density measures evaluate the base measure and the integrand directly,
+# the base measure validates array variates:
+@inline _point_ld(f::F, μ::DensityMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
+
+function logdensityof_impl(μ::DensityMeasure, x::Any)
     integrand, μ_base = μ.f, μ.base
-
-    base_logval = logdensityof(μ_base, x)
-
-    T = typeof(base_logval)
-    U = logdensityof_rt(integrand, x)
-    R = promote_type(T, U)
-
-    # Don't evaluate base measure if integrand is zero or NaN
-    if isneginf(base_logval)
-        R(-Inf)
-    else
-        integrand_logval = logdensityof(integrand, x)
-        convert(R, integrand_logval + base_logval)::R
-    end
+    base_logval = dynamic(logdensityof(μ_base, x))
+    integrand_logval = dynamic(logdensityof(integrand, x))
+    logval = integrand_logval + base_logval
+    # Outside of the support of the base measure the integrand may be
+    # anything, including NaN:
+    ifelse(isneginf(base_logval), oftype(logval, -Inf), logval)
 end
-
-"""
-    rebase(μ, ν)
-
-Express `μ` in terms of a density over `ν`. Satisfies
-```
-basemeasure(rebase(μ, ν)) == ν
-density(rebase(μ, ν)) == 𝒹(μ,ν)
-``` 
-"""
-rebase(μ, ν) = ∫(𝒹(μ, ν), ν)

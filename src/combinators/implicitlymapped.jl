@@ -84,7 +84,7 @@ export ImplicitlyMapped
 Get the original object (a measure or transition/Markov kernel) that was
 implicitly mapped.
 
-See [ImplicitlyMapped](@ref) for detailed semantics.
+See [`ImplicitlyMapped`](@ref) for detailed semantics.
 
 # Implementation
 
@@ -100,7 +100,7 @@ export implicit_origin
 Get an explicit map/function based on an implicitly mapped object and an
 observation.
 
-See [ImplicitlyMapped](@ref) for detailed semantics.
+See [`ImplicitlyMapped`](@ref) for detailed semantics.
 
 # Implementation
 
@@ -179,13 +179,13 @@ struct TakeAny{T<:IntegerLike}
     n::T
 end
 
-_takeany_range(f::TakeAny, idxs) = first(idxs):first(idxs)+dynamic(f.n)-1
+_takeany_range(f::TakeAny, idxs) = first(idxs):(first(idxs)+dynamic(f.n)-1)
 @inline _takeany_range(f::TakeAny, ::OneTo) = OneTo(dynamic(f.n))
 
 @inline _takeany_range(::TakeAny{<:Static.StaticInteger{N}}, ::OneTo) where {N} = SOneTo(N)
 @inline _takeany_range(::TakeAny{<:Static.StaticInteger{N}}, ::SOneTo) where {N} = SOneTo(N)
 
-@inline (f::TakeAny)(xs::Tuple) = xs[begin:begin+f.n-1]
+@inline (f::TakeAny)(xs::Tuple) = xs[begin:(begin+f.n-1)]
 @inline (f::TakeAny)(xs::AbstractVector) = xs[_takeany_range(f, eachindex(xs))]
 
 function (f::TakeAny)(xs)
@@ -206,7 +206,7 @@ Constructors:
 * `Marginalized(mu)`
 * `Marginalized(f_kernel)`
 
-See [ImplicitlyMapped](@ref) for detailed semantics.
+See [`ImplicitlyMapped`](@ref) for detailed semantics.
 
 Example:
 
@@ -227,7 +227,7 @@ export Marginalized
 implicit_origin(mapped::Marginalized) = mapped.obj
 
 function explicit_mapfunc(::Marginalized, obs::NamedTuple{names}) where {names}
-    PropSelFunction{names,names}()
+    PropSelFunction(names...)
 end
 function pushfwd(f::PropSelFunction, mu::ProductMeasure{<:NamedTuple}, ::PushfwdRootMeasure)
     productmeasure(f(marginals(mu)))

@@ -21,6 +21,6 @@ Order = [:macro, :function]
 # Documentation
 
 ```@autodocs
-Modules = [MeasureBase]
+Modules = [MeasureBase, MeasureBase.MeasureOperators]
 Order = [:module, :type, :constant, :macro, :function]
 ```

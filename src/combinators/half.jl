@@ -4,6 +4,13 @@ struct Half{M} <: AbstractMeasure
     parent::M
 end
 
+@inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
+@inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
+@inline mspace_flatsize(::Type{<:Half{M}}) where {M} = mspace_flatsize(M)
+@inline mspace_ndims(::Type{<:Half{M}}) where {M} = mspace_ndims(M)
+@inline fixed_stream_size(::Type{<:Half{M}}) where {M} = fixed_stream_size(M)
+@inline preferred_stdmeasure(::Type{<:Half}) = StdUniform
+
 function Base.show(io::IO, μ::Half)
     print(io, "Half")
     show(io, μ.parent)
@@ -15,11 +22,10 @@ unhalf(μ::Half) = μ.parent
     weightedmeasure(logtwo, basemeasure(unhalf(μ)))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::Half) where {T}
-    return abs(rand(rng, T, unhalf(μ)))
-end
+@inline rand_impl(ctx::GenContext, μ::Half) = abs(rand_impl(ctx, unhalf(μ)))
+@inline batched_rand_impl(ctx::GenContext, μ::Half, sz::SizeLike) = abs.(batched_rand_impl(ctx, unhalf(μ), sz))
 
-function logdensityof(μ::Half, x)
+function logdensityof_impl(μ::Half, x)
     ld = logdensityof(unhalf(μ), x) - loghalf
     return x ≥ 0 ? ld : oftype(ld, -Inf)
 end
@@ -40,9 +46,8 @@ function smf(μ::Half, x)
 end
 
 function invsmf(μ::Half, p)
-    @assert zero(p) ≤ p ≤ one(p)
-    invsmf(μ.parent, (p + 1) / 2)
+    _nan_outside(StdUniform(), p, invsmf(μ.parent, _unit_interior((p + 1) / 2)))
 end
 
-transport_def(μ::Half, ::StdUniform, p) = invsmf(μ, p)
-transport_def(::StdUniform, μ::Half, x) = smf(μ, x)
+@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, smf(μ, x))
+@inline transport_from_std(::Type{StdUniform}, μ::Half, p) = invsmf(μ, p)

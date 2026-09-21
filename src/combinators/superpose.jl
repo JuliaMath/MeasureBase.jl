@@ -65,85 +65,126 @@ function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end
 
-oneplus(x::ULogarithmic) = exp(ULogarithmic, log1pexp(x.log))
+# Masks components outside of their support with -Inf:
+@inline _masked_logd(ℓ, ins) = ifelse(_insupport_mask(ins), ℓ, oftype(ℓ, -Inf))
 
-@inline function density_def(s::SuperpositionMeasure{Tuple{A,B}}, x) where {A,B}
-    (μ, ν) = s.components
-
-    istrue(insupport(μ, x)) || return exp(ULogarithmic, logdensity_def(ν, x))
-    istrue(insupport(ν, x)) || return exp(ULogarithmic, logdensity_def(μ, x))
-
-    α = basemeasure(μ)
-    β = basemeasure(ν)
-    dμ_dα = exp(ULogarithmic, logdensity_def(μ, x))
-    dν_dβ = exp(ULogarithmic, logdensity_def(ν, x))
-    dα_dβ = exp(ULogarithmic, logdensity_rel(α, β, x))
-    dβ_dα = inv(dα_dβ)
-    return dμ_dα / oneplus(dβ_dα) + dν_dβ / oneplus(dα_dβ)
+# Branch-free logsumexp over the components, valid for infinite entries:
+@inline function _logsumexp_components(ℓs)
+    m = reduce(max, ℓs)
+    m_finite = ifelse(isfinite(m), m, zero(m))
+    m_finite + log(sum(map(ℓ -> exp(ℓ - m_finite), ℓs)))
 end
 
-function density_def(s::SuperpositionMeasure, x)
-    T = typeof(s)
-    msg = """
-    Not implemented: There is no method
-    density_def(::$T, x)
-    """
-    error(msg)
-end
-
-@inline function logdensity_def(
-    μ::T,
-    ν::T,
-    x,
-) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
-    if μ === ν
-        return zero(return_type(logdensity_def, (μ, x)))
-    else
-        return logdensity_def(μ, x) - logdensity_def(ν, x)
+# The density of a superposition relative to the superposition of the
+# component base measures, in log space: each component contributes its
+# own density, divided by the density of the superposed base measures
+# relative to its own base measure.
+function logdensity_def(s::SuperpositionMeasure, x)
+    cs = values(s.components)
+    αs = map(basemeasure, cs)
+    terms = map(cs, αs) do cᵢ, αᵢ
+        ℓᵢ = _dynamic_logd(logdensity_def(cᵢ, x), x)
+        log_dΣα_dαᵢ = _logsumexp_components(map(αs) do αⱼ
+            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupport(αⱼ, x))
+        end)
+        _masked_logd(ℓᵢ - log_dΣα_dαᵢ, insupport(cᵢ, x))
     end
+    _logsumexp_components(terms)
 end
 
-@inline function logdensity_def(
-    s::T,
-    β,
-    x,
-) where {T<:(SuperpositionMeasure{Tuple{A,B}} where {A,B})}
-    (μ, ν) = s.components
-
-    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
-    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
-    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+@inline function logdensity_rel_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
+    ℓ = logdensity_def(μ, x) - logdensity_def(ν, x)
+    ifelse(μ === ν, zero(ℓ), ℓ)
 end
 
-@inline function logdensity_def(
-    s::SuperpositionMeasure{Tuple{A,B}},
-    β::SuperpositionMeasure,
-    x,
-) where {A,B}
-    (μ, ν) = s.components
-    istrue(insupport(μ, x)) || return logdensity_rel(ν, β, x)
-    istrue(insupport(ν, x)) || return logdensity_rel(μ, β, x)
-    return logaddexp(logdensity_rel(μ, β, x), logdensity_rel(ν, β, x))
+function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
+    cs = values(s.components)
+    ds = map(cs) do μ
+        _masked_logd(logdensity_rel(μ, β, x), insupport(μ, x))
+    end
+    _logsumexp_components(ds)
 end
 
-@inline function logdensity_def(s, β::(SuperpositionMeasure{Tuple{A,B}} where {A,B}), x)
-    -logdensity_def(β, s, x)
-end
+@inline logdensity_rel_def(s::SuperpositionMeasure, β, x) = _superpos_logdensity_rel(s, β, x)
 
-@inline logdensity_def(s::SuperpositionMeasure, x) = log(density_def(s, x))
+@inline logdensity_rel_def(s::SuperpositionMeasure, β::SuperpositionMeasure, x) =
+    _superpos_logdensity_rel(s, β, x)
 
-function basemeasure(μ::SuperpositionMeasure{Tuple{A,B}}) where {A,B}
+@inline logdensity_rel_def(s, β::SuperpositionMeasure, x) = -_superpos_logdensity_rel(β, s, x)
+
+@inline density_def(s::SuperpositionMeasure, x) = exp(logdensity_def(s, x))
+
+function basemeasure(μ::SuperpositionMeasure{<:Tuple})
     superpose(map(basemeasure, μ.components)...)
 end
+
+function basemeasure(μ::SuperpositionMeasure{<:AbstractArray})
+    bases = map(basemeasure, μ.components)
+    allequal(bases) ? weightedmeasure(log(length(bases)), first(bases)) : superpose(bases)
+end
+
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
-# TODO: Fix `rand` method (this one is wrong)
-# function Base.rand(μ::SuperpositionMeasure{X,N}) where {X,N}
-#     return rand(rand(μ.components))
-# end
+function _component_masses(μ::SuperpositionMeasure)
+    masses = map(massof, values(μ.components))
+    total = sum(masses)
+    total isa AbstractUnknownMass && throw(
+        ArgumentError("Cannot sample from a superposition of measures of unknown mass"),
+    )
+    return map(dynamic, masses), dynamic(total)
+end
+
+function rand_impl(ctx::GenContext, μ::SuperpositionMeasure)
+    components = values(μ.components)
+    masses, total = _component_masses(μ)
+    threshold = rand(get_rng(ctx), get_precision(ctx)) * total
+    csum = zero(threshold)
+    for (mass, c) in zip(masses, components)
+        csum += mass
+        csum >= threshold && return rand_impl(ctx, c)
+    end
+    return rand_impl(ctx, last(components))
+end
+
+# Batches of superpositions draw a batch from each component and select
+# by mass, branch-free:
+function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike)
+    _superpose_batched_rand(ctx, μ, sz, _static_ndims(μ))
+end
+function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, k::StaticInteger)
+    components = values(μ.components)
+    masses, total = _component_masses(μ)
+    thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, k)
+    X = batched_rand_impl(ctx, first(components), sz)
+    csum = first(masses)
+    for (mass, c) in Iterators.drop(zip(masses, components), 1)
+        X = ifelse.(thresholds .<= csum, X, batched_rand_impl(ctx, c, sz))
+        csum += mass
+    end
+    return X
+end
+_superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, ::NoMSpaceElementSize) =
+    _batched_rand_pointwise(ctx, μ, sz)
 
 @inline function insupport(d::SuperpositionMeasure, x)
-    any(d.components) do c
-        dynamic(insupport(c, x))
-    end
+    mapreduce(c -> _insupport_mask(insupport(c, x)), |, values(d.components))
 end
+
+
+@inline mspace_flatsize(μ::SuperpositionMeasure) = mspace_flatsize(typeof(μ))
+
+# The variate rank of a superposition is the common rank of its components,
+# folded pairwise over the component types so that it stays a constant:
+@inline mspace_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = mspace_ndims(eltype(C))
+@inline function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
+    static_mapreduce(mspace_ndims, _CommonNDims{MU}(), C)
+end
+struct _CommonNDims{MU} <: Function end
+@inline (::_CommonNDims{MU})(a::Integer, b::Integer) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()
+@inline (::_CommonNDims{MU})(::Any, ::Any) where {MU} = NoMSpaceElementSize{MU}()
+
+@inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
+@inline function mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple}
+    _scalar_or_unknown(static_mapreduce(mspace_flatsize, _common_flatsize, C))
+end
+@inline _common_flatsize(a, b) = a === b ? a : NoMSpaceElementSize{typeof((a, b))}()

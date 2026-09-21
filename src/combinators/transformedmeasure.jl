@@ -8,6 +8,7 @@ pushforward. Either [`AdaptRootMeasure()`](@ref) or
 abstract type PushFwdStyle end
 export PushFwdStyle
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const TransformVolCorr = PushFwdStyle
 
 """
@@ -22,9 +23,10 @@ Density calculations for pushforward measures constructed with
 transform (typically via the log-abs-det-Jacobian of the transform) into
 account.
 """
-struct AdaptRootMeasure <: TransformVolCorr end
+struct AdaptRootMeasure <: PushFwdStyle end
 export AdaptRootMeasure
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const WithVolCorr = AdaptRootMeasure
 
 """
@@ -37,9 +39,10 @@ Density calculations for pushforward measures constructed with
 `PushfwdRootMeasure()` will ignore the volume element of the variate
 transform.
 """
-struct PushfwdRootMeasure <: TransformVolCorr end
+struct PushfwdRootMeasure <: PushFwdStyle end
 export PushfwdRootMeasure
 
+# Backward compatibility with user code, do not use in MeasureBase itself:
 const NoVolCorr = PushfwdRootMeasure
 
 abstract type AbstractTransformedMeasure <: AbstractMeasure end
@@ -69,25 +72,46 @@ export PushforwardMeasure
     Users should not call `PushforwardMeasure` directly. Instead call or add
     methods to `pushfwd`.
 """
-struct PushforwardMeasure{F,I,M,S<:PushFwdStyle} <: AbstractPushforward
+struct PushforwardMeasure{F,I,M,S<:PushFwdStyle,VS} <: AbstractPushforward
     f::F
     finv::I
     origin::M
     style::S
+    varsize::VS
 
-    function PushforwardMeasure{F,I,M,S}(
-        f::F,
-        finv::I,
-        origin::M,
-        style::S,
-    ) where {F,I,M,S<:PushFwdStyle}
-        new{F,I,M,S}(f, finv, origin, style)
-    end
-
-    function PushforwardMeasure(f, finv, origin::M, style::S) where {M,S<:PushFwdStyle}
-        new{Core.Typeof(f),Core.Typeof(finv),M,S}(f, finv, origin, style)
+    function PushforwardMeasure(f, finv, origin::M, style::S, varsize::VS) where {M,S<:PushFwdStyle,VS}
+        new{Core.Typeof(f),Core.Typeof(finv),M,S,VS}(f, finv, origin, style, varsize)
     end
 end
+
+# The size of the variates of a pushforward follows from a test value of
+# the origin, where the origin has variates of known size:
+# The output size is learned from a test value whenever the origin's
+# variates have a fixed layout, which includes tuple products:
+@inline function _pushfwd_varsize(f, μ::MU) where {MU}
+    _pushfwd_varsize(f, μ, fixed_stream_size(MU))
+end
+@inline _pushfwd_varsize(f, μ, ::True) = _value_flatsize(f(testvalue(μ)))
+@inline _pushfwd_varsize(f, μ, ::False) = NoMSpaceElementSize{typeof(μ)}()
+
+@inline mspace_elsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
+@inline mspace_flatsize(ν::PushforwardMeasure) = _value_or_unknown(ν.varsize, ν)
+@inline _value_or_unknown(sz::SizeLike, ν) = sz
+@inline _value_or_unknown(::NoMSpaceElementSize, ν) = NoMSpaceElementSize{typeof(ν)}()
+@inline fixed_stream_size(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,VS}}) where {VS} = static(VS <: SizeLike)
+@inline function mspace_ndims(::Type{MU}) where {VS,MU<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,VS}}
+    _ndims_of_size_type(VS, MU)
+end
+@inline _ndims_of_size_type(::Type{<:Tuple{Vararg{Any,N}}}, ::Type) where {N} = N
+@inline mspace_flatsize(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,Tuple{}}}) = ()
+@inline mspace_flatsize(::Type{<:PushforwardMeasure{<:Any,<:Any,<:Any,<:Any,StaticArrays.Size{S}}}) where {S} = StaticArrays.Size(S)
+@inline _ndims_of_size_type(::Type{StaticArrays.Size{S}}, ::Type) where {S} = length(S)
+@inline _ndims_of_size_type(::Type, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
+
+# Pushforwards by elementwise functions keep the variate rank of their
+# origin:
+const _ElementwisePushfwd{M,S} = PushforwardMeasure{<:Base.BroadcastFunction,<:Base.BroadcastFunction,M,S}
+@inline mspace_ndims(::Type{MU}) where {M,MU<:_ElementwisePushfwd{M}} = mspace_ndims(M)
 
 const _NonBijectivePusfwdMeasure{M<:PushforwardMeasure,S<:PushFwdStyle} = Union{
     PushforwardMeasure{<:Any,<:NoInverse,M,S},
@@ -115,24 +139,21 @@ end
 # end
 
 # TODO: Would profit from custom pullback:
-function _combine_logd_with_ladj(logd_orig::Real, ladj::Real)
+function _combine_logd_with_ladj(logd_orig::Number, ladj::Number)
     logd_result = logd_orig + ladj
     R = typeof(logd_result)
 
-    if isnan(logd_result) && isneginf(logd_orig) && isposinf(ladj)
-        # Zero μ wins against infinite volume:
-        R(-Inf)::R
-    elseif isfinite(logd_orig) && isneginf(ladj)
-        # Maybe  also for isneginf(logd_orig) && isfinite(ladj) ?
-        # Return constant -Inf to prevent problems with ForwardDiff:
-        #R(-Inf)
-        near_neg_inf(R)::R # Avoids AdvancedHMC warnings
-    else
-        logd_result::R
-    end
+    # Zero μ wins against infinite volume:
+    zero_wins = isnan(logd_result) & isneginf(logd_orig) & isposinf(ladj)
+    # Maybe also for isneginf(logd_orig) && isfinite(ladj) ?
+    # Return near_neg_inf instead of constant -Inf to prevent problems
+    # with ForwardDiff and to avoid AdvancedHMC warnings:
+    fades_out = isfinite(logd_orig) & isneginf(ladj)
+
+    ifelse(zero_wins, R(-Inf), ifelse(fades_out, near_neg_inf(R), logd_result))::R
 end
 
-function logdensityof(
+function logdensityof_impl(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:PushfwdRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -143,7 +164,7 @@ function logdensityof(
     )
 end
 
-function logdensityof(
+function logdensityof_impl(
     @nospecialize(μ::_NonBijectivePusfwdMeasure{M,<:AdaptRootMeasure}),
     @nospecialize(v::Any)
 ) where {M}
@@ -154,15 +175,15 @@ function logdensityof(
     )
 end
 
-for func in [:logdensityof, :logdensity_def]
-    @eval function $func(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
+for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
+    @eval function $head(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
         f_inv = unwrap(ν.finv)
         x, inv_ladj = with_logabsdet_jacobian(f_inv, y)
         logd_orig = $func(ν.origin, x)
         return _combine_logd_with_ladj(logd_orig, inv_ladj)
     end
 
-    @eval function $func(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
+    @eval function $head(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
         f_inv = unwrap(ν.finv)
         x = f_inv(y)
         logd_orig = $func(ν.origin, x)
@@ -170,7 +191,39 @@ for func in [:logdensityof, :logdensity_def]
     end
 end
 
-insupport(m::PushforwardMeasure, x) = insupport(transport_origin(m), to_origin(m, x))
+# Pushforwards by elementwise functions evaluate densities over flat
+# batches, the log-abs-det-Jacobian terms sum over the variate dimensions
+# of the origin:
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval function $bhead(ν::_ElementwisePushfwd{M,<:AdaptRootMeasure}, Y) where {M}
+        _elementwise_pushfwd_ld($head, ν, Y, _static_ndims(ν.origin))
+    end
+    @eval function $bhead(ν::_ElementwisePushfwd{M,<:PushfwdRootMeasure}, Y) where {M}
+        _batched_kernel($head, ν.origin, broadcast(ν.finv.f, Y))
+    end
+end
+
+function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, k::StaticInteger) where {F}
+    f_inv = ν.finv.f
+    ℓ = _batched_kernel(f, ν.origin, broadcast(f_inv, Y))
+    ladj = sum_leading_dims(broadcast(_LadjOf(f_inv), Y), k)
+    return _lazy_combine_ladj(ℓ, ladj)
+end
+function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, ::NoMSpaceElementSize) where {F}
+    _default_batched_kernel(f, ν, Y, _static_ndims(ν))
+end
+
+struct _LadjOf{F} <: Function
+    f::F
+end
+@inline (k::_LadjOf)(y) = last(with_logabsdet_jacobian(k.f, y))
+
+@inline _lazy_combine_ladj(ℓ::Number, ladj::Number) = _combine_logd_with_ladj(ℓ, ladj)
+@inline _lazy_combine_ladj(ℓ, ladj) = Broadcast.instantiate(Broadcast.broadcasted(_combine_logd_with_ladj, ℓ, ladj))
+
+# Checking insupport via the origin would require a potentially costly
+# transformation of x:
+insupport(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))
@@ -193,17 +246,59 @@ _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 @inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
 @inline getdof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()
 
+@inline fast_dof(ν::PushforwardMeasure) = fast_dof(ν.origin)
+@inline fast_dof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()
+
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
-@inline transport_origin(ν::PushforwardMeasure) = ν.origin
-@inline from_origin(ν::PushforwardMeasure, x) = ν.f(x)
-@inline to_origin(ν::PushforwardMeasure, y) = ν.finv(y)
+# Pushforwards transport via their origin:
+@inline transport_to_std(::Type{S}, ν::PushforwardMeasure, y) where {S<:StdMeasure} =
+    transport_to_std(S, ν.origin, ν.finv(y))
+@inline transport_from_std(::Type{S}, ν::PushforwardMeasure, z) where {S<:StdMeasure} =
+    ν.f(transport_from_std(S, ν.origin, z))
+@inline function transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, ν.origin, z)
+    return ν.f(x), z_rest
+end
 
-massof(m::PushforwardMeasure) = massof(transport_origin(m))
+# Batches of pushforwards apply the functions to flat batches of the
+# origin, elementwise for `Base.BroadcastFunction`s and variate by variate
+# (in a host loop) otherwise. The AffineMaps extension adds affine maps.
+function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y) where {S<:StdMeasure}
+    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, _static_ndims(ν)))
+end
+function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
+    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _static_ndims(ν.origin))
+end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, ν::PushforwardMeasure) where {T}
-    return ν.f(rand(rng, T, ν.origin))
+# Apply `f` to a flat batch of variates of rank `k`:
+@inline _apply_batched(f, X, k) = _apply_generic(unwrap(f), X, k)
+@inline _apply_generic(f, X, k) = _apply_by_rank(f, X, k)
+@inline _apply_generic(f::Base.BroadcastFunction, X, k) = broadcast(f.f, X)
+@inline _apply_by_rank(f, X, ::StaticInteger{0}) = broadcast(f, X)
+@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{0}) = broadcast(f, X)
+@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{K}) where {K} = _apply_to_slices(f, X, Val(K))
+@inline _apply_to_slices(f, X::AbstractArray{<:Any,K}, ::Val{K}) where {K} = f(X)
+@inline _apply_to_slices(f, X::AbstractArray, ::Val{K}) where {K} = stacked(map(f, sliced(X, Val(K))))
+@noinline function _apply_by_rank(f, X, ::NoMSpaceElementSize)
+    throw(ArgumentError("Applying functions of type $(nameof(typeof(f))) to batches of variates requires MeasureBase.mspace_ndims to be declared for the measure"))
+end
+
+massof(m::PushforwardMeasure) = massof(m.origin)
+
+rand_impl(ctx::GenContext, ν::PushforwardMeasure) = ν.f(rand_impl(ctx, ν.origin))
+
+# Batches of pushforwards apply the function to the variates of a batch of
+# the origin:
+function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike)
+    _pushfwd_batched_rand(ctx, ν, sz, _static_ndims(ν.origin))
+end
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, k::StaticInteger)
+    _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k)
+end
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, ::NoMSpaceElementSize)
+    _batched_rand_pointwise(ctx, ν, sz)
 end
 
 ###############################################################################
@@ -222,11 +317,14 @@ To manually specify an inverse, call
 function pushfwd end
 export pushfwd
 
+@inline pushfwd(f) = Base.Fix1(pushfwd, f)
 @inline pushfwd(f, μ) = _pushfwd_impl(f, μ, AdaptRootMeasure())
-@inline pushfwd(f, μ, style::AdaptRootMeasure) = _pushfwd_impl(f, μ, style)
-@inline pushfwd(f, μ, style::PushfwdRootMeasure) = _pushfwd_impl(f, μ, style)
+@inline pushfwd(f, μ, style::PushFwdStyle) = _pushfwd_impl(f, μ, style)
 
-_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style)
+@inline pushfwd(::typeof(identity), μ) = μ
+@inline pushfwd(::typeof(identity), μ, ::PushFwdStyle) = μ
+
+_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style, _pushfwd_varsize(f, μ))
 
 function _pushfwd_impl(
     f,
@@ -236,11 +334,11 @@ function _pushfwd_impl(
     orig_μ = μ.origin
     new_f = fcomp(f, μ.f)
     new_f_inv = fcomp(μ.finv, inverse(f))
-    PushforwardMeasure(new_f, new_f_inv, orig_μ, style)
+    PushforwardMeasure(new_f, new_f_inv, orig_μ, style, _pushfwd_varsize(new_f, orig_μ))
 end
 
-_pushfwd_impl(::typeof(identity), μ, ::AdaptRootMeasure) = μ
-_pushfwd_impl(::typeof(identity), μ, ::PushfwdRootMeasure) = μ
+# Simplifications for Dirac and WeightedMeasure origins are defined in
+# smart-constructors.jl.
 
 ###############################################################################
 # pullback
@@ -263,12 +361,16 @@ To manually specify an inverse, call
 function pullbck end
 export pullbck
 
+@inline pullbck(f) = Base.Fix1(pullbck, f)
 @inline pullbck(f, μ) = _pullback_impl(f, μ, AdaptRootMeasure())
-@inline pullbck(f, μ, style::AdaptRootMeasure) = _pullback_impl(f, μ, style)
-@inline pullbck(f, μ, style::PushfwdRootMeasure) = _pullback_impl(f, μ, style)
+@inline pullbck(f, μ, style::PushFwdStyle) = _pullback_impl(f, μ, style)
 
 function _pullback_impl(f, μ, style = AdaptRootMeasure())
     pushfwd(inverse(f), μ, style)
 end
 
 @deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
+
+function Adapt.adapt_structure(to, ν::PushforwardMeasure)
+    PushforwardMeasure(Adapt.adapt(to, ν.f), Adapt.adapt(to, ν.finv), Adapt.adapt(to, ν.origin), ν.style, ν.varsize)
+end
