@@ -1,3 +1,10 @@
+"""
+    abstract type MeasureBase.StdMeasure <: AbstractMeasure
+
+Supertype of the standard measures that transports pivot on.
+
+Variates of standard measures are `Real` numbers.
+"""
 abstract type StdMeasure <: AbstractMeasure end
 
 StdMeasure(::typeof(rand)) = StdUniform()

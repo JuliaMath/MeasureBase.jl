@@ -231,9 +231,6 @@ for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batche
     end
 end
 
-@inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, k::Integer) where {F}
-    _array_product_kernel(f, μ, X, static(k))
-end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{0}) where {F}
     mar = marginals(μ)
     _check_flatsize(X, maybestatic_size(mar))

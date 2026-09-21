@@ -135,8 +135,13 @@ end
     _powered_kernel_impl(f, μ, X, _static_ndims(pwr_base(μ)))
 end
 @inline function _powered_kernel_impl(f::F, μ::PowerMeasure, X, ::Any) where {F}
-    sum_leading_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
+    _pwr_sum_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
 end
+
+# `sum_leading_dims`, but naming the measure when the variate isn't an array:
+@inline _pwr_sum_dims(ℓ, n::StaticInteger) = sum_leading_dims(ℓ, n)
+@inline _pwr_sum_dims(ℓ::Number, ::StaticInteger{0}) = ℓ
+@noinline _pwr_sum_dims(::Number, ::StaticInteger) = _throw_pwr_variate_not_array()
 # Numeric batches of powers of bases without a variate rank are batches of
 # streams:
 @inline function _powered_kernel_impl(::typeof(logdensityof_impl), μ::PowerMeasure, X::AbstractArray{<:Number}, ::NoMSpaceElementSize)
@@ -160,7 +165,7 @@ _powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::False) = _streamwis
     end
     return nothing
 end
-@inline _check_pwr_dims(::AbstractArray, ::NoMSpaceElementSize, ::SizeLike, ::Bool) = nothing
+@inline _check_pwr_dims(::AbstractArray, ::NoMSpaceElementSize, ::Dims, ::Bool) = nothing
 @inline batched_logdensityof_impl(μ::PowerMeasure, X) = _powered_kernel(logdensityof_impl, μ, X)
 @inline batched_logdensity_def(μ::PowerMeasure, X) = _powered_kernel(logdensity_def, μ, X)
 
@@ -184,9 +189,10 @@ function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFla
     ν = pwr_base(μ)
     sum(_PointLogd(f, ν), x; init = zero(_logd_numtype(x)))
 end
-@noinline function _powered_point(::F, ::PowerMeasure, x) where {F}
+@noinline _powered_point(::F, ::PowerMeasure, x) where {F} = _throw_pwr_variate_not_array()
+
+@noinline _throw_pwr_variate_not_array() =
     throw(ArgumentError("Variates of powers of measures must be arrays"))
-end
 
 # Nested variates have the power's shape:
 @inline function _check_pwr_shape(μ::PowerMeasure, x::AbstractArray)
@@ -207,7 +213,7 @@ function batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz:
 end
 function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::SizeLike, ::True)
     ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (size_dims(pwr_size(μ))..., size_dims(sz)...))
-    return sum_leading_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
+    return _pwr_sum_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
 end
 function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False)
     ν = pwr_base(μ)
@@ -275,7 +281,7 @@ end
     return nothing
 end
 @inline _check_pwr_flat(x::AbstractArray, k::StaticInteger, dims::Dims) = _check_pwr_dims(x, k, dims, true)
-@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::SizeLike) = _throw_size_mismatch()
+@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::Dims) = _throw_size_mismatch()
 
 checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 

@@ -26,7 +26,6 @@ _exp_cumsum_log(xs::AbstractVector) = exp.(cumsum(log.(xs)))
 Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tuple(SVector{N}(v))
 
 
-@inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
 @inline _split_after(x::Tuple, ::Val{N}) where {N} = x[begin:(begin+N-1)], x[(begin+N):end]
 
 @generated function _split_after(x::NamedTuple{names}, ::Val{names_a}) where {names,names_a}

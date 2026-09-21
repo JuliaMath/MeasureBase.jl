@@ -56,7 +56,7 @@ are accepted, their flat storage is the tuple of component storages.
 inside such streams are flat vectors consumed with the with-rest
 protocol. Point forms return `(result, x_μ, x_rest)` (binds need the
 consumed variate), batched forms take streams `(rows, batch dims...)`
-and a multiplicity `sz::Dims` of variates per stream and return
+and a multiplicity `sz::SizeLike` of variates per stream and return
 `(result, rest)`. Powers pass their size as multiplicity to their base;
 combined measures and tuple products split rows by their fixed stream
 lengths. `fixed_stream_size(::Type{M})` decides whether a batch of
@@ -89,7 +89,7 @@ allocate their own arrays.
 
 **Random variates.** `rand(ctx::GenContext, μ)` with RNG, precision and
 compute unit (`rand(μ)`, `rand(rng, μ)`, `rand(T, μ)` are wrappers).
-`batched_rand_impl(ctx, μ, sz::Dims)` returns a flat batch, a single
+`batched_rand_impl(ctx, μ, sz::SizeLike)` returns a flat batch, a single
 variate for `sz == ()`; `rand_impl` defaults to it. Defaults draw
 standard variates in bulk on the compute unit and transport them, or
 generate variate by variate without a standard transport.
