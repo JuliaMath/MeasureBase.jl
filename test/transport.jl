@@ -1,6 +1,8 @@
 using Test
 
+import MeasureBase
 using MeasureBase.Interface: transport_to, test_transport
+using MeasureBase: AbstractMeasure
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac, Half, restrict, mbind, productmeasure, pushfwd
 using MeasureBase: transport_to_std, transport_from_std, transport_from_std_with_rest
