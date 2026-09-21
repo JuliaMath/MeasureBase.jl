@@ -107,9 +107,9 @@ end
 @inline function mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}
     _pwr_ndims(mspace_ndims(M), fieldcount(A), fixed_stream_size(M))
 end
-@inline _pwr_ndims(n::IntegerLike, k::IntegerLike, ::Any) = n + k
-@inline _pwr_ndims(::NoMSpaceElementSize, ::IntegerLike, ::True) = static(1)
-@inline _pwr_ndims(n::NoMSpaceElementSize, ::IntegerLike, ::False) = n
+@inline _pwr_ndims(n::Integer, k::Integer, ::Any) = n + k
+@inline _pwr_ndims(::NoMSpaceElementSize, ::Integer, ::True) = 1
+@inline _pwr_ndims(n::NoMSpaceElementSize, ::Integer, ::False) = n
 
 # Local measures of powers at nested variates are products of the local
 # measures of the elements:

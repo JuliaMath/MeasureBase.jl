@@ -275,7 +275,7 @@ end
 @inline function logdensity_def(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
     _array_product_ld(logdensity_def, μ, x, mspace_ndims(M))
 end
-@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::IntegerLike) where {F}
+@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::Integer) where {F}
     _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
 end
 @inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::NoMSpaceElementSize) where {F}
@@ -346,7 +346,7 @@ fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
 # of freedom each, so their total needs no reduction over the marginals
 # (which may live on a device):
 @inline function _unit_dof(::Type{M}) where {M}
-    static(_static_ndims_of(mspace_ndims(M)) === static(0) && preferred_stdmeasure(M) isa Type{<:StdMeasure})
+    static(mspace_ndims(M) === 0 && preferred_stdmeasure(M) isa Type{<:StdMeasure})
 end
 @inline _sum_dofs(f, mar::StaticArray) = mapreduce(f, +, mar; init = static(0))
 @inline _dynamic_dof(n::IntegerLike) = dynamic(n)

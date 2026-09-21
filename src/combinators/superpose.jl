@@ -177,14 +177,14 @@ end
 # folded pairwise over the component types so that it stays a constant:
 @inline mspace_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = mspace_ndims(eltype(C))
 @inline function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
-    static_reduce(_CommonNDims{MU}(), mspace_ndims, C)
+    static_mapreduce(mspace_ndims, _CommonNDims{MU}(), C)
 end
 struct _CommonNDims{MU} <: Function end
-@inline (::_CommonNDims{MU})(a::IntegerLike, b::IntegerLike) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()
+@inline (::_CommonNDims{MU})(a::Integer, b::Integer) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()
 @inline (::_CommonNDims{MU})(::Any, ::Any) where {MU} = NoMSpaceElementSize{MU}()
 
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
 @inline function mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple}
-    _scalar_or_unknown(static_reduce(_common_flatsize, mspace_flatsize, C))
+    _scalar_or_unknown(static_mapreduce(mspace_flatsize, _common_flatsize, C))
 end
 @inline _common_flatsize(a, b) = a === b ? a : NoMSpaceElementSize{typeof((a, b))}()

@@ -51,7 +51,7 @@ using StaticThings:
     maybestatic_first, maybestatic_last, maybestatic_view,
     maybestatic_oneto, maybestatic_fill, maybestatic_reshape,
     axes2size, size2length, split_at, staticarray_type,
-    static_all, static_any, static_reduce,
+    static_all, static_any, static_mapreduce,
     sum_leading_dims, drop_leading_dims, merge_leading_dims, all_leading_dims
 
 import HeterogeneousComputing

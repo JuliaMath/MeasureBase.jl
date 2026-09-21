@@ -61,9 +61,9 @@ end
 
 # The variate rank as a static integer, from the type where known:
 @inline _static_ndims(μ::MU) where {MU} = _static_ndims(mspace_ndims(MU), μ)
-@inline _static_ndims(n::IntegerLike, μ) = static(n)
+@inline _static_ndims(n::Integer, μ) = static(n)
 @inline _static_ndims(::NoMSpaceElementSize, μ) = _static_ndims_of(mspace_ndims(μ))
-@inline _static_ndims_of(n::IntegerLike) = static(n)
+@inline _static_ndims_of(n::Integer) = static(n)
 @inline _static_ndims_of(n::NoMSpaceElementSize) = n
 
 """
@@ -79,7 +79,7 @@ function batched_logdensity_def end
     _default_batched_kernel(logdensity_def, μ, X, _static_ndims(μ))
 end
 
-@inline _default_batched_kernel(f::F, μ, X, n::IntegerLike) where {F} = _default_batched_kernel(f, μ, X, static(n))
+@inline _default_batched_kernel(f::F, μ, X, n::Integer) where {F} = _default_batched_kernel(f, μ, X, static(n))
 @inline _default_batched_kernel(f::F, μ, X, ::StaticInteger{0}) where {F} = _scalar_kernel_broadcast(f, μ, X)
 @inline _default_batched_kernel(f::F, μ, X::AbstractArray, ::StaticInteger{0}) where {F} = _scalar_kernel_broadcast(f, μ, X)
 @inline function _default_batched_kernel(f::F, μ, X::AbstractArray, ::StaticInteger{K}) where {F,K}
@@ -215,7 +215,7 @@ end
 
 # Zero log-densities over the batch dimensions of a flat batch of variates
 # with `n` variate dimensions:
-@inline function _zero_logd_batch(X::AbstractArray, n::IntegerLike)
+@inline function _zero_logd_batch(X::AbstractArray, n::Integer)
     FillArrays.Zeros{_logd_numtype(X)}(ntuple(i -> size(X, n + i), ndims(X) - n))
 end
 @inline _zero_logd_batch(X::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = zero(_logd_numtype(X))
@@ -321,7 +321,7 @@ end
 # in fused operations; otherwise a batch of streams is consumed stream by
 # stream by the outermost stream combinator.
 @inline fixed_stream_size(μ::MU) where {MU} = fixed_stream_size(MU)
-@inline fixed_stream_size(::Type{MU}) where {MU} = static(mspace_ndims(MU) isa IntegerLike)
+@inline fixed_stream_size(::Type{MU}) where {MU} = static(mspace_ndims(MU) isa Integer)
 
 # Batches of streams consumed stream by stream (host loop):
 function _streamwise_ld(f::F, μ, X::AbstractArray) where {F}

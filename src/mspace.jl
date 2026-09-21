@@ -118,10 +118,10 @@ function mspace_ndims end
 @inline mspace_ndims(::Type{MU}) where {MU} = _ndims_of_size(mspace_flatsize(MU), MU)
 @inline mspace_ndims(μ::MU) where {MU} = _ndims_of_size(mspace_flatsize(μ), MU, mspace_ndims(MU))
 
-@inline _ndims_of_size(sz::SizeLike, ::Type) = maybestatic_length(size_dims(sz))
+@inline _ndims_of_size(sz::SizeLike, ::Type) = length(size_dims(sz))
 @inline _ndims_of_size(::NoMSpaceElementSize, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
-@inline _ndims_of_size(sz::SizeLike, ::Type, ::Any) = maybestatic_length(size_dims(sz))
+@inline _ndims_of_size(sz::SizeLike, ::Type, ::Any) = length(size_dims(sz))
 @inline _ndims_of_size(::NoMSpaceElementSize, ::Type, n) = n
 
-@inline _add_ndims(n::IntegerLike, k::IntegerLike) = n + k
-@inline _add_ndims(n::NoMSpaceElementSize, ::IntegerLike) = n
+@inline _add_ndims(n::Integer, k::Integer) = n + k
+@inline _add_ndims(n::NoMSpaceElementSize, ::Integer) = n
