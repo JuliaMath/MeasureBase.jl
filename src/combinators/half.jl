@@ -23,7 +23,7 @@ unhalf(μ::Half) = μ.parent
 end
 
 @inline rand_impl(ctx::GenContext, μ::Half) = abs(rand_impl(ctx, unhalf(μ)))
-@inline batched_rand_impl(ctx::GenContext, μ::Half, sz::Dims) = abs.(batched_rand_impl(ctx, unhalf(μ), sz))
+@inline batched_rand_impl(ctx::GenContext, μ::Half, sz::SizeLike) = abs.(batched_rand_impl(ctx, unhalf(μ), sz))
 
 function logdensityof_impl(μ::Half, x)
     ld = logdensityof(unhalf(μ), x) - loghalf

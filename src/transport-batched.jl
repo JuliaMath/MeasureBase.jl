@@ -118,7 +118,7 @@ end
 
 
 """
-    MeasureBase.batched_transport_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::Dims)
+    MeasureBase.batched_transport_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::SizeLike)
 
 Consume variates of `μ` from the batch `X` of flat vector streams (first
 dimension along the streams, further dimensions are batch dimensions), a
@@ -136,7 +136,7 @@ whose variates are composed of the variates of other measures implement
 """
 function batched_transport_to_std_with_rest end
 
-function batched_transport_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _to_std_with_rest_default(S, μ, X, sz)
 end
 
@@ -144,7 +144,7 @@ function _to_std_with_rest_default(::Type{S}, μ, x::AbstractVector, ::Tuple{}) 
     z, _, x_rest = transport_to_std_with_rest(S, μ, x)
     return z, x_rest
 end
-function _to_std_with_rest_default(::Type{S}, μ, X::AbstractArray, sz::Dims) where {S}
+function _to_std_with_rest_default(::Type{S}, μ, X::AbstractArray, sz::SizeLike) where {S}
     vsz = _stream_consume_size(μ)
     X_μ, X_rest = _batched_consume(X, vsz, sz)
     Z = batched_transport_to_std(S, μ, _consumed_variates(X_μ, vsz))
@@ -156,15 +156,15 @@ end
 # Standard variates of `prod(sz)` variates per stream, `(dof, sz..., batch
 # dims...)`, as one stream chunk `(dof * prod(sz), batch dims...)`, and
 # back:
-@inline _merge_multiplicity(Z::AbstractArray, sz::Dims) = merge_leading_dims(Z, static(1) + static(length(sz)))
+@inline _merge_multiplicity(Z::AbstractArray, sz::SizeLike) = merge_leading_dims(Z, static(1) + maybestatic_length(size_dims(sz)))
 @inline _split_multiplicity(Z::AbstractArray, ::Tuple{}, n) = Z
-@inline function _split_multiplicity(Z::AbstractArray, sz::Dims, n)
+@inline function _split_multiplicity(Z::AbstractArray, sz::SizeLike, n)
     maybestatic_reshape(Z, (n, sz..., Base.tail(_batch_dims(Z))...))
 end
 
 
 """
-    MeasureBase.batched_transport_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims)
+    MeasureBase.batched_transport_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike)
 
 Consume standard variates of type `S` for a batch of variates of size
 `sz` per stream from the batch `Z` of streams of standard variates (first
@@ -180,20 +180,20 @@ variates are composed of the variates of other measures implement
 """
 function batched_transport_from_std_with_rest end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _from_std_with_rest_default(S, μ, Z, sz)
 end
 
 _from_std_with_rest_default(::Type{S}, μ, z::AbstractVector, ::Tuple{}) where {S} = transport_from_std_with_rest(S, μ, z)
-function _from_std_with_rest_default(::Type{S}, μ, Z::AbstractArray, sz::Dims) where {S}
+function _from_std_with_rest_default(::Type{S}, μ, Z::AbstractArray, sz::SizeLike) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
 end
 
-function _batched_from_std_bydof(::Type{S}, μ, Z::AbstractArray, sz::Dims, n::IntegerLike) where {S}
+function _batched_from_std_bydof(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, n::IntegerLike) where {S}
     Z_μ, Z_rest = _batched_split(Z, _chunk_rows(n, sz))
     return batched_transport_from_std(S, μ, _split_multiplicity(Z_μ, sz, n)), Z_rest
 end
-@noinline function _batched_from_std_bydof(::Type{S}, μ, ::AbstractArray, ::Dims, ::AbstractNoDOF) where {S}
+@noinline function _batched_from_std_bydof(::Type{S}, μ, ::AbstractArray, ::SizeLike, ::AbstractNoDOF) where {S}
     throw(ArgumentError("Batched transport from standard measures requires measures of type $(nameof(typeof(μ))) to have fast degrees of freedom or to implement MeasureBase.batched_transport_from_std_with_rest"))
 end
 

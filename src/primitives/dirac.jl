@@ -35,7 +35,7 @@ logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
 logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
 
 @inline rand_impl(::GenContext, μ::Dirac) = μ.x
-@inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::Dims) = _const_batch(ctx, μ.x, sz)
+@inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::SizeLike) = _const_batch(ctx, μ.x, sz)
 
 export dirac
 

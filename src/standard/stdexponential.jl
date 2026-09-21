@@ -22,4 +22,4 @@ end
 @inline transport_def(::StdExponential, μ::StdUniform, x) = _nan_outside(μ, x, -log1p(-_unit_interior(x)))
 
 @inline rand_impl(ctx::GenContext, ::StdExponential) = randexp(get_rng(ctx), get_precision(ctx))
-@inline batched_rand_impl(ctx::GenContext, ::StdExponential, sz::Dims) = _randexp_bulk(ctx, sz)
+@inline batched_rand_impl(ctx::GenContext, ::StdExponential, sz::SizeLike) = _randexp_bulk(ctx, sz)

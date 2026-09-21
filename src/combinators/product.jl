@@ -78,7 +78,7 @@ _array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _map(Bas
 
 # Batches of tuple and named tuple products are tuples resp. named tuples
 # of marginal batches:
-function batched_rand_impl(ctx::GenContext, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, sz::Dims)
+function batched_rand_impl(ctx::GenContext, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, sz::SizeLike)
     map(m -> batched_rand_impl(ctx, m, sz), marginals(μ))
 end
 
@@ -424,13 +424,13 @@ function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,
     return z, x_μ, x_rest
 end
 
-function batched_transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _tuple_product_to_std_with_rest(S, μ, X, sz)
 end
 function _tuple_product_to_std_with_rest(::Type{S}, μ, X::AbstractArray, ::Tuple{}) where {S}
     _marginals_to_std_with_rest(S, values(marginals(μ)), X)
 end
-function _tuple_product_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::Dims) where {S}
+function _tuple_product_to_std_with_rest(::Type{S}, μ, X::AbstractArray, sz::SizeLike) where {S}
     X_v, X_rest = _split_stream_variates(μ, X, sz)
     Z, _ = _marginals_to_std_with_rest(S, values(marginals(μ)), X_v)
     return _merge_multiplicity(Z, sz), X_rest
@@ -460,11 +460,11 @@ function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,
     return X
 end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _tuple_product_from_std_with_rest(S, μ, Z, sz)
 end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure,names}
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure,names}
     Xs, Z_rest = _tuple_product_from_std_with_rest(S, productmeasure(values(marginals(μ))), Z, sz)
     return NamedTuple{names}(Xs), Z_rest
 end
@@ -474,7 +474,7 @@ end
 function _tuple_product_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, ::Tuple{}) where {S}
     _marginals_batched_from_std_with_rest(S, marginals(μ), Z)
 end
-function _tuple_product_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims) where {S}
+function _tuple_product_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
 end
 
@@ -567,19 +567,19 @@ end
     throw(ArgumentError("Batched transport to products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
 end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure,M}
+function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure,M}
     _array_product_batched_from_std_with_rest(S, μ, Z, sz, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
 end
-function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims, ::Val{true}, ::Any) where {S}
+function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, ::Val{true}, ::Any) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, length(marginals(μ)))
 end
 function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, ::Tuple{}, ::Val{false}, ::StaticInteger{K}) where {S,K}
     _marginals_from_std_loop(S, marginals(μ), Z, Val(K))
 end
-function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::Dims, ::Val{false}, ::StaticInteger{K}) where {S,K}
+function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, ::Val{false}, ::StaticInteger{K}) where {S,K}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
 end
-@noinline function _array_product_batched_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::Dims, ::Val{false}, ::NoMSpaceElementSize) where {S,M}
+@noinline function _array_product_batched_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, ::AbstractArray, ::SizeLike, ::Val{false}, ::NoMSpaceElementSize) where {S,M}
     throw(ArgumentError("Batched transport to products over arrays of marginals of type $(nameof(M)) requires MeasureBase.mspace_ndims to be declared for that type"))
 end
 
@@ -654,21 +654,21 @@ end
 function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, x::AbstractVector, ::Tuple{})
     _marginals_ld_with_rest(marginals(μ), x)
 end
-function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, X::AbstractArray, sz::Dims)
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, X::AbstractArray, sz::SizeLike)
     X_v, X_rest = _split_stream_variates(μ, X, sz)
     ℓ, _ = _marginals_ld_with_rest(marginals(μ), X_v)
     return ℓ, X_rest
 end
-function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, X::AbstractArray, sz::Dims) where {names}
+function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, X::AbstractArray, sz::SizeLike) where {names}
     batched_logdensityof_with_rest(productmeasure(values(marginals(μ))), X, sz)
 end
 
 # The rows of `prod(sz)` variates of fixed stream length, as a batch of
 # streams `(stream length, sz..., batch dims...)`:
-function _split_stream_variates(μ, X::AbstractArray, sz::Dims)
+function _split_stream_variates(μ, X::AbstractArray, sz::SizeLike)
     n_rows = _fixed_stream_length(μ)
-    X_μ, X_rest = _batched_split(X, n_rows * prod(sz))
-    return reshape(X_μ, (n_rows, sz..., Base.tail(size(X_μ))...)), X_rest
+    X_μ, X_rest = _batched_split(X, _chunk_rows(n_rows, sz))
+    return maybestatic_reshape(X_μ, (n_rows, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...)), X_rest
 end
 
 @inline _fixed_stream_length(μ::ProductMeasure{<:Tuple}) = sum(_fixed_stream_length, marginals(μ))

@@ -34,7 +34,7 @@ end
 end
 
 @inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
-@inline batched_rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure, sz::Dims) =
+@inline batched_rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure, sz::SizeLike) =
     batched_rand_impl(ctx, basemeasure(μ), sz)
 
 testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basemeasure(μ))
@@ -89,9 +89,9 @@ insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
     batched_transport_to_std(S, basemeasure(μ), X)
 @inline batched_transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
     batched_transport_from_std(S, basemeasure(μ), Z)
-@inline batched_transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray, sz::Dims) where {S<:StdMeasure} =
+@inline batched_transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
     batched_transport_to_std_with_rest(S, basemeasure(μ), X, sz)
-@inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray, sz::Dims) where {S<:StdMeasure} =
+@inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
     batched_transport_from_std_with_rest(S, basemeasure(μ), Z, sz)
 
 Adapt.adapt_structure(to, μ::WeightedMeasure) = WeightedMeasure(μ.logweight, Adapt.adapt(to, μ.base))

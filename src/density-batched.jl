@@ -229,7 +229,7 @@ end
 # streams, batched as `(rows, batch dims...)`.
 
 """
-    MeasureBase.batched_logdensityof_with_rest(μ::AbstractMeasure, X, sz::Dims)
+    MeasureBase.batched_logdensityof_with_rest(μ::AbstractMeasure, X, sz::SizeLike)
 
 Consume variates of `μ` from the batch `X` of flat vector streams (first
 dimension along the streams, further dimensions are batch dimensions), a
@@ -250,7 +250,7 @@ combinators consume batches stream by stream.
 """
 function batched_logdensityof_with_rest end
 
-function batched_logdensityof_with_rest(μ::AbstractMeasure, X::AbstractArray, sz::Dims)
+function batched_logdensityof_with_rest(μ::AbstractMeasure, X::AbstractArray, sz::SizeLike)
     _stream_ld_with_rest(logdensityof_impl, μ, X, sz)
 end
 
@@ -260,7 +260,7 @@ function batched_logdensityof_with_rest(μ::AbstractMeasure, x::AbstractVector, 
     return ℓ, x_rest
 end
 
-function _stream_ld_with_rest(f::F, μ, X::AbstractArray, sz::Dims) where {F}
+function _stream_ld_with_rest(f::F, μ, X::AbstractArray, sz::SizeLike) where {F}
     vsz = _stream_consume_size(μ)
     X_μ, X_rest = _batched_consume(X, vsz, sz)
     return _consumed_ld(f, μ, X_μ, vsz), X_rest
@@ -275,15 +275,14 @@ end
 # batch of streams as a flat batch `(vsz..., sz..., batch dims...)`; scalar
 # variates as `(1, sz..., batch dims...)`. Static sizes keep static
 # streams static.
-@inline function _batched_consume(X::AbstractArray, vsz::SizeLike, sz::Dims)
+@inline function _batched_consume(X::AbstractArray, vsz::SizeLike, sz::SizeLike)
     dims = _consumed_dims(vsz)
     X_flat, X_rest = _batched_split(X, _chunk_rows(prod(dims), sz))
     return _reshape_consumed(X_flat, (dims..., sz...)), X_rest
 end
 @inline _consumed_dims(::Tuple{}) = (static(1),)
 @inline _consumed_dims(vsz::SizeLike) = size_dims(vsz)
-@inline _chunk_rows(n::IntegerLike, ::Tuple{}) = n
-@inline _chunk_rows(n::IntegerLike, sz::Dims) = dynamic(n) * prod(sz)
+@inline _chunk_rows(n::IntegerLike, sz::SizeLike) = n * size2length(sz)
 
 @inline _reshape_consumed(X_flat::AbstractArray, ::Tuple{IntegerLike}) = X_flat
 @inline function _reshape_consumed(X_flat::AbstractArray, dims::Tuple{Vararg{IntegerLike}})

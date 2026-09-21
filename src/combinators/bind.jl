@@ -349,7 +349,7 @@ batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = _stream
 
 # Batches of streams containing binds are consumed stream by stream (by
 # the outermost stream combinator, see `fixed_stream_size`):
-@noinline function batched_logdensityof_with_rest(::Bind, ::AbstractArray, ::Dims)
+@noinline function batched_logdensityof_with_rest(::Bind, ::AbstractArray, ::SizeLike)
     throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
 end
 batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, x::AbstractVector) = _bind_ld_impl(vcat, μ, x)
@@ -363,7 +363,7 @@ end
 
 # The secondary measure depends on the primary variate, so batches are
 # generated variate by variate:
-batched_rand_impl(ctx::GenContext, μ::Bind, sz::Dims) = _batched_rand_pointwise(ctx, μ, sz)
+batched_rand_impl(ctx::GenContext, μ::Bind, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
 
 
 # Transport consumes the variate parts of the primary and secondary
@@ -412,13 +412,13 @@ end
 # The secondary measure depends on the primary variate, so batches of
 # streams are consumed stream by stream (by the outermost stream
 # combinator, see `fixed_stream_size`):
-function batched_transport_to_std_with_rest(::Type{S}, μ::Bind, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_to_std_with_rest(::Type{S}, μ::Bind, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _bind_to_std_with_rest(S, μ, X, sz)
 end
 function _bind_to_std_with_rest(::Type{S}, μ::Bind, x::AbstractVector, ::Tuple{}) where {S}
     z, _, x_rest = transport_to_std_with_rest(S, μ, x)
     return z, x_rest
 end
-@noinline function _bind_to_std_with_rest(::Type{S}, ::Bind, ::AbstractArray, ::Dims) where {S}
+@noinline function _bind_to_std_with_rest(::Type{S}, ::Bind, ::AbstractArray, ::SizeLike) where {S}
     throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
 end

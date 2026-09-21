@@ -215,10 +215,10 @@ end
 
 # Several variates per stream interleave the component parts, so the rows
 # of each variate are split by the fixed component sizes:
-function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::Dims)
+function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::SizeLike)
     n_a, n_b = _fixed_stream_length(μ.α), _fixed_stream_length(μ.β)
-    X_μ, X_rest = _batched_split(X, (n_a + n_b) * prod(sz))
-    X_v = reshape(X_μ, (n_a + n_b, sz..., Base.tail(size(X_μ))...))
+    X_μ, X_rest = _batched_split(X, _chunk_rows(n_a + n_b, sz))
+    X_v = maybestatic_reshape(X_μ, (n_a + n_b, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...))
     X_a, X_b = _batched_split(X_v, n_a)
     ℓ_a, _ = batched_logdensityof_with_rest(μ.α, X_a, ())
     ℓ_b, _ = batched_logdensityof_with_rest(μ.β, X_b, ())
@@ -226,7 +226,7 @@ function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::Ab
 end
 
 @inline _fixed_stream_length(μ) = _fixed_stream_length(μ, mspace_flatsize(μ))
-@inline _fixed_stream_length(μ, sz::SizeLike) = dynamic(size2length(sz))
+@inline _fixed_stream_length(μ, sz::SizeLike) = size2length(sz)
 @noinline function _fixed_stream_length(μ, ::NoMSpaceElementSize)
     throw(ArgumentError("Consuming several variates per stream requires measures of type $(nameof(typeof(μ))) to have a known variate size"))
 end
@@ -257,23 +257,23 @@ rand_impl(ctx::GenContext, μ::CombinedMeasure) = _combine_variates(μ.f_c, rand
 @inline _flat_stream(x::AbstractArray) = reduce(vcat, map(_flat_stream, x))
 @inline _flat_stream(x::Union{Tuple,NamedTuple}) = reduce(vcat, map(_flat_stream, values(x)))
 
-batched_rand_impl(ctx::GenContext, μ::CombinedMeasure, sz::Dims) = _batched_rand_pointwise(ctx, μ, sz)
+batched_rand_impl(ctx::GenContext, μ::CombinedMeasure, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
 
 # Batches of merge-combined measures merge the named tuples of batches:
-function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(merge)}, sz::Dims)
+function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(merge)}, sz::SizeLike)
     merge(batched_rand_impl(ctx, μ.α, sz), batched_rand_impl(ctx, μ.β, sz))
 end
 
 # Batches of vcat-combined measures are concatenated along the streams:
-function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(vcat)}, sz::Dims)
+function batched_rand_impl(ctx::GenContext, μ::CombinedMeasure{typeof(vcat)}, sz::SizeLike)
     _combined_batched_rand(ctx, μ, sz, fixed_stream_size(μ))
 end
-function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::True)
+function _combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::SizeLike, ::True)
     A = _as_stream_batch(batched_rand_impl(ctx, μ.α, sz), μ.α)
     B = _as_stream_batch(batched_rand_impl(ctx, μ.β, sz), μ.β)
     return vcat(A, B)
 end
-_combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::Dims, ::False) = _batched_rand_pointwise(ctx, μ, sz)
+_combined_batched_rand(ctx::GenContext, μ::CombinedMeasure, sz::SizeLike, ::False) = _batched_rand_pointwise(ctx, μ, sz)
 
 
 # Transport consumes the variate parts of both component measures in a
@@ -339,7 +339,7 @@ function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, X::AbstractArr
     stacked(map(x -> _combined_batched_to_std(S, μ, x, static(true)), sliced(X, Val(1))))
 end
 
-function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _combined_to_std_with_rest(S, μ, X, sz)
 end
 function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, ::Tuple{}) where {S}
@@ -350,10 +350,11 @@ end
 
 # Several variates per stream interleave the component parts, so the rows
 # of each variate are split by the fixed component sizes:
-function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, sz::Dims) where {S}
+function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, sz::SizeLike) where {S}
     n_rows = _fixed_stream_length(μ.α) + _fixed_stream_length(μ.β)
-    X_μ, X_rest = _batched_split(X, n_rows * prod(sz))
-    Z, _ = _combined_to_std_with_rest(S, μ, reshape(X_μ, (n_rows, sz..., Base.tail(size(X_μ))...)), ())
+    X_μ, X_rest = _batched_split(X, _chunk_rows(n_rows, sz))
+    X_v = maybestatic_reshape(X_μ, (n_rows, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...))
+    Z, _ = _combined_to_std_with_rest(S, μ, X_v, ())
     return _merge_multiplicity(Z, sz), X_rest
 end
 
@@ -372,7 +373,7 @@ function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, Z::AbstractA
     stacked(map(z -> transport_from_std(S, μ, z), sliced(Z, Val(1))))
 end
 
-function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _combined_from_std_with_rest(S, μ, Z, sz)
 end
 # Single streams yield a variate via the point protocol:
@@ -392,7 +393,7 @@ function _combined_batch_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::A
     results = map(z -> transport_from_std_with_rest(S, μ, z), sliced(Z, Val(1)))
     return stacked(map(first, results)), stacked(map(last, results))
 end
-function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, sz::Dims) where {S}
+function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, sz::SizeLike) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))
 end
 

@@ -10,6 +10,11 @@ StdMeasure(::typeof(randn)) = StdNormal()
 
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 
+# Standard measures have real scalar variates, checking them directly keeps
+# the recursion over base measures (and its boxed arguments) out of the
+# kernels:
+@inline checked_arg(::StdMeasure, x::Real) = x
+
 @inline massof(::StdMeasure) = static(1.0)
 
 @inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x

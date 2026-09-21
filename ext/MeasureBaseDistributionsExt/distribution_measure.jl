@@ -18,15 +18,15 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 # Distributions' samplers run on the CPU, variates on other compute units
 # are generated from standard variates via the transports:
 MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure) = _dist_rand(ctx, m, get_compute_unit(ctx))
-MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::Dims) = _dist_batched_rand(ctx, m, sz, get_compute_unit(ctx))
+MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::SizeLike) = _dist_batched_rand(ctx, m, sz, get_compute_unit(ctx))
 
 _dist_rand(ctx::GenContext, m::DistributionMeasure, ::CPUnit) =
     convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
 _dist_rand(ctx::GenContext, m::DistributionMeasure, ::AbstractComputeUnit) =
     MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
-_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::Dims, ::CPUnit) =
-    _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, sz)
-_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::Dims, ::AbstractComputeUnit) =
+_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::SizeLike, ::CPUnit) =
+    _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, asnonstatic(sz))
+_dist_batched_rand(ctx::GenContext, m::DistributionMeasure, sz::SizeLike, ::AbstractComputeUnit) =
     MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
 
 # A single variate for zero batch dimensions, flat batches otherwise:

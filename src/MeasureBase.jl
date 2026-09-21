@@ -45,12 +45,12 @@ using FunctionChains
 using PropertyFunctions: PropSelFunction
 
 using StaticThings:
-    SizeLike, OneToLike, StaticOneToLike, IntegerLike,
+    SizeLike, StaticSizeLike, OneToLike, StaticOneToLike, IntegerLike,
     asaxes, asnonstatic, canonical_size, size_dims,
     maybestatic_eachindex, maybestatic_length, maybestatic_size,
     maybestatic_first, maybestatic_last, maybestatic_view,
     maybestatic_oneto, maybestatic_fill, maybestatic_reshape,
-    axes2size, size2length, split_at,
+    axes2size, size2length, split_at, staticarray_type,
     static_all, static_any, static_reduce,
     sum_leading_dims, drop_leading_dims, merge_leading_dims, all_leading_dims
 

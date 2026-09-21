@@ -66,13 +66,13 @@ function _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::False)
     map(_ -> rand_impl(ctx, ν), _cartidxs(pwr_axes(μ)))
 end
 
-function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::Dims)
+function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::SizeLike)
     _pwr_batched_rand(ctx, μ, sz, fixed_stream_size(pwr_base(μ)))
 end
-function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, ::True)
-    batched_rand_impl(ctx, pwr_base(μ), (asnonstatic(pwr_size(μ))..., sz...))
+function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::SizeLike, ::True)
+    batched_rand_impl(ctx, pwr_base(μ), (size_dims(pwr_size(μ))..., size_dims(sz)...))
 end
-_pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::Dims, ::False) = _batched_rand_pointwise(ctx, μ, sz)
+_pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::SizeLike, ::False) = _batched_rand_pointwise(ctx, μ, sz)
 
 marginals(d::PowerMeasure) = maybestatic_fill(d.parent, d.axes)
 
@@ -160,7 +160,7 @@ _powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::False) = _streamwis
     end
     return nothing
 end
-@inline _check_pwr_dims(::AbstractArray, ::NoMSpaceElementSize, ::Dims, ::Bool) = nothing
+@inline _check_pwr_dims(::AbstractArray, ::NoMSpaceElementSize, ::SizeLike, ::Bool) = nothing
 @inline batched_logdensityof_impl(μ::PowerMeasure, X) = _powered_kernel(logdensityof_impl, μ, X)
 @inline batched_logdensity_def(μ::PowerMeasure, X) = _powered_kernel(logdensity_def, μ, X)
 
@@ -199,14 +199,14 @@ end
 # Streams: a power consumes its size times the variates of the base measure
 # and sums the base results over its axes. Bases without fixed variate
 # sizes are consumed element by element, for single streams.
-function batched_logdensityof_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims)
+function batched_logdensityof_with_rest(μ::PowerMeasure, X::AbstractArray, sz::SizeLike)
     _powered_ld_with_rest(μ, X, sz, fixed_stream_size(pwr_base(μ)))
 end
 function batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz::Tuple{})
     _powered_ld_with_rest(μ, x, sz, fixed_stream_size(pwr_base(μ)))
 end
-function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::Dims, ::True)
-    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (asnonstatic(pwr_size(μ))..., sz...))
+function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::SizeLike, ::True)
+    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (size_dims(pwr_size(μ))..., size_dims(sz)...))
     return sum_leading_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
 end
 function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False)
@@ -219,7 +219,7 @@ function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, :
     end
     return ℓ, x_rest
 end
-@noinline function _powered_ld_with_rest(μ::PowerMeasure, ::AbstractArray, ::Dims, ::False)
+@noinline function _powered_ld_with_rest(μ::PowerMeasure, ::AbstractArray, ::SizeLike, ::False)
     throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
@@ -275,7 +275,7 @@ end
     return nothing
 end
 @inline _check_pwr_flat(x::AbstractArray, k::StaticInteger, dims::Dims) = _check_pwr_dims(x, k, dims, true)
-@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::Dims) = _throw_size_mismatch()
+@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::SizeLike) = _throw_size_mismatch()
 
 checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
@@ -342,17 +342,17 @@ end
 # Streams: a power consumes the variates of its base measure with its size
 # as additional multiplicity. Bases without fixed variate sizes are
 # consumed element by element, for single streams.
-function batched_transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::Dims) where {S<:StdMeasure}
+function batched_transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     _pwr_to_std_with_rest(S, μ, X, sz, fixed_stream_size(pwr_base(μ)))
 end
-@inline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::Dims, ::True) where {S}
-    batched_transport_to_std_with_rest(S, pwr_base(μ), X, (asnonstatic(pwr_size(μ))..., sz...))
+@inline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::SizeLike, ::True) where {S}
+    batched_transport_to_std_with_rest(S, pwr_base(μ), X, (size_dims(pwr_size(μ))..., size_dims(sz)...))
 end
 function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False) where {S}
     z, _, x_rest = transport_to_std_with_rest(S, μ, x)
     return z, x_rest
 end
-@noinline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::Dims, ::False) where {S}
+@noinline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, ::AbstractArray, ::SizeLike, ::False) where {S}
     throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
@@ -396,7 +396,7 @@ end
 
 # The stream length of a power with a base of fixed stream length:
 @inline function _fixed_stream_length(μ::PowerMeasure)
-    _fixed_stream_length(pwr_base(μ)) * prod(asnonstatic(pwr_size(μ)))
+    _fixed_stream_length(pwr_base(μ)) * size2length(pwr_size(μ))
 end
 
 # The nested variate layout of a power over its flat storage, batches of

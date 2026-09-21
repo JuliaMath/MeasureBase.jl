@@ -49,7 +49,7 @@ using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, b
 using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision, get_compute_unit, CPUnit, AbstractComputeUnit
 
 using Static: True, False, StaticInt, static, dynamic
-using StaticThings: asnonstatic
+using StaticThings: SizeLike, asnonstatic
 using FillArrays: Fill, Ones, Zeros
 
 using ArgCheck: @argcheck
