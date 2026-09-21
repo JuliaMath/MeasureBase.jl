@@ -288,11 +288,16 @@ end
 @inline (k::_PointLogd{F,Nothing})(m, x) where {F} = _point_ld(k.f, m, x)
 
 # TODO: Better `map` support in MappedArrays
-_map(f, args...) = map(f, args...)
-_map(f, x::MappedArrays.ReadonlyMappedArray) = mappedarray(fchain((x.f, f)), x.data)
+# `F` keeps the mapped function specialized, it would be passed on
+# unspecialized otherwise and its results boxed:
+_map(f::F, args...) where {F} = map(f, args...)
+# `map` over a named tuple splats its values and boxes the results,
+# mapping over the values themselves doesn't:
+@inline _map(f::F, nt::NamedTuple{names}) where {F,names} = NamedTuple{names}(map(f, values(nt)))
+_map(f::F, x::MappedArrays.ReadonlyMappedArray) where {F} = mappedarray(fchain((x.f, f)), x.data)
 # `map` over a struct array builds struct arrays of the results, variates
 # of the marginals are wanted as plain arrays:
-_map(f, x::StructArray) = [f(m) for m in x]
+_map(f::F, x::StructArray) where {F} = [f(m) for m in x]
 
 function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))
