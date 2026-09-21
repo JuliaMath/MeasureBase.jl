@@ -278,7 +278,7 @@ end
 @inline function _batched_consume(X::AbstractArray, vsz::SizeLike, sz::SizeLike)
     dims = _consumed_dims(vsz)
     X_flat, X_rest = _batched_split(X, _chunk_rows(prod(dims), sz))
-    return _reshape_consumed(X_flat, (dims..., sz...)), X_rest
+    return _reshape_consumed(X_flat, (dims..., size_dims(sz)...)), X_rest
 end
 @inline _consumed_dims(::Tuple{}) = (static(1),)
 @inline _consumed_dims(vsz::SizeLike) = size_dims(vsz)

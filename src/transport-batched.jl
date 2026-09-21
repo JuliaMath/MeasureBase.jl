@@ -159,7 +159,7 @@ end
 @inline _merge_multiplicity(Z::AbstractArray, sz::SizeLike) = merge_leading_dims(Z, static(1) + maybestatic_length(size_dims(sz)))
 @inline _split_multiplicity(Z::AbstractArray, ::Tuple{}, n) = Z
 @inline function _split_multiplicity(Z::AbstractArray, sz::SizeLike, n)
-    maybestatic_reshape(Z, (n, sz..., Base.tail(_batch_dims(Z))...))
+    maybestatic_reshape(Z, (n, size_dims(sz)..., Base.tail(_batch_dims(Z))...))
 end
 
 
