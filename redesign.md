@@ -77,6 +77,16 @@ entries per variate, composed measures implement the with-rest forms.
 `getdof`/`fast_dof` are declaration-derived, used at construction time
 and for chunking, never inside kernels.
 
+**Static variates.** Sizes are `StaticThings.SizeLike` throughout, the
+with-rest multiplicity and the batch size of `rand` included, so a
+statically sized power stays static through streams. On the CPU, bulk
+draws of a fully static size are static arrays and the stream splits and
+reshapes keep them static: `rand`, `transport_to` and `logdensityof` of a
+measure whose variate sizes are all static are type stable and allocation
+free, for powers, tuple and named tuple products and binds over them.
+Sizes that depend on variate values stay dynamic, and other compute units
+allocate their own arrays.
+
 **Random variates.** `rand(ctx::GenContext, μ)` with RNG, precision and
 compute unit (`rand(μ)`, `rand(rng, μ)`, `rand(T, μ)` are wrappers).
 `batched_rand_impl(ctx, μ, sz::Dims)` returns a flat batch, a single
@@ -166,6 +176,8 @@ Full suite (Aqua, extensions, doctests) on CPU with JLArrays cases and
 a FixedSizeArrays transparency check (fixed-size inputs give fixed-size
 outputs; FixedSizeArrays stays a test dependency, allocating fixed-size
 variates by default is a HeterogeneousComputing decision for later).
+`test/static_variates.jl` checks that statically sized measures stay type
+stable and allocation free.
 `test/test_reactant.jl` runs as part of the suite on 64-bit Linux and
 macOS with stable Julia, adding Reactant on demand as MGVI does (backend
 via `MEASUREBASE_REACTANT_BACKEND`). `test/cuda` is opt-in. Both run
@@ -211,8 +223,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   Quantile results within `4 eps` of the support edges snap to the edges
   only on the generic logistic path of wrapped distributions.
 - Decisions pending: `Half` tails via log-ccdf, device random variate
-  infrastructure and `rand!`, Tier-1 static variates, the
-  `smart-constructors.jl` review (location-scale arrays as affine
-  pushforwards of powers), `_static_ndims` type-first vs. instance-first.
+  infrastructure and `rand!`, the `smart-constructors.jl` review
+  (location-scale arrays as affine pushforwards of powers),
+  `_static_ndims` type-first vs. instance-first.
 - Polish before merge: docs pass, NEWS, history curation, version bump,
   remove this file.
