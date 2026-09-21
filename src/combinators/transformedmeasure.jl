@@ -206,7 +206,7 @@ end
 function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, k::StaticInteger) where {F}
     f_inv = ν.finv.f
     ℓ = _batched_kernel(f, ν.origin, broadcast(f_inv, Y))
-    ladj = _sum_leading_dims(broadcast(_LadjOf(f_inv), Y), k)
+    ladj = sum_leading_dims(broadcast(_LadjOf(f_inv), Y), k)
     return _lazy_combine_ladj(ℓ, ladj)
 end
 function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, ::NoMSpaceElementSize) where {F}

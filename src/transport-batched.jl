@@ -45,22 +45,15 @@ end
     stacked(map(Base.Fix1(_ToStd{S}(), μ), sliced(X, Val(K))))
 end
 
-# Merge the leading `N` dimensions of an array into one, `N == 0` adds a
-# leading dimension of size one:
-@inline function _merge_leading_dims(A::AbstractArray, ::StaticInteger{N}) where {N}
-    ndims(A) >= N || _throw_size_mismatch()
-    dims = _batch_dims(A)
-    lead = ntuple(i -> dims[i], Val(N))
-    _reshape_batch(A, (prod(lead), ntuple(i -> dims[N + i], Val(length(dims) - N))...))
-end
-@inline _merge_leading_dims(A::AbstractArray, ::StaticInteger{0}) = _reshape_batch(A, (static(1), _batch_dims(A)...))
-
 # A flat batch of variates of `μ` as a batch of streams, the variate
 # dimensions merged into the first dimension. Tuples of batches (tuple
 # products and their powers) interleave the rows of their components
 # variate by variate.
 @inline _as_stream_batch(X, μ) = _as_stream_batch(X, _static_ndims(μ))
-@inline _as_stream_batch(X::AbstractArray, ::StaticInteger{K}) where {K} = _merge_leading_dims(X, static(K))
+@inline function _as_stream_batch(X::AbstractArray, ::StaticInteger{K}) where {K}
+    ndims(X) >= K || _throw_size_mismatch()
+    merge_leading_dims(X, static(K))
+end
 @inline _as_stream_batch(x::Number, ::StaticInteger{0}) = SVector(x)
 @noinline function _as_stream_batch(X, ::NoMSpaceElementSize)
     throw(ArgumentError("Concatenating batches of variates requires MeasureBase.mspace_ndims to be declared for the measures involved"))
@@ -71,12 +64,12 @@ end
 function _as_stream_batch(X::Union{Tuple,NamedTuple}, μ::PowerMeasure)
     ν, _ = _pwr_unwrap(μ)
     n_pwr = length(_pwr_dims(μ))
-    n = prod(map(dynamic, _pwr_dims(μ)))
+    n = prod(asnonstatic(_pwr_dims(μ)))
     parts = map(values(X), values(marginals(ν))) do Xi, m
         A = _as_stream_batch(Xi, m)
         reshape(A, (size(A, 1), n, ntuple(i -> size(A, 1 + n_pwr + i), Val(ndims(A) - 1 - n_pwr))...))
     end
-    _merge_leading_dims(vcat(parts...), static(2))
+    merge_leading_dims(vcat(parts...), static(2))
 end
 
 # The standard variates of a single variate must form a vector:
@@ -163,10 +156,10 @@ end
 # Standard variates of `prod(sz)` variates per stream, `(dof, sz..., batch
 # dims...)`, as one stream chunk `(dof * prod(sz), batch dims...)`, and
 # back:
-@inline _merge_multiplicity(Z::AbstractArray, sz::Dims) = _merge_leading_dims(Z, static(1) + static(length(sz)))
+@inline _merge_multiplicity(Z::AbstractArray, sz::Dims) = merge_leading_dims(Z, static(1) + static(length(sz)))
 @inline _split_multiplicity(Z::AbstractArray, ::Tuple{}, n) = Z
 @inline function _split_multiplicity(Z::AbstractArray, sz::Dims, n)
-    _reshape_batch(Z, (n, sz..., Base.tail(_batch_dims(Z))...))
+    maybestatic_reshape(Z, (n, sz..., Base.tail(_batch_dims(Z))...))
 end
 
 

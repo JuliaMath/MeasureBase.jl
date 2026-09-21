@@ -173,24 +173,18 @@ end
 
 @inline mspace_flatsize(μ::SuperpositionMeasure) = mspace_flatsize(typeof(μ))
 
-# The variate rank of a superposition is the common rank of its components:
+# The variate rank of a superposition is the common rank of its components,
+# folded pairwise over the component types so that it stays a constant:
 @inline mspace_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = mspace_ndims(eltype(C))
-@generated function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
-    args = [:(mspace_ndims($T)) for T in C.parameters]
-    :(_common_ndims(($(args...),), MU))
+@inline function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
+    static_reduce(_CommonNDims{MU}(), mspace_ndims, C)
 end
-# Pairwise comparisons fold to a constant rank where `all` doesn't (Julia 1.10):
-@inline _common_ndims(ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU} = _common_ndims_of(first(ns), Base.tail(ns), MU)
-@inline _common_ndims(::Tuple, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
-@inline _common_ndims_of(n::Integer, ::Tuple{}, ::Type) = n
-@inline function _common_ndims_of(n::Integer, ns::Tuple{Integer,Vararg{Integer}}, ::Type{MU}) where {MU}
-    n == first(ns) ? _common_ndims_of(n, Base.tail(ns), MU) : NoMSpaceElementSize{MU}()
-end
+struct _CommonNDims{MU} <: Function end
+@inline (::_CommonNDims{MU})(a::IntegerLike, b::IntegerLike) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()
+@inline (::_CommonNDims{MU})(::Any, ::Any) where {MU} = NoMSpaceElementSize{MU}()
+
 @inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
-@inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple} = _common_scalar_flatsize(C)
-@generated function _common_scalar_flatsize(::Type{C}) where {C<:Tuple}
-    args = [:(mspace_flatsize($T)) for T in C.parameters]
-    :(_all_scalar_sizes($(args...)))
+@inline function mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple}
+    _scalar_or_unknown(static_reduce(_common_flatsize, mspace_flatsize, C))
 end
-@inline _all_scalar_sizes(::Tuple{}...) = ()
-@inline _all_scalar_sizes(szs...) = NoMSpaceElementSize{typeof(szs)}()
+@inline _common_flatsize(a, b) = a === b ? a : NoMSpaceElementSize{typeof((a, b))}()

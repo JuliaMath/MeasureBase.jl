@@ -26,30 +26,6 @@ _exp_cumsum_log(xs::AbstractVector) = exp.(cumsum(log.(xs)))
 Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tuple(SVector{N}(v))
 
 
-Base.@propagate_inbounds function _get_or_view(A::AbstractVector, from::IntegerLike, until::IntegerLike)
-    view(A, dynamic(from):dynamic(until))
-end
-
-Base.@propagate_inbounds function _get_or_view(
-    A::StaticVector,
-    from::StaticInteger{F},
-    until::StaticInteger{U},
-) where {F,U}
-    SVector{U - F + 1,eltype(A)}(_get_or_view(Tuple(A), from, until))
-end
-
-Base.@propagate_inbounds function _get_or_view(tpl::Tuple, from::IntegerLike, until::IntegerLike)
-    ntuple(i -> tpl[from + i - 1], Val(until - from + 1))
-end
-
-
-@inline function _split_after(x::AbstractVector, n::IntegerLike)
-    idxs = maybestatic_eachindex(x)
-    i_first = maybestatic_first(idxs)
-    i_last = maybestatic_last(idxs)
-    _get_or_view(x, i_first, i_first + n - one(n)), _get_or_view(x, i_first + n, i_last)
-end
-
 @inline _split_after(x::Tuple, n) = _split_after(x::Tuple, Val{n}())
 @inline _split_after(x::Tuple, ::Val{N}) where {N} = x[begin:(begin+N-1)], x[(begin+N):end]
 
@@ -96,21 +72,21 @@ _cat_measures(a::AbstractVector, b::AbstractVector) = vcat(a, b)
 # Take the beginning of a flat vector stream as a variate of size `sz`,
 # scalar variates have size `()` and multi-rank variates are reshaped:
 Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::Tuple{IntegerLike}) =
-    _split_after(x, sz[1])
+    split_at(x, sz[1])
 
 Base.@propagate_inbounds function _consume_from_stream(x::AbstractVector, ::Tuple{})
     idxs = maybestatic_eachindex(x)
     i_first = maybestatic_first(idxs)
-    x[i_first], _get_or_view(x, i_first + one(i_first), maybestatic_last(idxs))
+    x[i_first], maybestatic_view(x, i_first + one(i_first), maybestatic_last(idxs))
 end
 
 function _consume_from_stream(x::AbstractVector, sz::Tuple{Vararg{IntegerLike}})
-    a_flat, x_rest = _split_after(x, size2length(sz))
+    a_flat, x_rest = split_at(x, size2length(sz))
     return maybestatic_reshape(a_flat, sz), x_rest
 end
 
 Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::StaticArrays.Size) =
-    _consume_from_stream(x, _size_dims(sz))
+    _consume_from_stream(x, size_dims(sz))
 
 function _consume_from_stream(x::AbstractVector, @nospecialize(sz))
     throw(ArgumentError("Can't consume a variate of size $sz from a flat vector stream"))

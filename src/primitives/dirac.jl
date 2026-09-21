@@ -83,16 +83,11 @@ end
 
 # Batches of array variates: all elements of a variate must match.
 function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Number,N}}, X::AbstractArray) where {N}
-    matches = _all_leading_dims(X .== μ.x, static(N))
+    matches = all_leading_dims(X .== μ.x, static(N))
     ifelse.(matches, zero(_logd_numtype(X)), _neg_inf_logd(X))
 end
 function batched_logdensity_def(μ::Dirac{<:AbstractArray{<:Number}}, X::AbstractArray)
     _zero_logd_batch(X, static(ndims(μ.x)))
-end
-
-@inline _all_leading_dims(A::AbstractArray{Bool,N}, ::StaticInteger{N}) where {N} = all(A)
-@inline function _all_leading_dims(A::AbstractArray{Bool}, ::StaticInteger{N}) where {N}
-    _drop_leading_dims(all(A; dims = ntuple(identity, Val(N))), static(N))
 end
 
 Adapt.adapt_structure(to, μ::Dirac) = Dirac(Adapt.adapt(to, μ.x))

@@ -45,17 +45,14 @@ using FunctionChains
 using PropertyFunctions: PropSelFunction
 
 using StaticThings:
-    AxesLike, StaticAxesLike, SizeLike, StaticSizeLike,
-    OneToLike, StaticOneTo, StaticOneToLike, RealLike,
-    IntegerLike, StaticUnitRange, StaticUnitRangeLike,
-    NoTypeSize,
-    asaxes, asnonstatic, 
-    canonical_axes, canonical_indices, canonical_size,
-    maybestatic_axes, maybestatic_eachindex,
-    maybestatic_length, maybestatic_size, maybestatic_first, maybestatic_last,
+    SizeLike, OneToLike, StaticOneToLike, IntegerLike,
+    asaxes, asnonstatic, canonical_size, size_dims,
+    maybestatic_eachindex, maybestatic_length, maybestatic_size,
+    maybestatic_first, maybestatic_last, maybestatic_view,
     maybestatic_oneto, maybestatic_fill, maybestatic_reshape,
-    size_from_type, axes2size, size2axes, size2length,
-    staticarray_type
+    axes2size, size2length, split_at,
+    static_all, static_any, static_reduce,
+    sum_leading_dims, drop_leading_dims, merge_leading_dims, all_leading_dims
 
 import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype

@@ -289,7 +289,7 @@ function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, n::IntegerL
     if maybestatic_length(z) < n
         throw(ArgumentError("Stream of standard variates too short during transport"))
     end
-    z_μ, z_rest = _split_after(z, n)
+    z_μ, z_rest = split_at(z, n)
     return transport_from_std(S, μ, _chunk_as_variate(μ, z_μ)), z_rest
 end
 

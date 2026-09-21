@@ -61,9 +61,9 @@ end
 
 # The variate rank as a static integer, from the type where known:
 @inline _static_ndims(μ::MU) where {MU} = _static_ndims(mspace_ndims(MU), μ)
-@inline _static_ndims(n::Integer, μ) = static(n)
+@inline _static_ndims(n::IntegerLike, μ) = static(n)
 @inline _static_ndims(::NoMSpaceElementSize, μ) = _static_ndims_of(mspace_ndims(μ))
-@inline _static_ndims_of(n::Integer) = static(n)
+@inline _static_ndims_of(n::IntegerLike) = static(n)
 @inline _static_ndims_of(n::NoMSpaceElementSize) = n
 
 """
@@ -79,7 +79,7 @@ function batched_logdensity_def end
     _default_batched_kernel(logdensity_def, μ, X, _static_ndims(μ))
 end
 
-@inline _default_batched_kernel(f::F, μ, X, n::Integer) where {F} = _default_batched_kernel(f, μ, X, static(n))
+@inline _default_batched_kernel(f::F, μ, X, n::IntegerLike) where {F} = _default_batched_kernel(f, μ, X, static(n))
 @inline _default_batched_kernel(f::F, μ, X, ::StaticInteger{0}) where {F} = _scalar_kernel_broadcast(f, μ, X)
 @inline _default_batched_kernel(f::F, μ, X::AbstractArray, ::StaticInteger{0}) where {F} = _scalar_kernel_broadcast(f, μ, X)
 @inline function _default_batched_kernel(f::F, μ, X::AbstractArray, ::StaticInteger{K}) where {F,K}
@@ -199,8 +199,8 @@ const _LazyBroadcast = Broadcast.Broadcasted
 
 # The leading dimensions of a flat batch must match a flat variate size:
 @inline function _check_flatsize(A::AbstractArray, sz_flat::SizeLike)
-    n = length(_size_dims(sz_flat))
-    if ndims(A) < n || ntuple(i -> size(A, i), Val(n)) != Tuple(_size_dims(sz_flat))
+    n = length(size_dims(sz_flat))
+    if ndims(A) < n || ntuple(i -> size(A, i), Val(n)) != asnonstatic(sz_flat)
         _throw_size_mismatch()
     end
     return nothing
@@ -210,51 +210,12 @@ end
 @inline _materialize(x) = x
 
 
-# Lazy sums over the leading `N` dimensions; a full reduction yields a
-# number. Lazy broadcasts are reduced without materialization where the
-# broadcast style supports it, and materialized before partial reductions.
-const _EagerReducibleBroadcast = Broadcast.Broadcasted{<:Union{Broadcast.DefaultArrayStyle,StaticArrays.StaticArrayStyle}}
-
-@inline _sum_leading_dims(x::Number, ::StaticInteger{0}) = x
-@noinline function _sum_leading_dims(::Number, ::StaticInteger)
-    throw(ArgumentError("Variates of powers of measures must be arrays"))
-end
-@inline _sum_leading_dims(A::AbstractArray, n::StaticInteger) = _sum_leading_dims_impl(A, n, static(ndims(A)))
-@inline _sum_leading_dims(bc::_LazyBroadcast, n::StaticInteger) = _sum_leading_dims_lazy(bc, n, static(ndims(bc)))
-@inline _sum_leading_dims_lazy(bc::_LazyBroadcast, ::StaticInteger{0}, ::StaticInteger) = bc
-@inline _sum_leading_dims_lazy(bc::_LazyBroadcast, ::StaticInteger{0}, ::StaticInteger{0}) = bc
-@inline _sum_leading_dims_lazy(bc::_EagerReducibleBroadcast, ::StaticInteger{0}, ::StaticInteger{0}) = bc
-@inline function _sum_leading_dims_lazy(bc::_EagerReducibleBroadcast, ::StaticInteger{N}, ::StaticInteger{N}) where {N}
-    length(bc) == 0 ? sum(copy(bc)) : sum(bc)
-end
-@inline _sum_leading_dims_lazy(bc::_LazyBroadcast, ::StaticInteger{N}, ::StaticInteger{N}) where {N} = sum(copy(bc))
-@inline function _sum_leading_dims_lazy(bc::_LazyBroadcast, n::StaticInteger, ::StaticInteger)
-    _sum_leading_dims(copy(bc), n)
-end
-@inline _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{0}, ::StaticInteger) = A
-@inline _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{0}, ::StaticInteger{0}) = A
-@inline _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{N}, ::StaticInteger{N}) where {N} = sum(A)
-@inline function _sum_leading_dims_impl(A::AbstractArray, ::StaticInteger{N}, ::StaticInteger) where {N}
-    _drop_leading_dims(_sum_dims_seq(A, static(N)), static(N))
-end
-
-# Drops the leading `N` (singleton) dimensions by reshaping, which keeps
-# static arrays static and infers where `dropdims` doesn't:
-@inline function _drop_leading_dims(A::AbstractArray, ::StaticInteger{N}) where {N}
-    dims = _batch_dims(A)
-    _reshape_batch(A, ntuple(i -> dims[N + i], Val(length(dims) - N)))
-end
-@inline _sum_dims_seq(A::AbstractArray, ::StaticInteger{0}) = A
-@inline function _sum_dims_seq(A::AbstractArray, ::StaticInteger{N}) where {N}
-    _sum_dims_seq(sum(A; dims = N), static(N - 1))
-end
-
 @inline _lazy_add(a::Number, b::Number) = a + b
 @inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(+, a, b))
 
 # Zero log-densities over the batch dimensions of a flat batch of variates
 # with `n` variate dimensions:
-@inline function _zero_logd_batch(X::AbstractArray, n::Integer)
+@inline function _zero_logd_batch(X::AbstractArray, n::IntegerLike)
     FillArrays.Zeros{_logd_numtype(X)}(ntuple(i -> size(X, n + i), ndims(X) - n))
 end
 @inline _zero_logd_batch(X::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = zero(_logd_numtype(X))
@@ -320,23 +281,21 @@ end
     return _reshape_consumed(X_flat, (dims..., sz...)), X_rest
 end
 @inline _consumed_dims(::Tuple{}) = (static(1),)
-@inline _consumed_dims(vsz::SizeLike) = _size_dims(vsz)
+@inline _consumed_dims(vsz::SizeLike) = size_dims(vsz)
 @inline _chunk_rows(n::IntegerLike, ::Tuple{}) = n
 @inline _chunk_rows(n::IntegerLike, sz::Dims) = dynamic(n) * prod(sz)
 
 @inline _reshape_consumed(X_flat::AbstractArray, ::Tuple{IntegerLike}) = X_flat
 @inline function _reshape_consumed(X_flat::AbstractArray, dims::Tuple{Vararg{IntegerLike}})
-    _reshape_batch(X_flat, (dims..., Base.tail(_batch_dims(X_flat))...))
+    maybestatic_reshape(X_flat, (dims..., Base.tail(_batch_dims(X_flat))...))
 end
 
-# Sizes as tuples of (maybe static) integers, reshapes that keep static
-# arrays static, and the leading dimension of a batch of streams:
-@inline _batch_dims(A::AbstractArray) = _size_dims(maybestatic_size(A))
-@inline _reshape_batch(A::AbstractArray, dims::Tuple) = reshape(A, map(dynamic, dims))
-@inline _reshape_batch(A::StaticArray, dims::Tuple{Vararg{StaticInteger}}) = maybestatic_reshape(A, dims)
-@inline _as_stdstream_batch(Z::AbstractArray) = _reshape_batch(Z, (static(1), _batch_dims(Z)...))
+# Sizes as tuples of (maybe static) integers and the leading dimension of
+# a batch of streams:
+@inline _batch_dims(A::AbstractArray) = size_dims(maybestatic_size(A))
+@inline _as_stdstream_batch(Z::AbstractArray) = merge_leading_dims(Z, static(0))
 @inline _as_stdstream_batch(z::Number) = SVector(z)
-@inline _drop_stdstream_dim(Z::AbstractArray) = _reshape_batch(Z, Base.tail(_batch_dims(Z)))
+@inline _drop_stdstream_dim(Z::AbstractArray) = drop_leading_dims(Z, static(1))
 
 @inline function _batched_split(A::AbstractArray, n::IntegerLike)
     n_rows = dynamic(n)
@@ -352,11 +311,7 @@ end
 end
 
 # Static streams split into static chunks for static row counts:
-@inline function _batched_split(A::StaticVector, n_rows::StaticInteger{N}) where {N}
-    idxs = maybestatic_eachindex(A)
-    i0 = maybestatic_first(idxs)
-    _get_or_view(A, i0, i0 + n_rows - static(1)), _get_or_view(A, i0 + n_rows, maybestatic_last(idxs))
-end
+@inline _batched_split(A::StaticVector, n_rows::StaticInteger) = split_at(A, n_rows)
 
 @noinline function _throw_stream_too_long()
     throw(ArgumentError("Variate streams too long during density evaluation"))
@@ -367,7 +322,7 @@ end
 # in fused operations; otherwise a batch of streams is consumed stream by
 # stream by the outermost stream combinator.
 @inline fixed_stream_size(μ::MU) where {MU} = fixed_stream_size(MU)
-@inline fixed_stream_size(::Type{MU}) where {MU} = static(mspace_ndims(MU) isa Integer)
+@inline fixed_stream_size(::Type{MU}) where {MU} = static(mspace_ndims(MU) isa IntegerLike)
 
 # Batches of streams consumed stream by stream (host loop):
 function _streamwise_ld(f::F, μ, X::AbstractArray) where {F}

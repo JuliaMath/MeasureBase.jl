@@ -237,7 +237,7 @@ end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{0}) where {F}
     mar = marginals(μ)
     _check_flatsize(X, maybestatic_size(mar))
-    _sum_leading_dims(_marginal_broadcast(_DynamicPointLogd(f), mar, X), static(ndims(mar)))
+    sum_leading_dims(_marginal_broadcast(_DynamicPointLogd(f), mar, X), static(ndims(mar)))
 end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{K}) where {F,K}
     _marginal_slices_ld(f, marginals(μ), X, Val(K), Val(ndims(X) - K - ndims(marginals(μ))))
@@ -275,7 +275,7 @@ end
 @inline function logdensity_def(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
     _array_product_ld(logdensity_def, μ, x, mspace_ndims(M))
 end
-@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::Integer) where {F}
+@inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::IntegerLike) where {F}
     _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
 end
 @inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::NoMSpaceElementSize) where {F}
@@ -346,7 +346,7 @@ fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
 # of freedom each, so their total needs no reduction over the marginals
 # (which may live on a device):
 @inline function _unit_dof(::Type{M}) where {M}
-    static(mspace_ndims(M) === 0 && preferred_stdmeasure(M) isa Type{<:StdMeasure})
+    static(_static_ndims_of(mspace_ndims(M)) === static(0) && preferred_stdmeasure(M) isa Type{<:StdMeasure})
 end
 @inline _sum_dofs(f, mar::StaticArray) = mapreduce(f, +, mar; init = static(0))
 @inline _dynamic_dof(n::IntegerLike) = dynamic(n)
@@ -420,7 +420,7 @@ end
 # Streams of tuple product variates are consumed marginal by marginal:
 function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x::AbstractVector) where {S<:StdMeasure}
     z, x_rest = _marginals_to_std_with_rest(S, values(marginals(μ)), x)
-    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return z, x_μ, x_rest
 end
 
@@ -556,7 +556,7 @@ end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{true}, ::Any) where {S}
     mar = marginals(μ)
     size(Z, 1) == length(mar) || _throw_std_length_mismatch()
-    _materialize(_marginal_broadcast(_FromStd{S}(), mar, _reshape_batch(Z, (_batch_dims(mar)..., Base.tail(_batch_dims(Z))...))))
+    _materialize(_marginal_broadcast(_FromStd{S}(), mar, maybestatic_reshape(Z, (_batch_dims(mar)..., Base.tail(_batch_dims(Z))...))))
 end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{false}, ::StaticInteger{K}) where {S,K}
     X, Z_rest = _marginals_from_std_loop(S, marginals(μ), Z, Val(K))
@@ -689,13 +689,7 @@ function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}},
 end
 
 # Folded pairwise over the marginal types, so that the result is a constant:
-@inline fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple} = _all_fixed_stream_sizes(M)
-@inline _all_fixed_stream_sizes(::Type{Tuple{}}) = static(true)
-@inline function _all_fixed_stream_sizes(::Type{M}) where {M<:Tuple}
-    _both(fixed_stream_size(Base.tuple_type_head(M)), _all_fixed_stream_sizes(Base.tuple_type_tail(M)))
-end
-@inline _both(::True, ::True) = static(true)
-@inline _both(::StaticBool, ::StaticBool) = static(false)
+@inline fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple} = static_all(fixed_stream_size, M)
 @inline function fixed_stream_size(::Type{<:ProductMeasure{NamedTuple{names,M}}}) where {names,M<:Tuple}
     fixed_stream_size(ProductMeasure{M})
 end

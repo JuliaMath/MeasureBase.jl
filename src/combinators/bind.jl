@@ -259,7 +259,7 @@ end
 function _bind_tpm_sc_cat(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector)
     tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
     # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
-    x, y = _split_after(xy, length(a) + length(b))
+    x, y = split_at(xy, maybestatic_length(a) + maybestatic_length(b))
     return tpm_μ, x, y
 end
 
@@ -330,7 +330,7 @@ end
 function logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a(μ, a), x2)
-    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return ℓ_a + ℓ_b, x_μ, x_rest
 end
 
@@ -387,7 +387,7 @@ end
 function transport_to_std_with_rest(::Type{S}, μ::_BindBy{typeof(vcat)}, x::AbstractVector) where {S<:StdMeasure}
     z_a, a, x2 = transport_to_std_with_rest(S, μ.α, x)
     z_b, _, x_rest = transport_to_std_with_rest(S, _get_β_a(μ, a), x2)
-    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return vcat(z_a, z_b), x_μ, x_rest
 end
 

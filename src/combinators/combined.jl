@@ -31,7 +31,7 @@ function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where {FC}
 end
 
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) =
-    _split_after(ab, length(test_a))
+    split_at(ab, maybestatic_length(test_a))
 
 _split_variate_byvalue(::typeof(vcat), ::Number, ab::AbstractVector) =
     _consume_from_stream(ab, ())
@@ -186,7 +186,7 @@ end
 
 @inline mspace_ndims(::Type{<:CombinedMeasure{typeof(vcat)}}) = 1
 @inline function fixed_stream_size(::Type{<:CombinedMeasure{<:Any,MA,MB}}) where {MA,MB}
-    static(fixed_stream_size(MA) === static(true) && fixed_stream_size(MB) === static(true))
+    fixed_stream_size(MA) & fixed_stream_size(MB)
 end
 
 # Batches of vcat-combined variates are batches of streams: with fixed
@@ -234,7 +234,7 @@ end
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
-    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return ℓ_a + ℓ_b, x_μ, x_rest
 end
 
@@ -297,7 +297,7 @@ end
 function transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector) where {S<:StdMeasure}
     z_a, _, x2 = transport_to_std_with_rest(S, μ.α, x)
     z_b, _, x_rest = transport_to_std_with_rest(S, μ.β, x2)
-    x_μ, _ = _split_after(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return vcat(z_a, z_b), x_μ, x_rest
 end
 

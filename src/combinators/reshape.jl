@@ -63,7 +63,7 @@ mreshape(m::AbstractMeasure, sz::SizeLike) = pushfwd(Reshape(sz, some_mspace_els
     _reshaped_flatsize(mspace_flatsize(μ.origin), mspace_elsize(μ.origin), μ.f.output_size)
 end
 @inline function _reshaped_flatsize(sz_flat::SizeLike, sz_outer::SizeLike, sz_out)
-    _reshaped_flatsize(Val(length(_size_dims(sz_flat)) == length(_size_dims(sz_outer))), sz_out)
+    _reshaped_flatsize(Val(length(size_dims(sz_flat)) == length(size_dims(sz_outer))), sz_out)
 end
 @inline _reshaped_flatsize(::Val{true}, sz_out) = sz_out
 @inline _reshaped_flatsize(::Val{false}, sz_out) = NoMSpaceElementSize{typeof(sz_out)}()
