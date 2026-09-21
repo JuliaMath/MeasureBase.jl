@@ -108,7 +108,7 @@ function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet
     K = length(d)
     αs, βs = _stick_breaking_params(d)
     Zc = _as_columns(Z)
-    beta_v = _beta_quantile.(αs, βs, _unit_clamp.(Zc))
+    beta_v = _beta_quantile.(αs, βs, _unit_interior.(Zc))
     cp = cumprod(beta_v; dims = 1)
     # Each component takes what its Beta variate leaves of the remaining mass:
     X = vcat(1 .- _rows(cp, 1:1), _rows(cp, 1:(K - 2)) .- _rows(cp, 2:(K - 1)), _rows(cp, (K - 1):(K - 1)))

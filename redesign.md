@@ -189,20 +189,25 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   `checked_arg` at the entry points; variates of the right shape never
   throw: densities are `-Inf` outside the support (including non-integers
   for counting-based measures and infinite values), transports are `NaN`
-  outside the support of the source (boundaries may map to `±Inf`), `NaN`
-  inputs give `NaN` or `-Inf`, relative densities keep `+Inf`/`-Inf`/`NaN`.
+  outside the support of the source, `NaN` inputs give `NaN` or `-Inf`,
+  relative densities keep `+Inf`/`-Inf`/`NaN`. Finite inputs give finite
+  transports: uniform inputs are clamped into the open unit interval
+  before quantiles (the endpoints stand for their nearest interior grid
+  points, a null-set convention like BAT's `[eps, 1 - eps]` clamping in
+  practice), tail probabilities of log-space conversions floor at the
+  smallest positive float.
   Kernels must not throw outside the support, since the masks evaluate
   both branches (`abs`, `clamp`, `min` guards instead of `NaNMath`, which
   isn't device-compatible). Downstream checks such as BAT's
   `checked_logdensityof` stay downstream.
-- BAT's boundary tweaks (to discuss): adopted are infinite variates
-  outside the support of continuous wrapped distributions, `-Inf + Inf`
-  giving `-Inf` in pushforward densities and a zero Jacobian term where
-  both densities vanish. Not adopted: clamping uniform-direction inputs to
-  `[eps, 1 - eps]` (here `NaN` outside, `±Inf` or support edges at 0 and
-  1), replacing finite densities with infinite Jacobian terms by `-1e38`,
-  and re-evaluating densities an `eps` inside the support where
-  Distributions returns `NaN` (the family kernels are exact there).
+- BAT's boundary tweaks: adopted are infinite variates outside the
+  support of continuous wrapped distributions, the clamping of uniform
+  inputs into the open unit interval (for inputs inside `[0, 1]`, outside
+  stays `NaN`), `-Inf + Inf` giving `-Inf` in pushforward densities and a zero
+  Jacobian term where both densities vanish. Not adopted: replacing finite
+  densities with infinite Jacobian terms by `-1e38`, and re-evaluating
+  densities an `eps` inside the support where Distributions returns `NaN`
+  (the family kernels are exact there).
   Quantile results within `4 eps` of the support edges snap to the edges
   only on the generic logistic path of wrapped distributions.
 - Decisions pending: `Half` tails via log-ccdf, device random variate

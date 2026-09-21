@@ -10,17 +10,17 @@
 @inline _normccdf(z) = erfc(z * invsqrt2) / 2
 
 @inline function transport_def(::StdExponential, ::StdNormal, z)
-    ifelse(z < zero(z), -log1p(-Φ(z)), -log(_normccdf(z)))
+    ifelse(z < zero(z), -log1p(-Φ(z)), -log(_positive_prob(_normccdf(z))))
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
-    _nan_outside(μ, x, ifelse(x < oftype(x, logtwo), Φinv(-expm1(-x)), -Φinv(exp(-x))))
+    _nan_outside(μ, x, ifelse(x < oftype(x, logtwo), Φinv(_positive_prob(-expm1(-x))), -Φinv(min(_positive_prob(exp(-x)), one(x)))))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
 
 @inline function transport_def(::StdNormal, ::StdLogistic, l)
-    ifelse(l < zero(l), Φinv(logistic(l)), -Φinv(logistic(-l)))
+    ifelse(l < zero(l), Φinv(_positive_prob(logistic(l))), -Φinv(_positive_prob(logistic(-l))))
 end
 
 @inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(abs(expm1(-x))) + x)

@@ -24,16 +24,16 @@ export StdNormal
 @inline batched_rand_impl(ctx::GenContext, ::StdNormal, sz::Dims) = _randn_bulk(ctx, sz)
 
 Φ(z) = erfc(-z * invsqrt2) / 2
-Φinv(p) = -erfcinv(2 * clamp(p, zero(p), one(p))) * sqrt2
+Φinv(p) = -erfcinv(2 * p) * sqrt2
 
 InverseFunctions.inverse(::typeof(Φ)) = Φinv
 InverseFunctions.inverse(::typeof(Φinv)) = Φ
 
 smf(::StdNormal, x) = Φ(x)
-invsmf(::StdNormal, p) = Φinv(p)
+invsmf(::StdNormal, p) = _nan_outside(StdUniform(), p, Φinv(_unit_interior(p)))
 
 smf(::StdNormal) = Φ
 invsmf(::StdNormal) = Φinv
 
-transport_def(::StdNormal, μ::StdUniform, p) = _nan_outside(μ, p, Φinv(p))
+transport_def(::StdNormal, μ::StdUniform, p) = _nan_outside(μ, p, Φinv(_unit_interior(p)))
 transport_def(::StdUniform, ::StdNormal, x) = Φ(x)

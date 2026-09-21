@@ -45,8 +45,16 @@ using JLArrays: JLArray
             @test isnan(transport_to(ν, StdUniform())(1.5))
             @test isnan(transport_to(ν, StdUniform())(-0.5))
         end
-        @test transport_to(StdExponential(), StdUniform())(1.0) == Inf
-        @test transport_to(StdNormal(), StdUniform())(0.0) == -Inf
+        # Endpoints of the unit interval stand for their nearest interior
+        # points, tails never underflow to infinite variates:
+        for ν in (StdExponential(), StdLogistic(), StdNormal(), Half(StdNormal()))
+            f = transport_to(ν, StdUniform())
+            @test isfinite(f(0.0)) && isfinite(f(1.0)) && f(0.0) <= f(0.5) <= f(1.0)
+            @test f(1.0) == f(prevfloat(1.0)) && f(0.0) == f(floatmin(Float64))
+        end
+        for (ν, μ) in ((StdExponential(), StdNormal()), (StdNormal(), StdExponential()), (StdNormal(), StdLogistic()))
+            @test all(isfinite, transport_to(ν, μ).([-1e6, -40.0, 40.0, 1e6][MeasureBase.insupport.(Ref(μ), [-1e6, -40.0, 40.0, 1e6])]))
+        end
         @test !isnan(transport_to(StdUniform(), StdNormal())(-37.0))
         @test !isnan(transport_to(StdUniform(), StdLogistic())(-800.0))
     end

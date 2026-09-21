@@ -77,7 +77,7 @@ end
 @inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
     R = _result_numtype(d, l)
     # From the side that keeps the tail:
-    x = l < zero(l) ? _trafo_quantile(d, logistic(l)) : _trafo_cquantile(d, logistic(-l))
+    x = l < zero(l) ? _trafo_quantile(d, _unit_interior(logistic(l))) : _trafo_cquantile(d, _unit_interior(logistic(-l)))
     convert(R, x)
 end
 

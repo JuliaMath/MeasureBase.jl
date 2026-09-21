@@ -87,6 +87,16 @@ end
 # support:
 @inline _nan_outside(μ, x, y) = ifelse(_insupport_mask(insupport(μ, x)), y, oftype(y, NaN))
 
+# On the floating-point grid the endpoints of the unit interval stand for
+# their nearest interior points (the smallest normal float above zero,
+# since devices may flush subnormals, and the grid point below one), so
+# that quantiles stay finite, and tail probabilities in log-space
+# conversions never underflow to zero:
+@inline _unit_interior(p) = clamp(p, _unit_bounds(p)...)
+@inline _unit_bounds(p) = (_prob_floor(p), prevfloat(one(p)))
+@inline _positive_prob(p) = max(p, _prob_floor(p))
+@inline _prob_floor(p) = floatmin(typeof(one(p)))
+
 """
     MeasureBase.logdensityof_with_rest(μ::AbstractMeasure, x)
 

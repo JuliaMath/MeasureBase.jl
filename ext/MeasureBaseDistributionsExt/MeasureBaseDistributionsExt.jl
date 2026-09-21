@@ -15,6 +15,7 @@ import MeasureBase
 using MeasureBase: AbstractMeasure, AsMeasure, asmeasure
 using MeasureBase: Lebesgue, Counting, ℝ
 using MeasureBase: StdMeasure, StdUniform, StdExponential, StdLogistic, StdNormal
+using MeasureBase: _unit_interior
 using MeasureBase: PowerMeasure, WeightedMeasure, SuperpositionMeasure, PushforwardMeasure
 using MeasureBase: basemeasure, rootmeasure, testvalue, productmeasure, pushfwd, superpose
 using MeasureBase: getdof, checked_arg, massof

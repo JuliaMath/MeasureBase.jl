@@ -16,9 +16,7 @@ export StdLogistic
 @inline basemeasure(::StdLogistic) = LebesgueBase()
 
 @inline transport_def(::StdUniform, μ::StdLogistic, x) = logistic(x)
-@inline transport_def(::StdLogistic, μ::StdUniform, p) = _nan_outside(μ, p, _logit_nan(p))
-# Total on the CPU, the mask supplies the NaN outside of [0, 1]:
-@inline _logit_nan(p) = log(abs(p) / abs(one(p) - p))
+@inline transport_def(::StdLogistic, μ::StdUniform, p) = _nan_outside(μ, p, logit(_unit_interior(p)))
 
 @inline rand_impl(ctx::GenContext, ::StdLogistic) = logit(rand(get_rng(ctx), get_precision(ctx)))
 @inline batched_rand_impl(ctx::GenContext, ::StdLogistic, sz::Dims) = logit.(_rand_bulk(ctx, sz))
