@@ -316,13 +316,19 @@ function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArra
     ν, _ = _pwr_unwrap(μ)
     dims = _pwr_dims(μ)
     n_rows = _batch_dims(Z)[1]
-    dof_ν = _base_dof(n_rows, prod(dims))
+    dof_ν = _base_dof(n_rows, prod(dims), ν)
     dof_ν * prod(dims) == n_rows || _throw_std_length_mismatch()
     batched_transport_from_std(S, ν, maybestatic_reshape(Z, (dof_ν, dims..., Base.tail(_batch_dims(Z))...)))
 end
 
 # Empty powers leave the degrees of freedom of the base undetermined:
-@inline _base_dof(n_rows::IntegerLike, n_pwr::IntegerLike) = n_rows ÷ max(n_pwr, one(n_pwr))
+# An empty stream says nothing about the base's degrees of freedom, so
+# empty powers take them from the base itself:
+@inline function _base_dof(n_rows::IntegerLike, n_pwr::IntegerLike, ν)
+    n_pwr == 0 ? _known_dof(fast_dof(ν)) : n_rows ÷ n_pwr
+end
+@inline _known_dof(dof::IntegerLike) = dynamic(dof)
+@inline _known_dof(::AbstractNoDOF) = 1
 
 # All power dimensions of nested powers, innermost first:
 @inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., size_dims(pwr_size(μ))...)
