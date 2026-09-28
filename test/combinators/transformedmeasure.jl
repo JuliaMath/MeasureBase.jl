@@ -105,6 +105,7 @@ using MeasureBase: gettransform
 using InverseFunctions
 using StaticArrays
 using ChangesOfVariables
+using ChangesOfVariables: setladj
 
 @testset "PushforwardMeasure" begin
     # Test basic pushforward construction
@@ -157,10 +158,32 @@ using ChangesOfVariables
     @test rootmeasure(ν) === rootmeasure(μ)  # AdaptRootMeasure
     @test rootmeasure(ν_no_corr) isa PushforwardMeasure  # PushfwdRootMeasure
 
-    # Test basemeasure. The base measure of μ is a weighted Lebesgue measure,
-    # so the weight gets pulled out of the pushforward:
-    @test basemeasure(ν) isa WeightedMeasure{<:Any,<:PushforwardMeasure}
-    @test basemeasure(ν).base.style isa PushfwdRootMeasure
+    # Pushforwards adapting the root have the origin's root as their base,
+    # pushforwards of the root pull weights out of the pushed-forward base:
+    @test basemeasure(ν) === rootmeasure(μ)
+    @test basemeasure(ν_no_corr) isa WeightedMeasure{<:Any,<:PushforwardMeasure}
+    @test basemeasure(ν_no_corr).base.style isa PushfwdRootMeasure
+
+    # Both styles describe the same measure:
+    @test logdensity_rel(ν, ν_no_corr, 2.0) ≈ 0 atol = 1e-12
+    @test logdensity_rel(ν_no_corr, ν, 2.0) ≈ 0 atol = 1e-12
+    @test logdensity_rel(ν, rootmeasure(μ), 2.0) ≈ logdensityof(μ, log(2.0)) - log(2.0)
+    E = Base.BroadcastFunction(exp)
+    νv, νv_no_corr = pushfwd(E, μ^2), pushfwd(E, μ^2, PushfwdRootMeasure())
+    @test logdensity_rel(νv, νv_no_corr, [2.0, 3.0]) ≈ 0 atol = 1e-12
+    @test logdensities(νv, [2.0 1.0; 3.0 0.5]) ≈ [logdensityof(νv, [2.0, 3.0]), logdensityof(νv, [1.0, 0.5])]
+
+    # Rank-changing pushforwards reshape the root:
+    mr = MeasureBase.mreshape(μ^6, (2, 3))
+    @test basemeasure(mr) == MeasureBase.LebesgueBase()^(2, 3)
+    xr = reshape(collect(0.1:0.1:0.6), 2, 3)
+    @test logdensityof(mr, xr) ≈ logdensityof(μ^6, vec(xr))
+
+    # Mixtures of pushforward location families:
+    shifted = pushfwd(setinverse(setladj(x -> x + 1, zero), setladj(y -> y - 1, zero)), μ)
+    s = superpose([μ, shifted])
+    @test logdensityof(s, 0.3) ≈ log(exp(logdensityof(μ, 0.3)) + exp(logdensityof(μ, -0.7)))
+    @test sum(x -> exp(logdensityof(s, x)), -12:0.01:13) * 0.01 ≈ 2
 
     # Test massof
     # TODO: mass interface is very incomplete

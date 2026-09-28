@@ -168,29 +168,32 @@ function logdensityof_impl(
     )
 end
 
-for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
-    @eval function $head(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
-        f_inv = unwrap(ν.finv)
-        x, inv_ladj = with_logabsdet_jacobian(f_inv, y)
-        logd_orig = $func(ν.origin, x)
-        return _combine_logd_with_ladj(logd_orig, inv_ladj)
-    end
+# Pushforwards that adapt the root measure have the root measure of their
+# origin as their base measure, their density relative to it is the full
+# density of the origin with the volume element:
+@inline function logdensityof_impl(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M}
+    x, inv_ladj = with_logabsdet_jacobian(unwrap(ν.finv), y)
+    return _combine_logd_with_ladj(logdensityof(ν.origin, x), inv_ladj)
+end
+@inline logdensity_def(ν::PushforwardMeasure{F,I,M,<:AdaptRootMeasure}, y) where {F,I,M} = logdensityof_impl(ν, y)
 
+# Pushforwards that push the root measure forward have the pushforward of
+# the base measure of their origin as their base measure:
+for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     @eval function $head(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
-        f_inv = unwrap(ν.finv)
-        x = f_inv(y)
-        logd_orig = $func(ν.origin, x)
-        return logd_orig
+        return $func(ν.origin, unwrap(ν.finv)(y))
     end
 end
 
 # Pushforwards by elementwise functions evaluate densities over flat
 # batches, the log-abs-det-Jacobian terms sum over the variate dimensions
 # of the origin:
-for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function $bhead(ν::_ElementwisePushfwd{M,<:AdaptRootMeasure}, Y) where {M}
-        _elementwise_pushfwd_ld($head, ν, Y, _static_ndims(ν.origin))
+        _elementwise_pushfwd_ld(logdensityof_impl, ν, Y, _static_ndims(ν.origin))
     end
+end
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function $bhead(ν::_ElementwisePushfwd{M,<:PushfwdRootMeasure}, Y) where {M}
         _batched_kernel($head, ν.origin, broadcast(ν.finv.f, Y))
     end
@@ -222,16 +225,18 @@ function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))
 end
 
-@inline function basemeasure(ν::PushforwardMeasure)
-    pushfwd(ν.f, basemeasure(parent(ν)), PushfwdRootMeasure())
+@inline function basemeasure(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}) where {F,I,M}
+    _pushfwd_base(ν, basemeasure(ν.origin))
 end
+# Same function, same variate size:
+@inline _pushfwd_base(ν::PushforwardMeasure, β) = PushforwardMeasure(ν.f, ν.finv, β, ν.style, ν.varsize)
 
-function rootmeasure(m::PushforwardMeasure{F,I,M,PushfwdRootMeasure}) where {F,I,M}
-    pushfwd(m.f, rootmeasure(m.origin))
+# The root measure of the origin, reshaped where the pushforward changes
+# the variate rank:
+@inline function basemeasure(ν::PushforwardMeasure{F,I,M,AdaptRootMeasure}) where {F,I,M}
+    _reshape_root(rootmeasure(ν.origin), ν.varsize)
 end
-function rootmeasure(m::PushforwardMeasure{F,I,M,AdaptRootMeasure}) where {F,I,M}
-    rootmeasure(m.origin)
-end
+@inline _reshape_root(root, ::Any) = root
 
 _pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
 _pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof

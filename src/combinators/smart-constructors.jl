@@ -163,6 +163,9 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle) = Dirac(f(μ.x))
 function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle)
     weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style))
 end
+@inline function _pushfwd_base(ν::PushforwardMeasure, β::WeightedMeasure)
+    weightedmeasure(β.logweight, _pushfwd_base(ν, β.base))
+end
 
 ###############################################################################
 # RestrictedMeasure

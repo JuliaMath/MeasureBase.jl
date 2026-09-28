@@ -102,6 +102,28 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
+# Root measures of pushforwards that change the number of power dimensions
+# of a power of a primitive measure are reshaped:
+@inline function _reshape_root(root::PowerMeasure, sz::SizeLike)
+    ν, n = _pwr_unwrap(root)
+    _reshape_pwr_root(root, ν, n, sz)
+end
+@inline _reshape_pwr_root(root, ::Any, ::Any, ::SizeLike) = root
+@inline function _reshape_pwr_root(root, ν::PrimitiveMeasure, n::StaticInteger, sz::SizeLike)
+    n == length(size_dims(sz)) ? root : powermeasure(ν, sz)
+end
+
+# Pushed-forward Lebesgue roots relative to the root they push forward: the
+# volume element of the inverse.
+const _LebesgueRoot = Union{LebesgueBase,PowerMeasure{LebesgueBase}}
+@inline _pushfwd_root_ladj(ν::PushforwardMeasure, y) = last(with_logabsdet_jacobian(unwrap(ν.finv), y))
+@inline function logdensity_rel_def(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, ::M, y) where {F,I,M<:_LebesgueRoot}
+    _pushfwd_root_ladj(ν, y)
+end
+@inline function logdensity_rel_def(::M, ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M<:_LebesgueRoot}
+    -_pushfwd_root_ladj(ν, y)
+end
+
 # Numeric flat variates of powers of measures with fixed stream sizes but
 # no variate rank (e.g. tuple products) are streams:
 @inline function mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}
