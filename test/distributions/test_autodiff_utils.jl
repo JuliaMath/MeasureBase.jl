@@ -30,17 +30,13 @@ end
 
 
 @testset "Zygote gradients of univariate transports" begin
-    # Transports into standard measures currently fail in Zygote: the SArray
-    # constructor rrule of StaticArrays returns a thunk for the tuple argument
-    # on the standard-variate stream path (src/transport.jl, _transport_via_std).
-    for (ν, μ, x, broken) in [
-        (StdNormal(), Normal(1, 2), 0.7, true), (Normal(1, 2), StdNormal(), 0.7, false),
-        (StdNormal(), Gamma(2.0), 1.3, true), (Gamma(2.0), StdNormal(), 0.4, false),
-        (StdLogistic(), TDist(3), 0.8, true), (TDist(3), StdUniform(), 0.3, false),
-        (Beta(2, 3), Weibull(0.7, 1.3), 0.9, false), (asmeasure(Logistic()), asmeasure(Normal(0.5)), 0.2, false),
+    for (ν, μ, x) in [
+        (StdNormal(), Normal(1, 2), 0.7), (Normal(1, 2), StdNormal(), 0.7),
+        (StdNormal(), Gamma(2.0), 1.3), (Gamma(2.0), StdNormal(), 0.4),
+        (StdLogistic(), TDist(3), 0.8), (TDist(3), StdUniform(), 0.3),
+        (Beta(2, 3), Weibull(0.7, 1.3), 0.9), (asmeasure(Logistic()), asmeasure(Normal(0.5)), 0.2),
     ]
         f = transport_to(ν, μ)
-        ∂f(x) = try Zygote.gradient(f, x)[1] catch; NaN end
-        @test ∂f(x) ≈ ForwardDiff.derivative(f, x) broken = broken
+        @test Zygote.gradient(f, x)[1] ≈ ForwardDiff.derivative(f, x)
     end
 end

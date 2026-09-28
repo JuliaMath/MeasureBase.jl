@@ -154,7 +154,12 @@ function transport_def end
 @inline transport_def(ν, μ, x) = _transport_via_std(_transport_pivot(ν, μ), ν, μ, x)
 
 function _transport_via_std(::Type{S}, ν, μ, x) where {S<:StdMeasure}
-    z = transport_to_std(S, μ, x)
+    _from_std_stream(S, ν, transport_to_std(S, μ, x), _static_ndims(ν))
+end
+
+# Scalar variates come from single standard variates without a stream:
+@inline _from_std_stream(::Type{S}, ν, z::Number, ::StaticInteger{0}) where {S<:StdMeasure} = transport_from_std(S, ν, z)
+function _from_std_stream(::Type{S}, ν, z, ::Any) where {S<:StdMeasure}
     y, z_rest = transport_from_std_with_rest(S, ν, _as_stdstream(z))
     if !isempty(z_rest)
         throw(ArgumentError("Degrees of freedom of source and target measure of a transport don't match"))
