@@ -80,12 +80,13 @@ using MeasureBase: fixed_stream_size, _pushfwd_varsize, _unit_bounds, _prob_floo
 @non_differentiable _unit_bounds(p)
 @non_differentiable _prob_floor(p)
 
-using MeasureBase: check_dof, require_insupport, checked_arg, _checksupport
+using MeasureBase: check_dof, require_insupport, checked_arg, _checksupport, _insupport_mask
 
 @inline function ChainRulesCore.rrule(::typeof(_checksupport), cond, result)
     y = _checksupport(cond, result)
-    function _checksupport_pullback(ȳ)
-        return NoTangent(), ZeroTangent(), one(ȳ)
+    function _checksupport_pullback(thunked_Δy)
+        Δy = ChainRulesCore.unthunk(thunked_Δy)
+        return NoTangent(), ZeroTangent(), ifelse(_insupport_mask(cond), Δy, zero(Δy))
     end
     y, _checksupport_pullback
 end
