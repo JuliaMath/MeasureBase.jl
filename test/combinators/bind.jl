@@ -130,6 +130,32 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         @test ynt_reco.a ≈ ynt.a && ynt_reco.b ≈ ynt.b
     end
 
+    @testset "primary variate layout in vcat streams" begin
+        N, E = StdNormal(), StdExponential()
+        U(n) = StdUniform()^n
+        # The kernel records the primary variates it sees:
+        function check_layout(α, f, n, a_ref)
+            seen = Any[]
+            B = mbind(a -> (push!(seen, a); f(a)), α, vcat)
+            x = rand(stblrng(), B)
+            ℓ_ref = logdensityof(α, a_ref(x)) + logdensityof(f(a_ref(x)), x[(n + 1):end])
+            @test logdensityof(B, x) ≈ ℓ_ref
+            u = transport_to(U(length(x)), B)(x)
+            @test transport_to(B, U(length(x)))(u) ≈ x
+            flat(a::Number) = [a]
+            flat(a) = reduce(vcat, [flat(ai) for ai in a])
+            @test all(a -> flat(a) ≈ flat(first(seen)), seen)
+            @test all(a -> typeof(a).name === typeof(first(seen)).name, seen)
+        end
+        # Nested powers give arrays of arrays:
+        check_layout((N^2)^3, a -> N^length(a), 6, x -> [x[1:2], x[3:4], x[5:6]])
+        # Tuple products give tuples:
+        check_layout(productmeasure((N, E^2)), a -> N^(length(a[2]) + 1), 3, x -> (x[1], x[2:3]))
+        # Powers of tuple products give struct arrays of tuples:
+        P3 = productmeasure((N, E))^3
+        check_layout(P3, a -> N^length(a), 6, x -> rand(stblrng(), P3))
+    end
+
     @testset "mbind with merge" begin
         αnt = productmeasure((position = StdNormal(),))
         f_βnt(a) = productmeasure((

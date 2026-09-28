@@ -251,6 +251,44 @@ end
     throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
+# Single streams: bases without a variate rank (tuple products) are
+# consumed via the batched protocol, bases without fixed variate sizes
+# element by element.
+function logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector)
+    _pwr_point_ld_with_rest(μ, x, fixed_stream_size(pwr_base(μ)), _static_ndims(pwr_base(μ)))
+end
+function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::True, ::StaticInteger)
+    a, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
+    return _point_ld(logdensityof_impl, μ, a), a, x_rest
+end
+function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::True, ::NoMSpaceElementSize)
+    ℓ, x_rest = _powered_ld_with_rest(μ, x, (), static(true))
+    a, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return _point_result(_materialize(ℓ), μ), a, x_rest
+end
+function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::False, ::Any)
+    ν = pwr_base(μ)
+    ℓ = zero(_logd_numtype(x))
+    x_rest = x
+    as = map(_cartidxs(pwr_axes(μ))) do _
+        ℓ_i, a_i, x_rest = logdensityof_with_rest(ν, x_rest)
+        ℓ += ℓ_i
+        _stream_variate(ν, a_i)
+    end
+    return ℓ, as, x_rest
+end
+
+# Consumed flat variate content in the nested layout of the power, powers
+# of tuple products as struct arrays:
+@inline function _stream_variate(μ::PowerMeasure, a::AbstractArray{<:Number})
+    ν, _ = _pwr_unwrap(μ)
+    _pwr_variate(μ, _pwr_stream_leaves(ν, a, _pwr_dims(μ)))
+end
+@inline _pwr_stream_leaves(ν, a::AbstractArray, dims) = a
+@inline function _pwr_stream_leaves(ν::ProductMeasure{<:Union{Tuple,NamedTuple}}, a::AbstractArray, dims)
+    _stream_batch(ν, maybestatic_reshape(a, (_fixed_stream_length(ν), dims...)))
+end
+
 # Support checks of powers run over the flat variate storage where the
 # innermost base measure has scalar variates, elementwise otherwise:
 @inline function insupport(μ::PowerMeasure, x::AbstractArray)

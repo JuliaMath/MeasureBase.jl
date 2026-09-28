@@ -254,7 +254,9 @@ rand_impl(ctx::GenContext, μ::CombinedMeasure) = _combine_variates(μ.f_c, rand
 @inline _combine_variates(::typeof(vcat), a, b) = vcat(_flat_stream(a), _flat_stream(b))
 @inline _flat_stream(x::Number) = x
 @inline _flat_stream(x::AbstractArray{<:Number}) = vec(x)
-@inline _flat_stream(x::AbstractArray) = reduce(vcat, map(_flat_stream, x))
+@inline _flat_stream(x::AbstractArray) = _flat_stream_nested(x, _flat_storage(x))
+@inline _flat_stream_nested(::AbstractArray, x_flat::AbstractArray) = vec(x_flat)
+_flat_stream_nested(x::AbstractArray, ::Any) = reduce(vcat, [_flat_stream(xi) for xi in x])
 @inline _flat_stream(x::Union{Tuple,NamedTuple}) = reduce(vcat, map(_flat_stream, values(x)))
 
 batched_rand_impl(ctx::GenContext, μ::CombinedMeasure, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)

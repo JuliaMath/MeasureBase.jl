@@ -419,11 +419,63 @@ function transport_from_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTup
     return x
 end
 
-# Streams of tuple product variates are consumed marginal by marginal:
-function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x::AbstractVector) where {S<:StdMeasure}
-    z, x_rest = _marginals_to_std_with_rest(S, values(marginals(μ)), x)
-    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
-    return z, x_μ, x_rest
+# Streams of tuple product variates are consumed marginal by marginal, the
+# consumed variate is the tuple of the marginal variates:
+function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Tuple}, x::AbstractVector) where {S<:StdMeasure}
+    _marginals_point_to_std_with_rest(S, marginals(μ), x)
+end
+function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, x::AbstractVector) where {S<:StdMeasure,names}
+    z, xs, x_rest = _marginals_point_to_std_with_rest(S, values(marginals(μ)), x)
+    return z, NamedTuple{names}(xs), x_rest
+end
+
+function _marginals_point_to_std_with_rest(::Type{S}, ms::Tuple{Any}, x::AbstractVector) where {S}
+    z, a, x_rest = transport_to_std_with_rest(S, only(ms), x)
+    return z, (_stream_variate(only(ms), a),), x_rest
+end
+function _marginals_point_to_std_with_rest(::Type{S}, ms::Tuple, x::AbstractVector) where {S}
+    z1, a1, x2 = transport_to_std_with_rest(S, first(ms), x)
+    z_rest, as, x_rest = _marginals_point_to_std_with_rest(S, Base.tail(ms), x2)
+    return vcat(z1, z_rest), (_stream_variate(first(ms), a1), as...), x_rest
+end
+
+function logdensityof_with_rest(μ::ProductMeasure{<:Tuple}, x::AbstractVector)
+    _marginals_point_ld_with_rest(marginals(μ), x)
+end
+function logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}}, x::AbstractVector) where {names}
+    ℓ, xs, x_rest = _marginals_point_ld_with_rest(values(marginals(μ)), x)
+    return ℓ, NamedTuple{names}(xs), x_rest
+end
+
+function _marginals_point_ld_with_rest(ms::Tuple{Any}, x::AbstractVector)
+    ℓ, a, x_rest = logdensityof_with_rest(only(ms), x)
+    return ℓ, (_stream_variate(only(ms), a),), x_rest
+end
+function _marginals_point_ld_with_rest(ms::Tuple, x::AbstractVector)
+    ℓ1, a1, x2 = logdensityof_with_rest(first(ms), x)
+    ℓ_rest, as, x_rest = _marginals_point_ld_with_rest(Base.tail(ms), x2)
+    return ℓ1 + ℓ_rest, (_stream_variate(first(ms), a1), as...), x_rest
+end
+
+# The variate of a measure in the layout its `rand` and `transport_from_std`
+# produce, from the variate content consumed from a stream (binds hand it
+# to their kernel):
+@inline _stream_variate(μ, a) = a
+
+# A batch of streams `(stream length, batch dims...)` as the flat batch of
+# variates of a measure of fixed stream length, tuple products as tuples of
+# marginal batches:
+_stream_batch(μ, R::AbstractArray) = _stream_leaf_batch(R, mspace_flatsize(μ))
+_stream_leaf_batch(R::AbstractArray, ::Tuple{}) = _drop_stdstream_dim(R)
+_stream_leaf_batch(R::AbstractArray, vsz::SizeLike) = _reshape_consumed(R, size_dims(vsz))
+_stream_batch(μ::ProductMeasure{<:Tuple}, R::AbstractArray) = _marginal_stream_batches(marginals(μ), R)
+function _stream_batch(μ::ProductMeasure{<:NamedTuple{names}}, R::AbstractArray) where {names}
+    NamedTuple{names}(_marginal_stream_batches(values(marginals(μ)), R))
+end
+_marginal_stream_batches(::Tuple{}, ::AbstractArray) = ()
+function _marginal_stream_batches(ms::Tuple, R::AbstractArray)
+    R1, R_rest = _batched_split(R, _fixed_stream_length(first(ms)))
+    return (_stream_batch(first(ms), R1), _marginal_stream_batches(Base.tail(ms), R_rest)...)
 end
 
 function batched_transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
