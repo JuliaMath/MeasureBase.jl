@@ -11,7 +11,8 @@ using MeasureBase: batched_transport_to_std_with_rest, batched_transport_from_st
 using MeasureBase: batched_rand_impl
 using InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
-using StaticArrays: SVector
+using StaticArrays: SVector, SMatrix, @SMatrix
+using MeasureBase: logdensities
 using Distributions: MvNormal, LogNormal, logpdf
 using AffineMaps: Mul, MulAdd
 using JLArrays
@@ -167,5 +168,27 @@ using JLArrays
         @test batched_transport_to_std(StdUniform, Dirac(1.0), 1.0) == SVector{0,Bool}()
         @test batched_transport_from_std(StdUniform, Dirac(2.0), SVector{0,Bool}()) == 2.0
         @test_throws ArgumentError transport_to_std(StdUniform, StdNormal()^3, randn(3, 2))
+    end
+
+    @testset "batch layouts" begin
+        f = transport_to(StdNormal()^3, StdUniform()^3)
+        @test_throws ArgumentError f.(rand(6, 2))
+        g = transport_to(StdNormal()^(2, 3), StdUniform()^(2, 3))
+        @test_throws ArgumentError g.(rand(3, 2, 4))
+        Y = g.(fill(0.5, 2, 3, 4))
+        @test size(Y) == (4,) && all(y -> size(y) == (2, 3) && all(iszero, y), Y)
+
+        # Static batches stay static, also nested ones:
+        Ys = f.(@SMatrix fill(0.5, 3, 2))
+        @test flatview(Ys) isa SMatrix{3,2} && all(iszero, flatview(Ys))
+        Xn = SVector(SVector(0.1, 0.2, 0.3), SVector(0.4, 0.5, 0.6))
+        @test f.(Xn) ≈ map(f, Xn)
+        @test logdensities(StdNormal()^3, Xn) ≈ logdensityof.(Ref(StdNormal()^3), Xn)
+
+        # Flat batches for targets without a variate rank:
+        h = transport_to(mbind(x -> StdNormal()^2, StdNormal()), StdNormal()^3)
+        X = randn(3, 4)
+        @test h.(X) == map(h, eachcol(X))
+        @test h.(X[:, 1]) == h(X[:, 1])
     end
 end

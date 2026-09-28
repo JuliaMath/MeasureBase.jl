@@ -235,7 +235,7 @@ end
 Broadcast.broadcasted(f::TransportFunction, X::StaticArray) = _broadcast_static(f, X, _static_ndims(f.μ))
 _broadcast_static(f::TransportFunction, X::StaticArray, ::StaticInteger{0}) = map(_Pointwise(f), X)
 function _broadcast_static(f::TransportFunction, X::StaticArray, k)
-    _broadcast_transport(f, X, X, k, _static_ndims(f.ν))
+    _broadcast_transport(f, X, _flat_storage(X), k, _static_ndims(f.ν))
 end
 
 function _broadcast_transport(f::TransportFunction, X, X_flat::AbstractArray, ::StaticInteger, ::StaticInteger{K}) where {K}
@@ -254,7 +254,20 @@ end
 @inline _structured_variates(Y::Union{Tuple,NamedTuple}, ν) = _pwr_variate(ν, Y)
 @inline _structured_variates(Y::AbstractArray, ν) = _batch_variates(Y, ν, Val(dynamic(_static_ndims(ν))))
 
-_broadcast_transport(f::TransportFunction, X, ::Any, ::Any, ::Any) = map(_Pointwise(f), X)
+_broadcast_transport(f::TransportFunction, X, ::Any, k, ::Any) = _map_variates(f, X, k)
+
+# Flat batches of array variates are mapped over their variate slices:
+_map_variates(f::TransportFunction, X, ::Any) = map(_Pointwise(f), X)
+function _map_variates(f::TransportFunction, X::AbstractArray{<:Number,N}, ::StaticInteger{K}) where {N,K}
+    N >= K || _throw_size_mismatch()
+    if K == 0
+        map(_Pointwise(f), X)
+    elseif N == K
+        f(X)
+    else
+        map(_Pointwise(f), sliced(X, Val(K)))
+    end
+end
 
 # Prevents re-entering the broadcast hook from `map` implementations that
 # broadcast (e.g. GPU arrays):

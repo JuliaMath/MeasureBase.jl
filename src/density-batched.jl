@@ -120,6 +120,11 @@ end
 struct NoFlatStorage end
 @inline _flat_storage(X::AbstractArray{<:Number}) = X
 @inline _flat_storage(X::AbstractArray) = _flat_storage_bymode(X, getsplitmode(X))
+# Static arrays of static arrays stack into static arrays (their
+# reinterpreted flat views have inconsistent axes):
+@inline function _flat_storage(X::StaticArray{<:Tuple,<:StaticArray{<:Tuple,<:Number}})
+    SArray{Tuple{size(eltype(X))...,size(X)...}}(mapreduce(Tuple, (a, b) -> (a..., b...), X))
+end
 @inline _flat_storage(x) = NoFlatStorage()
 @inline function _flat_storage_bymode(X::AbstractArray, smode::AbstractSplitMode)
     _flat_storage(is_memordered_splitmode(smode) ? fused(X) : stacked(X))
