@@ -348,4 +348,3 @@ struct _FromStd{S} <: Function end
 # Flat vector of standard variates from an array of standard variates:
 @inline _flat_std_of(A::AbstractArray{<:Number}) = vec(A)
 @inline _flat_std_of(A::AbstractArray{<:AbstractVector}) = _flatten_to_rv(vec(A))
-@inline _flat_std_of(A::AbstractVector{<:AbstractVector}) = _flatten_to_rv(A)

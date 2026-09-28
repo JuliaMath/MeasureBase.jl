@@ -322,15 +322,26 @@ end
     throw(ArgumentError("Variate streams too long during density evaluation"))
 end
 
-# Whether all variates consumed by a measure from streams have sizes that
-# are fixed at the type level, so that batches of streams can be consumed
-# in fused operations; otherwise a batch of streams is consumed stream by
-# stream by the outermost stream combinator.
+"""
+    MeasureBase.fixed_stream_size(::Type{MU})::StaticBool
+    MeasureBase.fixed_stream_size(μ)::StaticBool
+
+Whether the variates that measures of type `MU` consume from streams have
+the same size for all streams, so that batches of streams can be consumed
+in fused operations. Otherwise the outermost stream combinator consumes a
+batch of streams stream by stream.
+
+Defaults to whether the variate rank of `MU` is known (see
+[`MeasureBase.mspace_ndims`](@ref)). Measure types whose variate sizes
+depend on variate values (e.g. binds) must return `static(false)`.
+"""
+function fixed_stream_size end
+
 @inline fixed_stream_size(μ::MU) where {MU} = fixed_stream_size(MU)
 @inline fixed_stream_size(::Type{MU}) where {MU} = static(mspace_ndims(MU) isa Integer)
 
 # Batches of streams consumed stream by stream (host loop):
-function _streamwise_ld(f::F, μ, X::AbstractArray) where {F}
+function _streamwise_ld(::typeof(logdensityof_impl), μ, X::AbstractArray)
     map(sliced(X, Val(1))) do x
         ℓ, x_rest = batched_logdensityof_with_rest(μ, x, ())
         isempty(x_rest) || _throw_stream_too_long()

@@ -1,13 +1,7 @@
-const EmptyNamedTuple = NamedTuple{(),Tuple{}}
-const NonEmptyTuple = Tuple{Any,Vararg{Any}}
-
 function Base.show(io::IO, μ::AbstractMeasure)
     io = IOContext(io, :compact => true)
     Pretty.pprint(io, μ)
 end
-
-showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
-showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
 
@@ -39,20 +33,6 @@ end
     push!(q.args, :(return μ))
     return q
 end
-
-# Base on the Tricks.jl README
-using Tricks
-struct Iterable end
-struct NonIterable end
-function isiterable(::Type{T}) where {T}
-    static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
-end
-
-# issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
-
-# @generated function instance(::Type{T}) where {T}
-#     return getfield(T, :instance)::T
-# end
 
 function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
@@ -94,24 +74,6 @@ measure of the previous term, and with no repeated entries.
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
-mymap(f, inds...) = Iterators.map(f, inds...)
-
-function infer_zero(f, args...)
-    inferred_type = Core.Compiler.return_type(f, typeof.(args))
-    zero(typeintersect(AbstractFloat, inferred_type))
-end
-
-@inline function allequal(f, x::AbstractArray)
-    val = f(first(x))
-    @simd for xj in x
-        f(xj) == val || return false
-    end
-    return true
-end
-
-allequal(x::AbstractArray) = allequal(identity, x)
-
 rmap(f, x) = f(x)
 
 function rmap(f, t::Tuple)
@@ -123,11 +85,6 @@ function rmap(f, nt::NamedTuple{N,T}) where {N,T}
 end
 
 insupport(m::AbstractMeasure) = Base.Fix1(insupport, m)
-
-@inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
-
-unstatic(::Type{T}) where {T} = T
-unstatic(::Type{StaticFloat64{X}}) where {X} = Float64
 
 using InverseFunctions: FunctionWithInverse
 
@@ -152,12 +109,6 @@ isposinf(x) = isinf(x) & (x > zero(x))
     y = f_true()
     ifelse(cond, y, oftype(y, f_false()))
 end
-
-isapproxzero(x::T) where {T<:Real} = x ≈ zero(T)
-isapproxzero(A::AbstractArray) = all(isapproxzero, A)
-
-isapproxone(x::T) where {T<:Real} = x ≈ one(T)
-isapproxone(A::AbstractArray) = all(isapproxone, A)
 
 containsnan(x::Number) = isnan(x)
 containsnan(x) = any(containsnan, x)

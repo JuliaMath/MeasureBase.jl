@@ -23,9 +23,6 @@ _rev_cumsum(xs::AbstractVector) = reverse(cumsum(reverse(xs)))
 # Equivalent to `cumprod(xs)``:
 _exp_cumsum_log(xs::AbstractVector) = exp.(cumsum(log.(xs)))
 
-Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tuple(SVector{N}(v))
-
-
 # The standard variate of a scalar variate in a single stream of standard
 # variates, taken via a reduction to avoid scalar indexing of device arrays:
 @inline function _single_std_element(z::AbstractVector)
@@ -66,7 +63,7 @@ _flatten_to_rv(VV::AbstractVector{<:StaticVector{N,<:Number}}) where {N} =
 _flatten_to_rv(VV::VectorOfSimilarVectors{<:Number}) = flatview(VV)
 _flatten_to_rv(VV::VectorOfVectors{<:Number}) = flatview(VV)
 
-_flatten_to_rv(::Tuple{}) = []
+_flatten_to_rv(::Tuple{}) = SVector{0,Bool}()
 _flatten_to_rv(tpl::Tuple{Vararg{AbstractVector}}) = vcat(tpl...)
 _flatten_to_rv(tpl::Tuple{Vararg{StaticVector}}) = vcat(tpl...)
 

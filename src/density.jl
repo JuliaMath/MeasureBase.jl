@@ -73,9 +73,9 @@ DensityInterface.logdensityof(d::Union{Density,LogDensity}, x) = logdensity_rel(
 # DensityMeasure
 
 """
-    struct DensityMeasure{F,B} <: AbstractDensityMeasure
-        density :: F
-        base    :: B
+    struct DensityMeasure{F,B} <: AbstractMeasure
+        f    :: F
+        base :: B
     end
 
 A `DensityMeasure` is a measure defined by a density or log-density with

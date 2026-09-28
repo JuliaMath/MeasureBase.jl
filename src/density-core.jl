@@ -15,7 +15,7 @@ export density_def
 Compute the log-density of the measure `m` at `x`. Density is always relative,
 but `DensityInterface.jl` does not account for this. For compatibility with
 this, `logdensityof` for a measure is always implicitly relative to
-[`rootmeasure(x)`](@ref rootmeasure).
+[`rootmeasure(m)`](@ref rootmeasure).
 
 `logdensityof(m, x)` is implemented via
 [`MeasureBase.logdensityof_impl`](@ref), measure types should specialize
@@ -58,9 +58,9 @@ a [`MeasureBase.NoFastInsupport`](@ref)) and computes the density via
     _checksupport(insupport(μ, x), result)
 end
 
-# Log-density kernels return numbers of the number type of the variate,
-# never static numbers, so that automatic differentiation and tracing see
-# ordinary floating point values throughout:
+# Log-density kernels return dynamic numbers, never static ones, so that
+# automatic differentiation and tracing see ordinary floating point values
+# throughout. Constant log-densities take the float type of the variate:
 @inline _logd_numtype(x) = float(real_numtype(typeof(x)))
 @inline _dynamic_logd(ℓ, x) = dynamic(ℓ)
 @inline _neg_inf_logd(x) = _logd_numtype(x)(-Inf)
@@ -196,10 +196,12 @@ end
 """
     logdensity_rel(m1, m2, x)
 
-Compute the log-density of `m1` relative to `m2` at `x`. This function checks
-whether `x` is in the support of `m1` or `m2` (or both, or neither). If `x` is
-known to be in the support of both, it can be more efficient to call
-`unsafe_logdensity_rel`. 
+Compute the log-density of `m1` relative to `m2` at `x`.
+
+Outside the support of `m2` the result is `+Inf` if `x` is in the support of
+`m1`, and `NaN` if it is in neither support. Outside the support of `m1` but
+inside the support of `m2` it is `-Inf`. If `x` is known to be in the support
+of both, it can be more efficient to call `unsafe_logdensity_rel`.
 """
 @inline function logdensity_rel(μ, ν, x)
     inμ = _insupport_mask(insupport(μ, x))
