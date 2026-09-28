@@ -288,13 +288,19 @@ function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray
     end
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
-    ld(i) = _materialize(_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
-    init = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
-    return mapreduce(ld, +, CartesianIndices(mar); init = init)
+    acc = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
+    for i in CartesianIndices(mar)
+        acc = _add_logd!(acc, _batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
+    end
+    return acc
 end
 
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
 @inline _zero_logd(A::AbstractArray, dims::Tuple) = fill!(similar(A, _logd_numtype(A), dims), 0)
+
+# Accumulates marginal densities in place:
+@inline _add_logd!(acc::Number, ℓ) = acc + _materialize(ℓ)
+@inline _add_logd!(acc::AbstractArray, ℓ) = acc .+= ℓ
 
 # Point densities of array products at numeric variates go through the
 # batched kernel where the variate rank of the marginals is known,
