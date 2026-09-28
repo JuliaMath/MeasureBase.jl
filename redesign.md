@@ -220,6 +220,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   HeterogeneousComputing has no splittable per-stream RNGs yet and
   doesn't allocate FixedSizeArrays; JLArrays has no triangular solves;
   Reactant rejects traced `VectorOfArrays` and empty batches.
+- Derivatives of the Gamma, Beta and Dirichlet transports with respect to
+  their shape parameters are not implemented: NaN in ForwardDiff and
+  Mooncake, `NotImplemented` in ChainRules (which Zygote drops silently).
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
   `checked_arg` at the entry points; variates of the right shape never

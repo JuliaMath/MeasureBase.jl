@@ -84,7 +84,9 @@ end
 
 # The regularized incomplete gamma and beta functions and their inverses
 # (from SpecialFunctions), with derivatives with respect to the variate
-# resp. probability argument provided by the autodiff extensions:
+# resp. probability argument provided by the autodiff extensions.
+# Derivatives with respect to the shape parameters are not available: NaN
+# in ForwardDiff and Mooncake, `NotImplemented` in ChainRules.
 @inline MeasureBase._gamma_cdf(α, x) = MeasureBase._gamma_cdf_impl(MeasureBase._dualtag(α, x), α, x)
 @inline MeasureBase._gamma_quantile(α, p) = MeasureBase._gamma_quantile_impl(MeasureBase._dualtag(α, p), α, p)
 @inline MeasureBase._beta_cdf(α, β, x) = MeasureBase._beta_cdf_impl(MeasureBase._dualtag(α, β, x), α, β, x)

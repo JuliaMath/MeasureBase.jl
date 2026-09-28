@@ -5,17 +5,22 @@ module MeasureBaseDistributionsMooncakeExt
 using MeasureBase
 import Distributions
 import Mooncake
-using Mooncake: @zero_derivative, MinimalCtx
+using Mooncake: @zero_derivative, @from_rrule, MinimalCtx
+using Base: IEEEFloat
 
 using Distributions: Distribution
-using MeasureBase: _dist_params_numtype
+using MeasureBase: _dist_params_numtype, _gamma_cdf, _gamma_quantile, _beta_cdf, _beta_quantile
 
-# The distribution transports themselves need no rules here: Mooncake
-# provides rules for Distributions and StatsFuns/SpecialFunctions, so it
-# differentiates the cdf/quantile-based transports natively. The
-# ForwardDiffPullbacks-based rules for `transport_def` are a
-# Zygote/ChainRules pathway.
+# Mooncake differentiates the generic cdf/quantile-based transports
+# natively. The incomplete gamma and beta functions and their inverses use
+# the ChainRules rules of the Distributions/ChainRulesCore extension, so
+# that all backends agree (shape parameter derivatives are NaN):
 
 @zero_derivative MinimalCtx Tuple{typeof(_dist_params_numtype),Distribution}
+
+@from_rrule MinimalCtx Tuple{typeof(_gamma_cdf),IEEEFloat,IEEEFloat}
+@from_rrule MinimalCtx Tuple{typeof(_gamma_quantile),IEEEFloat,IEEEFloat}
+@from_rrule MinimalCtx Tuple{typeof(_beta_cdf),IEEEFloat,IEEEFloat,IEEEFloat}
+@from_rrule MinimalCtx Tuple{typeof(_beta_quantile),IEEEFloat,IEEEFloat,IEEEFloat}
 
 end # module MeasureBaseDistributionsMooncakeExt

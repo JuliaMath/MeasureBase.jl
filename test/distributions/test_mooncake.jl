@@ -5,7 +5,7 @@ using Test
 using Random, LinearAlgebra
 using Distributions
 import Mooncake
-import ForwardDiff
+import ForwardDiff, ChainRulesCore
 
 using MeasureBase
 using MeasureBase: transport_to, transport_def, asmeasure
@@ -50,6 +50,23 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
         dirich = Dirichlet([2.0, 3.0, 4.0])
         _test_gradient(u -> MeasureBase.transport_from_std(StdUniform, dirich, u)[1], [0.3, 0.7])
         _test_gradient(x -> sum(MeasureBase.transport_to_std(StdUniform, dirich, vcat(x, 1 - sum(x)))), [0.28, 0.23])
+    end
+
+    @testset "shape parameter derivatives" begin
+        # Not available for the incomplete gamma and beta functions, NaN in
+        # both ForwardDiff and Mooncake:
+        for f in [
+            a -> transport_def(StdUniform(), Gamma(a, 1.0), 0.7),
+            a -> transport_def(Beta(a, 3.0), StdUniform(), 0.3),
+            a -> transport_def(Beta(2.0, a), StdUniform(), 0.3),
+        ]
+            @test isnan(ForwardDiff.derivative(f, 2.0))
+            @test isnan(_mooncake_gradient(f, 2.0))
+        end
+        @test all(isnan, _mooncake_gradient(a -> MeasureBase.transport_from_std(StdUniform, Dirichlet(a), [0.3, 0.7])[1], [2.0, 3.0, 4.0]))
+        ∂ = ChainRulesCore.rrule(MeasureBase._beta_quantile, 2.0, 3.0, 0.3)[2](1.0)
+        @test ∂[2] isa ChainRulesCore.NotImplemented && ∂[3] isa ChainRulesCore.NotImplemented
+        @test ∂[4] ≈ ForwardDiff.derivative(p -> MeasureBase._beta_quantile(2.0, 3.0, p), 0.3)
     end
 
     @testset "logdensityof gradients" begin
