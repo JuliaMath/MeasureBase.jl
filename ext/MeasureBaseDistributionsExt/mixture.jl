@@ -1,12 +1,11 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
+# Mixtures become superpositions, except continuous univariate mixtures,
+# which keep the cdf/quantile-based transport of wrapped distributions:
 function MeasureBase.AbstractMeasure(d::Distributions.AbstractMixtureModel)
     superpose(map((w, c) -> w * asmeasure(c), Distributions.probs(d), Distributions.components(d)))
 end
-
-function AsMeasure{D}(::D) where {D<:Distributions.AbstractMixtureModel}
-    throw(ArgumentError("Don't wrap Distributions.AbstractMixtureModel into MeasureBase.AsMeasure, use asmeasure to convert instead."))
-end
+MeasureBase.AbstractMeasure(d::Distributions.AbstractMixtureModel{Univariate,Continuous}) = AsMeasure{typeof(d)}(d)
 
 
 const _MixtureMeasure = SuperpositionMeasure{

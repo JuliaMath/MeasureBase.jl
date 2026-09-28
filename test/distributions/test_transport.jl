@@ -148,7 +148,7 @@ include("getjacobian.jl")
         ]
             for l in ls
                 x = transport_to(d, StdLogistic())(l)
-                @test insupport(d, x)
+                @test Distributions.insupport(d, x)
                 @test isapprox(transport_to(StdLogistic(), d)(x), l, rtol = 1e-6, atol = 1e-12)
             end
         end
@@ -244,6 +244,19 @@ include("getjacobian.jl")
         @test eltype(rand(StableRNG(1), Float32, mn)) == Float32
         @test eltype(flatview(rand(StableRNG(1), Float32, mn^3))) == Float32
         @test eltype(rand(StableRNG(1), Float32, asmeasure(pd))) == Float32
+    end
+
+    @testset "univariate mixtures" begin
+        mix = MixtureModel([Normal(), Normal(3.0, 1.0)], [0.4, 0.6])
+        m = asmeasure(mix)
+        for x in [-3.0, 0.3, 1.5, 7.0]
+            @test logdensityof(m, x) ≈ logpdf(mix, x)
+            z = transport_to(StdNormal(), mix)(x)
+            @test z ≈ quantile(Normal(), cdf(mix, x))
+            @test transport_to(mix, StdNormal())(z) ≈ x
+        end
+        test_back_and_forth(StandardDist{Uniform}(), mix)
+        @test asmeasure(MixtureModel([Poisson(1.0), Poisson(4.0)])) isa MeasureBase.SuperpositionMeasure
     end
 
     @testset "NaN and out-of-support inputs" begin

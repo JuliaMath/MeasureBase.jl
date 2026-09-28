@@ -16,12 +16,12 @@ using MeasureBase: logdensityof, massof, insupport
 @testset "conversions" begin
     stblrng() = StableRNG(789990641)
 
-    function test_conversion(d::Distribution, ::Type{M}) where {M}
+    function test_conversion(d::Distribution, ::Type{M}; wrappable::Bool = false) where {M}
         @testset "conversion $(typeof(d).name) <-> $M" begin
             m = asmeasure(d)
             @test m isa M
             @test typeof(convert(AbstractMeasure, d)) === typeof(m)
-            @test_throws ArgumentError AsMeasure{typeof(d)}(d)
+            wrappable || @test_throws ArgumentError AsMeasure{typeof(d)}(d)
 
             d2 = convert(Distribution, m)
             @test d2 isa Distribution
@@ -63,11 +63,14 @@ using MeasureBase: logdensityof, massof, insupport
     end
 
     @testset "mixtures" begin
-        test_conversion(MixtureModel([Normal(-1.0, 1.0), Normal(2.0, 3.0)], [0.3, 0.7]), SuperpositionMeasure)
-        test_conversion(MixtureModel([Normal(-2.0, 1.0), Normal(0.0, 2.0), Normal(3.0, 1.0)], [0.2, 0.5, 0.3]), SuperpositionMeasure)
-        test_conversion(MixtureModel([Exponential(0.3), Weibull(2.0, 1.0)], [0.4, 0.6]), SuperpositionMeasure)
-        test_conversion(MixtureModel([MvNormal([0.0, 0.0], I(2)), MvNormal([2.0, 2.0], 2 * I(2))], [0.3, 0.7]), SuperpositionMeasure)
-        test_conversion(UnivariateGMM([-1.0, 2.0], [1.0, 0.5], Categorical([0.4, 0.6])), SuperpositionMeasure)
+        # Continuous univariate mixtures stay wrapped (for their cdf-based
+        # transports), other mixtures become superpositions:
+        test_conversion(MixtureModel([Normal(-1.0, 1.0), Normal(2.0, 3.0)], [0.3, 0.7]), DistributionMeasure; wrappable = true)
+        test_conversion(MixtureModel([Normal(-2.0, 1.0), Normal(0.0, 2.0), Normal(3.0, 1.0)], [0.2, 0.5, 0.3]), DistributionMeasure; wrappable = true)
+        test_conversion(MixtureModel([Exponential(0.3), Weibull(2.0, 1.0)], [0.4, 0.6]), DistributionMeasure; wrappable = true)
+        test_conversion(UnivariateGMM([-1.0, 2.0], [1.0, 0.5], Categorical([0.4, 0.6])), DistributionMeasure; wrappable = true)
+        test_conversion(MixtureModel([MvNormal([0.0, 0.0], I(2)), MvNormal([2.0, 2.0], 2 * I(2))], [0.3, 0.7]), SuperpositionMeasure; wrappable = true)
+        test_conversion(MixtureModel([Poisson(1.0), Poisson(4.0)], [0.3, 0.7]), SuperpositionMeasure; wrappable = true)
 
         d = MixtureModel([Normal(-1.0, 1.0), Normal(2.0, 3.0)], [0.3, 0.7])
         m = asmeasure(d)
