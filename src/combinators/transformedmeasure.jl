@@ -113,7 +113,7 @@ end
 const _ElementwisePushfwd{M,S} = PushforwardMeasure{<:Base.BroadcastFunction,<:Base.BroadcastFunction,M,S}
 @inline mspace_ndims(::Type{MU}) where {M,MU<:_ElementwisePushfwd{M}} = mspace_ndims(M)
 
-const _NonBijectivePusfwdMeasure{M<:PushforwardMeasure,S<:PushFwdStyle} = Union{
+const _NonBijectivePusfwdMeasure{M,S<:PushFwdStyle} = Union{
     PushforwardMeasure{<:Any,<:NoInverse,M,S},
     PushforwardMeasure{<:NoInverse,<:Any,M,S},
     PushforwardMeasure{<:NoInverse,<:NoInverse,M,S},

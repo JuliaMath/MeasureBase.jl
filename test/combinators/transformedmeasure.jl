@@ -134,6 +134,7 @@ using ChangesOfVariables: setladj
 
     # Test non-bijective pushforward
     g = x -> x^2
+    @test MeasureBase.getdof(pushfwd(g, μ)) isa MeasureBase.NoDOF
     @test_throws ArgumentError logdensityof(pushfwd(g, μ), 1.0)
     @test_throws ArgumentError logdensityof(pushfwd(g, μ, PushfwdRootMeasure()), 1.0)
 
