@@ -174,7 +174,7 @@ restrict(f, μ) = RestrictedMeasure(f, asmeasure(μ))
 
 # Nested restrictions fuse into a single predicate:
 restrict(f, μ::RestrictedMeasure) =
-    RestrictedMeasure(x -> μ.predicate(x) && f(x), μ.base)
+    RestrictedMeasure(x -> _insupport_and(μ.predicate(x), f(x)), μ.base)
 
 ###############################################################################
 # SuperpositionMeasure

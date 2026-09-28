@@ -1,6 +1,7 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 using Test
+using IntervalSets
 
 using MeasureBase
 using MeasureBase:
@@ -147,5 +148,21 @@ using Static: static
         @test r2.predicate(0.5) && !r2.predicate(-1.0) && !r2.predicate(2.0)
 
         @test restrict(x -> x > 0)(StdNormal()) isa RestrictedMeasure
+
+        # Restrictions keep the density of their base on the restriction:
+        N = StdNormal()
+        @test logdensityof(r, 1.0) ≈ logdensityof(N, 1.0)
+        @test logdensityof(r, -1.0) == -Inf
+        @test logdensityof(r2, 0.5) ≈ logdensityof(N, 0.5)
+        @test logdensityof(r2, 2.0) == -Inf
+        @test logdensityof(restrict(x -> x > 0, 2 * N), 1.0) ≈ log(2) + logdensityof(N, 1.0)
+        @test logdensities(r, [-1.0, 0.5, 1.0]) ≈ [-Inf, logdensityof(N, 0.5), logdensityof(N, 1.0)]
+        rv = restrict(x -> sum(x) > 0, N^2)
+        @test logdensities(rv, [1.0 -1.0; 0.5 -0.5]) ≈ [logdensityof(N^2, [1.0, 0.5]), -Inf]
+
+        @test logdensityof(Lebesgue(0..1), 0.5) == 0
+        @test logdensityof(Lebesgue(0..1), 1.5) == -Inf
+        @test logdensityof(Counting(), 2) == 0
+        @test logdensityof(Counting(), 2.5) == -Inf
     end
 end

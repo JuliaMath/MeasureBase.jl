@@ -9,7 +9,9 @@ end
 @inline mspace_ndims(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = mspace_ndims(M)
 @inline fixed_stream_size(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
 
-@inline logdensity_def(d::RestrictedMeasure, x) = logdensity_def(d.base, x)
+# The density relative to the base is one on the restriction, the support
+# is handled by `insupport`:
+@inline logdensity_def(::RestrictedMeasure, x) = zero(_logd_numtype(x))
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
