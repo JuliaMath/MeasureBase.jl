@@ -36,6 +36,7 @@ end
     foreach(1:n) do _
         push!(q.args, :(μ = basemeasure(μ)))
     end
+    push!(q.args, :(return μ))
     return q
 end
 

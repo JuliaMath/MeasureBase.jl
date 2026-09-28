@@ -67,6 +67,8 @@ logdensity_rel(μ, base) = LogDensity(μ, base)
 
 DensityInterface.funcdensity(d::LogDensity) = throw(MethodError(funcdensity, (d,)))
 
+DensityInterface.logdensityof(d::Union{Density,LogDensity}, x) = logdensity_rel(d.μ, d.base, x)
+
 #######################################################################################
 # DensityMeasure
 

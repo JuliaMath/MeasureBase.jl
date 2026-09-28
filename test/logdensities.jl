@@ -4,6 +4,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: logdensities, logdensity_def, StdNormal, StdUniform, StdExponential, StdLogistic, Dirac, Lebesgue, LebesgueBase, superpose, weightedmeasure, mcombine, productmeasure
+using MeasureBase: density_rel, logdensity_rel, mintegrate, rootmeasure
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using StaticArrays: SVector, @SVector, @SMatrix
 using Static: static
@@ -12,6 +13,19 @@ import JLArrays
 using JLArrays: JLArray
 
 stdnormal_ld(x) = -(x^2 + log2π) / 2
+
+@testset "density functions and root measures" begin
+    @test logdensities(StdNormal(), 0.5) == logdensityof(StdNormal(), 0.5)
+    @test logdensities(StdUniform(), 1.5) == -Inf
+
+    @test logdensityof(logdensity_rel(StdNormal(), StdLogistic()), 0.5) == logdensity_rel(StdNormal(), StdLogistic(), 0.5)
+    @test densityof(density_rel(StdNormal(), StdLogistic()), 0.5) ≈ exp(logdensity_rel(StdNormal(), StdLogistic(), 0.5))
+    @test logdensityof(logdensity_rel(StdUniform(), StdNormal()), 1.5) == -Inf
+    @test logdensityof(mintegrate(density_rel(StdNormal(), StdLogistic()), StdLogistic()), 0.5) ≈ logdensityof(StdNormal(), 0.5)
+
+    @test rootmeasure(LebesgueBase()) === LebesgueBase()
+    @test rootmeasure(StdNormal()) === LebesgueBase()
+end
 
 # A measure with array variates of a known flat size at the type level:
 struct VecTestMeasure{T} <: AbstractMeasure

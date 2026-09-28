@@ -119,7 +119,7 @@ Base.:(∘)(::typeof(identity), f::TransportFunction) = f
 Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f
 
 function Base.:∘(outer::TransportFunction, inner::TransportFunction)
-    if !(outer.μ == inner.ν || isequal(outer.μ, inner.ν) || outer.μ ≈ inner.ν)
+    if !(outer.μ == inner.ν || isequal(outer.μ, inner.ν))
         throw(
             ArgumentError(
                 "Cannot compose TransportFunction if source of outer doesn't equal target of inner.",

@@ -145,6 +145,7 @@ end
 # into their flat storage (else evaluated variate by variate), tuples and
 # named tuples of batches go to the kernels directly.
 @inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _batched_kernel(f, μ, X)
+@inline _batched_ld(f::F, μ, x::Number) where {F} = _point_ld(f, μ, x)
 @inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _static_ndims(μ))
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::AbstractArray, ::StaticInteger) where {F}
