@@ -4,6 +4,8 @@ using Test
 
 import Distributions
 import MeasureBase
+import AffineMaps
+using LinearAlgebra: I
 
 @testset "Measure interface" begin
     c0 = Distributions.Weibull(0.7, 1.3)
@@ -40,4 +42,22 @@ import MeasureBase
     end
 
     @test MeasureBase.mintegrate(x -> Distributions.Normal(x, 0), Distributions.Normal()) isa MeasureBase.DensityMeasure
+end
+
+
+# Needs AffineMaps >= 0.3.4 (earlier versions give per-column Jacobians of
+# scalar factors and scalar ones for Add):
+@testset "affine pushforward densities" begin
+    b = [1.0, 2.0, 3.0]
+    x = [0.3, -1.2, 2.0]
+    X = [0.3 1.0; -1.2 0.5; 2.0 -0.7]
+    for (f, d) in [
+        (AffineMaps.Mul(2.0), Distributions.MvNormal(zeros(3), 4.0 * I(3))),
+        (AffineMaps.Add(b), Distributions.MvNormal(b, 1.0 * I(3))),
+        (AffineMaps.MulAdd(2.0, b), Distributions.MvNormal(b, 4.0 * I(3))),
+    ]
+        ν = MeasureBase.pushfwd(f, MeasureBase.StdNormal()^3)
+        @test MeasureBase.logdensityof(ν, x) ≈ Distributions.logpdf(d, x)
+        @test MeasureBase.logdensities(ν, X) ≈ Distributions.logpdf(d, X)
+    end
 end
