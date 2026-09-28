@@ -100,7 +100,7 @@ function MeasureBase.batched_transport_to_std(::Type{StdUniform}, d::Dirichlet, 
     # The remaining mass before each component is the mass after it plus
     # the component itself:
     beta_v = _rows(rem, 1:(K - 1)) ./ (_rows(rem, 1:(K - 1)) .+ _rows(Xc, 1:(K - 1)))
-    Z = _beta_cdf.(αs, βs, _unit_clamp.(beta_v))
+    Z = _beta_cdf.(αs, βs, _nonnan.(_unit_clamp.(beta_v), 1 // 2))
     _from_columns(_nan_columns(Z, _simplex_mask(Xc)), X)
 end
 
@@ -108,7 +108,7 @@ function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet
     K = length(d)
     αs, βs = _stick_breaking_params(d)
     Zc = _as_columns(Z)
-    beta_v = _beta_quantile.(αs, βs, _unit_interior.(Zc))
+    beta_v = _beta_quantile.(αs, βs, _quantile_arg.(Zc))
     cp = cumprod(beta_v; dims = 1)
     # Each component takes what its Beta variate leaves of the remaining mass:
     X = vcat(1 .- _rows(cp, 1:1), _rows(cp, 1:(K - 2)) .- _rows(cp, 2:(K - 1)), _rows(cp, (K - 1):(K - 1)))

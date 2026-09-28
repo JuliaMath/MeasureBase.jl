@@ -246,6 +246,20 @@ include("getjacobian.jl")
         @test eltype(rand(StableRNG(1), Float32, asmeasure(pd))) == Float32
     end
 
+    @testset "NaN and out-of-support inputs" begin
+        # The special functions behind these transports hang or throw for NaN:
+        @test isnan(transport_to(Beta(2, 3), Gamma(2))(-1.0))
+        @test isnan(transport_to(Gamma(2), Beta(2, 3))(-1.0))
+        for d in [Gamma(2), Beta(2, 3), TDist(3), Cauchy(), Laplace()], s in [StdNormal(), StdUniform(), StdLogistic()]
+            @test isnan(transport_to(d, s)(NaN))
+            @test isnan(transport_to(s, d)(NaN))
+        end
+        @test isnan(transport_to(StdNormal(), TDist(3))(Inf))
+        dir = Dirichlet([1.0, 2.0, 3.0])
+        @test all(isnan, transport_to(dir, StdNormal()^2)([NaN, 0.3]))
+        @test all(isnan, transport_to(StdNormal()^2, dir)([NaN, 0.3, 0.2]))
+    end
+
     @testset "MvNormal covariance representations" begin
         for Σ in [PDMats.ScalMat(3, 2.5), PDMats.PDiagMat([0.5, 1.0, 2.5]), Diagonal([0.5, 1.0, 2.5])]
             mvn = MvNormal([0.2, -0.4, 0.6], Σ)

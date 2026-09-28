@@ -68,14 +68,15 @@ function _clamp_to_support(d::_Truncated, x::T) where {T<:Real}
     end
 end
 
+# Distributions' functions run on the host only, so these may branch:
 @inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
     R = _result_numtype(d, x)
-    l = _trafo_logcdf(d, x) - _trafo_logccdf(d, x)
-    ifelse(Distributions.insupport(d, x), convert(R, l), convert(R, NaN))
+    MeasureBase.insupport(asmeasure(d), x) ? convert(R, _trafo_logcdf(d, x) - _trafo_logccdf(d, x)) : convert(R, NaN)
 end
 
 @inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
     R = _result_numtype(d, l)
+    isnan(l) && return convert(R, NaN)
     # From the side that keeps the tail:
     x = l < zero(l) ? _trafo_quantile(d, _unit_interior(logistic(l))) : _trafo_cquantile(d, _unit_interior(logistic(-l)))
     convert(R, x)
@@ -98,6 +99,11 @@ end
 # must not throw outside the support (see `MeasureBase._nan_outside`):
 @inline _nan_outside(d::Distribution, x, y) = MeasureBase._nan_outside(asmeasure(d), x, y)
 @inline _nan_outside(::Type{S}, z, y) where {S<:StdMeasure} = MeasureBase._nan_outside(S(), z, y)
+
+# The foreign cdfs and quantiles may hang or throw for NaN arguments, so
+# these are replaced before the calls and the results masked afterwards:
+@inline _nonnan(x, y) = ifelse(isnan(x), oftype(x, y), x)
+@inline _quantile_arg(p) = _nonnan(_unit_interior(p), 1 // 2)
 
 for (D, S) in [
     (Logistic, StdLogistic),

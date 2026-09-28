@@ -126,11 +126,11 @@ end
 @inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Weibull, z) = _nan_outside(StdExponential, z, d.θ * abs(z)^(1 / d.α))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Gamma}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Gamma, x) = _nan_outside(d, x, _gamma_cdf(d.α, abs(x / d.θ)))
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Gamma, p) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _unit_interior(p)))
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Gamma, x) = _nan_outside(d, x, _gamma_cdf(d.α, _nonnan(abs(x / d.θ), 1)))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Gamma, p) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _quantile_arg(p)))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Beta}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Beta, x) = _nan_outside(d, x, _beta_cdf(d.α, d.β, _unit_clamp(x)))
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _unit_interior(p)))
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Beta, x) = _nan_outside(d, x, _beta_cdf(d.α, d.β, _nonnan(_unit_clamp(x), 1 // 2)))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _quantile_arg(p)))
 
 @inline _unit_clamp(x) = clamp(x, zero(x), one(x))
