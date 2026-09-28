@@ -132,7 +132,7 @@ _plain(x::Tuple) = map(_plain, x)
     end
 
     @testset "random variates" begin
-        ctx = GenContext{Float32}(AbstractComputeUnit(CUDA.device()), CUDA.default_rng())
+        ctx = GenContext{Float32}(AbstractComputeUnit(CUDA.device()))
         for μ in (StdNormal(), StdUniform(), StdExponential(), StdNormal()^3, (StdNormal()^2)^3, weightedmeasure(0.3, StdNormal()^2), mcombine(vcat, StdNormal()^2, StdUniform()^1), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), superpose(StdNormal(), StdUniform()), SpikeMixture(StdNormal(), 0.5), asmeasure(Normal(0.3, 1.7)), asmeasure(Weibull(1.4, 0.9)), cu_copy(asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3]))))
             X = batched_rand_impl(ctx, μ, (100,))
             @test X isa CuArray{Float32}

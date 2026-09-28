@@ -11,7 +11,8 @@ using Reactant
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac, asmeasure
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
-using MeasureBase: mcombine
+using MeasureBase: mcombine, batched_rand_impl, GenContext
+using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
 using Distributions: Poisson, MvNormal, Dirichlet
@@ -136,5 +137,21 @@ _plain(x::Number) = Float64(x)
         dir = Dirichlet([2.0, 3.0, 4.0, 1.5])
         md = asmeasure(dir)
         test_traced(X -> logdensities(md, X), rand(dir, 10))
+    end
+
+    # Draws take the context with its Reactant RNG as an argument of the
+    # compiled function:
+    @testset "random variates" begin
+        ctx = GenContext{Float32}(Reactant.ReactantRNG())
+        draw_batch = c -> batched_rand_impl(c, StdNormal()^3, (500,))
+        X = @jit draw_batch(ctx)
+        @test X isa Reactant.ConcreteRArray{Float32} && size(X) == (3, 500)
+        @test all(isfinite, logdensities(StdNormal()^3, Array(X)))
+        @test isapprox(mean(Array(X)), 0, atol = 0.1)
+        @test Array(@jit draw_batch(ctx)) != Array(X)
+        draw = c -> rand(c, StdExponential()^1000)
+        x = @jit draw(ctx)
+        @test x isa Reactant.ConcreteRArray{Float32,1} && all(>=(0), Array(x))
+        @test isapprox(mean(Array(x)), 1, atol = 0.1)
     end
 end
