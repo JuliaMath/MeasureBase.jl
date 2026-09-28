@@ -74,6 +74,7 @@ end
     μ = TrivialMeasure()
     @test massof(μ) == 0
     @test basemeasure(μ) == μ
+    @test insupport(μ, 1.5) == false
 end
 
 @testset "SpikeMixture" begin
