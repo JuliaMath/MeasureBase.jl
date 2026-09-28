@@ -118,7 +118,8 @@ Compute the density, i.e. the
 [Radon-Nikodym derivative](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
 of `ν` with respect to `μ`.
 
-For details, see [`density_rel(ν, μ)`](@ref).
+`𝒹(ν, μ)` is the exponential of [`log𝒹(ν, μ)`](@ref log𝒹), see
+[`logdensity_rel(ν, μ)`](@ref logdensity_rel) for details.
 """
 𝒹(ν, μ::AbstractMeasure) = density_rel(ν, μ)
 export 𝒹
