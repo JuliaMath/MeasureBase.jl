@@ -144,6 +144,20 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         @test ForwardDiff.derivative(l -> transport_to(beta, StdLogistic())(l), -0.4) ≈ inv(dlogitcdf(beta, x_b))
     end
 
+    @testset "nested dual numbers" begin
+        # A shape parameter with an inner tag (and zero partials) and a variate
+        # with an outer tag:
+        ∂P(a) = ForwardDiff.derivative(x -> MeasureBase._gamma_cdf(2.0 + 0 * a, x * a), 0.7)
+        @test ForwardDiff.derivative(∂P, 1.0) ≈ 0.91 * exp(-0.7)
+        ∂Q(a) = ForwardDiff.derivative(p -> MeasureBase._beta_quantile(2.0 + 0 * a, 3.0, p * a), 0.3)
+        ∂Q_ref(a) = a / pdf(Beta(2.0, 3.0), quantile(Beta(2.0, 3.0), 0.3 * a))
+        @test ForwardDiff.derivative(∂Q, 1.0) ≈ (∂Q_ref(1 + 1e-5) - ∂Q_ref(1 - 1e-5)) / 2e-5 rtol = 1e-6
+        # The density (the derivative with respect to the variate) is
+        # differentiable with respect to the shape:
+        ∂P_∂α = ForwardDiff.derivative(a -> ForwardDiff.derivative(x -> MeasureBase._gamma_cdf(a, x), 0.7), 2.0)
+        @test ∂P_∂α ≈ 0.7 * exp(-0.7) * (log(0.7) - (1 - Base.MathConstants.eulergamma))
+    end
+
     @testset "tails of univariate transports" begin
         # Bounded and heavy-lower-tailed distributions lose the lower tail in
         # their quantile functions, so the ranges differ:

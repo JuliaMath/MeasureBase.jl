@@ -65,40 +65,46 @@ using MeasureBase: _gamma_cdf, _gamma_quantile, _beta_cdf, _beta_quantile, _gamm
 
 const _Dual = ForwardDiff.Dual
 
-@inline MeasureBase._dualtag(::_Dual{TAG}, ::Number...) where {TAG} = _Dual{TAG}
+# The outermost dual number type among the arguments, duals of inner tags
+# are constants with respect to it:
+@inline MeasureBase._dualtag(::_Dual{T}, rest::Number...) where {T} = _outer_dual(_Dual{T}, MeasureBase._dualtag(rest...))
+@inline _outer_dual(::Type{D}, ::Type{Nothing}) where {D<:_Dual} = D
+@inline _outer_dual(::Type{_Dual{S}}, ::Type{_Dual{T}}) where {S,T} = S === T || !ForwardDiff.:≺(S, T) ? _Dual{S} : _Dual{T}
+
+@inline _value(::Type{_Dual{T}}, x) where {T} = ForwardDiff.value(T, x)
 
 # The derivative through the last argument; the partials of parameters
 # are marked NaN where they are nonzero (their derivatives are unknown):
-@inline _arg_partials(::Type{_Dual{TAG}}, x::_Dual{TAG}, params...) where {TAG} = ForwardDiff.partials(x)
-@inline _arg_partials(::Type{_Dual{TAG}}, ::Real, params...) where {TAG} = zero(ForwardDiff.partials(_first_dual(params...)))
-@inline _first_dual(x::_Dual, rest...) = x
-@inline _first_dual(::Real, rest...) = _first_dual(rest...)
-@inline _nan_partials(∂, ::Real) = ∂
-@inline function _nan_partials(∂, x::_Dual)
+@inline _arg_partials(::Type{_Dual{T}}, x::_Dual{T}, params...) where {T} = ForwardDiff.partials(x)
+@inline _arg_partials(::Type{D}, ::Real, params...) where {D<:_Dual} = zero(ForwardDiff.partials(_first_dual(D, params...)))
+@inline _first_dual(::Type{_Dual{T}}, x::_Dual{T}, rest...) where {T} = x
+@inline _first_dual(::Type{D}, ::Real, rest...) where {D<:_Dual} = _first_dual(D, rest...)
+@inline _nan_partials(::Type{D}, ∂, ::Real) where {D<:_Dual} = ∂
+@inline function _nan_partials(::Type{_Dual{T}}, ∂, x::_Dual{T}) where {T}
     ∂ + ForwardDiff.Partials(map(v -> ifelse(iszero(v), zero(v), oftype(v, NaN)), ForwardDiff.partials(x).values))
 end
-@inline function _through_last(::Type{_Dual{TAG}}, value, dvalue, last, params...) where {TAG}
-    ∂ = dvalue * _arg_partials(_Dual{TAG}, last, params...)
-    ForwardDiff.Dual{TAG}(value, foldl(_nan_partials, params; init = ∂))
+@inline function _through_last(::Type{_Dual{T}}, value, dvalue, last, params...) where {T}
+    ∂ = dvalue * _arg_partials(_Dual{T}, last, params...)
+    ForwardDiff.Dual{T}(value, foldl((∂, p) -> _nan_partials(_Dual{T}, ∂, p), params; init = ∂))
 end
 
-@inline function MeasureBase._gamma_cdf_impl(::Type{_Dual{TAG}}, α, x) where {TAG}
-    αv, xv = ForwardDiff.value(α), ForwardDiff.value(x)
-    _through_last(_Dual{TAG}, _gamma_cdf(αv, xv), exp(_gamma_logpdf(αv, xv)), x, α)
+@inline function MeasureBase._gamma_cdf_impl(::Type{D}, α, x) where {D<:_Dual}
+    αv, xv = _value(D, α), _value(D, x)
+    _through_last(D, _gamma_cdf(αv, xv), exp(_gamma_logpdf(αv, xv)), x, α)
 end
-@inline function MeasureBase._gamma_quantile_impl(::Type{_Dual{TAG}}, α, p) where {TAG}
-    αv, pv = ForwardDiff.value(α), ForwardDiff.value(p)
+@inline function MeasureBase._gamma_quantile_impl(::Type{D}, α, p) where {D<:_Dual}
+    αv, pv = _value(D, α), _value(D, p)
     xv = _gamma_quantile(αv, pv)
-    _through_last(_Dual{TAG}, xv, exp(-_gamma_logpdf(αv, xv)), p, α)
+    _through_last(D, xv, exp(-_gamma_logpdf(αv, xv)), p, α)
 end
-@inline function MeasureBase._beta_cdf_impl(::Type{_Dual{TAG}}, α, β, x) where {TAG}
-    αv, βv, xv = ForwardDiff.value(α), ForwardDiff.value(β), ForwardDiff.value(x)
-    _through_last(_Dual{TAG}, _beta_cdf(αv, βv, xv), exp(_beta_logpdf(αv, βv, xv)), x, α, β)
+@inline function MeasureBase._beta_cdf_impl(::Type{D}, α, β, x) where {D<:_Dual}
+    αv, βv, xv = _value(D, α), _value(D, β), _value(D, x)
+    _through_last(D, _beta_cdf(αv, βv, xv), exp(_beta_logpdf(αv, βv, xv)), x, α, β)
 end
-@inline function MeasureBase._beta_quantile_impl(::Type{_Dual{TAG}}, α, β, p) where {TAG}
-    αv, βv, pv = ForwardDiff.value(α), ForwardDiff.value(β), ForwardDiff.value(p)
+@inline function MeasureBase._beta_quantile_impl(::Type{D}, α, β, p) where {D<:_Dual}
+    αv, βv, pv = _value(D, α), _value(D, β), _value(D, p)
     xv = _beta_quantile(αv, βv, pv)
-    _through_last(_Dual{TAG}, xv, exp(-_beta_logpdf(αv, βv, xv)), p, α, β)
+    _through_last(D, xv, exp(-_beta_logpdf(αv, βv, xv)), p, α, β)
 end
 
 # The quantile of Beta doesn't support dual parameters:
