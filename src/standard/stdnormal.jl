@@ -20,7 +20,7 @@ export StdNormal
 
 @inline getdof(::StdNormal) = static(1)
 
-@inline rand_impl(ctx::GenContext, ::StdNormal) = randn(get_rng(ctx), get_precision(ctx))
+@inline rand_impl(ctx::GenContext, ::StdNormal) = randn(ctx)
 @inline batched_rand_impl(ctx::GenContext, ::StdNormal, sz::SizeLike) = _randn_bulk(ctx, sz)
 
 Φ(z) = erfc(-z * invsqrt2) / 2

@@ -18,7 +18,7 @@ export StdLogistic
 @inline transport_def(::StdUniform, μ::StdLogistic, x) = logistic(x)
 @inline transport_def(::StdLogistic, μ::StdUniform, p) = _nan_outside(μ, p, logit(_unit_interior(p)))
 
-@inline rand_impl(ctx::GenContext, ::StdLogistic) = logit(rand(get_rng(ctx), get_precision(ctx)))
+@inline rand_impl(ctx::GenContext, ::StdLogistic) = logit(rand(ctx))
 @inline batched_rand_impl(ctx::GenContext, ::StdLogistic, sz::SizeLike) = logit.(_rand_bulk(ctx, sz))
 
 smf(::StdLogistic, x) = logistic(x)

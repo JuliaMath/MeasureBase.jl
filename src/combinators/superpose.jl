@@ -137,7 +137,7 @@ end
 function rand_impl(ctx::GenContext, μ::SuperpositionMeasure)
     components = values(μ.components)
     masses, total = _component_masses(μ)
-    threshold = rand(get_rng(ctx), get_precision(ctx)) * total
+    threshold = rand(ctx) * total
     csum = zero(threshold)
     for (mass, c) in zip(masses, components)
         csum += mass

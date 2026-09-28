@@ -103,38 +103,26 @@ end
 
 @inline _rand_bulk(ctx::GenContext, sz::SizeLike) = _bulk_draw(rand, ctx, sz)
 @inline _randn_bulk(ctx::GenContext, sz::SizeLike) = _bulk_draw(randn, ctx, sz)
-@inline _randexp_bulk(ctx::GenContext, sz::SizeLike) = _randexp_bulk(ctx, sz, get_compute_unit(ctx))
-@inline _randexp_bulk(ctx::GenContext, sz::SizeLike, ::CPUnit) = _bulk_draw(randexp, ctx, sz)
-# Not all compute units provide exponential draws, derive them from uniform draws then:
-@inline _randexp_bulk(ctx::GenContext, sz::SizeLike, ::AbstractComputeUnit) = -log1p.(-_rand_bulk(ctx, sz))
+@inline _randexp_bulk(ctx::GenContext, sz::SizeLike) = _bulk_draw(randexp, ctx, sz)
 
-# Fully static batch sizes draw static arrays on the CPU, so that variates
-# of statically sized measures are allocation-free. Other compute units
-# allocate their own arrays.
-@inline _bulk_draw(f::F, ctx::GenContext, sz::SizeLike) where {F} = f(ctx, asnonstatic(sz))
-@inline _bulk_draw(f::F, ctx::GenContext, sz::StaticSizeLike) where {F} =
-    _bulk_draw(f, ctx, sz, get_compute_unit(ctx))
-@inline _bulk_draw(f::F, ctx::GenContext, sz::StaticSizeLike, ::AbstractComputeUnit) where {F} =
-    f(ctx, asnonstatic(sz))
-@inline _bulk_draw(f::F, ctx::GenContext, sz::StaticSizeLike, ::CPUnit) where {F} =
-    f(get_rng(ctx), staticarray_type(get_precision(ctx), canonical_size(sz)))
-
-@inline _rand_bulk(ctx::GenContext, ::Tuple{}) = rand(get_rng(ctx), get_precision(ctx))
-@inline _randn_bulk(ctx::GenContext, ::Tuple{}) = randn(get_rng(ctx), get_precision(ctx))
-@inline _randexp_bulk(ctx::GenContext, ::Tuple{}) = randexp(get_rng(ctx), get_precision(ctx))
-
+@inline _bulk_draw(f::F, ctx::GenContext, ::Tuple{}) where {F} = f(ctx)
+@inline _bulk_draw(f::F, ctx::GenContext, sz::SizeLike) where {F} = _bulk_draw(f, ctx, sz, get_rng(ctx))
+@inline _bulk_draw(f::F, ctx::GenContext, sz::SizeLike, ::AbstractRNG) where {F} = _maybestatic_draw(f, ctx, sz)
 # Test values use a constant RNG, which only draws single values:
-const _ConstantContext = GenContext{<:AbstractFloat,<:AbstractComputeUnit,ConstantRNG}
-@inline _rand_bulk(ctx::_ConstantContext, sz::SizeLike) = _const_bulk(ctx, rand(ConstantRNG(), get_precision(ctx)), sz)
-@inline _randn_bulk(ctx::_ConstantContext, sz::SizeLike) = _const_bulk(ctx, randn(ConstantRNG(), get_precision(ctx)), sz)
-@inline _randexp_bulk(ctx::_ConstantContext, sz::SizeLike) = _const_bulk(ctx, randexp(ConstantRNG(), get_precision(ctx)), sz)
-@inline _rand_bulk(ctx::_ConstantContext, ::Tuple{}) = rand(ConstantRNG(), get_precision(ctx))
-@inline _randn_bulk(ctx::_ConstantContext, ::Tuple{}) = randn(ConstantRNG(), get_precision(ctx))
-@inline _randexp_bulk(ctx::_ConstantContext, ::Tuple{}) = randexp(ConstantRNG(), get_precision(ctx))
-@inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = _const_bulk(ctx, x, sz, get_compute_unit(ctx))
-@inline _const_bulk(ctx::GenContext, x, sz::SizeLike, ::AbstractComputeUnit) =
-    fill!(allocate_array(ctx, typeof(x), asnonstatic(sz)), x)
-@inline _const_bulk(ctx::GenContext, x, sz::StaticSizeLike, ::CPUnit) = maybestatic_fill(x, sz)
+@inline _bulk_draw(f::F, ctx::GenContext, sz::SizeLike, ::ConstantRNG) where {F} = _const_bulk(ctx, f(ctx), sz)
+
+# Fully static batch sizes draw static arrays on the host, so that variates
+# of statically sized measures are allocation-free:
+@inline _maybestatic_draw(f::F, ctx::GenContext, sz::SizeLike) where {F} = f(ctx, asnonstatic(sz))
+@inline function _maybestatic_draw(f::F, ctx::GenContext, sz::StaticSizeLike) where {F}
+    _on_host(ctx) ? f(get_rng(ctx), staticarray_type(get_precision(ctx), canonical_size(sz))) : f(ctx, asnonstatic(sz))
+end
+
+@inline _on_host(ctx::GenContext) = is_host_unit(get_compute_unit(ctx))
+
+@inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = fill_array(ctx, x, asnonstatic(sz))
+@inline _const_bulk(ctx::GenContext, x, sz::StaticSizeLike) =
+    _on_host(ctx) ? maybestatic_fill(x, sz) : fill_array(ctx, x, asnonstatic(sz))
 
 # A mask over the batch dimensions, aligned with a flat batch of variates
 # of rank `k`:

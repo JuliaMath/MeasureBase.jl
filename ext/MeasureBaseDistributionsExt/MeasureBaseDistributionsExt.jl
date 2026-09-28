@@ -46,7 +46,7 @@ using IrrationalConstants: log2π, invsqrt2π
 using LogExpFunctions: logistic, log1pexp
 using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, beta_inc_inv
 
-using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision, get_compute_unit, CPUnit, AbstractComputeUnit
+using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
 
 using Static: True, False, StaticInt, static, dynamic
 using StaticThings: SizeLike, asnonstatic

@@ -34,7 +34,7 @@ function gentype(μ::SpikeMixture)
 end
 
 function rand_impl(ctx::GenContext, μ::SpikeMixture)
-    return (rand(get_rng(ctx), get_precision(ctx)) < μ.w) * rand_impl(ctx, μ.m)
+    return (rand(ctx) < μ.w) * rand_impl(ctx, μ.m)
 end
 
 function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::SizeLike)
