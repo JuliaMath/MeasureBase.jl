@@ -47,6 +47,19 @@ using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixtu
         @test logdensityof(ss, x) ≈ logdensityof(sm, x)
     end
 
+    # Spike mixtures with spike weights independent of the parent weight:
+    sm2 = SpikeMixture(N, 0.3, 0.5)
+    @test massof(sm2) ≈ 0.8
+    @test logdensityof(sm2, 0.0) ≈ log(0.5)
+    @test logdensityof(sm2, 1.0) ≈ log(0.3) + ld_N(1.0)
+    @test logdensities(sm2, [0.0, 1.0]) ≈ [log(0.5), log(0.3) + ld_N(1.0)]
+    draws = [rand(sm2) for _ in 1:10^5]
+    @test isapprox(count(iszero, draws) / length(draws), 0.5 / 0.8, atol = 0.01)
+    @test isapprox(count(iszero, rand(sm2^(10^5))) / 10^5, 0.5 / 0.8, atol = 0.01)
+
+    @test MeasureBase.insupport(MeasureBase.TrivialMeasure(), 1.0) == false
+    @test logdensity_rel(MeasureBase.TrivialMeasure(), MeasureBase.LebesgueBase(), 1.0) == -Inf
+
     # Dirac equality is not decidable from types, so no weighted collapse:
     μ2 = μ + μ
     @test μ2 isa SuperpositionMeasure

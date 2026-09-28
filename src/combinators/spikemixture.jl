@@ -21,20 +21,31 @@ end
     SpikeMixture(basemeasure(μ.m), static(1.0), static(1.0))
 end
 
-for func in [:logdensityof, :logdensity_def]
-    @eval @inline function $func(μ::SpikeMixture, x)
+for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
+    @eval @inline function $head(μ::SpikeMixture, x)
         ℓ_spike = dynamic(log(μ.s))
         ℓ_parent = dynamic(log(μ.w)) + dynamic($func(μ.m, x))
         ifelse(iszero(x), oftype(ℓ_parent, ℓ_spike), ℓ_parent)
     end
 end
 
+massof(μ::SpikeMixture) = μ.w * massof(μ.m) + μ.s
+
 function gentype(μ::SpikeMixture)
     gentype(μ.m)
 end
 
+# The probability of drawing from the parent rather than the spike:
+function _parent_prob(μ::SpikeMixture)
+    mass_parent = μ.w * massof(μ.m)
+    mass_parent isa AbstractUnknownMass &&
+        throw(ArgumentError("Cannot sample from a spike mixture with a parent of unknown mass"))
+    return dynamic(mass_parent / (mass_parent + μ.s))
+end
+
 function rand_impl(ctx::GenContext, μ::SpikeMixture)
-    return (rand(ctx) < μ.w) * rand_impl(ctx, μ.m)
+    x = rand_impl(ctx, μ.m)
+    return ifelse(rand(ctx) < _parent_prob(μ), x, zero(x))
 end
 
 function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::SizeLike)
@@ -42,7 +53,7 @@ function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::SizeLike)
 end
 function _spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::SizeLike, k::StaticInteger)
     X = batched_rand_impl(ctx, μ.m, sz)
-    return ifelse.(_batch_mask(_rand_bulk(ctx, sz) .< μ.w, k), X, zero(eltype(X)))
+    return ifelse.(_batch_mask(_rand_bulk(ctx, sz) .< _parent_prob(μ), k), X, zero(eltype(X)))
 end
 _spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::SizeLike, ::NoMSpaceElementSize) =
     _batched_rand_pointwise(ctx, μ, sz)
