@@ -32,6 +32,7 @@ include("test_mooncake.jl")
 
 include("measure_operators.jl")
 include("public_api.jl")
+include("contracts.jl")
 
 include("combinators/smart_constructors.jl")
 include("combinators/weighted.jl")
