@@ -20,7 +20,9 @@ function (μ::Dirac{X})(s) where {X}
     return 0
 end
 
-basemeasure(d::Dirac) = CountingBase()
+# A point mass is its own base measure, so that structural measures such as
+# superpositions see where its base has mass:
+basemeasure(d::Dirac) = d
 
 massof(::Dirac) = static(1.0)
 
@@ -91,3 +93,11 @@ function batched_logdensity_def(μ::Dirac{<:AbstractArray{<:Number}}, X::Abstrac
 end
 
 Adapt.adapt_structure(to, μ::Dirac) = Dirac(Adapt.adapt(to, μ.x))
+
+# Counting measures and point masses agree with each other where both have
+# mass, and are singular relative to Lebesgue measure:
+const _CountingRoot = Union{Counting,Dirac}
+logdensity_rel_def(::_CountingRoot, ::Union{_CountingRoot,CountingBase}, x) = zero(_logd_numtype(x))
+logdensity_rel_def(::CountingBase, ::_CountingRoot, x) = zero(_logd_numtype(x))
+logdensity_rel_def(::LebesgueBase, ::_CountingRoot, x) = _neg_inf_logd(x)
+logdensity_rel_def(::_CountingRoot, ::LebesgueBase, x) = -_neg_inf_logd(x)

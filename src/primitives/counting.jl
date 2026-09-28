@@ -23,9 +23,12 @@ end
 
 @inline logdensityof_impl(μ::Counting, x) = _checksupport(insupport(μ, x), 0.0)
 
-@inline logdensity_def(μ::Counting, x) = logdensityof(μ, x)
+# Counting measures on a set are their own base measures, so that the base
+# carries the set (`CountingBase()` has an atom at every real number and is
+# not σ-finite):
+basemeasure(μ::Counting) = μ
 
-basemeasure(::Counting) = CountingBase()
+@inline logdensity_def(::Counting, x) = zero(_logd_numtype(x))
 
 Counting() = Counting(ℤ)
 
@@ -38,8 +41,6 @@ testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
 
 proxy(d::Counting) = restrict(in(d.support), CountingBase())
 
-Base.:∘(::typeof(basemeasure), ::Type{Counting}) = CountingBase()
-
 Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
 
 insupport(μ::Counting, x) = x ∈ μ.support
@@ -49,8 +50,5 @@ insupport(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
 
 massof(::CountingBase, s::Set) = length(s)
-
-# ToDo: Would this be correct?
-# @inline mdomain(::CountingBase) = IntegerValues()
 
 @inline mdomain(::Counting{DomainType}) where {DomainType} = DomainType()
