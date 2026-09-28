@@ -22,3 +22,20 @@ using MeasureBase.MeasureOperators: ⋄, ⊙, ▷, ⊗, ∫, ∫exp, 𝒹, log�
     @test @inferred(𝒹(ν, μ)) == density_rel(ν, μ)
     @test @inferred(log𝒹(ν, μ)) == logdensity_rel(ν, μ)
 end
+
+module _TestOperatorExports
+    using Test
+    using MeasureBase
+
+    @testset "operators via using MeasureBase" begin
+        μ, ν = StdNormal(), StdExponential()
+        @test ⊗(μ, ν) == productmeasure((μ, ν))
+        @test logdensityof(∫exp(x -> -x, μ), 0.5) ≈ logdensityof(μ, 0.5) - 0.5
+        @test logdensityof(∫(x -> 2.0, μ), 0.5) ≈ logdensityof(μ, 0.5) + log(2)
+        @test log𝒹(μ, Lebesgue())(0.5) ≈ logdensityof(μ, 0.5)
+        @test 𝒹(μ, Lebesgue())(0.5) ≈ exp(logdensityof(μ, 0.5))
+        @test (exp ⋄ μ) == pushfwd(exp, μ)
+        @test (μ ⊙ exp) == pullbck(exp, μ)
+        @test (μ ▷ Dirac) == mbind(Dirac, μ)
+    end
+end

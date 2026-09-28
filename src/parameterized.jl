@@ -1,5 +1,15 @@
 export ParameterizedMeasure
 
+"""
+    abstract type ParameterizedMeasure{N} <: AbstractMeasure
+
+Supertype of measures with named parameters `N`, stored as a `NamedTuple`
+in a field `par`.
+
+Subtypes `M{N,T} <: ParameterizedMeasure{N}` can be constructed as `M(nt)`
+or with positional parameters `M{N}(args...)`, and support `params`,
+[`paramnames`](@ref) and property access to the parameters.
+"""
 abstract type ParameterizedMeasure{N} <: AbstractMeasure end
 
 function Base.getproperty(μ::ParameterizedMeasure{N}, prop::Symbol) where {N}

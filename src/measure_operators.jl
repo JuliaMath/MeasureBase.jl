@@ -1,7 +1,8 @@
 """
     module MeasureOperators
 
-Defines the following operators for measures:
+Defines the following operators for measures, all of them are re-exported
+by `MeasureBase`:
 
 * `f ⋄ μ == pushfwd(f, μ)`
 * `μ ⊙ f == pullbck(f, μ)`
@@ -22,7 +23,7 @@ using InverseFunctions: inverse
 @doc raw"""
     ⋄(f, μ::AbstractMeasure) = pushfwd(f, μ)
 
-The `\\diamond` operator denotes a pushforward operation: `ν = f ⋄ μ`
+The `\diamond` operator denotes a pushforward operation: `ν = f ⋄ μ`
 generates a
 [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure).
 
@@ -39,14 +40,16 @@ export ⋄
 @doc raw"""
     ⊙(ν::AbstractMeasure, f) = pullbck(f, ν)
 
-The `\\odot` operator denotes a pullback operation.
+The `\odot` operator denotes a pullback operation.
 
-See also [`pullbck(ν, f)`](@ref) for details. Note that `pullbck` takes it's
+See [`pullbck(f, ν)`](@ref) for details. Note that `pullbck` takes its
 arguments in different order, in keeping with the Julia convention of
 passing functions as the first argument. A pullback is mathematically the
-precomposition of a measure `μ`` with the function `f` applied to sets. so
+precomposition of a measure `ν` with the function `f` applied to sets, so
 `⊙` takes the measure as the first and the function as the second argument,
 as common in mathematical notation for precomposition.
+
+Up to MeasureBase v0.14, `⊙` denoted a pointwise product of measures.
 
 A common mathematical notation for pullback in measure theory is
 ``f \circ μ``, but as `∘` is used for function composition in Julia and as
@@ -112,10 +115,10 @@ export ∫exp
     𝒹(ν, μ) = density_rel(ν, μ)
 
 Compute the density, i.e. the
-[Radom-Nikodym derivative](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
-of `ν`` with respect to `μ`.
+[Radon-Nikodym derivative](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
+of `ν` with respect to `μ`.
 
-For details, see [`density_rel(ν, μ)`}(@ref).
+For details, see [`density_rel(ν, μ)`](@ref).
 """
 𝒹(ν, μ::AbstractMeasure) = density_rel(ν, μ)
 export 𝒹
@@ -124,10 +127,10 @@ export 𝒹
     log𝒹(ν, μ) = logdensity_rel(ν, μ)
 
 Compute the log-density, i.e. the logarithm of the
-[Radom-Nikodym derivative](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
-of `ν`` with respect to `μ`.
+[Radon-Nikodym derivative](https://en.wikipedia.org/wiki/Radon%E2%80%93Nikodym_theorem)
+of `ν` with respect to `μ`.
 
-For details, see [`logdensity_rel(ν, μ)`}(@ref).
+For details, see [`logdensity_rel(ν, μ)`](@ref).
 """
 log𝒹(ν, μ::AbstractMeasure) = logdensity_rel(ν, μ)
 export log𝒹

@@ -2,19 +2,25 @@ import LinearAlgebra: normalize
 
 import Base
 
+"""
+    abstract type MeasureBase.AbstractUnknownMass <: Number
+
+Supertype of [`UnknownFiniteMass`](@ref) and [`UnknownMass`](@ref), the
+results of [`massof`](@ref) when the mass of a measure is not known.
+"""
 abstract type AbstractUnknownMass <: Number end
 
 """
-    struct UnknownFiniteMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownFiniteMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is finite but unknown. See [`massof`](@ref).
 """
 struct UnknownFiniteMass <: AbstractUnknownMass end
 
 """
-    struct UnknownMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is unknown, possibly infinite. See [`massof`](@ref).
 """
 struct UnknownMass <: AbstractUnknownMass end
 
@@ -49,8 +55,6 @@ export massof
 
 Get the _mass_ of a measure - that is, integrate the measure over its support.
 
-`massof` 
-
 ----------
 
     massof(m, dom)
@@ -67,8 +71,8 @@ LebesgueBase()`, users can call `massof(m, a_b)` where
 
 `massof` often returns a `Real`. But in many cases we may only know the mass is
 finite, or we may know nothing at all about it. For these cases, it will return
-`UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
-exists, it defaults to `UnknownMass`.
+[`UnknownFiniteMass()`](@ref UnknownFiniteMass) or [`UnknownMass()`](@ref UnknownMass),
+respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
 """
 massof(::AbstractMeasure) = UnknownMass()
 

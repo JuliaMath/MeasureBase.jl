@@ -12,7 +12,8 @@ struct NoFastInsupport{MU} end
     insupport(m)
 
 `insupport(m, x)` computes whether `x` is in the support of `m` and
-returns either a `Bool` or an instance of [`NoFastInsupport`](@ref).
+returns either a `Bool` (possibly a static one) or an instance of
+[`NoFastInsupport`](@ref). Densities are `-Inf` outside of the support.
 
 `insupport(m)` returns a function, and satisfies
 `insupport(m)(x) == insupport(m, x)`.

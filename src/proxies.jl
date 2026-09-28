@@ -1,16 +1,22 @@
 
 """
-function proxy end
+    proxy(μ::AbstractMeasure)::AbstractMeasure
 
-It's often useful to delegate methods like `logdensity` and `basemeasure` to
-those of a different measure. For example, a `Normal{(:μ,:σ)}` is equivalent to
-an affine transformation of a `Normal{()}`.
+Return a measure equivalent to `μ` to which methods like `logdensity_def`
+and `basemeasure` of `μ` can be delegated, via [`MeasureBase.@useproxy`](@ref).
 
-We _could_ just have calls like `Normal(μ=2,σ=4)` directly construct a
-transformed measure, but this would make dispatch awkward.
+For example, a `Normal{(:μ,:σ)}` is equivalent to an affine transformation
+of a `Normal{()}`. Using a proxy instead of constructing the transformed
+measure directly keeps dispatch on the original measure type.
 """
 function proxy end
 
+"""
+    MeasureBase.@useproxy M
+
+Delegate the measure interface for measures of type `M` to their
+[`proxy`](@ref).
+"""
 macro useproxy(M)
     M = esc(M)
     quote
