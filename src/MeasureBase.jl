@@ -144,7 +144,6 @@ gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
-using NaNMath
 using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
