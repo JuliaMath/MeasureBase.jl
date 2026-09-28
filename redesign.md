@@ -124,7 +124,7 @@ dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
 |---|---|---|---|
 | Density | `logdensity_def` | `mspace_ndims`, `batched_logdensityof_impl` (+`_def`) | kernels via components, with-rest forms |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | + `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
-| Random | `batched_rand_impl` (default via transport) | `batched_rand_impl` | derived |
+| Random | `batched_rand_impl` (default via transport), optionally `rand_impl` | `batched_rand_impl` | derived |
 | Declarations | none | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
 
 ## Layouts per combinator
@@ -154,7 +154,7 @@ dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
   units (`is_host_unit`) and the standard transports on others. Remaining
   array-variate distributions batch via `logpdf(d, X)` on the host.
 
-## Changes relative to `master`
+## Changes relative to `main`
 
 Commits since `c773afe`: variate size contract and
 `preferred_stdmeasure`, densities over flat storage, branch-free
@@ -166,7 +166,23 @@ the review fixes, and device-friendly kernels for wrapped Distributions.
 
 Removed: `transport_origin`/`to_origin`/`from_origin` and the origin
 machinery, `NoTransport`, `transport_to_mvstd`, per-measure
-`Base.rand(rng, T, μ)` methods, the `_trafo_cdf`/`_trafo_quantile` hooks.
+`Base.rand(rng, T, μ)` methods, the `_trafo_cdf`/`_trafo_quantile` hooks,
+and the exports `kleisli`, `AbstractTransitionKernel`, `↣`, `rebase`,
+`commonbase`, `likelihood_ratio`, `log_likelihood_ratio`, `↑`,
+`ZeroSet`, `CodimOne`, `Simplex`, `ℝ₊` and `𝕀` (with
+`PointwiseProductMeasure` and power-weighted measures).
+
+API: the operators live in `MeasureOperators` and are re-exported; `⊙`
+is now the pullback (it was the pointwise product). Extension points and
+the internals BAT uses are declared `public` (`Expr(:public)` on Julia
+1.11+, `@compat public` once Compat >= 4.10). `mspace_elsize` (size of
+array variates, `NoMSpaceElementSize` for structured ones) is only used
+for with-rest stream consumption and `mreshape`, and is to be unexported
+(and declared public). Kernels use `mspace_ndims` and `mspace_flatsize`
+(size of the flat storage, which differs for nested powers). `some_dof`
+(DOF at an unspecified point) sizes standard transport partners of
+measures without a fixed DOF. Release notes are in NEWS.md, the concepts
+and extension points in docs/src/concepts.md.
 
 Behavior changes for NEWS: univariate Distributions pivot on
 `StdLogistic`; nested powers and array products return ArraysOfArrays
@@ -234,5 +250,5 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   `smart-constructors.jl` review (location-scale arrays as affine
   pushforwards of powers),
   `_static_ndims` type-first vs. instance-first.
-- Polish before merge: docs pass, NEWS, history curation, version bump,
+- Polish before merge: final docs and NEWS pass, history curation, version bump,
   remove this file.
