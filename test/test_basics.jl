@@ -68,6 +68,7 @@ end
     @test basemeasure(μ) == μ && rootmeasure(μ) == μ
     @test logdensityof(μ, 1.5) == 0 && logdensity_def(μ, 1.5) == 0
     @test_throws ArgumentError testvalue(μ)
+    @test_throws ArgumentError rand(μ^0)
 end
 
 @testset "TrivialMeasure" begin
@@ -75,6 +76,7 @@ end
     @test massof(μ) == 0
     @test basemeasure(μ) == μ
     @test insupport(μ, 1.5) == false
+    @test logdensityof(μ, 1.5) == -Inf
 end
 
 @testset "SpikeMixture" begin

@@ -25,7 +25,7 @@ end
 # Whether a measure is symmetric about zero, `nothing` if not known:
 _symmetric_about_zero(::Any) = nothing
 _symmetric_about_zero(::Union{StdNormal,StdLogistic}) = static(true)
-_symmetric_about_zero(::StdExponential) = static(false)
+_symmetric_about_zero(::Union{StdExponential,StdUniform}) = static(false)
 _symmetric_about_zero(μ::WeightedMeasure) = _symmetric_about_zero(μ.base)
 
 @inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)

@@ -104,6 +104,7 @@ using IrrationalConstants: loghalf
 
     # Half requires scalar variates and parents symmetric about zero:
     @test_throws ArgumentError Half(StdExponential())
+    @test_throws ArgumentError Half(StdUniform())
     @test_throws ArgumentError Half(StdNormal()^3)
 end
 

@@ -85,7 +85,17 @@ implementation per measure type for single variates and batches. See the
 - Variates of `mcombine(vcat, ...)` and of binds are flat vectors.
 - `mcombine(vcat, ::ProductMeasure, ::ProductMeasure)` merges only
   products of concrete, homogeneous marginals.
-- `Half` transports via `StdUniform`, with limited tail accuracy.
+- `Half` transports via `StdUniform`, with limited tail accuracy. `Half`
+  requires scalar variates and a parent that is symmetric about zero,
+  known asymmetric parents throw at construction.
+- The base measure of a `Dirac` is the point mass itself and the base of
+  `Counting(S)` keeps the set `S`, so densities of superpositions of
+  discrete and continuous components are taken relative to Lebesgue
+  measure plus counting measure on the atoms.
+- `mcombine(merge, ...)` throws on overlapping names.
+- Transports between point masses return floats.
+- Variates of the wrong shape throw `ArgumentError` everywhere, also for
+  reshaped measures (`DimensionMismatch` before).
 - `transport_to(StdUniform, μ)` for measures `μ` with binds inside
   throws, use `transport_to(StdUniform()^n, μ)`.
 

@@ -16,6 +16,7 @@ using ChangesOfVariables: with_logabsdet_jacobian
     @test logdensities(ν, Xs) ≈ [logdensityof(μ, vec(Xs[:, :, i])) for i in 1:4]
     @test logdensityof(ν, fill(Inf, 2, 3)) == -Inf
     @test logdensityof(mreshape(StdUniform()^4, (2, 2)), [0.5 1.5; 0.2 0.3]) == -Inf
+    @test_throws ArgumentError logdensityof(ν, zeros(3, 2))
 
     f = transport_to(StdUniform()^6, ν)
     @test f(X) ≈ transport_to(StdUniform()^6, μ)(vec(X))

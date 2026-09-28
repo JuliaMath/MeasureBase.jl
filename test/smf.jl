@@ -4,7 +4,6 @@ smf_measures = [
     StdUniform()
     Half(StdNormal())
     Half(StdLogistic())
-    Half(StdUniform())
 ]
 
 @testset "smf" begin

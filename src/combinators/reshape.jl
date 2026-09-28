@@ -28,7 +28,7 @@ function Reshape(output_size::SizeLike, input_size::SizeLike)
     return Reshape{typeof(out_sz), typeof(in_sz)}(out_sz, in_sz)
 end
 
-_throw_reshape_mismatch(sz, sz_x) = throw(DimensionMismatch("Reshape input size is $sz but got input of size $sz_x"))
+_throw_reshape_mismatch(sz, sz_x) = throw(ArgumentError("Reshape input size is $sz but got input of size $sz_x"))
 
 function (f::Reshape)(x::AbstractArray)
     sz_x = maybestatic_size(x)

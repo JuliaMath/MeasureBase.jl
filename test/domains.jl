@@ -55,6 +55,12 @@ using AffineMaps: Mul
         @test maybe_in([1.0, 2.0, 3.0], sid)
     end
 
+    @testset "mdomain of counting measures" begin
+        @test mdomain(Counting(Set([1, 2]))) == Set([1, 2])
+        @test mdomain(Counting(ℤ)) == ℤ
+        @test 2 ∈ mdomain(Counting(Set([1, 2]))) && 3 ∉ mdomain(Counting(Set([1, 2])))
+    end
+
     @testset "mdomain of combined measures" begin
         f_β(a) = pushfwd(Mul(a[1] + 0.5), StdNormal())^2
         μc = mcombine(vcat, StdNormal()^2, mbind(f_β, StdExponential()^1, vcat))

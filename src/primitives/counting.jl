@@ -51,4 +51,4 @@ massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
 
 massof(::CountingBase, s::Set) = length(s)
 
-@inline mdomain(::Counting{DomainType}) where {DomainType} = DomainType()
+@inline mdomain(μ::Counting{<:SetLike}) = μ.support

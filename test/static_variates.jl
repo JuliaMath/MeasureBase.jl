@@ -14,6 +14,7 @@ using MeasureBase: batched_logdensityof_with_rest, batched_transport_to_std,
     batched_transport_from_std_with_rest, _materialize
 using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: flatview, sliced
+using StructArrays: StructVector
 using StaticArrays: SVector, SMatrix, Size
 using Static: static
 
@@ -123,6 +124,15 @@ const static_model = mbind(static_kernel, static_primary, merge)
         f_t = transport_to(StdNormal()^static(3), μ_t)
         @test @inferred(f_t(x_t)) isa SVector{3,Float64}
         @test @inferred(inverse(f_t)(f_t(x_t))) isa Tuple{Float64,SVector{2,Float64}}
+
+        # Static powers of tuple products transport as static columns:
+        μ_p = productmeasure((StdNormal(), StdExponential()))^static(2)
+        f_p = transport_to(StdUniform()^static(4), μ_p)
+        z_p = SVector{4}(0.2, 0.3, 0.4, 0.5)
+        y_p = @inferred inverse(f_p)(z_p)
+        @test y_p isa StructVector{Tuple{Float64,Float64},Tuple{SVector{2,Float64},SVector{2,Float64}}}
+        @test @inferred(f_p(y_p)) isa SVector{4,Float64}
+        @test f_p(y_p) ≈ z_p
     end
 
     @testset "batches of static variates" begin
