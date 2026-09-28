@@ -249,9 +249,30 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   (the family kernels are exact there).
   Quantile results within `4 eps` of the support edges snap to the edges
   only on the generic logistic path of wrapped distributions.
-- Decisions pending: `Half` tails via log-ccdf, `rand!`, the
+- Base measures of discrete measures (review fix, 2026-09-28): a `Dirac`
+  is its own base measure and `Counting(S)` keeps `S` as its base, so the
+  base-measure mask of superpositions sees the atoms and a superposition
+  of a continuous and a discrete component has densities relative to
+  Lebesgue measure plus counting measure on the atoms. `CountingBase()` on
+  all of the reals is not σ-finite and is never used as a base of a
+  superposition component.
+- Pushforwards through non-surjective maps (`pushfwd(exp, StdNormal())`)
+  throw a `DomainError` from the inverse outside the image (`log(-1.0)`),
+  open decision: mask by the image or document.
+- Empty batches of array products over heterogeneous marginals fail in
+  the reduction (`zero(Any)`), needs an `init` keyword for
+  `sum_leading_dims` in StaticThings.
+- `convert_realtype` turns Poisson/Bernoulli draws into floats while
+  `Counting(Int)` checks types, so `logdensity_rel(Poisson, Counting(Int),
+  2.0)` is `+Inf` but finite relative to `Counting(ℤ)`. Either keep
+  integer draws or make `Counting(Int)` check values.
+- Decisions pending: `Half` general design (law of `abs(x)`, density
+  `logaddexp(ℓ(x), ℓ(-x))`, quantile by root finding unless symmetric,
+  symmetry declared by the Distributions extension) versus the current
+  symmetric-only `Half`, `Half` tails via log-ccdf, the
   `smart-constructors.jl` review (location-scale arrays as affine
-  pushforwards of powers),
-  `_static_ndims` type-first vs. instance-first.
+  pushforwards of powers), `_static_ndims` type-first vs. instance-first,
+  `normalize`/`NormalizedMeasure` (FlatPPL), the `insupport`/`params`
+  export clash with Distributions, `@compat public` once Compat ≥ 4.10.
 - Polish before merge: final docs and NEWS pass, history curation, version bump,
   remove this file.
