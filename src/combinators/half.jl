@@ -1,8 +1,32 @@
 export Half
 
+"""
+    Half(μ)
+
+The distribution of `abs(x)` for `x` drawn from `μ`, for measures `μ` with
+scalar variates that are symmetric about zero.
+"""
 struct Half{M} <: AbstractMeasure
     parent::M
+
+    function Half(parent::M) where {M}
+        _check_half_parent(parent, mspace_ndims(M), _symmetric_about_zero(parent))
+        return new{M}(parent)
+    end
 end
+
+@inline _check_half_parent(::Any, ::StaticInteger{0}, ::Any) = nothing
+@inline _check_half_parent(μ, n::Integer, s) = n == 0 ? _check_half_parent(μ, static(0), s) : _throw_half_parent(μ, "scalar variates")
+@inline _check_half_parent(μ, ::NoMSpaceElementSize, ::Any) = _throw_half_parent(μ, "a declared variate rank of zero")
+@inline _check_half_parent(μ, ::StaticInteger{0}, ::False) = _throw_half_parent(μ, "symmetry about zero")
+@noinline _throw_half_parent(μ, what) =
+    throw(ArgumentError("Half requires measures with $what, but got a measure of type $(nameof(typeof(μ)))"))
+
+# Whether a measure is symmetric about zero, `nothing` if not known:
+_symmetric_about_zero(::Any) = nothing
+_symmetric_about_zero(::Union{StdNormal,StdLogistic}) = static(true)
+_symmetric_about_zero(::StdExponential) = static(false)
+_symmetric_about_zero(μ::WeightedMeasure) = _symmetric_about_zero(μ.base)
 
 @inline mspace_elsize(μ::Half) = mspace_elsize(μ.parent)
 @inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
@@ -26,16 +50,13 @@ end
 @inline batched_rand_impl(ctx::GenContext, μ::Half, sz::SizeLike) = abs.(batched_rand_impl(ctx, unhalf(μ), sz))
 
 function logdensityof_impl(μ::Half, x)
-    ld = logdensityof(unhalf(μ), x) - loghalf
-    return x ≥ 0 ? ld : oftype(ld, -Inf)
+    ld = logdensityof(unhalf(μ), x) + logtwo
+    return ifelse(x ≥ 0, ld, oftype(ld, -Inf))
 end
 
 logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
 
-@inline function insupport(d::Half, x)
-    x ≥ 0 || return false
-    insupport(unhalf(d), x)
-end
+@inline insupport(d::Half, x) = _insupport_and(x ≥ 0, insupport(unhalf(d), x))
 
 testvalue(::Type{T}, ::Half) where {T} = one(T)
 

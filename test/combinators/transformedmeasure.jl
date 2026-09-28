@@ -97,6 +97,14 @@ using IrrationalConstants: loghalf
 
     # Test logdensityof for zero
     @test logdensityof(μ, 0.0) ≈ logdensityof(StdNormal(), 0.0) - loghalf
+
+    @test logdensities(μ, [-1.0, 1.0]) ≈ [-Inf, logdensityof(μ, 1.0)]
+    @test MeasureBase.insupport(μ, -1.0) == false && MeasureBase.insupport(μ, 1.0) == true
+    @test logdensityof(Half(2 * StdNormal()), 1.0) ≈ log(2) + logdensityof(μ, 1.0)
+
+    # Half requires scalar variates and parents symmetric about zero:
+    @test_throws ArgumentError Half(StdExponential())
+    @test_throws ArgumentError Half(StdNormal()^3)
 end
 
 using Test
