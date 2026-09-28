@@ -23,7 +23,6 @@ efficiently.
 See also [`MeasureBase.mspace_flatsize`](@ref).
 """
 function mspace_elsize end
-export mspace_elsize
 
 @inline mspace_elsize(μ::AbstractMeasure) = NoMSpaceElementSize{typeof(μ)}()
 
@@ -82,9 +81,8 @@ _mspace_some_elsize_impl(μ::AbstractMeasure, ::NoMSpaceElementSize) =
 @inline _value_flatsize(x::AbstractArray{<:Number}) = maybestatic_size(x)
 @inline _value_flatsize(x) = NoMSpaceElementSize{typeof(x)}()
 
-@inline _scalar_or_unknown(::Tuple{}) = ()
-@inline _scalar_or_unknown(sz::NoMSpaceElementSize) = sz
-@inline _scalar_or_unknown(sz) = NoMSpaceElementSize{typeof(sz)}()
+@inline _scalar_or_unknown(::Type{MU}, ::Tuple{}) where {MU} = ()
+@inline _scalar_or_unknown(::Type{MU}, ::Any) where {MU} = NoMSpaceElementSize{MU}()
 
 
 """

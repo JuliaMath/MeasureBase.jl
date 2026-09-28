@@ -31,6 +31,12 @@ Base.:∘(::typeof(log), d::Density) = logdensity_rel(d.μ, d.base)
 
 Base.log(d::Density) = log ∘ d
 
+"""
+    density_rel(μ, ν)
+
+Returns the density of `μ` relative to `ν` as a function of the variate,
+see [`density_rel(μ, ν, x)`](@ref).
+"""
 density_rel(μ, base) = Density(μ, base)
 
 (f::Density)(x) = density_rel(f.μ, f.base, x)

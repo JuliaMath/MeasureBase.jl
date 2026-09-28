@@ -96,8 +96,6 @@ fcomp(::typeof(identity), g) = g
 fcomp(f, ::typeof(identity)) = f
 fcomp(::typeof(identity), ::typeof(identity)) = identity
 
-near_neg_inf(::Type{T}) where {T<:Number} = T(-1E38) # Still fits into Float32
-
 isneginf(x) = isinf(x) & (x < zero(x))
 isposinf(x) = isinf(x) & (x > zero(x))
 

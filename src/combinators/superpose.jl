@@ -162,8 +162,8 @@ struct _CommonNDims{MU} <: Function end
 @inline (::_CommonNDims{MU})(a::Integer, b::Integer) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()
 @inline (::_CommonNDims{MU})(::Any, ::Any) where {MU} = NoMSpaceElementSize{MU}()
 
-@inline mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = _scalar_or_unknown(mspace_flatsize(eltype(C)))
-@inline function mspace_flatsize(::Type{<:SuperpositionMeasure{C}}) where {C<:Tuple}
-    _scalar_or_unknown(static_mapreduce(mspace_flatsize, _common_flatsize, C))
+@inline mspace_flatsize(::Type{MU}) where {C<:AbstractArray,MU<:SuperpositionMeasure{C}} = _scalar_or_unknown(MU, mspace_flatsize(eltype(C)))
+@inline function mspace_flatsize(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
+    _scalar_or_unknown(MU, static_mapreduce(mspace_flatsize, _common_flatsize, C))
 end
 @inline _common_flatsize(a, b) = a === b ? a : NoMSpaceElementSize{typeof((a, b))}()

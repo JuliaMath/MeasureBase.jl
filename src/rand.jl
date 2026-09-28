@@ -26,8 +26,6 @@ Base.rand(rng::AbstractRNG, μ::AbstractMeasure) = rand(GenContext{Float64}(rng)
 Base.rand(::Type{T}, μ::AbstractMeasure) where {T<:AbstractFloat} = rand(GenContext{T}(), μ)
 Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractMeasure) where {T<:AbstractFloat} = rand(GenContext{T}(rng), μ)
 
-@inline Random.rand!(d::AbstractMeasure, args...) = rand!(Random.default_rng(), d, args...)
-
 
 """
     MeasureBase.batched_rand_impl(ctx::GenContext, μ, sz::SizeLike)
@@ -89,15 +87,19 @@ end
 # Variates generated one by one, stacked into a flat batch:
 @inline _rand_pointwise(ctx::GenContext, μ, sz::SizeLike, ::Any) = _batched_rand_pointwise(ctx, μ, sz)
 @inline _rand_pointwise(ctx::GenContext, μ, ::Tuple{}, ::_MaybeRandImpl) = rand_impl(ctx, μ)
-@noinline function _rand_pointwise(::GenContext, μ, ::Tuple{}, ::_NoRandImpl)
+@noinline _rand_pointwise(::GenContext, μ, ::Tuple{}, ::_NoRandImpl) = _throw_no_rand_impl(μ)
+@noinline function _throw_no_rand_impl(μ)
     throw(ArgumentError("Random variate generation is not implemented for measures of type $(nameof(typeof(μ))), define MeasureBase.batched_rand_impl or MeasureBase.rand_impl"))
 end
 
 function _batched_rand_pointwise(ctx::GenContext, μ, sz::SizeLike)
-    _stack_variates(map(_ -> rand_impl(ctx, μ), CartesianIndices(asnonstatic(sz))))
+    _stack_variates(map(_ -> rand_impl(ctx, μ), CartesianIndices(asnonstatic(sz))), μ)
 end
 @inline _batched_rand_pointwise(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
 
+@inline _stack_variates(xs::AbstractArray, μ) = _stack_variates(xs)
+# Empty draws of measures without a sampler never call it, so nothing tells the variate type:
+@noinline _stack_variates(::AbstractArray{Union{}}, μ) = _throw_no_rand_impl(μ)
 @inline _stack_variates(xs::AbstractArray{<:Number}) = xs
 @inline _stack_variates(xs::AbstractArray{<:AbstractArray}) = stacked(map(_stack_variates, xs))
 @inline _stack_variates(xs::AbstractArray{<:Union{Tuple,NamedTuple}}) = StructArrays.components(StructArray(xs))

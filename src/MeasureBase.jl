@@ -106,7 +106,7 @@ export asmeasure
 """
     struct AsMeasure{T}
 
-Wrapes a measure-like object into an `AbstractMeasure`.
+Wraps a measure-like object into an `AbstractMeasure`.
 
 Constructor:
 
@@ -149,8 +149,6 @@ using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
 
-# Mostly useful for StaticBools
-istrue(p) = p == true
 
 """
 `logdensity_def` is the standard way to define a log-density for a new measure.
@@ -266,7 +264,7 @@ using .Interface
         :preferred_stdmeasure, :promote_stdmeasure, :StdMeasure, :AnyStdMeasure,
         :NoStdTransport, :stdconvert, :TransportFunction,
         # Measurable spaces, degrees of freedom and argument checks:
-        :mspace_ndims, :mspace_flatsize, :NoMSpaceElementSize, :fixed_stream_size,
+        :mspace_ndims, :mspace_flatsize, :mspace_elsize, :NoMSpaceElementSize, :fixed_stream_size,
         :checked_arg, :NoDOF, :NoFastDOF, :NoFastInsupport,
         # Masses:
         :AbstractUnknownMass, :UnknownMass, :UnknownFiniteMass,

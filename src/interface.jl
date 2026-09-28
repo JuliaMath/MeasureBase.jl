@@ -4,7 +4,7 @@ using Reexport
 
 @reexport using MeasureBase
 
-using MeasureBase: basemeasure_depth, proxy, istrue
+using MeasureBase: basemeasure_depth, proxy
 using MeasureBase: insupport, basemeasure_sequence
 using MeasureBase: transport_to
 
