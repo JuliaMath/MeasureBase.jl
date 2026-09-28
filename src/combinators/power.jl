@@ -165,21 +165,41 @@ end
 @inline _pwr_sum_dims(ℓ::Number, ::StaticInteger{0}) = ℓ
 @noinline _pwr_sum_dims(::Number, ::StaticInteger) = _throw_pwr_variate_not_array()
 # Numeric batches of powers of bases without a variate rank are batches of
-# streams:
-@inline function _powered_kernel_impl(::typeof(logdensityof_impl), μ::PowerMeasure, X::AbstractArray{<:Number}, ::NoMSpaceElementSize)
-    _powered_stream_kernel(μ, X, fixed_stream_size(pwr_base(μ)))
+# streams, for bases of fixed stream length (tuple products) they are split
+# into the batches of the marginals:
+@inline function _powered_kernel_impl(f::F, μ::PowerMeasure, X::AbstractArray{<:Number}, ::NoMSpaceElementSize) where {F}
+    _powered_stream_kernel(f, μ, X, fixed_stream_size(pwr_base(μ)))
 end
-function _powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::True)
-    ℓ, X_rest = batched_logdensityof_with_rest(μ, X, ())
-    size(X_rest, 1) == 0 || _throw_stream_too_long()
-    return ℓ
+function _powered_stream_kernel(f::F, μ::PowerMeasure, X::AbstractArray, ::True) where {F}
+    ν = pwr_base(μ)
+    dims = size_dims(pwr_size(μ))
+    n = _fixed_stream_length(ν)
+    size(X, 1) == n * prod(dims) || _throw_size_mismatch()
+    Xs = _stream_batch(ν, maybestatic_reshape(X, (n, dims..., Base.tail(_batch_dims(X))...)))
+    return _pwr_sum_dims(_batched_kernel(f, ν, Xs), static(length(dims)))
 end
-_powered_stream_kernel(μ::PowerMeasure, X::AbstractArray, ::False) = _streamwise_ld(logdensityof_impl, μ, X)
+_powered_stream_kernel(f::F, μ::PowerMeasure, X::AbstractArray, ::False) where {F} = _streamwise_ld(f, μ, X)
 
 # Flat batches of powers have the power dimensions after the variate
 # dimensions of the base measure (where the rank of the base is known):
 @inline _check_pwr_batch(X::AbstractArray, μ::PowerMeasure) = _check_pwr_dims(X, _static_ndims(pwr_base(μ)), asnonstatic(pwr_size(μ)), false)
 @inline _check_pwr_batch(::Any, ::PowerMeasure) = nothing
+# Tuples of batches of powers of tuple products carry the power dimensions
+# after the variate dimensions of each marginal:
+@inline function _check_pwr_batch(X::Union{Tuple,NamedTuple}, μ::PowerMeasure)
+    _check_pwr_components(X, pwr_base(μ), asnonstatic(pwr_size(μ)))
+end
+@inline _check_pwr_components(::Any, ::Any, ::Dims) = nothing
+@inline function _check_pwr_components(X::Tuple, ν::ProductMeasure{<:Tuple}, dims::Dims)
+    length(X) == length(marginals(ν)) || _throw_size_mismatch()
+    foreach((m, Xi) -> _check_pwr_component(Xi, m, dims), marginals(ν), X)
+end
+@inline function _check_pwr_components(X::NamedTuple{names}, ν::ProductMeasure{<:NamedTuple{names}}, dims::Dims) where {names}
+    _check_pwr_components(values(X), productmeasure(values(marginals(ν))), dims)
+end
+@inline _check_pwr_component(Xi::AbstractArray, m, dims::Dims) = _check_pwr_dims(Xi, _static_ndims(m), dims, false)
+@inline _check_pwr_component(Xi::Union{Tuple,NamedTuple}, m, dims::Dims) = _check_pwr_components(Xi, m, dims)
+@inline _check_pwr_component(::Any, m, ::Dims) = _throw_size_mismatch()
 @inline function _check_pwr_dims(X::AbstractArray, ::StaticInteger{K}, dims::Dims, exact::Bool) where {K}
     n = length(dims)
     if (exact ? ndims(X) != K + n : ndims(X) < K + n) || ntuple(i -> size(X, K + i), Val(length(dims))) != dims
@@ -358,6 +378,7 @@ function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray)
     _pwr_batched_to_std(S, μ, X, _static_ndims(pwr_base(μ)))
 end
 function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::Union{Tuple,NamedTuple}) where {S<:StdMeasure}
+    _check_pwr_batch(X, μ)
     _pwr_batched_to_std(S, μ, X, nothing)
 end
 @inline function _pwr_batched_to_std(::Type{S}, μ::PowerMeasure, X, ::Any) where {S}

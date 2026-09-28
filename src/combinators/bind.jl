@@ -344,6 +344,27 @@ function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
     return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
 
+# Batches of merge-bind variates are named tuples of batches: the primary
+# part is evaluated as a batch, the secondary part variate by variate.
+function batched_logdensityof_impl(μ::_BindBy{typeof(merge)}, X::NamedTuple)
+    X_α, X_β = _split_after(X, Val(_mspace_names(μ.α)))
+    _merge_bind_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
+end
+_merge_bind_ld(μ::Bind, ℓ_α::Number, a, b) = ℓ_α + logdensityof(_get_β_a(μ, a), b)
+function _merge_bind_ld(μ::Bind, ℓ_α::AbstractArray, X_α, X_β)
+    B = ndims(ℓ_α)
+    ℓ_β = map(CartesianIndices(ℓ_α)) do i
+        logdensityof(_get_β_a(μ, _batch_row(X_α, i, B)), _batch_row(X_β, i, B))
+    end
+    return ℓ_α .+ ℓ_β
+end
+
+# The variate at index `i` of a batch with `B` batch dimensions:
+_batch_row(X::Union{Tuple,NamedTuple}, i::CartesianIndex, B::Integer) = map(Xc -> _batch_row(Xc, i, B), X)
+function _batch_row(X::AbstractArray, i::CartesianIndex, B::Integer)
+    ndims(X) == B ? X[i] : view(X, ntuple(_ -> Colon(), ndims(X) - B)..., Tuple(i)...)
+end
+
 function batched_logdensityof_with_rest(μ::Bind, x::AbstractVector, ::Tuple{})
     ℓ, _, x_rest = logdensityof_with_rest(μ, x)
     return ℓ, x_rest

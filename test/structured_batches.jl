@@ -59,4 +59,15 @@ using ArraysOfArrays: flatview
             @test flatview(f.(Y)) ≈ U
         end
     end
+
+    @testset "densities of powers of tuple products" begin
+        T = productmeasure((StdNormal(), StdExponential()))
+        x = rand(T^3)
+        xs = reduce(vcat, [[a, b] for (a, b) in x])
+        @test logdensityof(T^3, xs) ≈ logdensityof(T^3, x)
+        @test MeasureBase.logdensity_def(T^3, xs) ≈ MeasureBase.logdensity_def(T^3, x)
+        @test logdensities(T^3, (randn(3, 2), rand(3, 2))) isa AbstractVector
+        @test_throws ArgumentError logdensities(T^3, (randn(5), rand(5)))
+        @test_throws ArgumentError logdensities(T^3, (randn(2, 4), rand(2, 4)))
+    end
 end

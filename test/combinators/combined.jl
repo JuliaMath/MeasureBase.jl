@@ -8,7 +8,8 @@ using OneTwoMany: firstarg, secondarg
 
 using MeasureBase
 using MeasureBase: StdExponential, StdLogistic, StdNormal, StdUniform
-using MeasureBase: mcombine, productmeasure, transport_to, pushfwd
+using MeasureBase: mcombine, mbind, productmeasure, transport_to, pushfwd
+using StructArrays: StructArray
 using AffineMaps: Mul
 
 @testset "mcombine" begin
@@ -69,6 +70,27 @@ using AffineMaps: Mul
         pm = mcombine(merge, productmeasure((a = StdNormal(),)), productmeasure((b = StdUniform(),)))
         @test logdensityof(pm, (a = 0.3, b = 0.5)) ≈ logdensityof(StdNormal(), 0.3)
         @test_throws ArgumentError mcombine(merge, productmeasure((a = StdNormal(), b = StdNormal())), productmeasure((b = StdUniform(),)))
+    end
+
+    @testset "batched densities of merge combinations" begin
+        N, E = StdNormal(), StdExponential()
+        Bm = mbind(p -> productmeasure((c = pushfwd(Mul(abs(p.a) + 1), N), d = E^length(p.b))), productmeasure((a = N, b = E^2)), merge)
+        Cm = mcombine(merge, Bm, productmeasure((e = N,)))
+        @test Cm isa MeasureBase.CombinedMeasure
+        for M in (Bm, Cm)
+            xs = [rand(stblrng(), M) for _ in 1:4]
+            @test logdensities(M, StructArray(xs)) ≈ logdensityof.(Ref(M), xs)
+        end
+    end
+
+    @testset "nested vcat combinations" begin
+        T = productmeasure((StdNormal(), StdExponential()))
+        C = mcombine(vcat, mcombine(vcat, mcombine(vcat, T, StdNormal()), StdNormal())^2, StdNormal())
+        x = rand(stblrng(), C)
+        @test length(x) == 9
+        ℓ_ref = sum(logdensityof(StdNormal(), x[i]) for i in (1, 3, 4, 5, 7, 8, 9)) + sum(logdensityof(StdExponential(), x[i]) for i in (2, 6))
+        @test logdensityof(C, x) ≈ ℓ_ref
+        @test logdensities(C, hcat(x, x)) ≈ [ℓ_ref, ℓ_ref]
     end
 
     @testset "CombinedMeasure" begin

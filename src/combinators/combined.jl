@@ -236,6 +236,7 @@ function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::Ab
 end
 
 @inline _fixed_stream_length(μ) = _fixed_stream_length(μ, mspace_flatsize(μ))
+@inline _fixed_stream_length(μ::CombinedMeasure{typeof(vcat)}) = _fixed_stream_length(μ.α) + _fixed_stream_length(μ.β)
 @inline _fixed_stream_length(μ, sz::SizeLike) = size2length(sz)
 @noinline function _fixed_stream_length(μ, ::NoMSpaceElementSize)
     throw(ArgumentError("Consuming several variates per stream requires measures of type $(nameof(typeof(μ))) to have a known variate size"))
@@ -246,6 +247,15 @@ function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVe
     ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
     x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return ℓ_a + ℓ_b, x_μ, x_rest
+end
+
+# Batches of merge-combined variates are named tuples of batches, split by
+# the names of the first component:
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval function $bhead(μ::CombinedMeasure{typeof(merge)}, X::NamedTuple)
+        X_α, X_β = _split_after(X, Val(_mspace_names(μ.α)))
+        _lazy_add(_batched_kernel($head, μ.α, X_α), _batched_kernel($head, μ.β, X_β))
+    end
 end
 
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(merge)}, x::NamedTuple)
