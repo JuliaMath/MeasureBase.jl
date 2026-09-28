@@ -181,6 +181,19 @@ include("getjacobian.jl")
         end
     end
 
+    @testset "Dirichlet precision and boundary" begin
+        dir = Dirichlet([2.0, 3.0, 4.0])
+        f = transport_to(StdUniform()^2, dir)
+        for x in ([1 - 2e-10, 1e-10, 1e-10], [0.2, 0.8 - 1e-12, 1e-12], [0.2, 0.3, 0.5])
+            @test all(isapprox.(inverse(f)(f(x)), x, rtol = 1e-8))
+        end
+        # Up to the saturation of uniform variates close to one:
+        for x in ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+            @test all(isfinite, f(x))
+            @test inverse(f)(f(x)) ≈ x atol = 1e-5
+        end
+    end
+
     @testset "trafo autodiff pullbacks" begin
         x = [0.6, 0.7, 0.8, 0.9]
         f = transport_to(Dirichlet([3.0, 4.0, 5.0, 6.0, 7.0]), Uniform)
