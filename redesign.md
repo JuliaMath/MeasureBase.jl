@@ -92,7 +92,15 @@ compute unit (`rand(μ)`, `rand(rng, μ)`, `rand(T, μ)` are wrappers).
 `batched_rand_impl(ctx, μ, sz::SizeLike)` returns a flat batch, a single
 variate for `sz == ()`; `rand_impl` defaults to it. Defaults draw
 standard variates in bulk on the compute unit and transport them, or
-generate variate by variate without a standard transport.
+generate variate by variate without a standard transport. Draws go
+through HeterogeneousComputing (0.3): `rand`/`randn`/`randexp(ctx, dims)`
+for bulk draws and `rand(ctx)` etc. for single ones, on any compute unit
+and RNG (exponential draws from uniform ones where RNGs lack them, scalar
+draws from device RNGs), `fill_array` for constants. MeasureBase only
+adds static arrays for static sizes on host units and constant fills for
+`ConstantRNG` test values, which HC's array draws don't support. Under
+Reactant the context, with a `ReactantRNG`, is an argument of the
+compiled function.
 
 **Array products.** `productmeasure(::AbstractArray)` stores isbits
 parameterized marginals as `StructArrays` (nested parameter structs
@@ -142,9 +150,9 @@ dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
   and `cumprod` along the variate dimension (`multivariate.jl`). Incomplete
   gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
   (and quantiles), whose ForwardDiff and ChainRules derivatives come from
-  the densities. Draws use the Distributions samplers on the CPU and the
-  standard transports on other compute units. Remaining array-variate
-  distributions batch via `logpdf(d, X)` on the host.
+  the densities. Draws use the Distributions samplers on host compute
+  units (`is_host_unit`) and the standard transports on others. Remaining
+  array-variate distributions batch via `logpdf(d, X)` on the host.
 
 ## Changes relative to `master`
 
@@ -193,9 +201,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   functions don't compile for GPUs or Reactant, so Beta and Dirichlet
   transports and draws (Gamma under Reactant too) stay on the CPU;
   ChangesOfVariables has no rules for `Base.Fix1`/`Fix2` arithmetic;
-  HeterogeneousComputing has no Reactant compute unit; JLArrays has no
-  RNG and no triangular solves; Reactant rejects traced `VectorOfArrays`
-  and empty batches.
+  HeterogeneousComputing has no splittable per-stream RNGs yet and
+  doesn't allocate FixedSizeArrays; JLArrays has no triangular solves;
+  Reactant rejects traced `VectorOfArrays` and empty batches.
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
   `checked_arg` at the entry points; variates of the right shape never
@@ -222,9 +230,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   (the family kernels are exact there).
   Quantile results within `4 eps` of the support edges snap to the edges
   only on the generic logistic path of wrapped distributions.
-- Decisions pending: `Half` tails via log-ccdf, device random variate
-  infrastructure and `rand!`, the `smart-constructors.jl` review
-  (location-scale arrays as affine pushforwards of powers),
+- Decisions pending: `Half` tails via log-ccdf, `rand!`, the
+  `smart-constructors.jl` review (location-scale arrays as affine
+  pushforwards of powers),
   `_static_ndims` type-first vs. instance-first.
 - Polish before merge: docs pass, NEWS, history curation, version bump,
   remove this file.
