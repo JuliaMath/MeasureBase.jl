@@ -84,11 +84,21 @@ end
     _mcombine_product_shortcut(f_c, marginals(α), marginals(β), α, β)
 end
 
+# Products of scalar-variate marginals concatenate into a single product,
+# the variates of other products are streams:
 function _mcombine_product_shortcut(::typeof(vcat), ma::AbstractVector{T}, mb::AbstractVector{T}, α, β) where {T}
-    isconcretetype(T) ? productmeasure(vcat(ma, mb)) : _generic_mcombine_impl_stage2(vcat, α, β)
+    if isconcretetype(T) && mspace_ndims(T) === 0
+        productmeasure(vcat(ma, mb))
+    else
+        _generic_mcombine_impl_stage2(vcat, α, β)
+    end
 end
-_mcombine_product_shortcut(::typeof(merge), ma::NamedTuple, mb::NamedTuple, α, β) =
+function _mcombine_product_shortcut(::typeof(merge), ma::NamedTuple{na}, mb::NamedTuple{nb}, α, β) where {na,nb}
+    isempty(intersect(na, nb)) || _throw_overlapping_names(intersect(na, nb))
     productmeasure(merge(ma, mb))
+end
+@noinline _throw_overlapping_names(names) =
+    throw(ArgumentError("Can't merge products of measures with overlapping names $names"))
 _mcombine_product_shortcut(f_c, ma, mb, α, β) = _generic_mcombine_impl_stage2(f_c, α, β)
 
 @inline function _generic_mcombine_impl_stage1(f_c, α::AbstractMeasure, β::AbstractMeasure)

@@ -52,6 +52,23 @@ using AffineMaps: Mul
         @test logdensityof(mpab, x) ≈ logdensityof(mab, x)
         Xab = vcat(randn(2, 3), rand(2, 3))
         @test logdensities(mpab, Xab) ≈ [logdensityof(mpab, x) for x in eachcol(Xab)]
+
+        # Products of array-variate marginals combine into flat streams:
+        N2 = StdNormal()^2
+        pv = mcombine(vcat, productmeasure([N2, N2]), productmeasure([N2]))
+        x6 = randn(6)
+        @test logdensityof(pv, x6) ≈ logdensityof(StdNormal()^6, x6)
+        @test length(rand(pv)) == 6
+        X6 = randn(6, 3)
+        @test logdensities(pv, X6) ≈ [logdensityof(StdNormal()^6, x) for x in eachcol(X6)]
+        u6 = transport_to(StdUniform()^6, pv)(x6)
+        @test u6 ≈ transport_to(StdUniform()^6, StdNormal()^6)(x6)
+        @test transport_to(pv, StdUniform()^6)(u6) ≈ x6
+
+        # Merging products with overlapping names is an error:
+        pm = mcombine(merge, productmeasure((a = StdNormal(),)), productmeasure((b = StdUniform(),)))
+        @test logdensityof(pm, (a = 0.3, b = 0.5)) ≈ logdensityof(StdNormal(), 0.3)
+        @test_throws ArgumentError mcombine(merge, productmeasure((a = StdNormal(), b = StdNormal())), productmeasure((b = StdUniform(),)))
     end
 
     @testset "CombinedMeasure" begin

@@ -218,7 +218,50 @@ end
 @inline function mspace_ndims(::Type{<:ProductMeasure{<:AbstractArray{M,N}}}) where {M,N}
     _add_ndims(mspace_ndims(M), N)
 end
-@inline fixed_stream_size(::Type{<:ProductMeasure{<:AbstractArray{M}}}) where {M} = fixed_stream_size(M)
+# Batches of streams consume array products in fused operations only where
+# the flat variate size of the marginals is known from their type:
+@inline function fixed_stream_size(::Type{<:ProductMeasure{<:AbstractArray{M}}}) where {M}
+    _fixed_array_product_stream(fixed_stream_size(M), mspace_flatsize(M))
+end
+@inline _fixed_array_product_stream(::True, ::SizeLike) = static(true)
+@inline _fixed_array_product_stream(::StaticBool, ::Any) = static(false)
+
+# Single streams of array products whose marginals have no known flat
+# variate size are consumed marginal by marginal:
+function logdensityof_with_rest(μ::ProductMeasure{<:AbstractArray}, x::AbstractVector)
+    _array_product_ld_with_rest(μ, x, mspace_flatsize(μ))
+end
+function _array_product_ld_with_rest(μ::ProductMeasure, x::AbstractVector, sz::SizeLike)
+    a, x_rest = _consume_from_stream(x, sz)
+    return _point_ld(logdensityof_impl, μ, a), a, x_rest
+end
+function _array_product_ld_with_rest(μ::ProductMeasure, x::AbstractVector, ::NoMSpaceElementSize)
+    ℓ = zero(_logd_numtype(x))
+    x_rest = x
+    as = [begin
+        ℓ_i, a_i, x_rest = logdensityof_with_rest(m, x_rest)
+        ℓ += ℓ_i
+        _stream_variate(m, a_i)
+    end for m in marginals(μ)]
+    return ℓ, as, x_rest
+end
+
+function transport_to_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray}, x::AbstractVector) where {S<:StdMeasure}
+    _array_product_to_std_with_rest(S, μ, x, mspace_flatsize(μ))
+end
+function _array_product_to_std_with_rest(::Type{S}, μ::ProductMeasure, x::AbstractVector, sz::SizeLike) where {S}
+    a, x_rest = _consume_from_stream(x, sz)
+    return _as_stdstream(transport_to_std(S, μ, a)), a, x_rest
+end
+function _array_product_to_std_with_rest(::Type{S}, μ::ProductMeasure, x::AbstractVector, ::NoMSpaceElementSize) where {S}
+    x_rest = x
+    zs_as = [begin
+        z_i, a_i, x_rest = transport_to_std_with_rest(S, m, x_rest)
+        (z_i, _stream_variate(m, a_i))
+    end for m in marginals(μ)]
+    z = isempty(zs_as) ? SVector{0,Bool}() : reduce(vcat, map(first, zs_as))
+    return z, map(last, zs_as), x_rest
+end
 
 # Batched kernels over flat storage `(marginal variate dims..., product
 # dims..., batch dims...)`. Marginals with scalar variates align with the
