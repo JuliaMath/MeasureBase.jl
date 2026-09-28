@@ -75,9 +75,16 @@ end
 @inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Any, m) = _rand_pointwise(ctx, μ, sz, m)
 
 function _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike, ::Any) where {S<:StdMeasure}
-    convert_realtype(get_precision(ctx), batched_transport_from_std(S, μ, _rand_std(ctx, S, (n, size_dims(sz)...))))
+    convert_realtype(get_precision(ctx), _transported_std_draw(ctx, μ, sz, S, n, _static_ndims(μ)))
 end
 @inline _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type, ::Any, m) = _rand_pointwise(ctx, μ, sz, m)
+
+@inline _transported_std_draw(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike, ::Any) where {S} =
+    batched_transport_from_std(S, μ, _rand_std(ctx, S, (n, size_dims(sz)...)))
+# Single scalar variates from single standard variates, device arrays of
+# standard variates can't be indexed on the host:
+@inline _transported_std_draw(ctx::GenContext, μ, ::Tuple{}, ::Type{S}, ::IntegerLike, ::StaticInteger{0}) where {S} =
+    transport_from_std(S, μ, _rand_std(ctx, S, ()))
 
 # Variates generated one by one, stacked into a flat batch:
 @inline _rand_pointwise(ctx::GenContext, μ, sz::SizeLike, ::Any) = _batched_rand_pointwise(ctx, μ, sz)
