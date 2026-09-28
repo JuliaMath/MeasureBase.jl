@@ -51,14 +51,6 @@ test_measures = [
     # d ⊙ d
 ]
 
-testbroken_measures = [
-    # InverseGamma(2) # Not defined yet
-    # MvNormal(I(3)) # Entirely broken for now
-    CountingBase()
-    Likelihood
-    TrivialMeasure()
-]
-
 @testset "testvalue" begin
     for μ in test_measures
         @info "testing $μ"
@@ -68,11 +60,20 @@ testbroken_measures = [
         test_interface(5 * μ)
         # test_interface(SpikeMixture(μ, 0.2))
     end
+end
 
-    for μ in testbroken_measures
-        @info "testing $μ"
-        @test_broken test_testvalue(μ)
-    end
+# Measures without random variates have no testvalue, check them at given points:
+@testset "CountingBase" begin
+    μ = CountingBase()
+    @test basemeasure(μ) == μ && rootmeasure(μ) == μ
+    @test logdensityof(μ, 1.5) == 0 && logdensity_def(μ, 1.5) == 0
+    @test_throws ArgumentError testvalue(μ)
+end
+
+@testset "TrivialMeasure" begin
+    μ = TrivialMeasure()
+    @test massof(μ) == 0
+    @test basemeasure(μ) == μ
 end
 
 @testset "SpikeMixture" begin
@@ -130,10 +131,13 @@ NormalMeasure() = mintegrate_exp(x -> -0.5x^2, Lebesgue(ℝ))
 end
 
 @testset "Likelihood" begin
-    ℓ = Likelihood(3) do (μ,)
-        mintegrate_exp(Lebesgue(ℝ)) do x
-            -(x - μ)^2
-        end
+    k(μ) = mintegrate_exp(x -> -(x - μ)^2, Lebesgue(ℝ))
+    ℓ = Likelihood(k, 3.0)
+    @test MeasureBase.DensityKind(ℓ) == MeasureBase.IsDensity()
+    @test likelihood_kernel(ℓ) === k && likelihood_obs(ℓ) == 3.0
+    for θ in (testvalue(StdNormal()), 1.5, -2.0)
+        @test logdensityof(ℓ, θ) ≈ -(3.0 - θ)^2
+        @test log(ℓ(θ)) ≈ logdensityof(ℓ, θ)
     end
 end
 
