@@ -109,6 +109,13 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> transport_to(StdNormal(), StdUniform()).(x), rand(10))
         test_traced(x -> transport_to(Normal(2, 3), StdNormal()).(x), x)
         test_traced(x -> transport_to(StdNormal(), Exponential(2.0)).(x), rand(10))
+        # Tails of the traced normal quantile:
+        for p in (Float32[1f-9, 1f-30, 0.02, 0.5, 0.9, 1 - 1f-7], [1e-300, 1e-20, 0.02, 0.5, 0.9, 1 - 1e-15])
+            z = test_traced(p -> MeasureBase.Φinv.(p), p)
+            @test all(isfinite, Array(z)) && eltype(z) == eltype(p)
+        end
+        test_traced(x -> transport_to(StdNormal(), StdLogistic()).(x), Float32[-80, -40, -5, 0, 5, 40, 80])
+        test_traced(x -> transport_to(StdNormal(), StdExponential()).(x), Float32[1f-30, 1f-3, 1, 30, 80])
     end
 
     # Distribution parameters stay constants, Distributions' parameter
