@@ -94,9 +94,9 @@ struct DensityMeasure{F,B} <: AbstractMeasure
     end
 end
 
-@inline function insupport(d::DensityMeasure, x)
-    _insupport_mask(insupport(d.base, x)) & isfinite(logdensityof(getfield(d, :f), x))
-end
+# A vanishing integrand shows as a density of `-Inf`, so the support
+# check doesn't need to evaluate it:
+@inline insupport(d::DensityMeasure, x) = insupport(d.base, x)
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("mintegrate(")
@@ -234,12 +234,13 @@ density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 # the base measure validates array variates:
 @inline _point_ld(f::F, μ::DensityMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
 
+# The integrand is not evaluated outside of the support of the base measure,
+# where it may be undefined, except for traced or device conditions:
 function logdensityof_impl(μ::DensityMeasure, x::Any)
-    integrand, μ_base = μ.f, μ.base
-    base_logval = dynamic(logdensityof(μ_base, x))
-    integrand_logval = dynamic(logdensityof(integrand, x))
-    logval = integrand_logval + base_logval
-    # Outside of the support of the base measure the integrand may be
-    # anything, including NaN:
-    ifelse(isneginf(base_logval), oftype(logval, -Inf), logval)
+    base_logval = dynamic(logdensityof(μ.base, x))
+    _select(
+        isneginf(base_logval),
+        () -> base_logval,
+        () -> dynamic(logdensityof(μ.f, x)) + base_logval,
+    )
 end

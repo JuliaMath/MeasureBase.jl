@@ -204,10 +204,14 @@ known to be in the support of both, it can be more efficient to call
 @inline function logdensity_rel(μ, ν, x)
     inμ = _insupport_mask(insupport(μ, x))
     inν = _insupport_mask(insupport(ν, x))
-    logd = _dynamic_logd(unsafe_logdensity_rel(μ, ν, x), x)
-    outside = ifelse(inμ, oftype(logd, +Inf), ifelse(inν, oftype(logd, -Inf), oftype(logd, NaN)))
-    return ifelse(inμ & inν, logd, outside)
+    _select(
+        inμ & inν,
+        () -> _dynamic_logd(unsafe_logdensity_rel(μ, ν, x), x),
+        () -> _logd_rel_outside(inμ, inν, _logd_numtype(x)),
+    )
 end
+
+@inline _logd_rel_outside(inμ, inν, ::Type{T}) where {T} = ifelse(inμ, T(Inf), ifelse(inν, T(-Inf), T(NaN)))
 
 """
     unsafe_logdensity_rel(m1, m2, x)

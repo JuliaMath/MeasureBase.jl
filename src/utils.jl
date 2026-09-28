@@ -143,6 +143,15 @@ near_neg_inf(::Type{T}) where {T<:Number} = T(-1E38) # Still fits into Float32
 isneginf(x) = isinf(x) & (x < zero(x))
 isposinf(x) = isinf(x) & (x > zero(x))
 
+# `cond ? f_true() : f_false()` for plain booleans, so the value not selected
+# is never computed. Other conditions (traced or on devices) select
+# branch-free between both values:
+@inline _select(cond::Bool, f_true::F, f_false::G) where {F,G} = cond ? f_true() : f_false()
+@inline function _select(cond, f_true::F, f_false::G) where {F,G}
+    y = f_true()
+    ifelse(cond, y, oftype(y, f_false()))
+end
+
 isapproxzero(x::T) where {T<:Real} = x ≈ zero(T)
 isapproxzero(A::AbstractArray) = all(isapproxzero, A)
 

@@ -4,7 +4,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Half, logdensities
-using MeasureBase: weightedmeasure, productmeasure, mcombine
+using MeasureBase: weightedmeasure, productmeasure, mcombine, mintegrate_exp, logdensity_rel
 using JLArrays: JLArray
 
 # Variates of the right shape never throw: densities are -Inf and
@@ -57,6 +57,19 @@ using JLArrays: JLArray
         end
         @test !isnan(transport_to(StdUniform(), StdNormal())(-37.0))
         @test !isnan(transport_to(StdUniform(), StdLogistic())(-800.0))
+    end
+
+    @testset "integrands outside the base support" begin
+        # `log` throws for negative arguments, like many likelihoods outside
+        # the support of their prior:
+        post = mintegrate_exp(σ -> log(σ), StdUniform())
+        @test logdensityof(post, -0.5) == -Inf
+        @test logdensityof(post, 0.5) == log(0.5)
+        @test logdensities(post, [-0.5, 0.5]) == [-Inf, log(0.5)]
+        @test MeasureBase.insupport(post, -0.5) == false
+        @test logdensity_rel(post, StdNormal(), -0.5) == -Inf
+        @test isnan(logdensity_rel(post, StdUniform(), -0.5))
+        @test logdensity_rel(post, StdUniform(), 0.5) == log(0.5)
     end
 
     @testset "wrong shapes throw" begin
