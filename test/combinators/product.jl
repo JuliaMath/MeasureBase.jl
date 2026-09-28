@@ -48,6 +48,13 @@ using MeasureBase: StdNormal, StdUniform, productmeasure, pushfwd, marginals, tr
         @test !(marginals(Pv) isa StructArray)
     end
 
+    @testset "draws over mapped arrays are eager" begin
+        mapped = MeasureBase.MappedArrays.mappedarray(n -> StdNormal()^n, [1, 2])
+        x = rand(stblrng(), MeasureBase.ProductMeasure(mapped))
+        @test x[1] == x[1] && x[2] == x[2]
+        @test length.(x) == [1, 2]
+    end
+
     @testset "device arrays" begin
         JLArrays.allowscalar(false)
         P = productmeasure([pushfwd(Mul(s), StdNormal()) for s in (1.0, 2.0, 3.0)])

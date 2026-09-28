@@ -29,7 +29,12 @@ Base.size(μ::AbstractProductMeasure) = size(marginals(μ))
 
 basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, marginals(d)))
 
-rand_impl(ctx::GenContext, d::AbstractProductMeasure) = _map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+rand_impl(ctx::GenContext, d::AbstractProductMeasure) = _rand_map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+
+# Draws are eager, a lazily mapped array of marginal draws would draw anew
+# on every access:
+@inline _rand_map(f::F, mar) where {F} = _map(f, mar)
+@inline _rand_map(f::F, mar::MappedArrays.ReadonlyMappedArray) where {F} = map(f, mar)
 
 @inline _marginal_rand(ctx::GenContext, m::AbstractMeasure) = rand_impl(ctx, m)
 @inline _marginal_rand(ctx::GenContext, d) = convert_realtype(get_precision(ctx), rand(get_rng(ctx), d))
@@ -74,7 +79,7 @@ function rand_impl(ctx::GenContext, d::ProductMeasure{<:AbstractArray{M}}) where
     _array_product_rand(ctx, d, _fused_marginals(M))
 end
 _array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{true}) = batched_rand_impl(ctx, d, ())
-_array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+_array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _rand_map(Base.Fix1(_marginal_rand, ctx), marginals(d))
 
 # Batches of tuple and named tuple products are tuples resp. named tuples
 # of marginal batches:
