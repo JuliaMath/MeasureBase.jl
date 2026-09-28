@@ -107,7 +107,7 @@ end
     throw(ArgumentError("Batched transport requires MeasureBase.mspace_ndims to be declared for measures of type $(nameof(typeof(μ))) or MeasureBase.batched_transport_from_std to be implemented"))
 end
 
-@inline _from_std_scalar(::Type{S}, μ, z::AbstractVector) where {S} = transport_from_std(S, μ, z[begin])
+@inline _from_std_scalar(::Type{S}, μ, z::AbstractVector) where {S} = transport_from_std(S, μ, _single_std_element(z))
 @inline function _from_std_scalar(::Type{S}, μ, Z::AbstractArray) where {S}
     broadcast(Base.Fix1(_FromStd{S}(), μ), _drop_stdstream_dim(Z))
 end

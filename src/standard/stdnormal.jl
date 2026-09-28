@@ -30,10 +30,9 @@ InverseFunctions.inverse(::typeof(Φ)) = Φinv
 InverseFunctions.inverse(::typeof(Φinv)) = Φ
 
 smf(::StdNormal, x) = Φ(x)
-invsmf(::StdNormal, p) = _nan_outside(StdUniform(), p, Φinv(_unit_interior(p)))
+invsmf(μ::StdNormal, p) = transport_def(μ, StdUniform(), p)
 
 smf(::StdNormal) = Φ
-invsmf(::StdNormal) = Φinv
 
 transport_def(::StdNormal, μ::StdUniform, p) = _nan_outside(μ, p, Φinv(_unit_interior(p)))
 transport_def(::StdUniform, ::StdNormal, x) = Φ(x)

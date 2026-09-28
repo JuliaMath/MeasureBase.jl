@@ -26,6 +26,16 @@ _exp_cumsum_log(xs::AbstractVector) = exp.(cumsum(log.(xs)))
 Base.@propagate_inbounds _as_tuple(v::AbstractVector, ::Val{N}) where {N} = Tuple(SVector{N}(v))
 
 
+# The standard variate of a scalar variate in a single stream of standard
+# variates, taken via a reduction to avoid scalar indexing of device arrays:
+@inline function _single_std_element(z::AbstractVector)
+    length(z) == 1 || _throw_single_std_length(length(z))
+    return sum(z)
+end
+@noinline function _throw_single_std_length(n)
+    throw(ArgumentError("A scalar variate needs one standard variate, got $n"))
+end
+
 @inline _split_after(x::Tuple, ::Val{N}) where {N} = x[begin:(begin+N-1)], x[(begin+N):end]
 
 @generated function _split_after(x::NamedTuple{names}, ::Val{names_a}) where {names,names_a}

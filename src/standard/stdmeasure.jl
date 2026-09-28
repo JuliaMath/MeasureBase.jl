@@ -24,16 +24,21 @@ StdMeasure(::typeof(randn)) = StdNormal()
 
 @inline massof(::StdMeasure) = static(1.0)
 
-@inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = x
+@inline transport_def(::MU, μ::MU, x) where {MU<:StdMeasure} = _std_masked(μ, x)
 
-@inline transport_to_std(::Type{S}, ::S, x) where {S<:StdMeasure} = _std_identity(S, x)
-@inline transport_from_std(::Type{S}, ::S, z) where {S<:StdMeasure} = _std_identity(S, z)
+@inline transport_to_std(::Type{S}, μ::S, x) where {S<:StdMeasure} = _std_identity(S, μ, x)
+@inline transport_from_std(::Type{S}, μ::S, z) where {S<:StdMeasure} = _std_identity(S, μ, z)
 
 # Only concrete standard measure types identify a transport partner:
-@inline function _std_identity(::Type{S}, x) where {S<:StdMeasure}
+@inline function _std_identity(::Type{S}, μ, x) where {S<:StdMeasure}
     isconcretetype(S) || _throw_abstract_std(S)
-    return x
+    return _std_masked(μ, x)
 end
+
+# Identity transports of standard measures, NaN outside the support:
+@inline _std_masked(μ::StdMeasure, x::Number) = _nan_outside(μ, x, x)
+@inline _std_masked(μ::StdMeasure, x::Integer) = _std_masked(μ, float(x))
+@inline _std_masked(μ::StdMeasure, X::AbstractArray) = broadcast(Base.Fix1(_std_masked, μ), X)
 @noinline _throw_abstract_std(::Type{S}) where {S} =
     throw(ArgumentError("$(S) is not a concrete standard measure type"))
 
@@ -114,6 +119,12 @@ end
 
 @inline _stdmeasure_rank(::Type{<:StdMeasure}) = 0
 
-@inline batched_transport_to_std(::Type{S}, ::S, X::AbstractArray) where {S<:StdMeasure} = _as_stdstream_batch(X)
-@inline batched_transport_from_std(::Type{S}, ::S, Z::AbstractArray) where {S<:StdMeasure} = _drop_stdstream_dim(Z)
-@inline batched_transport_from_std(::Type{S}, ::S, z::AbstractVector) where {S<:StdMeasure} = z[begin]
+@inline function batched_transport_to_std(::Type{S}, μ::S, X::AbstractArray) where {S<:StdMeasure}
+    _as_stdstream_batch(_std_identity(S, μ, X))
+end
+@inline function batched_transport_from_std(::Type{S}, μ::S, Z::AbstractArray) where {S<:StdMeasure}
+    _std_identity(S, μ, _drop_stdstream_dim(Z))
+end
+@inline function batched_transport_from_std(::Type{S}, μ::S, z::AbstractVector) where {S<:StdMeasure}
+    _std_identity(S, μ, _single_std_element(z))
+end

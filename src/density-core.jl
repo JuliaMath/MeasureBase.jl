@@ -92,7 +92,7 @@ end
 # since devices may flush subnormals, and the grid point below one), so
 # that quantiles stay finite, and tail probabilities in log-space
 # conversions never underflow to zero:
-@inline _unit_interior(p) = clamp(p, _unit_bounds(p)...)
+@inline _unit_interior(p) = (q = float(p); clamp(q, _unit_bounds(q)...))
 @inline _unit_bounds(p) = (_prob_floor(p), prevfloat(one(p)))
 @inline _positive_prob(p) = max(p, _prob_floor(p))
 @inline _prob_floor(p) = floatmin(typeof(one(p)))

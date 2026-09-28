@@ -5,6 +5,9 @@
 @inline _stdmeasure_rank(::Type{StdLogistic}) = 3
 @inline _stdmeasure_rank(::Type{StdNormal}) = 4
 
+# Standard measures supported on the whole real line need no masks:
+@inline _std_masked(::Union{StdNormal,StdLogistic}, X::AbstractArray) = X
+
 
 @inline preferred_stdmeasure(::Type{<:PowerMeasure{M}}) where {M} = preferred_stdmeasure(M)
 @inline preferred_stdmeasure(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = preferred_stdmeasure(M)

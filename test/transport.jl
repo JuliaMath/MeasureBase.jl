@@ -5,7 +5,7 @@ using MeasureBase.Interface: transport_to, test_transport
 using MeasureBase: AbstractMeasure
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac, Half, restrict, mbind, productmeasure, pushfwd
-using MeasureBase: transport_to_std, transport_from_std, transport_from_std_with_rest
+using MeasureBase: transport_to_std, transport_from_std, transport_from_std_with_rest, batched_transport_from_std
 using InverseFunctions: inverse
 using MeasureBase: weightedmeasure, mcombine
 using StaticArrays: SVector
@@ -89,6 +89,22 @@ include("testutils.jl")
         end
         # The lower tail survives a uniform pivot, the upper tail saturates:
         @test transport_to(StdNormal(), StdUniform())(transport_to(StdUniform(), StdNormal())(-37.0)) ≈ -37.0 rtol = 1e-8
+    end
+
+    @testset "composition" begin
+        f = transport_to(StdNormal()^3, StdUniform()^3)
+        g = transport_to(StdUniform()^3, StdExponential()^3)
+        @test (f ∘ g)([0.5, 1.0, 2.0]) ≈ transport_to(StdNormal()^3, StdExponential()^3)([0.5, 1.0, 2.0])
+        @test_throws ArgumentError f ∘ transport_to(StdUniform()^2, StdNormal()^2)
+    end
+
+    @testset "single standard variates" begin
+        μ = weightedmeasure(0.3, StdNormal())
+        @test batched_transport_from_std(StdNormal, μ, [0.5]) == 0.5
+        @test batched_transport_from_std(StdNormal, StdNormal(), [0.5]) == 0.5
+        @test_throws ArgumentError batched_transport_from_std(StdNormal, μ, [0.5, 1.0])
+        @test_throws ArgumentError batched_transport_from_std(StdNormal, StdNormal(), [0.5, 1.0])
+        @test transport_to(StdLogistic(), StdNormal()^1)([0.5]) ≈ transport_to(StdLogistic(), StdNormal())(0.5)
     end
 
     @testset "scalar and static transports" begin

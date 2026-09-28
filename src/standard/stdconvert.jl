@@ -14,7 +14,7 @@
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
-    _nan_outside(μ, x, ifelse(x < oftype(x, logtwo), Φinv(_positive_prob(-expm1(-x))), -Φinv(min(_positive_prob(exp(-x)), one(x)))))
+    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_positive_prob(-expm1(-x))), -Φinv(min(_positive_prob(exp(-x)), one(x)))))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
@@ -23,7 +23,7 @@ end
     ifelse(l < zero(l), Φinv(_positive_prob(logistic(l))), -Φinv(_positive_prob(logistic(-l))))
 end
 
-@inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(abs(expm1(-x))) + x)
+@inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(_positive_prob(abs(expm1(-x)))) + x)
 
 @inline transport_def(::StdExponential, ::StdLogistic, l) = log1pexp(l)
 
@@ -36,7 +36,7 @@ the standard measure type `S`, elementwise for arrays.
 """
 function stdconvert end
 
-@inline stdconvert(::Type{S}, ::Type{S}, x) where {S<:StdMeasure} = x
+@inline stdconvert(::Type{S}, ::Type{S}, x) where {S<:StdMeasure} = _std_masked(S(), x)
 @inline stdconvert(::Type{S}, ::Type{T}, x) where {S<:StdMeasure,T<:StdMeasure} = _StdConvert{S,T}()(x)
 
 struct _StdConvert{S,T} <: Function end

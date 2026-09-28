@@ -299,7 +299,7 @@ end
 
 # Scalar-variate measures take their standard variate as a number:
 @inline _chunk_as_variate(μ, z) = _chunk_as_variate(z, _static_ndims(μ))
-@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}) = z[begin]
+@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}) = _single_std_element(z)
 @inline _chunk_as_variate(z::AbstractVector, ::Any) = z
 
 
