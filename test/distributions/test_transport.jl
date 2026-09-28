@@ -16,6 +16,12 @@ using .MeasureBaseDistributionsExt: _trafo_logcdf, _trafo_logccdf, _trafo_quanti
 
 include("getjacobian.jl")
 
+struct _DensePDMat <: PDMats.AbstractPDMat{Float64}
+    mat::Matrix{Float64}
+end
+Base.size(A::_DensePDMat) = size(A.mat)
+Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
+
 
 @testset "test_distribution_transform" begin
     function test_back_and_forth(trg, src)
@@ -315,5 +321,19 @@ include("getjacobian.jl")
             y = transport_to(StandardDist{Normal}(3), mvn)(x)
             @test transport_to(mvn, StandardDist{Normal}(3))(y) ≈ x
         end
+
+        # Other positive definite matrix types, via their dense form:
+        μ, A = [0.2, -0.4], [1.7 0.5; 0.5 2.3]
+        mvn = MvNormal(μ, _DensePDMat(A))
+        mvn_ref = MvNormal(μ, PDMats.PDMat(A))
+        x, X = [0.3, 1.1], [0.3 -1.0 2.0; 1.1 0.4 -0.3]
+        @test logdensityof(asmeasure(mvn), x) ≈ logpdf(mvn_ref, x)
+        @test MeasureBase.logdensities(asmeasure(mvn), X) ≈ logpdf(mvn_ref, X)
+        @test transport_to(StdNormal()^2, mvn)(x) ≈ transport_to(StdNormal()^2, mvn_ref)(x)
+        @test transport_to(mvn, StdNormal()^2)(x) ≈ transport_to(mvn_ref, StdNormal()^2)(x)
+
+        # Infinite values lie outside the support also for correlated covariances:
+        @test logdensityof(asmeasure(mvn_ref), [Inf, Inf]) == -Inf
+        @test MeasureBase.logdensities(asmeasure(mvn_ref), [Inf 0.3; -Inf 1.1]) ≈ [-Inf, logpdf(mvn_ref, x)]
     end
 end

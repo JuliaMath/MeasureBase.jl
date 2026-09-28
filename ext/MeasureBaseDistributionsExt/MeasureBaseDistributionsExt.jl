@@ -2,7 +2,7 @@
 
 module MeasureBaseDistributionsExt
 
-using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, diag, dot, cholesky
+using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, dot, cholesky, logdet
 import Adapt
 
 import Random

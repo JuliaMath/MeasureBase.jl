@@ -34,13 +34,16 @@ const MvNormalMeasure = AsMeasure{<:MvNormal}
 _logdet_cov(Σ::PDMats.PDMat) = 2 * sum(log, diag(Σ.chol.factors))
 _logdet_cov(Σ::PDMats.PDiagMat) = sum(log, Σ.diag)
 _logdet_cov(Σ::PDMats.ScalMat) = Σ.dim * log(Σ.value)
+_logdet_cov(Σ) = logdet(Σ)
 
+# Infinite values lie outside the support:
 for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function MeasureBase.$bhead(m::MvNormalMeasure, X::AbstractArray)
         d = m.obj
-        Z = _cholesky_L(d.Σ) \ (_as_columns(X) .- d.μ)
-        sq = _column_sums(abs2, Z)
-        _batch_results(-sq ./ 2 .- (_logdet_cov(d.Σ) + length(d) * log2π) / 2, X)
+        Xc = _as_columns(X)
+        Z = _cholesky_L(d.Σ) \ (Xc .- d.μ)
+        ℓ = -_column_sums(abs2, Z) ./ 2 .- (_logdet_cov(d.Σ) + length(d) * log2π) / 2
+        _batch_results(_masked(ℓ, _column_all(isfinite.(Xc))), X)
     end
 end
 MeasureBase.logdensity_def(m::MvNormalMeasure, x::AbstractVector) = MeasureBase.batched_logdensity_def(m, x)

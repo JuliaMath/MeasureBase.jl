@@ -12,6 +12,9 @@ _lower_factor(C::Cholesky) = C.uplo === 'L' ? LowerTriangular(C.factors) : Upper
 _cholesky_L(A::Diagonal{<:Real}) = Diagonal(sqrt.(diag(A)))
 _cholesky_L(A::PDMats.PDiagMat{<:Real}) = Diagonal(sqrt.(A.diag))
 _cholesky_L(A::PDMats.ScalMat{<:Real}) = Diagonal(Fill(sqrt(A.value), A.dim))
+_cholesky_L(A::PDMats.PDMat) = _lower_factor(cholesky(A))
+# Other positive definite matrix types via their dense form:
+_cholesky_L(A::PDMats.AbstractPDMat) = _lower_factor(cholesky(Symmetric(Matrix(A))))
 
 #DirichletMultinomial
 #Distributions.AbstractMvLogNormal
