@@ -14,6 +14,11 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac, Le
 using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd, testvalue
 using MeasureBase: rand_impl, batched_rand_impl, massof, isnormalized
 
+# An RNG whose uniform draws are all exactly zero:
+struct ZeroRNG <: AbstractRNG end
+Random.rand(::ZeroRNG, ::Random.SamplerTrivial{Random.CloseOpen01{Float64}}) = 0.0
+Random.rand(::ZeroRNG, ::Random.SamplerTrivial{Random.CloseOpen01{Float32}}) = 0.0f0
+
 @testset "rand" begin
     stblrng() = StableRNG(789990641)
 
@@ -50,6 +55,16 @@ using MeasureBase: rand_impl, batched_rand_impl, massof, isnormalized
         @test testvalue(StdExponential()^3) == ones(3)
         @test testvalue((StdLogistic()^2)^2) == [zeros(2), zeros(2)]
         @test testvalue(productmeasure((a = StdNormal(), b = StdUniform()^2))) == (a = 0.0, b = [0.5, 0.5])
+    end
+
+    @testset "finite draws" begin
+        # Uniform draws can be exactly zero, standard draws must stay finite:
+        zero_rng = ZeroRNG()
+        @test rand(zero_rng, StdUniform()) == 0
+        @test isfinite(rand(zero_rng, StdLogistic()))
+        @test all(isfinite, rand(zero_rng, StdLogistic()^3))
+        @test all(isfinite, rand(zero_rng, StdLogistic()^static(3)))
+        @test all(isfinite, rand(GenContext{Float32}(zero_rng), StdLogistic()^(2, 2)))
     end
 
     @testset "distribution of variates" begin

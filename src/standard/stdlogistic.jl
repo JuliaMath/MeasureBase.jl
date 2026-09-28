@@ -18,8 +18,11 @@ export StdLogistic
 @inline transport_def(::StdUniform, μ::StdLogistic, x) = logistic(x)
 @inline transport_def(::StdLogistic, μ::StdUniform, p) = _nan_outside(μ, p, logit(_unit_interior(p)))
 
-@inline rand_impl(ctx::GenContext, ::StdLogistic) = logit(rand(ctx))
-@inline batched_rand_impl(ctx::GenContext, ::StdLogistic, sz::SizeLike) = logit.(_rand_bulk(ctx, sz))
+# Uniform draws may be zero, the uniform transport keeps the draws finite:
+@inline rand_impl(ctx::GenContext, ::StdLogistic) = stdconvert(StdLogistic, StdUniform, rand(ctx))
+@inline function batched_rand_impl(ctx::GenContext, ::StdLogistic, sz::SizeLike)
+    stdconvert(StdLogistic, StdUniform, _rand_bulk(ctx, sz))
+end
 
 smf(::StdLogistic, x) = logistic(x)
 smf(::StdLogistic) = logistic
