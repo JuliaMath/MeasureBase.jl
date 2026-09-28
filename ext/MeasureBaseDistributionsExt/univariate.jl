@@ -68,13 +68,25 @@ function _clamp_to_support(d::_Truncated, x::T) where {T<:Real}
     end
 end
 
+# Distributions with a preferred standard measure other than StdLogistic
+# (e.g. the families with branch-free kernels) convert from that one:
+@inline MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x) =
+    _to_logistic_via(MeasureBase.preferred_stdmeasure(d), d, x)
+@inline MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l) =
+    _from_logistic_via(MeasureBase.preferred_stdmeasure(d), d, l)
+
+@inline _to_logistic_via(::Type{S}, d, x) where {S<:StdMeasure} =
+    MeasureBase.stdconvert(StdLogistic, S, transport_to_std(S, d, x))
+@inline _from_logistic_via(::Type{S}, d, l) where {S<:StdMeasure} =
+    transport_from_std(S, d, MeasureBase.stdconvert(S, StdLogistic, l))
+
 # Distributions' functions run on the host only, so these may branch:
-@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
+@inline function _to_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
     R = _result_numtype(d, x)
     MeasureBase.insupport(asmeasure(d), x) ? convert(R, _trafo_logcdf(d, x) - _trafo_logccdf(d, x)) : convert(R, NaN)
 end
 
-@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
+@inline function _from_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
     R = _result_numtype(d, l)
     isnan(l) && return convert(R, NaN)
     # From the side that keeps the tail:

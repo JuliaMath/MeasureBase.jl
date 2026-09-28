@@ -105,18 +105,22 @@ end
 @inline MeasureBase._beta_logpdf(α, β, x) = _clog(α - 1, x) + _clog(β - 1, 1 - x) - logbeta(α, β)
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Cauchy}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Cauchy, x) = 1 // 2 + atan((x - d.μ) / d.σ) / π
+# `atan(z)/π + 1/2` cancels in the lower tail, `-atan(1/z)/π` doesn't:
+@inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Cauchy, x)
+    z = (x - d.μ) / d.σ
+    _nan_outside(d, x, ifelse(z < 0, -atan(inv(z)) / π, 1 // 2 + atan(z) / π))
+end
 @inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p) =
     _nan_outside(StdUniform, p, muladd(d.σ, tan(π * (_unit_interior(p) - 1 // 2)), d.μ))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdUniform
 @inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Laplace, x)
     z = (x - d.μ) / d.θ
-    ifelse(z < 0, exp(z) / 2, 1 - exp(-z) / 2)
+    _nan_outside(d, x, ifelse(z < 0, exp(z) / 2, 1 - exp(-z) / 2))
 end
 @inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Laplace, p)
-    u = p - 1 // 2
-    _nan_outside(StdUniform, p, muladd(-d.θ * sign(u), log1p(-abs(2 * _unit_interior(p) - 1)), d.μ))
+    q = _unit_interior(p)
+    _nan_outside(StdUniform, p, muladd(-d.θ * sign(q - 1 // 2), log(2 * min(q, 1 - q)), d.μ))
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:LogNormal}) = StdNormal

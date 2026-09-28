@@ -159,6 +159,28 @@ include("getjacobian.jl")
         end
     end
 
+    @testset "family kernels under other pivots and tail accuracy" begin
+        logit(p) = log(p / (1 - p))
+        # The generic StdLogistic path must not shadow the family kernels:
+        for (d, x) in [(Gamma(2.0), 1.3), (Beta(2.0, 3.0), 0.3), (Cauchy(0.5, 2.0), -3.0), (Laplace(0.2), 1.7)]
+            @test transport_to(StdLogistic(), d)(x) ≈ logit(cdf(d, x))
+            @test transport_to(d, StdLogistic())(logit(cdf(d, x))) ≈ x
+        end
+        dual_beta = Beta(ForwardDiff.Dual(2.0, 1.0), 3.0)
+        @test ForwardDiff.value(transport_to(StdLogistic(), dual_beta)(0.3)) ≈ logit(cdf(Beta(2.0, 3.0), 0.3))
+        m = productmeasure((asmeasure(Gamma(2.0)), asmeasure(TDist(3))))
+        @test MeasureBase.preferred_stdmeasure(m) == StdLogistic
+        @test all(transport_to(m, StdNormal()^2)(transport_to(StdNormal()^2, m)((1.3, -0.4))) .≈ (1.3, -0.4))
+
+        @test transport_to(StdNormal(), Cauchy())(-1e17) ≈ quantile(Normal(), 1 / (π * 1e17))
+        @test transport_to(StdNormal(), Cauchy(1.0, 2.0))(-1e10) ≈ quantile(Normal(), 2 / (π * (1e10 + 1)))
+        @test transport_to(asmeasure(Laplace()), StdUniform())(1e-12) ≈ log(2e-12) rtol = 1e-14
+        @test transport_to(asmeasure(Laplace(1.0, 2.0)), StdUniform())(1 - 1e-12) ≈ 1 - 2 * log(2e-12) rtol = 1e-4
+        for d in [Cauchy(), Laplace()]
+            @test isnan(transport_to(StdNormal(), d)(Inf)) && isnan(transport_to(StdNormal(), d)(-Inf))
+        end
+    end
+
     @testset "trafo autodiff pullbacks" begin
         x = [0.6, 0.7, 0.8, 0.9]
         f = transport_to(Dirichlet([3.0, 4.0, 5.0, 6.0, 7.0]), Uniform)
