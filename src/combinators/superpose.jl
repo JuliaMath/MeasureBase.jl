@@ -40,27 +40,6 @@ end
 
 testvalue(::Type{T}, μ::SuperpositionMeasure) where {T} = testvalue(T, first(μ.components))
 
-# SuperpositionMeasure(ms :: AbstractMeasure...) = SuperpositionMeasure{X,length(ms)}(ms)
-
-# SuperpositionMeasure(m::NTuple{N, Measure{X}}) where {N,X} = SuperpositionMeasure(m...)
-
-# Base.length(::SuperpositionMeasure{X,N}) where {X,N} = N
-
-# function Base.:+(μ::SuperpositionMeasure{N1}, ν::SuperpositionMeasure{N2}) where {N1,N2}
-#     components = (μ.components..., ν.components...)
-#     SuperpositionMeasure{X, N1+N2}(components)
-# end
-
-# function Base.:+(μ::AbstractMeasure, ν::SuperpositionMeasure{X,N}) where {X,N}
-#     components = (μ, ν.components...)
-#     SuperpositionMeasure{X,N+1}(components)
-# end
-
-# function Base.:+(μ::SuperpositionMeasure{X,N}, ν::AbstractMeasure) where {X,N}
-#     components = (μ.components..., ν)
-#     SuperpositionMeasure{X,N+1}(components)
-# end
-
 function Base.:+(μ::AbstractMeasure, ν::AbstractMeasure)
     superpose(μ, ν)
 end

@@ -126,18 +126,6 @@ function Pretty.tile(ν::PushforwardMeasure)
     Pretty.list_layout(Pretty.tile.([ν.f, ν.origin]); prefix = :PushforwardMeasure)
 end
 
-# TODO: THIS IS ALMOST CERTAINLY WRONG 
-# @inline function logdensity_rel(
-#     ν::PushforwardMeasure{FF1,IF1,M1,<:AdaptRootMeasure},
-#     β::PushforwardMeasure{FF2,IF2,M2,<:AdaptRootMeasure},
-#     y,
-# ) where {FF1,IF1,M1,FF2,IF2,M2}
-#     x = β.inv_f(y)
-#     f = ν.inv_f ∘ β.f
-#     inv_f = β.inv_f ∘ ν.f
-#     logdensity_rel(pushfwd(f, inv_f, ν.origin, AdaptRootMeasure()), β.origin, x)
-# end
-
 # TODO: Would profit from custom pullback:
 function _combine_logd_with_ladj(logd_orig::Number, ladj::Number)
     logd_result = logd_orig + ladj
@@ -237,9 +225,6 @@ end
     _reshape_root(rootmeasure(ν.origin), ν.varsize)
 end
 @inline _reshape_root(root, ::Any) = root
-
-_pushfwd_dof(::Type{MU}, ::Type, dof) where {MU} = NoDOF{MU}()
-_pushfwd_dof(::Type{MU}, ::Type{<:Tuple{Any,Real}}, dof) where {MU} = dof
 
 @inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
 @inline getdof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()

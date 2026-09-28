@@ -153,20 +153,6 @@ for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :log
     end
 end
 
-# @generated function basemeasure(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-#     q = quote
-#         m = marginals(d)
-#     end
-#     for k in N
-#         qk = QuoteNode(k)
-#         push!(q.args, :($k = basemeasure(getproperty(m, $qk))))
-#     end
-
-#     vals = map(x -> Expr(:(=), x,x), N)
-#     push!(q.args, Expr(:tuple, vals...))
-#     return q
-# end
-
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
     T = Core.Compiler.return_type(mar.f, Tuple{eltype(mar.iter)})
@@ -348,28 +334,6 @@ function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
     _map(m -> testvalue(T, m), marginals(d))
 end
 
-
-###############################################################################
-# I <: Base.Generator
-
-export rand!
-using Random: rand!, GLOBAL_RNG, AbstractRNG
-
-@propagate_inbounds function Random.rand!(
-    rng::AbstractRNG,
-    d::ProductMeasure,
-    x::AbstractArray,
-)
-    # TODO: Generalize this
-    T = Float64
-    for (j, m) in zip(eachindex(x), marginals(d))
-        @inbounds x[j] = rand(rng, T, m)
-    end
-    return x
-end
-
-export rand!
-using Random: rand!, GLOBAL_RNG
 
 @inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
     _all_insupport(broadcast(_insupport_bool ∘ insupport, marginals(d), x))

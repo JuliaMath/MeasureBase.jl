@@ -89,14 +89,7 @@ end
 Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, maybestatic_oneto.(dims))
 Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
-# Base.show(io::IO, d::PowerMeasure) = print(io, d.parent, " ^ ", size(d.xs))
-# Base.show(io::IO, d::PowerMeasure{M,1}) where {M} = print(io, d.parent, " ^ ", length(d.xs))
-
-# gentype(d::PowerMeasure{M,N}) where {M,N} = @inbounds Array{gentype(first(marginals(d))), N}
-
 params(d::PowerMeasure) = params(first(marginals(d)))
-
-# basemeasure(μ::PowerMeasure) = @inbounds basemeasure(first(μ.data))^size(μ.data)
 
 @inline function basemeasure(d::PowerMeasure)
     basemeasure(d.parent)^d.axes
