@@ -103,4 +103,19 @@ struct _CustomStd <: MeasureBase.StdMeasure end
         @test @inferred(promote_stdmeasure(_CustomStd, AnyStdMeasure)) === _CustomStd
         @test @inferred(preferred_stdmeasure(_CustomStd())) === _CustomStd
     end
+
+    @testset "Dirac variates are checked by shape" begin
+        d0, d1 = Dirac(0.0), Dirac(1.0)
+        @test MeasureBase.checked_arg(d0, 0.5) == 0.5
+        @test_throws ArgumentError MeasureBase.checked_arg(d0, [0.0])
+        @test_throws ArgumentError MeasureBase.checked_arg(Dirac([1.0, 2.0]), [1.0])
+        @test_throws ArgumentError MeasureBase.checked_arg(Dirac([1.0, 2.0]), 1.0)
+        @test MeasureBase.checked_arg(Dirac([1.0, 2.0]), [3.0, 4.0]) == [3.0, 4.0]
+        f = transport_to(d1, d0)
+        @test f(0.0) == 1.0
+        @test isnan(f(0.5))
+        @test isequal(f.([0.0, 0.5]), [1.0, NaN])
+        @test MeasureBase.with_logabsdet_jacobian(f, 0.0) == (1.0, 0.0)
+        @test logdensityof(d0, 0.5) == -Inf
+    end
 end

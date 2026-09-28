@@ -51,8 +51,13 @@ insupport(d::Dirac, x) = x == d.x
 @inline mspace_flatsize(μ::Dirac) = _value_flatsize(μ.x)
 @inline mspace_flatsize(::Type{<:Dirac{<:Number}}) = ()
 
-@propagate_inbounds function checked_arg(μ::Dirac, x)
-    @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
+# Only the shape of variates is checked, values other than the atom are
+# valid arguments (outside the support):
+@inline checked_arg(::Dirac, x) = x
+@inline checked_arg(::Dirac{<:Number}, ::AbstractArray) = _throw_size_mismatch()
+@inline checked_arg(::Dirac{<:AbstractArray}, ::Number) = _throw_size_mismatch()
+@propagate_inbounds function checked_arg(μ::Dirac{<:AbstractArray}, x::AbstractArray)
+    @boundscheck size(x) == size(μ.x) || _throw_size_mismatch()
     x
 end
 
@@ -60,6 +65,11 @@ end
 @inline transport_to_std(::Type{S}, ::Dirac, x) where {S<:StdMeasure} = SVector{0,Bool}()
 @inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
 @inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
+
+# Transports between scalar point masses map the atom to the atom and give
+# NaN elsewhere, like other transports outside the support of the source:
+@inline transport_def(ν::Dirac{<:Real}, μ::Dirac{<:Real}, x) = _nan_outside(μ, x, float(ν.x))
+batched_transport_def(ν::Dirac{<:Real}, μ::Dirac{<:Real}, X) = broadcast(x -> transport_def(ν, μ, x), X)
 
 # Batched kernels cover Dirac measures with numbers and numeric arrays as
 # flat variates, others have no declared variate rank:
