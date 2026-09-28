@@ -3,7 +3,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupport
+using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupport, transport_to
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
 using ArraysOfArrays: flatview
@@ -42,4 +42,21 @@ using ArraysOfArrays: flatview
     @test insupport(StdUniform()^3, [0.1, 0.5, 0.9]) && !insupport(StdUniform()^3, [0.1, 1.5, 0.9])
     @test insupport((StdUniform()^2)^3, rand(2, 3)) && !insupport((StdUniform()^2)^3, fill(2.0, 2, 3))
     @test insupport(StdUniform()^3, [0.1, 0.5, 0.9]) isa Bool
+
+    @testset "transports of powers of tuple products" begin
+        flat(x) = reduce(vcat, [vcat(xi...) for xi in x])
+        for P in (productmeasure((StdNormal(), StdExponential()))^3, productmeasure((a = StdNormal(), b = StdExponential()))^3)
+            f = transport_to(StdUniform()^6, P)
+            finv = inverse(f)
+            x = rand(P)
+            u = f(x)
+            @test length(u) == 6 && all(0 .< u .< 1)
+            @test flat(finv(u)) ≈ flat(x)
+            U = rand(StdUniform()^(6, 4))
+            Y = finv.(U)
+            @test length(Y) == 4
+            @test all(flat(Y[j]) ≈ flat(finv(U[:, j])) for j in 1:4)
+            @test flatview(f.(Y)) ≈ U
+        end
+    end
 end

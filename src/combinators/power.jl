@@ -376,7 +376,7 @@ function batched_transport_from_std(::Type{S}, μ::PowerMeasure, Z::AbstractArra
     ν, _ = _pwr_unwrap(μ)
     dims = _pwr_dims(μ)
     n_rows = _batch_dims(Z)[1]
-    dof_ν = _base_dof(n_rows, prod(dims), ν)
+    dof_ν = _base_dof(fast_dof(ν), n_rows, prod(dims))
     dof_ν * prod(dims) == n_rows || _throw_std_length_mismatch()
     batched_transport_from_std(S, ν, maybestatic_reshape(Z, (dof_ν, dims..., Base.tail(_batch_dims(Z))...)))
 end
@@ -384,22 +384,27 @@ end
 # Empty powers leave the degrees of freedom of the base undetermined:
 # An empty stream says nothing about the base's degrees of freedom, so
 # empty powers take them from the base itself:
-@inline function _base_dof(n_rows::IntegerLike, n_pwr::IntegerLike, ν)
-    n_pwr == 0 ? _known_dof(fast_dof(ν)) : n_rows ÷ n_pwr
-end
-@inline _known_dof(dof::IntegerLike) = dynamic(dof)
-@inline _known_dof(::AbstractNoDOF) = 1
+@inline _base_dof(dof::IntegerLike, n_rows::IntegerLike, n_pwr::IntegerLike) = n_pwr == 0 ? dynamic(dof) : n_rows ÷ n_pwr
+@inline _base_dof(::AbstractNoDOF, n_rows::IntegerLike, n_pwr::IntegerLike) = n_pwr == 0 ? 1 : n_rows ÷ n_pwr
+# Static degrees of freedom keep static streams static:
+@inline _base_dof(dof::StaticInteger, ::IntegerLike, ::IntegerLike) = dof
 
 # All power dimensions of nested powers, innermost first:
 @inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., size_dims(pwr_size(μ))...)
 @inline _pwr_dims(ν) = ()
+
+# Batches of variates of powers of tuple products are tuples of batches,
+# the variates struct arrays:
+@inline function _batch_variates(Y::Union{Tuple,NamedTuple}, ν::PowerMeasure, ::Val)
+    sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
+end
 
 # Point transport: flat variates are batches with zero batch dimensions,
 # nested variates without flat storage transport element by element.
 function transport_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray) where {S<:StdMeasure}
     _pwr_to_std(S, μ, x, _flat_storage(x))
 end
-@inline function _pwr_to_std(::Type{S}, μ::PowerMeasure, x, x_flat::AbstractArray) where {S}
+@inline function _pwr_to_std(::Type{S}, μ::PowerMeasure, x, x_flat::Union{AbstractArray,Tuple,NamedTuple}) where {S}
     _single_std(batched_transport_to_std(S, μ, x_flat))
 end
 function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {S}
