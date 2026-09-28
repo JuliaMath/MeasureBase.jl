@@ -138,7 +138,8 @@ using ChangesOfVariables
 
     # Test edge cases for _combine_logd_with_ladj
     @test MeasureBase._combine_logd_with_ladj(-Inf, Inf) == -Inf  # Zero density wins
-    @test MeasureBase._combine_logd_with_ladj(1.0, -Inf) ≈ MeasureBase.near_neg_inf(Float64)
+    @test MeasureBase._combine_logd_with_ladj(1.0, -Inf) == -Inf
+    @test logdensityof(pushfwd(log, StdExponential()), -Inf) == -Inf
 
     # Test composition of pushforwards
     h = x -> exp(x)

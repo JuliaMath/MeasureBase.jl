@@ -141,16 +141,9 @@ end
 # TODO: Would profit from custom pullback:
 function _combine_logd_with_ladj(logd_orig::Number, ladj::Number)
     logd_result = logd_orig + ladj
-    R = typeof(logd_result)
-
     # Zero μ wins against infinite volume:
     zero_wins = isnan(logd_result) & isneginf(logd_orig) & isposinf(ladj)
-    # Maybe also for isneginf(logd_orig) && isfinite(ladj) ?
-    # Return near_neg_inf instead of constant -Inf to prevent problems
-    # with ForwardDiff and to avoid AdvancedHMC warnings:
-    fades_out = isfinite(logd_orig) & isneginf(ladj)
-
-    ifelse(zero_wins, R(-Inf), ifelse(fades_out, near_neg_inf(R), logd_result))::R
+    ifelse(zero_wins, oftype(logd_result, -Inf), logd_result)
 end
 
 function logdensityof_impl(
