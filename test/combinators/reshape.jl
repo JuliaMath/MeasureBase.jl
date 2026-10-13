@@ -4,6 +4,8 @@ using MeasureBase
 using MeasureBase: mreshape, Reshape
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
+using StaticArrays: SVector, SMatrix
+using StaticThings: static
 
 @testset "reshape" begin
     μ = StdNormal()^6
@@ -26,4 +28,11 @@ using ChangesOfVariables: with_logabsdet_jacobian
     @test g(vec(X)) == X
     @test inverse(g)(X) == vec(X)
     @test with_logabsdet_jacobian(g, vec(X)) == (X, 0.0)
+
+    # Static inputs stay static:
+    gs = Reshape(static.((2, 3)), static.((6,)))
+    xs = SVector{6}(1.0:6.0)
+    @test gs(xs) isa SMatrix{2,3}
+    @test inverse(gs)(gs(xs)) isa SVector{6}
+    @test gs(collect(xs)) isa Matrix
 end

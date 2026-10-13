@@ -33,7 +33,7 @@ _throw_reshape_mismatch(sz, sz_x) = throw(ArgumentError("Reshape input size is $
 function (f::Reshape)(x::AbstractArray)
     sz_x = maybestatic_size(x)
     f.input_size == sz_x || _throw_reshape_mismatch(f.input_size, sz_x)
-    return reshape(x, f.output_size)
+    return maybestatic_reshape(x, f.output_size)
 end
 
 InverseFunctions.inverse(f::Reshape{M,N}) where {M,N} = Reshape{N,M}(f.input_size, f.output_size)
