@@ -31,7 +31,7 @@ function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where {FC}
 end
 
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) =
-    split_at(ab, maybestatic_length(test_a))
+    maybestatic_split(ab, maybestatic_length(test_a))
 
 _split_variate_byvalue(::typeof(vcat), ::Number, ab::AbstractVector) =
     _consume_from_stream(ab, ())
@@ -228,7 +228,7 @@ end
 function batched_logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::SizeLike)
     n_a, n_b = _fixed_stream_length(μ.α), _fixed_stream_length(μ.β)
     X_μ, X_rest = _batched_split(X, _chunk_rows(n_a + n_b, sz))
-    X_v = maybestatic_reshape(X_μ, (n_a + n_b, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...))
+    X_v = maybestatic_reshape(X_μ, (n_a + n_b, size_tuple(sz)..., Base.tail(_batch_dims(X_μ))...))
     X_a, X_b = _batched_split(X_v, n_a)
     ℓ_a, _ = batched_logdensityof_with_rest(μ.α, X_a, ())
     ℓ_b, _ = batched_logdensityof_with_rest(μ.β, X_b, ())
@@ -245,7 +245,7 @@ end
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
-    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return ℓ_a + ℓ_b, x_μ, x_rest
 end
 
@@ -319,7 +319,7 @@ end
 function transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, x::AbstractVector) where {S<:StdMeasure}
     z_a, _, x2 = transport_to_std_with_rest(S, μ.α, x)
     z_b, _, x_rest = transport_to_std_with_rest(S, μ.β, x2)
-    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return vcat(z_a, z_b), x_μ, x_rest
 end
 
@@ -375,7 +375,7 @@ end
 function _combined_to_std_with_rest(::Type{S}, μ::CombinedMeasure, X::AbstractArray, sz::SizeLike) where {S}
     n_rows = _fixed_stream_length(μ.α) + _fixed_stream_length(μ.β)
     X_μ, X_rest = _batched_split(X, _chunk_rows(n_rows, sz))
-    X_v = maybestatic_reshape(X_μ, (n_rows, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...))
+    X_v = maybestatic_reshape(X_μ, (n_rows, size_tuple(sz)..., Base.tail(_batch_dims(X_μ))...))
     Z, _ = _combined_to_std_with_rest(S, μ, X_v, ())
     return _merge_multiplicity(Z, sz), X_rest
 end

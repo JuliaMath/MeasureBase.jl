@@ -78,7 +78,7 @@ _cat_measures(a::AbstractVector, b::AbstractVector) = vcat(a, b)
 # Take the beginning of a flat vector stream as a variate of size `sz`,
 # scalar variates have size `()` and multi-rank variates are reshaped:
 Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::Tuple{IntegerLike}) =
-    split_at(x, sz[1])
+    maybestatic_split(x, sz[1])
 
 Base.@propagate_inbounds function _consume_from_stream(x::AbstractVector, ::Tuple{})
     idxs = maybestatic_eachindex(x)
@@ -87,12 +87,12 @@ Base.@propagate_inbounds function _consume_from_stream(x::AbstractVector, ::Tupl
 end
 
 function _consume_from_stream(x::AbstractVector, sz::Tuple{Vararg{IntegerLike}})
-    a_flat, x_rest = split_at(x, size2length(sz))
+    a_flat, x_rest = maybestatic_split(x, size2length(sz))
     return maybestatic_reshape(a_flat, sz), x_rest
 end
 
 Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::StaticArrays.Size) =
-    _consume_from_stream(x, size_dims(sz))
+    _consume_from_stream(x, size_tuple(sz))
 
 function _consume_from_stream(x::AbstractVector, @nospecialize(sz))
     throw(ArgumentError("Can't consume a variate of size $sz from a flat vector stream"))

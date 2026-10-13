@@ -44,7 +44,7 @@ function mspace_flatsize end
 
 @inline mspace_flatsize(μ::AbstractMeasure) = NoMSpaceElementSize{typeof(μ)}()
 
-@inline _cat_sizes(a::SizeLike, b::SizeLike) = canonical_size((size_dims(a)..., size_dims(b)...))
+@inline _cat_sizes(a::SizeLike, b::SizeLike) = canonical_size((size_tuple(a)..., size_tuple(b)...))
 @inline _cat_sizes(a::NoMSpaceElementSize, ::SizeLike) = a
 @inline _cat_sizes(::SizeLike, b::NoMSpaceElementSize) = b
 @inline _cat_sizes(a::NoMSpaceElementSize, ::NoMSpaceElementSize) = a
@@ -116,9 +116,9 @@ function mspace_ndims end
 @inline mspace_ndims(::Type{MU}) where {MU} = _ndims_of_size(mspace_flatsize(MU), MU)
 @inline mspace_ndims(μ::MU) where {MU} = _ndims_of_size(mspace_flatsize(μ), MU, mspace_ndims(MU))
 
-@inline _ndims_of_size(sz::SizeLike, ::Type) = length(size_dims(sz))
+@inline _ndims_of_size(sz::SizeLike, ::Type) = length(size_tuple(sz))
 @inline _ndims_of_size(::NoMSpaceElementSize, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
-@inline _ndims_of_size(sz::SizeLike, ::Type, ::Any) = length(size_dims(sz))
+@inline _ndims_of_size(sz::SizeLike, ::Type, ::Any) = length(size_tuple(sz))
 @inline _ndims_of_size(::NoMSpaceElementSize, ::Type, n) = n
 
 @inline _add_ndims(n::Integer, k::Integer) = n + k

@@ -70,7 +70,7 @@ function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::SizeLike)
     _pwr_batched_rand(ctx, μ, sz, fixed_stream_size(pwr_base(μ)))
 end
 function _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::SizeLike, ::True)
-    batched_rand_impl(ctx, pwr_base(μ), (size_dims(pwr_size(μ))..., size_dims(sz)...))
+    batched_rand_impl(ctx, pwr_base(μ), (size_tuple(pwr_size(μ))..., size_tuple(sz)...))
 end
 _pwr_batched_rand(ctx::GenContext, μ::PowerMeasure, sz::SizeLike, ::False) = _batched_rand_pointwise(ctx, μ, sz)
 
@@ -103,7 +103,7 @@ end
 end
 @inline _reshape_pwr_root(root, ::Any, ::Any, ::SizeLike) = root
 @inline function _reshape_pwr_root(root, ν::PrimitiveMeasure, n::StaticInteger, sz::SizeLike)
-    n == length(size_dims(sz)) ? root : powermeasure(ν, sz)
+    n == length(size_tuple(sz)) ? root : powermeasure(ν, sz)
 end
 
 # Pushed-forward Lebesgue roots relative to the root they push forward: the
@@ -165,7 +165,7 @@ end
 end
 function _powered_stream_kernel(f::F, μ::PowerMeasure, X::AbstractArray, ::True) where {F}
     ν = pwr_base(μ)
-    dims = size_dims(pwr_size(μ))
+    dims = size_tuple(pwr_size(μ))
     n = _fixed_stream_length(ν)
     size(X, 1) == n * prod(dims) || _throw_size_mismatch()
     Xs = _stream_batch(ν, maybestatic_reshape(X, (n, dims..., Base.tail(_batch_dims(X))...)))
@@ -247,7 +247,7 @@ function batched_logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector, sz:
     _powered_ld_with_rest(μ, x, sz, fixed_stream_size(pwr_base(μ)))
 end
 function _powered_ld_with_rest(μ::PowerMeasure, X::AbstractArray, sz::SizeLike, ::True)
-    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (size_dims(pwr_size(μ))..., size_dims(sz)...))
+    ℓ, X_rest = batched_logdensityof_with_rest(pwr_base(μ), X, (size_tuple(pwr_size(μ))..., size_tuple(sz)...))
     return _pwr_sum_dims(ℓ, static(length(pwr_axes(μ)))), X_rest
 end
 function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False)
@@ -276,7 +276,7 @@ function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::True, ::
 end
 function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::True, ::NoMSpaceElementSize)
     ℓ, x_rest = _powered_ld_with_rest(μ, x, (), static(true))
-    a, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    a, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return _point_result(_materialize(ℓ), μ), a, x_rest
 end
 function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::False, ::Any)
@@ -404,7 +404,7 @@ end
 @inline _base_dof(dof::StaticInteger, ::IntegerLike, ::IntegerLike) = dof
 
 # All power dimensions of nested powers, innermost first:
-@inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., size_dims(pwr_size(μ))...)
+@inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., size_tuple(pwr_size(μ))...)
 @inline _pwr_dims(ν) = ()
 
 # Batches of variates of powers of tuple products are tuples of batches,
@@ -437,7 +437,7 @@ function batched_transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::Abst
     _pwr_to_std_with_rest(S, μ, X, sz, fixed_stream_size(pwr_base(μ)))
 end
 @inline function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, X::AbstractArray, sz::SizeLike, ::True) where {S}
-    batched_transport_to_std_with_rest(S, pwr_base(μ), X, (size_dims(pwr_size(μ))..., size_dims(sz)...))
+    batched_transport_to_std_with_rest(S, pwr_base(μ), X, (size_tuple(pwr_size(μ))..., size_tuple(sz)...))
 end
 function _pwr_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::Tuple{}, ::False) where {S}
     z, _, x_rest = transport_to_std_with_rest(S, μ, x)
@@ -461,7 +461,7 @@ end
 # batched protocol:
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::NoMSpaceElementSize) where {S}
     z, x_rest = _pwr_to_std_with_rest(S, μ, x, (), static(true))
-    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return z, x_μ, x_rest
 end
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::False) where {S}
@@ -471,7 +471,7 @@ function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVec
     for i in eachindex(zs)
         zs[i], _, x_rest = transport_to_std_with_rest(S, ν, x_rest)
     end
-    x_μ, _ = split_at(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
     return reduce(vcat, [z for z in zs]), x_μ, x_rest
 end
 

@@ -156,10 +156,10 @@ end
 # Standard variates of `prod(sz)` variates per stream, `(dof, sz..., batch
 # dims...)`, as one stream chunk `(dof * prod(sz), batch dims...)`, and
 # back:
-@inline _merge_multiplicity(Z::AbstractArray, sz::SizeLike) = merge_leading_dims(Z, static(1) + maybestatic_length(size_dims(sz)))
+@inline _merge_multiplicity(Z::AbstractArray, sz::SizeLike) = merge_leading_dims(Z, static(1) + maybestatic_length(size_tuple(sz)))
 @inline _split_multiplicity(Z::AbstractArray, ::Tuple{}, n) = Z
 @inline function _split_multiplicity(Z::AbstractArray, sz::SizeLike, n)
-    maybestatic_reshape(Z, (n, size_dims(sz)..., Base.tail(_batch_dims(Z))...))
+    maybestatic_reshape(Z, (n, size_tuple(sz)..., Base.tail(_batch_dims(Z))...))
 end
 
 

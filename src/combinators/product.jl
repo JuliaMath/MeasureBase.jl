@@ -485,7 +485,7 @@ end
 # marginal batches:
 _stream_batch(μ, R::AbstractArray) = _stream_leaf_batch(R, mspace_flatsize(μ))
 _stream_leaf_batch(R::AbstractArray, ::Tuple{}) = _drop_stdstream_dim(R)
-_stream_leaf_batch(R::AbstractArray, vsz::SizeLike) = _reshape_consumed(R, size_dims(vsz))
+_stream_leaf_batch(R::AbstractArray, vsz::SizeLike) = _reshape_consumed(R, size_tuple(vsz))
 _stream_batch(μ::ProductMeasure{<:Tuple}, R::AbstractArray) = _marginal_stream_batches(marginals(μ), R)
 function _stream_batch(μ::ProductMeasure{<:NamedTuple{names}}, R::AbstractArray) where {names}
     NamedTuple{names}(_marginal_stream_batches(values(marginals(μ)), R))
@@ -740,7 +740,7 @@ end
 function _split_stream_variates(μ, X::AbstractArray, sz::SizeLike)
     n_rows = _fixed_stream_length(μ)
     X_μ, X_rest = _batched_split(X, _chunk_rows(n_rows, sz))
-    return maybestatic_reshape(X_μ, (n_rows, size_dims(sz)..., Base.tail(_batch_dims(X_μ))...)), X_rest
+    return maybestatic_reshape(X_μ, (n_rows, size_tuple(sz)..., Base.tail(_batch_dims(X_μ))...)), X_rest
 end
 
 @inline _fixed_stream_length(μ::ProductMeasure{<:Tuple}) = sum(_fixed_stream_length, marginals(μ))
@@ -761,7 +761,7 @@ function batched_logdensityof_with_rest(μ::ProductMeasure{<:NamedTuple{names}},
 end
 
 # Folded pairwise over the marginal types, so that the result is a constant:
-@inline fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple} = static_all(fixed_stream_size, M)
+@inline fixed_stream_size(::Type{<:ProductMeasure{M}}) where {M<:Tuple} = tuple_type_all(fixed_stream_size, M)
 @inline function fixed_stream_size(::Type{<:ProductMeasure{NamedTuple{names,M}}}) where {names,M<:Tuple}
     fixed_stream_size(ProductMeasure{M})
 end

@@ -205,7 +205,7 @@ const _LazyBroadcast = Broadcast.Broadcasted
 
 # The leading dimensions of a flat batch must match a flat variate size:
 @inline function _check_flatsize(A::AbstractArray, sz_flat::SizeLike)
-    n = length(size_dims(sz_flat))
+    n = length(size_tuple(sz_flat))
     if ndims(A) < n || ntuple(i -> size(A, i), Val(n)) != asnonstatic(sz_flat)
         _throw_size_mismatch()
     end
@@ -284,10 +284,10 @@ end
 @inline function _batched_consume(X::AbstractArray, vsz::SizeLike, sz::SizeLike)
     dims = _consumed_dims(vsz)
     X_flat, X_rest = _batched_split(X, _chunk_rows(prod(dims), sz))
-    return _reshape_consumed(X_flat, (dims..., size_dims(sz)...)), X_rest
+    return _reshape_consumed(X_flat, (dims..., size_tuple(sz)...)), X_rest
 end
 @inline _consumed_dims(::Tuple{}) = (static(1),)
-@inline _consumed_dims(vsz::SizeLike) = size_dims(vsz)
+@inline _consumed_dims(vsz::SizeLike) = size_tuple(vsz)
 @inline _chunk_rows(n::IntegerLike, sz::SizeLike) = n * size2length(sz)
 
 @inline _reshape_consumed(X_flat::AbstractArray, ::Tuple{IntegerLike}) = X_flat
@@ -297,7 +297,7 @@ end
 
 # Sizes as tuples of (maybe static) integers and the leading dimension of
 # a batch of streams:
-@inline _batch_dims(A::AbstractArray) = size_dims(maybestatic_size(A))
+@inline _batch_dims(A::AbstractArray) = size_tuple(maybestatic_size(A))
 @inline _as_stdstream_batch(Z::AbstractArray) = merge_leading_dims(Z, static(0))
 @inline _as_stdstream_batch(z::Number) = SVector(z)
 @inline _drop_stdstream_dim(Z::AbstractArray) = drop_leading_dims(Z, static(1))
@@ -316,7 +316,7 @@ end
 end
 
 # Static streams split into static chunks for static row counts:
-@inline _batched_split(A::StaticVector, n_rows::StaticInteger) = split_at(A, n_rows)
+@inline _batched_split(A::StaticVector, n_rows::StaticInteger) = maybestatic_split(A, n_rows)
 @inline function _batched_split(A::StaticMatrix, n_rows::StaticInteger)
     n = dynamic(n_rows)
     A[SOneTo(n), :], A[StaticArrays.SUnitRange(n + 1, size(A, 1)), :]

@@ -78,7 +78,7 @@ end
 @inline _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type, ::Any, m) = _rand_pointwise(ctx, μ, sz, m)
 
 @inline _transported_std_draw(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike, ::Any) where {S} =
-    batched_transport_from_std(S, μ, _rand_std(ctx, S, (n, size_dims(sz)...)))
+    batched_transport_from_std(S, μ, _rand_std(ctx, S, (n, size_tuple(sz)...)))
 # Single scalar variates from single standard variates, device arrays of
 # standard variates can't be indexed on the host:
 @inline _transported_std_draw(ctx::GenContext, μ, ::Tuple{}, ::Type{S}, ::IntegerLike, ::StaticInteger{0}) where {S} =

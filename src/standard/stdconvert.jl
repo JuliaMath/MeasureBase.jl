@@ -59,5 +59,5 @@ end
 function batched_transport_def(ν::StdPowerMeasure{NU}, μ::StdPowerMeasure{MU}, X::AbstractArray) where {NU<:StdMeasure,MU<:StdMeasure}
     _check_flatsize(X, mspace_flatsize(μ))
     Z = _as_stream_batch(stdconvert(NU, MU, X), μ)
-    _reshape_consumed(Z, size_dims(mspace_flatsize(ν)))
+    _reshape_consumed(Z, size_tuple(mspace_flatsize(ν)))
 end
