@@ -58,6 +58,6 @@ test_measure_contracts(μ, x_out; kwargs...) =
     # Known gaps:
     @test_broken logdensityof(pushfwd(exp, StdNormal()), -1.0) == -Inf
     let P = productmeasure([StdNormal(), StdExponential()])
-        @test_broken isempty(logdensities(P, rand(P^0)))
+        @test isempty(logdensities(P, rand(P^0)))
     end
 end

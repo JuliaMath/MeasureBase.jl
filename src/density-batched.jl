@@ -316,11 +316,7 @@ end
 end
 
 # Static streams split into static chunks for static row counts:
-@inline _batched_split(A::StaticVector, n_rows::StaticInteger) = maybestatic_split(A, n_rows)
-@inline function _batched_split(A::StaticMatrix, n_rows::StaticInteger)
-    n = dynamic(n_rows)
-    A[SOneTo(n), :], A[StaticArrays.SUnitRange(n + 1, size(A, 1)), :]
-end
+@inline _batched_split(A::StaticArray, n_rows::StaticInteger) = maybestatic_split(A, n_rows)
 
 @noinline function _throw_stream_too_long()
     throw(ArgumentError("Variate streams too long during density evaluation"))
