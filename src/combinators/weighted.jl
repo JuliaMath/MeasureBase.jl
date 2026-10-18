@@ -23,12 +23,18 @@ _logweight(::AbstractMeasure) = 0
 # The weight-shifted density of a support-safe base density is support-safe,
 # no explicit support check required:
 @inline function logdensityof_impl(d::AbstractWeightedMeasure, x)
-    _logweight_for(d.logweight, x) + logdensityof_impl(basemeasure(d), x)
+    _add_logweight(_logweight_for(d.logweight, x), logdensityof_impl(basemeasure(d), x))
 end
 
 @inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, X)
-    _lazy_add(_logweight_for(d.logweight, X), batched_logdensityof_impl(basemeasure(d), X))
+    _lazy_add_logweight(_logweight_for(d.logweight, X), batched_logdensityof_impl(basemeasure(d), X))
 end
+
+# A zero weight gives zero densities, also where the base density is
+# infinite:
+@inline _add_logweight(ℓ_w, ℓ) = (y = ℓ_w + ℓ; ifelse(isneginf(ℓ_w), oftype(y, ℓ_w), y))
+@inline _lazy_add_logweight(ℓ_w, ℓ::Number) = _add_logweight(ℓ_w, ℓ)
+@inline _lazy_add_logweight(ℓ_w, ℓ) = Broadcast.instantiate(Broadcast.broadcasted(_add_logweight, ℓ_w, ℓ))
 @inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
     _lazy_add(_logweight_for(d.logweight, X), _zero_logd_batch(X, _static_ndims(basemeasure(d))))
 end
