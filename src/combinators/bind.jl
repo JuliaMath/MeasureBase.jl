@@ -108,6 +108,11 @@ vector-like variates) and `merge` (`NamedTuple` variates).
 [`MeasureBase.tpmeasure_split_combined`](@ref) can be specialized to
 support other choices for `f_c`.
 
+Densities are `-Inf` where `a` lies outside of the support of `α`, `f_β` is
+not evaluated there. Traced and device evaluation, and binds whose variates
+are part of the streams of enclosing combinators (`mcombine`, nested binds,
+powers) do evaluate `f_β` at such `a`, the kernel must not throw for them.
+
 # Extended help
 
 Bayesian example with a correlated prior: Mathematically, let
@@ -298,18 +303,35 @@ logdensityof_impl(μ::Bind, x) = _bind_ld_impl(μ.f_c, μ, x)
 
 unsafe_logdensityof(μ::Bind, x) = logdensityof_impl(μ, x)
 
+# The kernel is not evaluated outside of the support of the primary measure,
+# where it may be undefined, except for traced or device conditions:
+@inline function _bind_ld(ℓ_a, ℓ_b::F) where {F}
+    ℓ = dynamic(ℓ_a)
+    _select(isneginf(ℓ), () -> ℓ, () -> ℓ + ℓ_b())
+end
+
 function _bind_ld_impl(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
     a, b = xy[1], xy[2]
-    logdensityof(μ.α, a) + logdensityof(_get_β_a(μ, a), b)
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
 end
 
 function _bind_ld_impl(::Type{Pair}, μ::Bind, xy::Pair)
     a, b = xy.first, xy.second
-    logdensityof(μ.α, a) + logdensityof(_get_β_a(μ, a), b)
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
 end
 
-function _bind_ld_impl(::Union{typeof(vcat),typeof(merge)}, μ::Bind, xy)
-    ℓ, _, x_rest = logdensityof_with_rest(μ, xy)
+function _bind_ld_impl(::typeof(vcat), μ::Bind, x::AbstractVector)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    _bind_ld(ℓ_a, () -> _ld_whole_stream(_get_β_a_consumed(μ, a), x2))
+end
+
+function _bind_ld_impl(::typeof(merge), μ::Bind, x::NamedTuple)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    _bind_ld(ℓ_a, () -> _ld_whole_stream(_get_β_a(μ, a), x2))
+end
+
+function _ld_whole_stream(μ, x)
+    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
     isempty(x_rest) || _throw_stream_too_long()
     return ℓ
 end
@@ -331,6 +353,10 @@ end
 # paths:
 _get_β_a_consumed(μ::Bind, a) = _get_β_a(μ, _stream_variate(μ.α, a))
 
+# Inside the streams of enclosing combinators, the rest of the stream
+# depends on the secondary measure, so the kernel is evaluated also outside
+# of the support of the primary measure:
+
 function logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a_consumed(μ, a), x2)
@@ -350,13 +376,12 @@ function batched_logdensityof_impl(μ::_BindBy{typeof(merge)}, X::NamedTuple)
     X_α, X_β = _split_after(X, Val(_mspace_names(μ.α)))
     _merge_bind_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
 end
-_merge_bind_ld(μ::Bind, ℓ_α::Number, a, b) = ℓ_α + logdensityof(_get_β_a(μ, a), b)
+_merge_bind_ld(μ::Bind, ℓ_α::Number, a, b) = _bind_ld(ℓ_α, () -> logdensityof(_get_β_a(μ, a), b))
 function _merge_bind_ld(μ::Bind, ℓ_α::AbstractArray, X_α, X_β)
     B = ndims(ℓ_α)
-    ℓ_β = map(CartesianIndices(ℓ_α)) do i
-        logdensityof(_get_β_a(μ, _batch_row(X_α, i, B)), _batch_row(X_β, i, B))
+    map(CartesianIndices(ℓ_α)) do i
+        _merge_bind_ld(μ, ℓ_α[i], _batch_row(X_α, i, B), _batch_row(X_β, i, B))
     end
-    return ℓ_α .+ ℓ_β
 end
 
 # The variate at index `i` of a batch with `B` batch dimensions:
@@ -370,7 +395,7 @@ function batched_logdensityof_with_rest(μ::Bind, x::AbstractVector, ::Tuple{})
     return ℓ, x_rest
 end
 
-batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = _streamwise_ld(logdensityof_impl, μ, X)
+batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = map(Base.Fix1(logdensityof_impl, μ), sliced(X, Val(1)))
 
 # Batches of streams containing binds are consumed stream by stream (by
 # the outermost stream combinator, see `fixed_stream_size`):

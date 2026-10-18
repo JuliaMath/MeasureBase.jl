@@ -9,7 +9,7 @@ using AffineMaps: Mul
 using MeasureBase
 using MeasureBase: StdExponential, StdNormal, StdUniform
 using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
-using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure
+using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
 
 @testset "bind" begin
     stblrng() = StableRNG(789990641)
@@ -173,6 +173,24 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         @test y isa AbstractVector{<:Real} && length(y) == 2
         x_reco = transport_to(μ, StdUniform()^2)(y)
         @test x_reco.position ≈ x.position && x_reco.noise ≈ x.noise
+    end
+
+    @testset "densities outside of the primary support" begin
+        # `log` throws for negative primary variates, the kernel must not be
+        # evaluated there:
+        k(a) = weightedmeasure(log(a), StdNormal())
+        ℓ(a, b) = -a + log(a) + logdensityof(StdNormal(), b)
+        for f_c in (tuple, Pair)
+            μ = mbind(k, α, f_c)
+            @test logdensityof(μ, f_c(-1.0, 0.0)) == -Inf
+            @test logdensityof(μ, f_c(2.0, 0.5)) ≈ ℓ(2.0, 0.5)
+        end
+        μ_v = mbind(k, α, vcat)
+        @test logdensityof(μ_v, [-1.0, 0.0]) == -Inf
+        @test logdensities(μ_v, [-1.0 2.0; 0.0 0.5]) ≈ [-Inf, ℓ(2.0, 0.5)]
+        μ_m = mbind(a -> productmeasure((b = k(a.a),)), productmeasure((a = α,)), merge)
+        @test logdensityof(μ_m, (a = -1.0, b = 0.0)) == -Inf
+        @test logdensities(μ_m, (a = [-1.0, 2.0], b = [0.0, 0.5])) ≈ [-Inf, ℓ(2.0, 0.5)]
     end
 
     @testset "mbind with Dirac" begin
