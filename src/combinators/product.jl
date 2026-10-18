@@ -274,7 +274,7 @@ end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{0}) where {F}
     mar = marginals(μ)
     _check_flatsize(X, maybestatic_size(mar))
-    sum_leading_dims(_marginal_broadcast(_DynamicPointLogd(f), mar, X), static(ndims(mar)); init = zero(_logd_numtype(X)))
+    _sum_leading_logd(_marginal_broadcast(_DynamicPointLogd(f), mar, X), static(ndims(mar)); init = zero(_logd_numtype(X)))
 end
 @inline function _array_product_kernel(f::F, μ::ProductMeasure, X::AbstractArray, ::StaticInteger{K}) where {F,K}
     _marginal_slices_ld(f, marginals(μ), X, Val(K), Val(ndims(X) - K - ndims(marginals(μ))))

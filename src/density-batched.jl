@@ -226,6 +226,23 @@ end
 @inline _materialize(bc::_LazyBroadcast) = copy(bc)
 @inline _materialize(x) = x
 
+# `sum_leading_dims` of log-densities. Partial sums of lazy broadcasts over
+# host arrays don't materialize the elementwise log-densities (Base can't
+# reduce selected dimensions of a `Broadcasted`):
+@inline _sum_leading_logd(ℓ, n::StaticInteger; kw...) = sum_leading_dims(ℓ, n; kw...)
+function _sum_leading_logd(ℓ::Broadcast.Broadcasted{<:Broadcast.DefaultArrayStyle}, n::StaticInteger{N}; kw...) where {N}
+    axs = axes(ℓ)
+    (0 < N < length(axs) && !isempty(ℓ)) || return sum_leading_dims(ℓ, n; kw...)
+    lead = CartesianIndices(ntuple(i -> axs[i], Val(N)))
+    map(CartesianIndices(ntuple(i -> axs[N + i], Val(length(axs) - N)))) do j
+        s = zero(ℓ[CartesianIndex(first(lead), j)])
+        @inbounds @simd for i in lead
+            s += ℓ[CartesianIndex(i, j)]
+        end
+        s
+    end
+end
+
 
 @inline _lazy_add(a::Number, b::Number) = a + b
 @inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(+, a, b))

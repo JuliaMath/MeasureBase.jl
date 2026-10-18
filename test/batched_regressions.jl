@@ -124,6 +124,24 @@ include("testutils.jl")
         @test gs.(SVector{3}(v)) isa SVector{3,Float64}
     end
 
+    @testset "batched densities of powers and products don't materialize elementwise densities" begin
+        X = randn(1000, 50)
+        ℓ_ref = vec(sum(-X .^ 2 ./ 2 .- log(2π) / 2; dims = 1))
+        μ = StdNormal()^1000
+        @test logdensities(μ, X) ≈ ℓ_ref
+        @test allocations_of(logdensities, μ, X) < 50 * 8 * 4
+        W = weightedmeasure(0.5, StdNormal())^1000
+        @test logdensities(W, X) ≈ ℓ_ref .+ 500
+        @test allocations_of(logdensities, W, X) < 50 * 8 * 4
+        P = productmeasure([weightedmeasure(log(i), StdNormal()) for i in 1:1000])
+        @test logdensities(P, X) ≈ ℓ_ref .+ sum(log, 1:1000)
+        @test allocations_of(logdensities, P, X) < 50 * 8 * 4
+        @test logdensities(μ, Array(JLArray(X))) ≈ ℓ_ref
+        @test Array(logdensities(μ, JLArray(X))) ≈ ℓ_ref
+        @test isempty(logdensities(μ, X[:, 1:0]))
+        @test logdensities(StdNormal()^(10, 100), reshape(X, 10, 100, 50)) ≈ ℓ_ref
+    end
+
     @testset "random variates of fused array products" begin
         P = productmeasure([pushfwd(Base.Fix1(*, s), StdExponential()) for s in 0.1:0.2:0.9])
         x = rand(GenContext{Float64}(), P)

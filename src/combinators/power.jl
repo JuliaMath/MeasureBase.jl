@@ -154,7 +154,7 @@ end
 end
 
 # `sum_leading_dims`, but naming the measure when the variate isn't an array:
-@inline _pwr_sum_dims(ℓ, n::StaticInteger) = sum_leading_dims(ℓ, n)
+@inline _pwr_sum_dims(ℓ, n::StaticInteger) = _sum_leading_logd(ℓ, n)
 @inline _pwr_sum_dims(ℓ::Number, ::StaticInteger{0}) = ℓ
 @noinline _pwr_sum_dims(::Number, ::StaticInteger) = _throw_pwr_variate_not_array()
 # Numeric batches of powers of bases without a variate rank are batches of
