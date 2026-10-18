@@ -129,14 +129,17 @@ end
 """
     MeasureBase.convert_realtype(::Type{T}, x) where {T<:Real}
 
-Convert `x` to use `T` as its underlying type for real numbers.
+Convert the floating-point numbers in `x` to `T`. Other numbers, like
+integers and dual numbers, are kept as they are.
 """
 function convert_realtype end
 
 @inline convert_realtype(::Type{T}, x::T) where {T<:Real} = x
+@inline convert_realtype(::Type{T}, x::AbstractFloat) where {T<:Real} = T(x)
+@inline convert_realtype(::Type{T}, x::Number) where {T<:Real} = x
 @inline convert_realtype(::Type{T}, x::AbstractArray{T}) where {T<:Real} = x
-@inline convert_realtype(::Type{T}, x::U) where {T<:Real,U<:Number} = T(x)
-convert_realtype(::Type{T}, x::AbstractArray{U}) where {T<:Real,U<:Number} = T.(x)
+convert_realtype(::Type{T}, x::AbstractArray{<:AbstractFloat}) where {T<:Real} = T.(x)
+@inline convert_realtype(::Type{T}, x::AbstractArray{<:Number}) where {T<:Real} = x
 convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
     map(Base.Fix1(convert_realtype, T), x)
 convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =

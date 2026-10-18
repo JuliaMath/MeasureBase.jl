@@ -13,7 +13,7 @@ using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac
 using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd, SpikeMixture
 using MeasureBase: rand_impl, batched_rand_impl, asmeasure, logdensities
-using Distributions: Normal, MvNormal, Weibull, logpdf
+using Distributions: Normal, MvNormal, Weibull, Poisson, logpdf
 using JLArrays: JLArrays, JLArray, JLBackend
 
 struct NoBatchRandMeasure <: AbstractMeasure end
@@ -46,6 +46,18 @@ struct NoRandMeasure <: AbstractMeasure end
         @test_throws ArgumentError rand(NoRandMeasure())
         @test_throws ArgumentError batched_rand_impl(ctx(), NoRandMeasure(), ())
         @test_throws ArgumentError batched_rand_impl(ctx(), NoRandMeasure(), (3,))
+    end
+
+    @testset "integer draws" begin
+        # Integer variates stay integers, also as sizes in binds:
+        P = asmeasure(Poisson(3.0))
+        @test rand(stblrng(), Float32, P) isa Int
+        @test eltype(rand(stblrng(), Float32, P^3)) == Int
+        m = mbind(n -> StdNormal()^n, P, tuple)
+        n, x = rand(stblrng(), m)
+        @test n isa Int && length(x) == n
+        @test logdensityof(m, (n, x)) ≈ logpdf(Poisson(3.0), n) + sum(logdensityof.(StdNormal(), x))
+        @test length(rand(stblrng(), mbind(n -> StdNormal()^n, P))) isa Int
     end
 
     @testset "structured batches" begin
