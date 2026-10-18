@@ -28,6 +28,12 @@ import AffineMaps
         @test logdensityof(StdNormal(), -Inf) == -Inf
         @test logdensityof(productmeasure((StdUniform(), StdExponential())), (0.5, -1.0)) == -Inf
         @test logdensityof(mcombine(vcat, StdUniform()^2, StdExponential()^1), [0.5, 1.5, 0.5]) == -Inf
+
+        # Integer variates evaluate like their float values, without overflow:
+        n = typemax(Int)
+        @test logdensityof(StdNormal(), n) ≈ -(Float64(n)^2 + log(2π)) / 2
+        @test logdensities(StdNormal(), [n, 3]) ≈ [logdensityof(StdNormal(), Float64(n)), logdensityof(StdNormal(), 3.0)]
+        @test logdensityof(StdNormal()^2, [n, 3]) ≈ logdensityof(StdNormal()^2, [Float64(n), 3.0])
     end
 
     @testset "transports" begin
