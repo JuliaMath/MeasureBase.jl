@@ -42,9 +42,13 @@ end
 end
 @inline _family_insupport(::Logistic, x) = true
 
+# `log1p(z^2)` as `2 log(a) + log1p((b / a)^2)` for `a = max(|z|, 1)` and
+# `b = min(|z|, 1)`, so that `z^2` can't overflow:
 @inline function _family_logd(d::Cauchy, x)
-    z = (x - d.μ) / d.σ
-    -log1p(z * z) - log(π * d.σ)
+    z = abs((x - d.μ) / d.σ)
+    big = z > 1
+    a, b = ifelse(big, z, one(z)), ifelse(big, one(z), z)
+    -2 * log(a) - log1p(abs2(b / a)) - log(π * d.σ)
 end
 @inline _family_insupport(::Cauchy, x) = true
 
@@ -121,8 +125,15 @@ end
     z = (x - d.μ) / d.σ
     _nan_outside(d, x, atan(one(z), -z) / π)
 end
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p) =
-    _nan_outside(StdUniform, p, muladd(d.σ, tan(π * (_unit_interior(p) - 1 // 2)), d.μ))
+# `tan(π(p - 1/2))` loses small probabilities in `p - 1/2`, the cotangent
+# of the tail probability doesn't:
+@inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p)
+    q = _unit_interior(p)
+    lower = q < 1 // 2
+    r = ifelse(lower, q, 1 - q)
+    t = cospi(r) / sinpi(r)
+    _nan_outside(StdUniform, p, muladd(d.σ, ifelse(lower, -t, t), d.μ))
+end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdUniform
 @inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Laplace, x)

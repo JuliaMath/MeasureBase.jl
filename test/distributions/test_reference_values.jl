@@ -64,4 +64,25 @@ const _derivatives = (
         @test _derivatives.Zygote(transport_to(StdUniform(), asmeasure(Laplace())), -800.0) == 0
         @test _derivatives.Zygote(transport_to(StdUniform(), asmeasure(Laplace(0f0, 1f0))), -90f0) ≈ exp(-90f0) / 2
     end
+
+    @testset "Float32 tails" begin
+        # Cauchy quantiles are `-cot(πp)`:
+        f = transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform())
+        tail = Float32[10.0^-k for k in 37:-1:1]
+        ps = vcat(tail, 0.3f0, 0.5f0, 0.7f0, 1 .- reverse(filter(>=(eps(Float32)), tail)))
+        xs = f.(ps)
+        @test xs isa Vector{Float32}
+        @test all(isapprox.(xs, Float32.(-cot.(big(π) .* ps)), rtol = 4 * eps(Float32)))
+        @test issorted(xs) && sign.(xs) == sign.(ps .- 0.5f0)
+        @test f(1f-9) ≈ -1 / (π * 1f-9) rtol = 4 * eps(Float32)
+        @test transport_to(asmeasure(Cauchy()), StdUniform())(1e-300) ≈ -1 / (π * 1e-300)
+
+        # Cauchy densities where `z^2` overflows:
+        d = Cauchy(0.5f0, 2f0)
+        for x in Float32[1f20, -1f25, floatmax(Float32), -floatmax(Float32), 3, 0.25]
+            z = (big(x) - d.μ) / d.σ
+            @test logdensityof(asmeasure(d), x) ≈ Float32(-log1p(z^2) - log(big(π) * d.σ)) rtol = 4 * eps(Float32)
+        end
+        @test logdensityof(asmeasure(Cauchy(0f0, 1f0)), 1f20) ≈ logpdf(Cauchy(0.0, 1.0), 1e20)
+    end
 end
