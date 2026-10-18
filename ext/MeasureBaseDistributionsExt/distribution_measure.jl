@@ -15,10 +15,15 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 @inline Base.convert(::Type{Distribution{F,S}}, m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
 
 
-# Distributions' samplers run on host compute units, variates on other
-# compute units are generated from standard variates via the transports:
+# Distributions' samplers run on host compute units and draw in the
+# precision of the distribution parameters. Where that is lower than the
+# precision of the context, and on other compute units, variates are
+# generated from standard variates of the context precision via the
+# transports. Draws of distributions without standard transports are
+# converted to the context precision afterwards, only their type follows
+# the context then.
 function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
-    if MeasureBase._on_host(ctx)
+    if _native_rand(ctx, m.obj)
         convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
     else
         MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
@@ -26,12 +31,21 @@ function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
 end
 
 function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
-    if MeasureBase._on_host(ctx)
+    if _native_rand(ctx, m.obj)
         _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, asnonstatic(sz))
     else
         MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
     end
 end
+
+@inline function _native_rand(ctx::GenContext, d::Distribution)
+    MeasureBase._on_host(ctx) && (_native_precision_suffices(get_precision(ctx), d) || !_has_std_transport(d))
+end
+@inline function _native_precision_suffices(::Type{T}, d::Distribution) where {T<:Real}
+    P = float(Distributions.partype(d))
+    promote_type(P, T) == P
+end
+@inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
 
 # A single variate for zero batch dimensions, flat batches otherwise:
 _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, rand(rng, d))

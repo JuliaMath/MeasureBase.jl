@@ -51,3 +51,30 @@ using MeasureBase: AbstractMeasure
         @test (MeasureBase.params(c0)) == (α = 0.7, θ = 1.3)
     end
 end
+
+@testset "context precision of draws" begin
+    using LinearAlgebra: I
+    using StableRNGs: StableRNG
+    using Statistics: mean
+    using MeasureBase: GenContext, batched_rand_impl
+    using Distributions: Normal, Gamma, MvNormal, Dirichlet, Poisson
+
+    ctx(T) = GenContext{T}(StableRNG(8327))
+    is_f32(x) = all(v -> Float32(v) == v, x)
+    # Distributions with lower-precision parameters draw in the precision of
+    # the context, not only in its type:
+    for d in (Normal(0.3f0, 1.7f0), Gamma(2f0, 1.5f0), MvNormal(zeros(Float32, 2), Matrix{Float32}(I, 2, 2)), Dirichlet(Float32[1, 2, 3]))
+        m = AbstractMeasure(d)
+        X = batched_rand_impl(ctx(Float64), m, (200,))
+        @test eltype(X) == Float64 && !is_f32(X)
+        xs = [rand(ctx(Float64), m) for _ in 1:20]
+        @test eltype(eltype(xs)) == Float64 && !is_f32(reduce(vcat, xs))
+        @test eltype(batched_rand_impl(ctx(Float32), m, (20,))) == Float32
+    end
+    for d in (Normal(0.3, 1.7), Gamma(2.0, 1.5), Dirichlet([1.0, 2.0, 3.0]))
+        @test eltype(batched_rand_impl(ctx(Float32), AbstractMeasure(d), (20,))) == Float32
+    end
+    @test mean(rand(ctx(Float64), AbstractMeasure(Gamma(2f0, 1.5f0))^4000)) ≈ 3 atol = 5 * sqrt(4.5 / 4000)
+    # Without standard transports, Distributions' samplers are used:
+    @test rand(ctx(Float64), AbstractMeasure(Poisson(2f0))) isa Int
+end

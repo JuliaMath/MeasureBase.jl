@@ -151,7 +151,10 @@ dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
   gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
   (and quantiles), whose ForwardDiff and ChainRules derivatives come from
   the densities. Draws use the Distributions samplers on host compute
-  units (`is_host_unit`) and the standard transports on others. Remaining
+  units (`is_host_unit`) and the standard transports on others, and on the
+  host too where the parameter precision (`partype`) is below the context
+  precision. Distributions without standard transports convert their draws
+  afterwards (the context then sets the type, not the resolution). Remaining
   array-variate distributions batch via `logpdf(d, X)` on the host.
 
 ## Changes relative to `main`
