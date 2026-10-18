@@ -2,7 +2,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: mspace_elsize, mspace_flatsize, preferred_stdmeasure, NoStdTransport
-using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Dirac, productmeasure
+using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Dirac, productmeasure, getdof, transport_to
 using Distributions
 using LinearAlgebra: I
 
@@ -32,6 +32,13 @@ using LinearAlgebra: I
     @test @inferred(preferred_stdmeasure(productmeasure((a = asmeasure(Poisson(2)), b = asmeasure(Beta(2, 3)))))) <: NoStdTransport
     @test @inferred(preferred_stdmeasure(productmeasure([asmeasure(Normal(i, 1)) for i in 1:3]))) === StdNormal
     @test @inferred(preferred_stdmeasure(product_distribution([Beta(2, 3), Beta(1, 1)]))) === StdUniform
+
+    # Wrong variate sizes throw instead of broadcasting singleton dimensions:
+    for (m, x) in [(asmeasure(MvNormal(zeros(2), I(2))), [0.0]), (asmeasure(MvNormal(zeros(2), I(2))), zeros(3)), (asmeasure(Dirichlet(ones(3))), [1.0])]
+        @test_throws ArgumentError logdensityof(m, x)
+        @test_throws ArgumentError logdensities(m, repeat(x, 1, 4))
+        @test_throws ArgumentError transport_to(StdNormal()^getdof(m), m)(x)
+    end
 
     lkj = asmeasure(LKJCholesky(3, 1.0))
     @test @inferred(mspace_elsize(lkj)) isa MeasureBase.NoMSpaceElementSize
