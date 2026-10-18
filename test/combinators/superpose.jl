@@ -66,6 +66,20 @@ using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixtu
     @test μ2 == superpose(μ, μ)
     @test density_def(μ2, 0) == 1.0
 
+    # Relative densities of superpositions of equal type don't assume equal
+    # components, the oracle is the mass of the atoms:
+    let a = superpose((Dirac(0.0), Dirac(0.0))), b = superpose((Dirac(0.0), Dirac(1.0)))
+        @test logdensity_rel(a, b, 0.0) ≈ log(2)
+        @test logdensity_rel(b, a, 0.0) ≈ -log(2)
+        @test logdensity_rel(b, b, 0.0) == 0
+        @test logdensity_rel(b, a, 1.0) == Inf
+        @test logdensity_rel(a, b, 1.0) == -Inf
+    end
+    let a = SuperpositionMeasure((2 * StdNormal(), 3 * StdNormal()))
+        b = SuperpositionMeasure((StdNormal(), StdNormal()))
+        @test logdensity_rel(a, b, 0.3) ≈ log(5 / 2)
+    end
+
     # For singleton measure types equal measures combine into weighted measures:
     s2 = StdNormal() + StdNormal()
     @test s2 isa WeightedMeasure

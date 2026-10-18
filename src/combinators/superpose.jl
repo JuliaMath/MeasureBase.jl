@@ -71,11 +71,6 @@ function logdensity_def(s::SuperpositionMeasure, x)
     _logsumexp_components(terms)
 end
 
-@inline function logdensity_rel_def(μ::T, ν::T, x) where {T<:SuperpositionMeasure}
-    ℓ = logdensity_def(μ, x) - logdensity_def(ν, x)
-    ifelse(μ === ν, zero(ℓ), ℓ)
-end
-
 function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
     cs = values(s.components)
     ds = map(cs) do μ
