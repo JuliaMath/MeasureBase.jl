@@ -16,6 +16,10 @@ by default) and the compute unit that array-valued variates are generated
 on. Variates of powers of measures are generated as one flat batch of
 variates of the base measure.
 
+Floating-point variates have the precision of the context, also through
+transformations. Point masses generate their atom exactly, and integer
+variates (e.g. of counting measures) stay integers.
+
 Measure types should specialize [`MeasureBase.batched_rand_impl`](@ref)
 instead of `rand`.
 """
@@ -132,9 +136,10 @@ end
 
 @inline _on_host(ctx::GenContext) = is_host_unit(get_compute_unit(ctx))
 
-@inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = fill_array(ctx, x, asnonstatic(sz))
+# Constant fills keep the type of the constant (point masses are exact):
+@inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = fill_array(get_compute_unit(ctx), x, asnonstatic(sz))
 @inline _const_bulk(ctx::GenContext, x, sz::StaticSizeLike) =
-    _on_host(ctx) ? maybestatic_fill(x, sz) : fill_array(ctx, x, asnonstatic(sz))
+    _on_host(ctx) ? maybestatic_fill(x, sz) : fill_array(get_compute_unit(ctx), x, asnonstatic(sz))
 
 # A mask over the batch dimensions, aligned with a flat batch of variates
 # of rank `k`:

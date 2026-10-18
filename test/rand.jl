@@ -6,7 +6,8 @@ using Random, Statistics
 using StableRNGs: StableRNG
 using Static: static
 using ArraysOfArrays: flatview
-using AffineMaps: Add
+using AffineMaps: Add, Mul
+using StaticArrays: SVector
 
 using MeasureBase
 using MeasureBase: GenContext
@@ -56,6 +57,35 @@ struct _NoSampler <: AbstractMeasure end
         @test rand(stblrng(), _BatchedRandOnly()) == batched_rand_impl(GenContext{Float64}(stblrng()), _BatchedRandOnly(), ())
         @test_throws ArgumentError rand(_NoSampler())
         @test_throws ArgumentError rand(_NoSampler()^2)
+    end
+
+    @testset "precision of draws" begin
+        # Floating-point draws follow the context, also through
+        # transformations and structural measures:
+        p = pushfwd(Mul(2.0), StdNormal())
+        _numtype(x::Number) = typeof(x)
+        _numtype(x::AbstractArray{<:Number}) = eltype(x)
+        _numtype(x::AbstractArray) = mapreduce(_numtype, promote_type, x)
+        _numtype(x::Union{Tuple,NamedTuple}) = promote_type(map(_numtype, values(x))...)
+        for μ in (
+            p, p^3, p^static(3), pushfwd(Mul(2.0), StdNormal()^static(3)),
+            StdNormal()^3, StdNormal()^static(3), weightedmeasure(0.3, p), MeasureBase.Half(StdNormal()),
+            superpose(StdNormal(), p), SpikeMixture(p, 0.5), mcombine(vcat, StdNormal()^2, p^2),
+            productmeasure((a = p, b = StdNormal())), mbind(a -> pushfwd(Mul(abs(a) + 1), StdNormal()), StdNormal(), tuple),
+        ), T in (Float32, Float64)
+            @test _numtype(rand(stblrng(), T, μ)) == T
+            @test _numtype(rand(stblrng(), T, μ^2)) == T
+        end
+        @test rand(Float32, p^static(3)) isa SVector{3,Float32}
+
+        # Point masses are exact:
+        ctx32 = GenContext{Float32}(stblrng())
+        @test rand(ctx32, Dirac(0.3)) === 0.3
+        @test batched_rand_impl(ctx32, Dirac(0.3), (3,)) == fill(0.3, 3)
+        @test eltype(batched_rand_impl(ctx32, Dirac(0.3), (3,))) == Float64
+        @test eltype(batched_rand_impl(ctx32, Dirac(0.3), (static(3),))) == Float64
+        @test batched_rand_impl(ctx32, Dirac([0.3, 0.4]), (2,)) == [0.3 0.3; 0.4 0.4]
+        @test rand(ctx32, pushfwd(Mul(2.0), Dirac(0.3))) === 0.6
     end
 
     @testset "layout of power variates" begin

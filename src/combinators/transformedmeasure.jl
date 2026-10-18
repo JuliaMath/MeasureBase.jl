@@ -275,7 +275,12 @@ end
 
 massof(m::PushforwardMeasure) = massof(m.origin)
 
-rand_impl(ctx::GenContext, ν::PushforwardMeasure) = ν.f(rand_impl(ctx, ν.origin))
+rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origin, ν.f(rand_impl(ctx, ν.origin)))
+
+# Transformed draws have the precision of the context, transformed atoms
+# stay exact:
+@inline _pushfwd_draw(ctx::GenContext, ::Any, y) = convert_realtype(get_precision(ctx), y)
+@inline _pushfwd_draw(::GenContext, ::Dirac, y) = y
 
 # Batches of pushforwards apply the function to the variates of a batch of
 # the origin:
@@ -283,7 +288,7 @@ function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike
     _pushfwd_batched_rand(ctx, ν, sz, _static_ndims(ν.origin))
 end
 @inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, k::StaticInteger)
-    _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k)
+    _pushfwd_draw(ctx, ν.origin, _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k))
 end
 @inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, ::NoMSpaceElementSize)
     _batched_rand_pointwise(ctx, ν, sz)
