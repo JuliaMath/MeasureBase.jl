@@ -19,6 +19,15 @@ struct ZeroRNG <: AbstractRNG end
 Random.rand(::ZeroRNG, ::Random.SamplerTrivial{Random.CloseOpen01{Float64}}) = 0.0
 Random.rand(::ZeroRNG, ::Random.SamplerTrivial{Random.CloseOpen01{Float32}}) = 0.0f0
 
+# External measures implementing only the batched or only the single
+# variate sampling hook, uniform on `[0, 2]`, and one implementing neither:
+struct _BatchedRandOnly <: AbstractMeasure end
+MeasureBase.batched_rand_impl(ctx::GenContext, ::_BatchedRandOnly, sz::MeasureBase.SizeLike) =
+    isempty(sz) ? 2 * rand(ctx) : 2 .* rand(ctx, sz)
+struct _RandImplOnly <: AbstractMeasure end
+MeasureBase.rand_impl(ctx::GenContext, ::_RandImplOnly) = 2 * rand(ctx)
+struct _NoSampler <: AbstractMeasure end
+
 @testset "rand" begin
     stblrng() = StableRNG(789990641)
 
@@ -31,6 +40,22 @@ Random.rand(::ZeroRNG, ::Random.SamplerTrivial{Random.CloseOpen01{Float32}}) = 0
         @test @inferred(rand(GenContext{Float32}(stblrng()), StdUniform()^(2, 3))) isa Matrix{Float32}
         @test @inferred(rand(StdExponential())) isa Float64
         @test_throws ArgumentError rand(Lebesgue())
+    end
+
+    @testset "minimal sampling hooks" begin
+        for μ in (_BatchedRandOnly(), _RandImplOnly())
+            x = rand(stblrng(), μ)
+            @test x isa Float64 && 0 <= x <= 2
+            @test rand(stblrng(), Float32, μ) isa Float32
+            X = rand(stblrng(), μ^(10^4))
+            @test X isa Vector{Float64} && length(X) == 10^4
+            @test isapprox(mean(X), 1, atol = 0.05)
+            @test rand(stblrng(), productmeasure((μ, StdNormal()))) isa Tuple{Float64,Float64}
+            @test size(batched_rand_impl(GenContext{Float64}(stblrng()), μ, (2, 3))) == (2, 3)
+        end
+        @test rand(stblrng(), _BatchedRandOnly()) == batched_rand_impl(GenContext{Float64}(stblrng()), _BatchedRandOnly(), ())
+        @test_throws ArgumentError rand(_NoSampler())
+        @test_throws ArgumentError rand(_NoSampler()^2)
     end
 
     @testset "layout of power variates" begin

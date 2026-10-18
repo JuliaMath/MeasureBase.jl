@@ -39,9 +39,9 @@ the CPU.
 This is the primary extension point for random variate generation. The
 default implementation draws a batch of variates of the preferred
 standard measure of `μ` and transports it to `μ` (see
-[`MeasureBase.batched_transport_from_std`](@ref)), or generates the
-variates one by one via [`MeasureBase.rand_impl`](@ref) if `μ` has no
-standard transport.
+[`MeasureBase.batched_transport_from_std`](@ref)). Measures without a
+standard transport get batches generated variate by variate via
+[`MeasureBase.rand_impl`](@ref).
 """
 function batched_rand_impl end
 
@@ -50,32 +50,36 @@ function batched_rand_impl end
 
 Generate one random variate of `μ` in the generative context `ctx`.
 
-The default implementation generates a batch with zero batch dimensions
-via [`MeasureBase.batched_rand_impl`](@ref). Measure types with a more
-direct way of generating single variates may specialize `rand_impl`.
+The default implementation calls
+[`batched_rand_impl(ctx, μ, ())`](@ref MeasureBase.batched_rand_impl).
+Measure types may specialize `rand_impl` if they have a more direct way of
+generating single variates, measure types without a standard transport
+may specialize `rand_impl` instead of `batched_rand_impl`. Structural
+measures generate single variates of their components via `rand_impl`.
 """
 function rand_impl end
 
-# The marker tells the defaults whether `rand_impl` may be specialized
-# for the measure (coming from the default `rand_impl` itself, it is not):
+# The defaults call each other only for batches: single variates of
+# measures without a standard transport must come from a specialization of
+# either function.
+@inline rand_impl(ctx::GenContext, μ) = batched_rand_impl(ctx, μ, ())
+@inline batched_rand_impl(ctx::GenContext, μ, sz::SizeLike) = _rand_default(ctx, μ, sz)
+
+@inline _rand_default(ctx::GenContext, μ, sz::SizeLike) = _rand_via_std(ctx, μ, sz, preferred_stdmeasure(μ))
+# Transitional, for callers that still pass the former `rand_impl` marker:
 struct _NoRandImpl end
-struct _MaybeRandImpl end
+@inline _rand_default(ctx::GenContext, μ, sz::SizeLike, ::_NoRandImpl) = _rand_default(ctx, μ, sz)
 
-@inline rand_impl(ctx::GenContext, μ) = _rand_default(ctx, μ, (), _NoRandImpl())
-@inline batched_rand_impl(ctx::GenContext, μ, sz::SizeLike) = _rand_default(ctx, μ, sz, _MaybeRandImpl())
-
-@inline _rand_default(ctx::GenContext, μ, sz::SizeLike, m) = _rand_via_std(ctx, μ, sz, preferred_stdmeasure(μ), m)
-
-@inline function _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, m) where {S<:StdMeasure}
-    _rand_via_std_dof(ctx, μ, sz, S, fast_dof(μ), m)
+@inline function _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{S}) where {S<:StdMeasure}
+    _rand_via_std_dof(ctx, μ, sz, S, fast_dof(μ))
 end
-@inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{AnyStdMeasure}, m) = _rand_via_std(ctx, μ, sz, StdUniform, m)
-@inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Any, m) = _rand_pointwise(ctx, μ, sz, m)
+@inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{AnyStdMeasure}) = _rand_via_std(ctx, μ, sz, StdUniform)
+@inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Any) = _rand_pointwise(ctx, μ, sz)
 
-function _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike, ::Any) where {S<:StdMeasure}
+function _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike) where {S<:StdMeasure}
     convert_realtype(get_precision(ctx), _transported_std_draw(ctx, μ, sz, S, n, _static_ndims(μ)))
 end
-@inline _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type, ::Any, m) = _rand_pointwise(ctx, μ, sz, m)
+@inline _rand_via_std_dof(ctx::GenContext, μ, sz::SizeLike, ::Type, ::Any) = _rand_pointwise(ctx, μ, sz)
 
 @inline _transported_std_draw(ctx::GenContext, μ, sz::SizeLike, ::Type{S}, n::IntegerLike, ::Any) where {S} =
     batched_transport_from_std(S, μ, _rand_std(ctx, S, (n, size_tuple(sz)...)))
@@ -85,9 +89,8 @@ end
     transport_from_std(S, μ, _rand_std(ctx, S, ()))
 
 # Variates generated one by one, stacked into a flat batch:
-@inline _rand_pointwise(ctx::GenContext, μ, sz::SizeLike, ::Any) = _batched_rand_pointwise(ctx, μ, sz)
-@inline _rand_pointwise(ctx::GenContext, μ, ::Tuple{}, ::_MaybeRandImpl) = rand_impl(ctx, μ)
-@noinline _rand_pointwise(::GenContext, μ, ::Tuple{}, ::_NoRandImpl) = _throw_no_rand_impl(μ)
+@inline _rand_pointwise(ctx::GenContext, μ, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
+@noinline _rand_pointwise(::GenContext, μ, ::Tuple{}) = _throw_no_rand_impl(μ)
 @noinline function _throw_no_rand_impl(μ)
     throw(ArgumentError("Random variate generation is not implemented for measures of type $(nameof(typeof(μ))), define MeasureBase.batched_rand_impl or MeasureBase.rand_impl"))
 end

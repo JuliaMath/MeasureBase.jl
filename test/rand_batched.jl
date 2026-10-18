@@ -41,7 +41,7 @@ struct NoRandMeasure <: AbstractMeasure end
         @test batched_rand_impl(ctx(), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), ()) isa Vector{Float64}
         @test batched_rand_impl(ctx(), SpikeMixture(StdNormal(), 0.5), ()) isa Float64
         @test batched_rand_impl(ctx(), superpose(StdNormal(), StdUniform()), ()) isa Float64
-        @test batched_rand_impl(ctx(), NoBatchRandMeasure(), ()) isa Float64
+        @test rand(ctx(), NoBatchRandMeasure()) isa Float64
         @test batched_rand_impl(ctx(), NoBatchRandMeasure(), (4,)) isa Vector{Float64}
         @test_throws ArgumentError rand(NoRandMeasure())
         @test_throws ArgumentError batched_rand_impl(ctx(), NoRandMeasure(), ())
