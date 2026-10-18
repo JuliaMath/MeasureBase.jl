@@ -9,7 +9,7 @@
 # vectors. Reductions over the columns give arrays over the batch
 # dimensions, numbers for single variates.
 @inline _as_columns(x::AbstractVector) = x
-@inline _as_columns(X::AbstractArray) = reshape(X, (size(X, 1), :))
+@inline _as_columns(X::AbstractArray) = reshape(X, (size(X, 1), prod(Base.tail(size(X)))))
 @inline _from_columns(y::AbstractVector, ::AbstractVector) = y
 @inline _from_columns(Y::AbstractMatrix, X::AbstractArray) = reshape(Y, (size(Y, 1), Base.tail(size(X))...))
 @inline _column_sums(f, z::AbstractVector) = sum(f, z)
@@ -109,7 +109,6 @@ function MeasureBase.batched_transport_to_std(::Type{StdUniform}, d::Dirichlet, 
 end
 
 function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet, Z::AbstractArray)
-    K = length(d)
     αs, βs = _stick_breaking_params(d)
     Zc = _as_columns(Z)
     P = _quantile_arg.(Zc)
@@ -119,13 +118,15 @@ function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet
     y = _beta_quantile.(ifelse.(lo, αs, βs), ifelse.(lo, βs, αs), ifelse.(lo, P, 1 .- P))
     beta_v = ifelse.(lo, y, 1 .- y)
     beta_w = ifelse.(lo, 1 .- y, y)
-    cp = cumprod(beta_v; dims = 1)
-    # Each component takes what its Beta variate leaves of the remaining mass:
-    X = vcat(_rows(beta_w, 1:1), _rows(cp, 1:(K - 2)) .* _rows(beta_w, 2:(K - 1)), _rows(cp, (K - 1):(K - 1)))
+    # Each component takes what its Beta variate leaves of the remaining
+    # mass, the last one all of it:
+    X = vcat(beta_w, _ones_row(beta_w)) .* vcat(_ones_row(beta_v), cumprod(beta_v; dims = 1))
     _from_columns(_nan_columns(X, _column_all((Zc .>= 0) .& (Zc .<= 1))), Z)
 end
 
 @inline _suffix_sums(X::AbstractArray) = reverse(cumsum(reverse(X; dims = 1); dims = 1); dims = 1)
+@inline _ones_row(X::AbstractVector) = @_adignore fill!(similar(X, 1), 1)
+@inline _ones_row(X::AbstractMatrix) = @_adignore fill!(similar(X, 1, size(X, 2)), 1)
 @inline _ratio_or_zero(a, b) = ifelse(iszero(b), zero(a), a) / ifelse(iszero(b), one(b), b)
 
 MeasureBase.transport_to_std(::Type{StdUniform}, d::Dirichlet, x) = MeasureBase.batched_transport_to_std(StdUniform, d, x)

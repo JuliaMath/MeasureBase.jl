@@ -212,6 +212,11 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
             @test all(isfinite, f(x))
             @test inverse(f)(f(x)) ≈ x atol = 1e-5
         end
+        # A single component, without degrees of freedom:
+        d1 = asmeasure(Dirichlet([1.0]))
+        @test transport_to(d1, StdUniform()^0)(Float64[]) == [1.0]
+        @test transport_to(StdUniform()^0, d1)([1.0]) == Float64[]
+        @test MeasureBase.batched_transport_from_std(StdUniform, Dirichlet([1.0]), zeros(0, 3)) == ones(1, 3)
     end
 
     @testset "trafo autodiff pullbacks" begin
