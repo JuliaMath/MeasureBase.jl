@@ -4,8 +4,9 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Half, logdensities
-using MeasureBase: weightedmeasure, productmeasure, mcombine, mintegrate_exp, logdensity_rel, invsmf
+using MeasureBase: weightedmeasure, productmeasure, mcombine, mintegrate_exp, logdensity_rel, invsmf, pushfwd, restrict
 using JLArrays: JLArray
+import AffineMaps
 
 # Variates of the right shape never throw: densities are -Inf and
 # transports are NaN outside the support, wrong shapes throw.
@@ -92,6 +93,19 @@ using JLArrays: JLArray
         @test logdensity_rel(post, StdNormal(), -0.5) == -Inf
         @test isnan(logdensity_rel(post, StdUniform(), -0.5))
         @test logdensity_rel(post, StdUniform(), 0.5) == log(0.5)
+    end
+
+    @testset "restrictions of bases without fast support checks" begin
+        # Pushforwards have no fast support check, the predicate still
+        # restricts:
+        p = pushfwd(AffineMaps.Add(1.0), StdNormal())
+        r = restrict(>(0), p)
+        @test MeasureBase.insupport(r, -1.0) == false
+        @test logdensityof(r, -1.0) == -Inf
+        @test logdensityof(r, 1.0) ≈ logdensityof(StdNormal(), 0.0)
+        @test logdensities(r, [-1.0, 1.0]) ≈ [-Inf, logdensityof(StdNormal(), 0.0)]
+        @test logdensities(r^2, [-1.0 1.0; 1.0 1.0]) ≈ [-Inf, 2 * logdensityof(StdNormal(), 0.0)]
+        @test logdensityof(productmeasure((p, StdExponential())), (1.0, -1.0)) == -Inf
     end
 
     @testset "wrong shapes throw" begin

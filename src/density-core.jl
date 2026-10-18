@@ -74,10 +74,12 @@ end
 @inline _insupport_bool(ins) = ins == true
 @inline _insupport_bool(ins::NoFastInsupport) = ins
 
-# Combining support checks of components, `NoFastInsupport` is absorbing:
+# Combining support checks of components: a known result dominates
+# `NoFastInsupport`, it is exact where false and a mask (the density is
+# evaluated) where true:
 @inline _insupport_and(a, b) = _insupport_bool(a) & _insupport_bool(b)
-@inline _insupport_and(a::NoFastInsupport, ::Any) = a
-@inline _insupport_and(::Any, b::NoFastInsupport) = b
+@inline _insupport_and(::NoFastInsupport, b) = _insupport_bool(b)
+@inline _insupport_and(a, ::NoFastInsupport) = _insupport_bool(a)
 @inline _insupport_and(a::NoFastInsupport, ::NoFastInsupport) = a
 
 @inline _checksupport(cond, result) = ifelse(_insupport_mask(cond), result, oftype(result, -Inf))
