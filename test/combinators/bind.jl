@@ -11,6 +11,12 @@ using MeasureBase: StdExponential, StdNormal, StdUniform
 using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
 using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
 
+# A value combination function with a specialized split:
+struct _SwapCombine <: Function end
+(::_SwapCombine)(a, b) = (b, a)
+MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tuple{Any,Any}) =
+    (MeasureBase.transportmeasure(α, ba[2]), ba[2], ba[1])
+
 @testset "bind" begin
     stblrng() = StableRNG(789990641)
 
@@ -191,6 +197,15 @@ using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, loca
         μ_m = mbind(a -> productmeasure((b = k(a.a),)), productmeasure((a = α,)), merge)
         @test logdensityof(μ_m, (a = -1.0, b = 0.0)) == -Inf
         @test logdensities(μ_m, (a = [-1.0, 2.0], b = [0.0, 0.5])) ≈ [-Inf, ℓ(2.0, 0.5)]
+    end
+
+    @testset "custom value combination functions" begin
+        μ = mbind(f_β, α, _SwapCombine())
+        ba = rand(stblrng(), μ)
+        @test logdensityof(μ, ba) ≈ logdensityof(mbind(f_β, α, tuple), (ba[2], ba[1]))
+        f = transport_to(StdUniform()^2, μ)
+        @test f(ba) ≈ transport_to(StdUniform()^2, mbind(f_β, α, tuple))((ba[2], ba[1]))
+        @test_throws ArgumentError logdensityof(mbind(f_β, α, (a, b) -> a + b), 1.0)
     end
 
     @testset "mbind with Dirac" begin

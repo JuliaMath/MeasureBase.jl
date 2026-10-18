@@ -269,6 +269,7 @@ using .Interface
         :AbstractUnknownMass, :UnknownMass, :UnknownFiniteMass,
         # Measure types and accessors:
         :pwr_base, :pwr_axes, :pwr_size, :DensityMeasure, :AsMeasure,
+        :transportmeasure, :tpmeasure_split_combined,
         :gettransform, :TransformVolCorr, :NoVolCorr, :WithVolCorr,
     ))
 end

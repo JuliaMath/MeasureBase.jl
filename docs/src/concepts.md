@@ -55,9 +55,11 @@ over them. Other compute units allocate their own arrays.
   Finite inputs give finite results: uniform inputs are clamped into the
   open unit interval before quantiles, tail probabilities of log-space
   conversions floor at the smallest positive float.
-- Variates of the wrong shape (rank, size, container or element kind)
-  throw an `ArgumentError`, raised by [`MeasureBase.checked_arg`](@ref) at
-  the entry points. Variates of the right shape never throw.
+- Variates of the wrong shape (rank, size, container or element kind,
+  tuple arity) throw an `ArgumentError` at the entry points, raised by
+  [`MeasureBase.checked_arg`](@ref) and, for densities, by comparing flat
+  batches with [`MeasureBase.mspace_flatsize`](@ref) where it is known.
+  Variates of the right shape never throw.
 - Kernels are branch-free where a condition may be a device or traced
   value (support masks evaluate both branches), so implementations must
   not throw outside the support.
@@ -104,6 +106,10 @@ are shorthands. Batches of variates are drawn as variates of powers,
 `rand(ctx, μ^n)`. By default, standard variates are drawn in bulk on the
 compute unit and transported to `μ`.
 
+Floating-point variates have the precision of the context, also through
+transformations and combinators. Point masses generate their atom
+exactly, and integer variates (e.g. of counting measures) stay integers.
+
 ## Measure combinators
 
 - `powermeasure(μ, dims)` or `μ^dims`: variates `(base dims..., power
@@ -130,24 +136,37 @@ derived.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |:--- |:--- |:--- |:--- |
-| Density | `logdensity_def` (or `logdensityof_impl`) | `mspace_ndims`, `batched_logdensityof_impl` (or `batched_logdensity_def`) | kernels via components, with-rest forms |
+| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupport` | `mspace_ndims`, `batched_logdensityof_impl` (or `batched_logdensity_def`) | kernels via components, with-rest forms |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | also `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
-| Random | `batched_rand_impl` (default via transport) | `batched_rand_impl` | derived |
-| Declarations | none | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
+| Random | `batched_rand_impl` or `rand_impl` (derived from a transport) | `batched_rand_impl` | derived |
+| Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
 
 All of these are declared `public` (see the [API](@ref) page) and
 must be qualified with `MeasureBase.` when extended.
+
+A scalar-variate leaf `M` with `logdensity_def`, `basemeasure` and
+`insupport` has point densities. Batched densities, powers and products
+need its variate rank, `MeasureBase.mspace_flatsize(::Type{<:M}) = ()`.
+Streams (`mcombine(vcat, ...)`, binds) need its variate size,
+`MeasureBase.mspace_flatsize(::M) = ()`, or draw a test variate to learn
+it. Random variates need `batched_rand_impl` or `rand_impl`, or the
+standard transport (`preferred_stdmeasure`, `transport_to_std`,
+`transport_from_std`), which also provides `transport_to`.
 
 - [`MeasureBase.logdensityof_impl`](@ref) implements `logdensityof`,
   [`MeasureBase.batched_logdensityof_impl`](@ref) implements
   `logdensities`. Measure types should specialize these (or
   `logdensity_def` and `basemeasure`), not `logdensityof` itself.
 - [`MeasureBase.batched_rand_impl`](@ref) is the primary extension point
-  for random variates. [`MeasureBase.rand_impl`](@ref) defaults to it and
-  may be specialized for single variates. The default `batched_rand_impl`
-  transports standard variates if the measure has a standard transport and
-  calls `rand_impl` variate by variate otherwise, so measures that
-  specialize `rand_impl` and have a standard transport should specialize
-  `batched_rand_impl` as well.
+  for random variates. [`MeasureBase.rand_impl`](@ref) defaults to it (with
+  zero batch dimensions) and may be specialized for single variates. The
+  default `batched_rand_impl` transports standard variates if the measure
+  has a standard transport and calls `rand_impl` variate by variate
+  otherwise, so measures that specialize `rand_impl` and have a standard
+  transport should specialize `batched_rand_impl` as well. Structural
+  measures draw single variates of their components via `rand_impl`.
+- [`MeasureBase.tpmeasure_split_combined`](@ref) splits variates of
+  binds and combinations with other value combination functions than
+  `tuple`, `Pair`, `vcat` and `merge`.
 - [`MeasureBase.transport_def`](@ref) may be specialized for direct
   transports between specific pairs of measure types.

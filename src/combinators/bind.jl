@@ -336,12 +336,10 @@ function _ld_whole_stream(μ, x)
     return ℓ
 end
 
-function _bind_ld_impl(@nospecialize(f_c), @nospecialize(μ::Bind), @nospecialize(xy))
-    throw(
-        ArgumentError(
-            "Can't compute density of a bind with value combination function of type $(nameof(typeof(f_c)))",
-        ),
-    )
+# Other value combination functions split via `tpmeasure_split_combined`:
+function _bind_ld_impl(f_c, μ::Bind, ab)
+    _, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
 end
 
 # The secondary measure depends on the primary variate, so streams are

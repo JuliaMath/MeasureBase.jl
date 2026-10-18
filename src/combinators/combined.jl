@@ -43,6 +43,10 @@ function _split_variate_byvalue(::typeof(merge), ::NamedTuple{names_a}, ab::Name
     _split_after(ab, Val(names_a))
 end
 
+@noinline function _split_variate_byvalue(f_c, ::Any, ::Any)
+    throw(ArgumentError("Can't split variates combined by functions of type $(nameof(typeof(f_c))), specialize MeasureBase.tpmeasure_split_combined"))
+end
+
 
 @doc raw"""
     mcombine(f_c, α::AbstractMeasure, β::AbstractMeasure)
