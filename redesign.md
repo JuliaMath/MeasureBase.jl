@@ -226,6 +226,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
 - Derivatives of the Gamma, Beta and Dirichlet transports with respect to
   their shape parameters are not implemented: NaN in ForwardDiff and
   Mooncake, `NotImplemented` in ChainRules (which Zygote drops silently).
+  Their densities are differentiable with respect to the shapes, also at
+  unit shapes.
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
   `checked_arg` at the entry points; variates of the right shape never

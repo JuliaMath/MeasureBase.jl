@@ -85,6 +85,16 @@ const _derivatives = (
         end
         @test logdensityof(asmeasure(Cauchy(0f0, 1f0)), 1f20) ≈ logpdf(Cauchy(0.0, 1.0), 1e20)
 
+        # Quantiles of the other family kernels (Distributions' Float64
+        # quantiles serve as references, but not for Cauchy):
+        ps = Float32[1f-37, 1f-20, 1f-9, 1f-3, 0.3, 0.5, 0.7, 1 - 1f-3, 1 - 6f-8]
+        for (D, θ) in [(Normal, (0.3, 1.7)), (Exponential, (0.7,)), (Logistic, (0.2, 1.3)), (Laplace, (-0.4, 1.1)),
+                       (LogNormal, (0.2, 0.6)), (Weibull, (1.4, 0.9)), (Gamma, (2.3, 1.2)), (Beta, (0.4, 0.6))]
+            xs = transport_to(asmeasure(D(Float32.(θ)...)), StdUniform()).(ps)
+            @test xs isa Vector{Float32} && issorted(xs)
+            @test all(isapprox.(xs, Float32.(quantile.(D(θ...), Float64.(ps))), rtol = 16 * eps(Float32)))
+        end
+
         # Logistic densities in both tails:
         d = Logistic(0.5f0, 2f0)
         for x in Float32[-floatmax(Float32), -1f30, -80, 0.25, 80, 1f30, floatmax(Float32)]
