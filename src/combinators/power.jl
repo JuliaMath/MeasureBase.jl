@@ -211,14 +211,14 @@ end
 @inline logdensity_def(μ::PowerMeasure, x) = _powered_point(logdensity_def, μ, x)
 
 @inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray{<:Number}) where {F}
-    _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+    _point_result(_materialize(_checked_batched_kernel(f, μ, x)), μ)
 end
 @inline function _powered_point(f::F, μ::PowerMeasure, x::AbstractArray) where {F}
     _check_pwr_shape(μ, x)
     _powered_point_nested(f, μ, x, _flat_storage(x))
 end
 @inline function _powered_point_nested(f::F, μ::PowerMeasure, x, x_flat::Union{AbstractArray,Tuple,NamedTuple}) where {F}
-    _point_result(_materialize(_batched_kernel(f, μ, x_flat)), μ)
+    _point_result(_materialize(_checked_batched_kernel(f, μ, x_flat)), μ)
 end
 function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {F}
     ν = pwr_base(μ)

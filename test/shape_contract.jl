@@ -131,6 +131,8 @@ struct _CustomStd <: MeasureBase.StdMeasure end
         @test_throws ArgumentError logdensityof(asmeasure(Distributions.MvNormal(zeros(2), I)), [0.0])
         @test_throws ArgumentError logdensityof(asmeasure(Distributions.Dirichlet(ones(3))), [1.0])
         @test logdensities(Dirac([0.0, 0.0]), [0.0 1.0; 0.0 0.0]) == [0.0, -Inf]
+        @test_throws ArgumentError logdensityof(Dirac([0.0, 0.0])^3, zeros(1, 3))
+        @test logdensityof(Dirac([0.0, 0.0])^3, zeros(2, 3)) == 0
 
         # Array products of marginals with array variates check each marginal:
         P = ProductMeasure([Dirac([0.0, 0.0]), Dirac([1.0, 1.0])])
