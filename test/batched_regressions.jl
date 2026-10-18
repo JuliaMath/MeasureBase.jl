@@ -62,6 +62,8 @@ include("testutils.jl")
         @test logdensityof(μ, [[1.0, 2.0] for _ in 1:3]) == 0
         @test logdensityof(μ, 2 .* x) == -Inf
         @test logdensities(μ, cat(x, 2 .* x; dims = 3)) == [0.0, -Inf]
+        @test MeasureBase.batched_logdensity_def(D, x) == zeros(3)
+        @test MeasureBase.batched_logdensity_def(weightedmeasure(0.5, StdNormal()^2), x) == fill(0.5, 3)
         @test rand(μ) == nestedview(x)
     end
 

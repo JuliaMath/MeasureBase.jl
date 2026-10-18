@@ -252,6 +252,9 @@ end
 @inline function _zero_logd_batch(X::AbstractArray, n::Integer)
     FillArrays.Zeros{_logd_numtype(X)}(ntuple(i -> size(X, n + i), ndims(X) - n))
 end
+@inline function _zero_logd_batch(X::AbstractArray{<:Any,N}, ::StaticInteger{K}) where {N,K}
+    FillArrays.Zeros{_logd_numtype(X)}(ntuple(i -> size(X, K + i), Val(N - K)))
+end
 @inline _zero_logd_batch(X::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = zero(_logd_numtype(X))
 @inline _zero_logd_batch(x::Number, ::StaticInteger{0}) = zero(_logd_numtype(x))
 @noinline function _zero_logd_batch(X, ::NoMSpaceElementSize{MU}) where {MU}
