@@ -84,5 +84,12 @@ const _derivatives = (
             @test logdensityof(asmeasure(d), x) ≈ Float32(-log1p(z^2) - log(big(π) * d.σ)) rtol = 4 * eps(Float32)
         end
         @test logdensityof(asmeasure(Cauchy(0f0, 1f0)), 1f20) ≈ logpdf(Cauchy(0.0, 1.0), 1e20)
+
+        # Logistic densities in both tails:
+        d = Logistic(0.5f0, 2f0)
+        for x in Float32[-floatmax(Float32), -1f30, -80, 0.25, 80, 1f30, floatmax(Float32)]
+            z = abs(big(x) - d.μ) / d.θ
+            @test logdensityof(asmeasure(d), x) ≈ Float32(-z - 2 * log1p(exp(-z)) - log(big(d.θ))) rtol = 4 * eps(Float32)
+        end
     end
 end

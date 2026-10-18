@@ -36,10 +36,8 @@ end
 @inline _family_logd(d::Exponential, x) = -x / d.θ - log(d.θ)
 @inline _family_insupport(::Exponential, x) = x >= 0
 
-@inline function _family_logd(d::Logistic, x)
-    z = (x - d.μ) / d.θ
-    -z - 2 * log1pexp(-z) - log(d.θ)
-end
+# The symmetric form of the standard logistic density stays finite in both tails:
+@inline _family_logd(d::Logistic, x) = MeasureBase.logdensityof_impl(StdLogistic(), (x - d.μ) / d.θ) - log(d.θ)
 @inline _family_insupport(::Logistic, x) = true
 
 # `log1p(z^2)` as `2 log(a) + log1p((b / a)^2)` for `a = max(|z|, 1)` and
