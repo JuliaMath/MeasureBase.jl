@@ -22,22 +22,26 @@ end
 const _AffinePushfwd{M,S} = PushforwardMeasure{<:AbstractAffineMap,<:AbstractAffineMap,M,S}
 
 # Densities of affine pushforwards of vector variates use the per-column
-# log-abs-det-Jacobians of the inverse map:
-for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+# log-abs-det-Jacobians of the inverse map. Pushforwards that adapt the root
+# measure have the root measure of their origin as their base measure, so
+# both kernels use the full density of the origin:
+for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:AdaptRootMeasure}, Y::AbstractArray) where {M}
-        _affine_pushfwd_ld(MeasureBase.$head, ν, Y, MeasureBase._static_ndims(ν))
+        _affine_pushfwd_ld(ν, Y, MeasureBase._static_ndims(ν))
     end
+end
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:PushfwdRootMeasure}, Y::AbstractArray) where {M}
         MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, MeasureBase._static_ndims(ν)))
     end
 end
 
-function _affine_pushfwd_ld(f::F, ν::PushforwardMeasure, Y::AbstractArray, ::StaticInteger{1}) where {F}
+function _affine_pushfwd_ld(ν::PushforwardMeasure, Y::AbstractArray, ::StaticInteger{1})
     X2, ladj2 = with_logabsdet_jacobian(ν.finv, _as_columns(Y))
-    ℓ = MeasureBase._batched_kernel(f, ν.origin, _columns_back(X2, Y))
+    ℓ = MeasureBase.batched_logdensityof_impl(ν.origin, _columns_back(X2, Y))
     return MeasureBase._lazy_combine_ladj(ℓ, _ladj_back(ladj2, Y))
 end
-_affine_pushfwd_ld(f::F, ν::PushforwardMeasure, Y::AbstractArray, k) where {F} = MeasureBase._default_batched_kernel(f, ν, Y, k)
+_affine_pushfwd_ld(ν::PushforwardMeasure, Y::AbstractArray, k) = MeasureBase._default_batched_kernel(MeasureBase.logdensityof_impl, ν, Y, k)
 
 @inline _ladj_back(ladj::Number, ::AbstractVector) = ladj
 @inline _ladj_back(ladj::AbstractMatrix, Y::AbstractArray) = reshape(ladj, Base.tail(size(Y)))
