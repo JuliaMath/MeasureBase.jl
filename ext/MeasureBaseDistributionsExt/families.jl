@@ -15,8 +15,14 @@ const _Families = Union{Normal,Uniform,Exponential,Logistic,Cauchy,Laplace,LogNo
 @inline MeasureBase.unsafe_logdensityof(m::AsMeasure{<:_Families}, x) = _family_logd(m.obj, x)
 @inline MeasureBase.insupport(m::AsMeasure{<:_Families}, x) = _family_insupport(m.obj, x) & _finite_variate(m.obj, x)
 
-# `c * log(y)`, zero for `c == 0` also where `y == 0`:
-@inline _clog(c, y) = ifelse(iszero(c), zero(c * log(one(y))), c * log(y))
+# Zero by value: dual numbers compare lexicographically with their
+# partials, but not across the smallest normal float (subnormals count as
+# zero, as on devices that flush them):
+@inline _iszero_value(x) = abs(x) < floatmin(float(typeof(x)))
+
+# `c * log(y)` for `y >= 0`, zero for `c == y == 0`. Only that endpoint is
+# guarded, so that the derivative with respect to `c` survives at `c == 0`:
+@inline _clog(c, y) = c * log(ifelse(_iszero_value(c) & _iszero_value(y), one(y), y))
 
 @inline function _family_logd(d::Normal, x)
     z = (x - d.μ) / d.σ
@@ -104,11 +110,16 @@ end
 @inline MeasureBase._gamma_logpdf(α, x) = _clog(α - 1, x) - x - loggamma(α)
 @inline MeasureBase._beta_logpdf(α, β, x) = _clog(α - 1, x) + _clog(β - 1, 1 - x) - logbeta(α, β)
 
+# Branch-free formulas evaluate all branches, also in AD pullbacks, so
+# unselected branches must stay finite with finite derivatives. Tails are
+# computed from tail probabilities, selected by the same condition as the
+# result, so that derivatives at the median follow one branch.
+
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Cauchy}) = StdUniform
-# `atan(z)/π + 1/2` cancels in the lower tail, `-atan(1/z)/π` doesn't:
+# `atan(z)/π + 1/2` cancels in the lower tail, the angle `atan(1, -z)` doesn't:
 @inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Cauchy, x)
     z = (x - d.μ) / d.σ
-    _nan_outside(d, x, ifelse(z < 0, -atan(inv(z)) / π, 1 // 2 + atan(z) / π))
+    _nan_outside(d, x, atan(one(z), -z) / π)
 end
 @inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p) =
     _nan_outside(StdUniform, p, muladd(d.σ, tan(π * (_unit_interior(p) - 1 // 2)), d.μ))
@@ -116,11 +127,15 @@ end
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdUniform
 @inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Laplace, x)
     z = (x - d.μ) / d.θ
-    _nan_outside(d, x, ifelse(z < 0, exp(z) / 2, 1 - exp(-z) / 2))
+    lower = z < 0
+    t = exp(ifelse(lower, z, -z)) / 2
+    _nan_outside(d, x, ifelse(lower, t, 1 - t))
 end
 @inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Laplace, p)
     q = _unit_interior(p)
-    _nan_outside(StdUniform, p, muladd(-d.θ * sign(q - 1 // 2), log(2 * min(q, 1 - q)), d.μ))
+    lower = q < 1 // 2
+    l = log(2 * ifelse(lower, q, 1 - q))
+    _nan_outside(StdUniform, p, muladd(d.θ, ifelse(lower, l, -l), d.μ))
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:LogNormal}) = StdNormal
