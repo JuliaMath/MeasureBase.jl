@@ -90,14 +90,20 @@ end
 # Batches of tuple and named tuple variates are tuples resp. named tuples
 # of batches, the marginal densities add up lazily:
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
-    @eval @inline function $bhead(μ::ProductMeasure{<:Tuple}, X::Tuple)
-        _lazy_sum(map((m, Xi) -> _batched_kernel($head, m, Xi), marginals(μ), X))
+    @eval @inline function $bhead(μ::ProductMeasure{<:NTuple{N,Any}}, X::NTuple{N,Any}) where {N}
+        _lazy_sum(map((m, Xi) -> _checked_batched_kernel($head, m, Xi), marginals(μ), X))
     end
     @eval @inline function $bhead(μ::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {names}
-        _lazy_sum(map((m, Xi) -> _batched_kernel($head, m, Xi), values(marginals(μ)), values(X)))
+        _lazy_sum(map((m, Xi) -> _checked_batched_kernel($head, m, Xi), values(marginals(μ)), values(X)))
     end
+    @eval $bhead(::ProductMeasure{<:Union{Tuple,NamedTuple}}, ::Union{Tuple,NamedTuple}) = _throw_marginal_mismatch()
 end
-@inline _lazy_sum(ℓs::Tuple) = reduce(_lazy_add, ℓs)
+# The marginal batches must have the same batch size, a singleton batch
+# would broadcast:
+@inline function _lazy_sum(ℓs::Tuple)
+    all(ℓ -> size(ℓ) == size(first(ℓs)), ℓs) || _throw_marginal_mismatch()
+    reduce(_lazy_add, ℓs)
+end
 
 # Relative densities between products evaluate marginal-wise. Support
 # checks happen at the logdensity_rel level for the whole products, so the
@@ -290,7 +296,7 @@ function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray
     trail = ntuple(_ -> Colon(), Val(B))
     acc = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
     for i in CartesianIndices(mar)
-        acc = _add_logd!(acc, _batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
+        acc = _add_logd!(acc, _checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
     end
     return acc
 end

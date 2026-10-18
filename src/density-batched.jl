@@ -149,12 +149,12 @@ end
 # Entry: arrays of numbers are flat storage, arrays of variates are fused
 # into their flat storage (else evaluated variate by variate), tuples and
 # named tuples of batches go to the kernels directly.
-@inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _batched_kernel(f, μ, X)
+@inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _checked_batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, x::Number) where {F} = _point_ld(f, μ, x)
 @inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _static_ndims(μ))
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::AbstractArray, ::StaticInteger) where {F}
-    _check_batch_shape(_batched_kernel(f, μ, X_flat), X)
+    _check_batch_shape(_checked_batched_kernel(f, μ, X_flat), X)
 end
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::Union{Tuple,NamedTuple}, ::Any) where {F}
     _check_batch_shape(_batched_kernel(f, μ, X_flat), X)
@@ -168,6 +168,16 @@ struct _PointLogd{F,M} <: Function
     μ::M
 end
 @inline (k::_PointLogd)(x) = _point_ld(k.f, k.μ, x)
+
+# Kernels rely on the leading dimensions of flat batches to match the flat
+# variate size of the measure where it is known, singleton dimensions would
+# broadcast. The entry points check it, and so do structural measures
+# without a flat size of their own when they pass batches to components:
+@inline function _checked_batched_kernel(f::F, μ, X::AbstractArray{<:Number}) where {F}
+    _check_flatsize(X, mspace_flatsize(μ))
+    _batched_kernel(f, μ, X)
+end
+@inline _checked_batched_kernel(f::F, μ, X) where {F} = _batched_kernel(f, μ, X)
 
 # Results over an array of variates must have the shape of the array, a
 # mismatch means the variate rank of the measure doesn't match the batch:
@@ -189,7 +199,7 @@ end
 # variates.
 @inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_ld_byrank(f, μ, x, _static_ndims(μ))
 @inline _point_ld(f::F, μ, x) where {F} = f(μ, x)
-@inline _point_ld_byrank(f::F, μ, x, ::StaticInteger) where {F} = _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
+@inline _point_ld_byrank(f::F, μ, x, ::StaticInteger) where {F} = _point_result(_materialize(_checked_batched_kernel(f, μ, x)), μ)
 @inline _point_ld_byrank(f::F, μ, x, ::NoMSpaceElementSize) where {F} = f(μ, x)
 @inline _point_ld(f::F, μ::PrimitiveMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
 
@@ -211,6 +221,7 @@ const _LazyBroadcast = Broadcast.Broadcasted
     end
     return nothing
 end
+@inline _check_flatsize(::AbstractArray, ::NoMSpaceElementSize) = nothing
 
 @inline _materialize(bc::_LazyBroadcast) = copy(bc)
 @inline _materialize(x) = x

@@ -11,6 +11,8 @@ using StaticArrays: SVector, Size
 using Static: static
 using MeasureBase: size2length
 using MeasureBase: setcartpower, ℝ, testvalue
+using LinearAlgebra: I
+import Distributions
 
 _flat_iter(x::Number) = (x,)
 _flat_iter(x::AbstractArray) = Iterators.flatten(map(_flat_iter, x))
@@ -117,5 +119,33 @@ struct _CustomStd <: MeasureBase.StdMeasure end
         @test isequal(f.([0.0, 0.5]), [1.0, NaN])
         @test MeasureBase.with_logabsdet_jacobian(f, 0.0) == (1.0, 0.0)
         @test logdensityof(d0, 0.5) == -Inf
+    end
+
+    @testset "wrong sizes and missing factors throw" begin
+        # Singleton dimensions must not broadcast over the variate dimensions:
+        @test_throws ArgumentError logdensityof(Dirac([0.0, 0.0]), [0.0])
+        @test_throws ArgumentError logdensities(Dirac([0.0, 0.0]), zeros(1, 3))
+        @test_throws ArgumentError logdensityof(StdNormal()^3, [0.0])
+        @test_throws ArgumentError logdensities(StdNormal()^3, zeros(1, 4))
+        @test_throws ArgumentError logdensityof(StdNormal()^(2, 3), zeros(2))
+        @test_throws ArgumentError logdensityof(asmeasure(Distributions.MvNormal(zeros(2), I)), [0.0])
+        @test_throws ArgumentError logdensityof(asmeasure(Distributions.Dirichlet(ones(3))), [1.0])
+        @test logdensities(Dirac([0.0, 0.0]), [0.0 1.0; 0.0 0.0]) == [0.0, -Inf]
+
+        # Array products of marginals with array variates check each marginal:
+        P = ProductMeasure([Dirac([0.0, 0.0]), Dirac([1.0, 1.0])])
+        @test logdensities(P, cat([0.0 1.0; 0.0 1.0], [0.0 1.0; 0.0 2.0], dims = 3)) == [0.0, -Inf]
+        @test_throws ArgumentError logdensities(P, zeros(1, 2, 3))
+
+        # Tuple batches need all factors with the same batch size:
+        m = productmeasure((StdNormal(), StdExponential()))
+        X = ([1.0, 2.0], [0.5, 1.5])
+        @test logdensities(m, X) ≈ logdensityof.(StdNormal(), X[1]) .+ logdensityof.(StdExponential(), X[2])
+        @test_throws ArgumentError logdensities(m, ([1.0, 2.0],))
+        @test_throws ArgumentError logdensities(m, ([1.0, 2.0], [1.0, 2.0], [1.0, 2.0]))
+        @test_throws ArgumentError logdensities(m, ([1.0, 2.0], [1.0]))
+        @test_throws ArgumentError logdensities(m, ([1.0, 2.0], 1.0))
+        @test_throws ArgumentError logdensities(productmeasure((a = StdNormal(), b = StdExponential())), (a = [1.0, 2.0],))
+        @test_throws ArgumentError logdensities(productmeasure((Dirac([0.0, 0.0]), StdNormal())), (zeros(1, 3), zeros(3)))
     end
 end
