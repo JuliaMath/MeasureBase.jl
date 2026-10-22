@@ -118,6 +118,10 @@ _plain(x::Tuple) = map(_plain, x)
         for d in (Poisson(2.7), Bernoulli(0.3))
             test_cuda(x -> logdensities(asmeasure(d), x), Float64.(rand(d, 20)))
         end
+        # Tails of the Float32 kernels:
+        test_cuda(p -> transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform()).(p), Float32[1f-30, 1f-9, 0.3, 0.5, 0.7, 1 - 6f-8])
+        test_cuda(x -> logdensities(asmeasure(Logistic(0f0, 1f0)), x), Float32[-floatmax(Float32), -80, 0, 80, floatmax(Float32)])
+        test_cuda(x -> logdensities(asmeasure(Cauchy(0f0, 1f0)), x), Float32[-1f30, -3, 0, 1f20, floatmax(Float32)])
         mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
         mm = asmeasure(mvn)
         Xm = rand(mvn, 20)

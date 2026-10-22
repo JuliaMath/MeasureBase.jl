@@ -135,6 +135,10 @@ _plain(x::Number) = Float64(x)
             end
         end
         test_traced(x -> logdensities(asmeasure(Poisson(2.7)), x), Float64.(rand(Poisson(2.7), 10)))
+        # Tails of the Float32 kernels:
+        test_traced(p -> transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform()).(p), Float32[1f-30, 1f-9, 0.3, 0.5, 0.7, 1 - 6f-8])
+        test_traced(x -> logdensities(asmeasure(Logistic(0f0, 1f0)), x), Float32[-floatmax(Float32), -80, 0, 80, floatmax(Float32)])
+        test_traced(x -> logdensities(asmeasure(Cauchy(0f0, 1f0)), x), Float32[-1f30, -3, 0, 1f20, floatmax(Float32)])
         mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
         mm = asmeasure(mvn)
         Xm = rand(mvn, 10)
