@@ -87,10 +87,7 @@ end
 MeasureBase.logdensity_def(m::DirichletMeasure, x::AbstractVector) = MeasureBase.batched_logdensity_def(m, x)
 MeasureBase.unsafe_logdensityof(m::DirichletMeasure, x::AbstractVector) = MeasureBase.batched_logdensityof_impl(m, x)
 
-@inline function _simplex_mask(Xc::AbstractArray)
-    tol = sqrt(eps(float(eltype(Xc))))
-    _column_all(Xc .>= 0) .& (abs.(_column_sums(identity, Xc) .- 1) .<= tol)
-end
+@inline _simplex_mask(Xc::AbstractArray) = MeasureBase._in_stdsimplex(Xc)
 
 # The stick-breaking Beta parameters, for the first `K - 1` components:
 @inline _stick_breaking_params(d::Dirichlet) = (_dropfront(_rev_cumsum(d.alpha)), _dropback(d.alpha))

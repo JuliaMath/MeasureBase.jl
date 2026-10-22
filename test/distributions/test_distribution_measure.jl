@@ -52,6 +52,23 @@ using MeasureBase: AbstractMeasure
     end
 end
 
+@testset "Dirichlet reference measure" begin
+    using Distributions: Dirichlet, MvNormal, logpdf
+    using LinearAlgebra: I
+    d1, d2 = AbstractMeasure(Dirichlet(ones(3))), AbstractMeasure(Dirichlet([2.0, 3.0, 4.0]))
+    L = MeasureBase.Lebesgue(MeasureBase.StdSimplex(3))
+    @test MeasureBase.basemeasure(d1) == L && MeasureBase.rootmeasure(d1) == L
+    @test MeasureBase.getdof(d1) == MeasureBase.getdof(L) == 2
+    x = [0.2, 0.3, 0.5]
+    @test MeasureBase.logdensity_rel(d2, d1, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x) - log(2)
+    @test MeasureBase.logdensity_rel(d2, L, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x)
+    # Singular relative to measures with densities on ℝ³:
+    for ν in (AbstractMeasure(MvNormal(zeros(3), I)), MeasureBase.Lebesgue()^3)
+        @test_throws ArgumentError MeasureBase.logdensity_rel(d1, ν, x)
+        @test_throws ArgumentError MeasureBase.logdensity_rel(ν, d1, x)
+    end
+end
+
 @testset "pushforwards of discrete distributions" begin
     using Distributions: Poisson, Multinomial, logpdf
     using AffineMaps: Mul

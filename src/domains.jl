@@ -238,6 +238,44 @@ testvalue(::Type{T}, b::BoundedInts) where {T} = convert(T, testvalue(b))
 Base.getindex(::typeof(ℤ), r::AbstractUnitRange) = BoundedInts(extrema(r)...)
 
 """
+    MeasureBase.StdSimplex(n) isa MeasureBase.ValueSet
+
+The standard simplex, the real `n`-vectors with non-negative entries that
+sum to one (up to a tolerance of `sqrt(eps)`).
+
+`Lebesgue(StdSimplex(n))` is the coordinate Lebesgue measure on the
+simplex, the image of Lebesgue measure on the first `n - 1` coordinates
+under the chart that appends one minus their sum. It is not the surface
+measure of the simplex, which is larger by a factor `sqrt(n)`. It has
+`n - 1` degrees of freedom, the mass `1 / (n - 1)!`, and `rand` draws from
+its normalized law, the uniform distribution on the simplex. It is its
+own base measure and the root measure of Dirichlet distributions.
+Measures on the simplex are singular relative to measures with density
+on `ℝⁿ`, relative densities between them throw an `ArgumentError`.
+"""
+struct StdSimplex{N<:IntegerLike} <: ValueSet
+    n::N
+end
+
+Base.in(x::AbstractVector, s::StdSimplex) = length(x) == s.n && _in_stdsimplex(x)
+Base.in(::Any, ::StdSimplex) = false
+
+Base.isempty(s::StdSimplex) = s.n == 0
+
+Base.show(io::IO, s::StdSimplex) = print(io, "StdSimplex(", s.n, ")")
+
+testvalue(::Type{T}, s::StdSimplex) where {T} = fill(inv(T(s.n)), s.n)
+
+# Membership of flat batches `(n, batch dims...)` in the simplex, branch-free,
+# as booleans over the batch dimensions:
+@inline _in_stdsimplex(x::AbstractVector) = all(x .>= 0) & (abs(sum(x) - 1) <= _simplex_tol(x))
+@inline function _in_stdsimplex(X::AbstractArray)
+    ins = all(X .>= 0; dims = 1) .& (abs.(sum(X; dims = 1) .- 1) .<= _simplex_tol(X))
+    reshape(ins, Base.tail(size(ins)))
+end
+@inline _simplex_tol(X) = sqrt(eps(float(eltype(X))))
+
+"""
     struct MeasureBase.AbstractCartSetProd <: ValueSet
 
 Supertype for cartesian products of sets.
@@ -431,6 +469,7 @@ _combinesets_cat(f_c, α::SetLike, β::SetLike) = CombinedSet(f_c, α, β)
 @inline _valueset_elsize(::IntegerValues) = ()
 @inline _valueset_elsize(::BoundedInts) = ()
 @inline _valueset_elsize(::IntervalSets.AbstractInterval) = ()
+@inline _valueset_elsize(s::StdSimplex) = (s.n,)
 @inline _valueset_elsize(s::CartesianPower) = pwr_size(s)
 @inline _valueset_elsize(s) = NoMSpaceElementSize{typeof(s)}()
 

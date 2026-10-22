@@ -155,7 +155,9 @@ atomic measures) still get the volume element everywhere.
   other univariate distributions go via `StdLogistic` (log-cdf and
   quantile). `MvNormal` works on column batches through its Cholesky
   factor, `Dirichlet` through stick-breaking Beta transports with `cumsum`
-  and `cumprod` along the variate dimension (`multivariate.jl`). Incomplete
+  and `cumprod` along the variate dimension (`multivariate.jl`), with
+  densities relative to `Lebesgue(StdSimplex(n))`, the coordinate measure
+  of the simplex (as in FlatPPL), its own base and root measure. Incomplete
   gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
   (and quantiles), whose ForwardDiff and ChainRules derivatives come from
   the densities. Draws use the Distributions samplers on host compute

@@ -106,3 +106,50 @@ smf(::LebesgueBase, x) = x
 smf(::LebesgueBase) = identity
 invsmf(::LebesgueBase, x) = x
 invsmf(::LebesgueBase) = identity
+
+
+# Coordinate Lebesgue measure on the standard simplex, its own base measure:
+
+const _SimplexLebesgue = Lebesgue{<:StdSimplex}
+
+basemeasure(μ::_SimplexLebesgue) = μ
+@inline basemeasure_depth(::_SimplexLebesgue) = static(0)
+rootmeasure(μ::_SimplexLebesgue) = μ
+
+@inline getdof(μ::_SimplexLebesgue) = μ.support.n - static(1)
+@inline fast_dof(μ::_SimplexLebesgue) = getdof(μ)
+
+massof(μ::_SimplexLebesgue) = inv(prod(float, 1:(dynamic(μ.support.n) - 1); init = 1.0))
+
+gentype(::_SimplexLebesgue) = Vector{Float64}
+
+testvalue(::Type{T}, μ::_SimplexLebesgue) where {T} = testvalue(T, μ.support)
+
+insupport(μ::_SimplexLebesgue) = Base.Fix1(insupport, μ)
+localmeasure(μ::_SimplexLebesgue, ::Any) = μ
+transportmeasure(μ::_SimplexLebesgue, ::Any) = μ
+
+@inline mspace_ndims(::Type{<:_SimplexLebesgue}) = 1
+
+@propagate_inbounds function checked_arg(μ::_SimplexLebesgue, x::AbstractVector)
+    @boundscheck length(x) == μ.support.n || _throw_size_mismatch()
+    return x
+end
+checked_arg(::_SimplexLebesgue, ::Any) = _throw_size_mismatch()
+
+logdensity_def(::_SimplexLebesgue, x) = zero(_logd_numtype(x))
+unsafe_logdensityof(::_SimplexLebesgue, x) = zero(_logd_numtype(x))
+logdensityof_impl(μ::_SimplexLebesgue, x::AbstractVector) = batched_logdensityof_impl(μ, x)
+
+function batched_logdensityof_impl(::_SimplexLebesgue, X::AbstractArray)
+    T = _logd_numtype(X)
+    ifelse.(_in_stdsimplex(X), zero(T), T(-Inf))
+end
+batched_logdensity_def(::_SimplexLebesgue, X::AbstractArray) = _zero_logd_batch(X, static(1))
+
+# The normalized law is the uniform distribution on the simplex, the
+# normalized vector of independent standard exponential variates:
+function batched_rand_impl(ctx::GenContext, μ::_SimplexLebesgue, sz::SizeLike)
+    E = _randexp_bulk(ctx, (μ.support.n, size_tuple(sz)...))
+    E ./ sum(E; dims = 1)
+end

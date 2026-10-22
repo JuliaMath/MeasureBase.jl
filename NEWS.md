@@ -103,6 +103,10 @@ implementation per measure type for single variates and batches. See the
   instead of applying a volume element, injective maps keep the masses of
   atoms (`logdensityof(pushfwd(Mul(2), Poisson(2)), 4) ==
   logdensityof(Poisson(2), 2)`).
+- Dirichlet measures have the coordinate Lebesgue measure on the standard
+  simplex, `Lebesgue(MeasureBase.StdSimplex(n))`, as base and root measure
+  instead of Lebesgue measure on `ℝⁿ`, relative densities with respect to
+  measures with densities on `ℝⁿ` throw.
 - Transport Jacobians exclude weights: weighted measures transport like
   their base, map and log-abs-det Jacobian alike
   (`with_logabsdet_jacobian(transport_to(StdNormal(), 2 * StdNormal()), x) == (x, 0)`).
