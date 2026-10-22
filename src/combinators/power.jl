@@ -491,17 +491,19 @@ end
 end
 
 # The nested variate layout of a power over its flat storage, batches of
-# tuple variates become struct arrays:
+# tuple variates become struct arrays, nested ones nested struct arrays:
 @inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_variate_impl(μ, A)
 @inline _pwr_variate(μ::PowerMeasure, A::Union{Tuple,NamedTuple}) = _pwr_variate_impl(μ, A)
 @inline _pwr_variate_impl(μ::PowerMeasure, A) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
 @inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, _static_ndims(ν))
 @inline function _pwr_variate(ν::ProductMeasure{<:Tuple}, X::Tuple)
-    StructArray(map((m, Xi) -> _nest_leaf(Xi, _static_ndims(m)), marginals(ν), X))
+    StructArray(map(_pwr_marginal_variate, marginals(ν), X))
 end
 @inline function _pwr_variate(ν::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {names}
-    StructArray(NamedTuple{names}(map((m, Xi) -> _nest_leaf(Xi, _static_ndims(m)), values(marginals(ν)), values(X))))
+    StructArray(NamedTuple{names}(map(_pwr_marginal_variate, values(marginals(ν)), values(X))))
 end
+@inline _pwr_marginal_variate(m, X::AbstractArray) = _nest_leaf(X, _static_ndims(m))
+@inline _pwr_marginal_variate(m, X::Union{Tuple,NamedTuple}) = _pwr_variate(m, X)
 @inline _nest_leaf(A::AbstractArray, ::StaticInteger{0}) = A
 @inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A
 @inline _nest_leaf(A::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = A

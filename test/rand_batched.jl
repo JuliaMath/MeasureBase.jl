@@ -75,6 +75,12 @@ struct NoRandMeasure <: AbstractMeasure end
         @test Xn isa NamedTuple{(:a, :b)} && size(Xn.a) == (2, 3) && size(Xn.b) == (2, 2, 3)
         XPn = rand(stblrng(), Pn^4)
         @test XPn isa StructArray && XPn[1] isa NamedTuple{(:a, :b)}
+        Pnn = productmeasure((a = StdNormal(), b = productmeasure((c = StdExponential()^2, d = productmeasure((StdUniform(), StdNormal()))))))
+        XPnn = rand(stblrng(), Pnn^4)
+        @test XPnn isa StructArray && length(XPnn) == 4
+        @test XPnn[3] isa NamedTuple{(:a, :b)} && XPnn[3].b isa NamedTuple{(:c, :d)} && XPnn[3].b.d isa Tuple{Float64,Float64}
+        @test length(XPnn[3].b.c) == 2
+        @test logdensityof(Pnn^4, collect(XPnn)) ≈ sum(logdensityof.(Ref(Pnn), XPnn))
 
         mm = mcombine(merge, productmeasure((a = StdNormal(),)), productmeasure((b = StdUniform()^2,)))
         Xm = batched_rand_impl(ctx(), mm, (3,))
