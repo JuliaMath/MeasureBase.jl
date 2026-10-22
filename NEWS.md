@@ -59,6 +59,9 @@ implementation per measure type for single variates and batches. See the
   allocation-free densities, transports and draws.
 - Arrays of isbits parameterized measures are stored as struct arrays and
   evaluated in fused kernels, also on GPUs and under Reactant.
+- Powers take integer-valued real counts (`StdNormal()^3.0`), so binds
+  with counts drawn from discrete distributions work, e.g. the Poisson
+  process `mbind(n -> μ^n, Poisson(λ), vcat)`.
 - New exports: `logdensities`, `mcombine`, `mbind`, `mkernel`,
   `bindkernel`, `boundmeasure`, `mintegrate`, `mintegrate_exp`,
   `localmeasure`, `fast_dof`, `asmeasure`, `powermeasure`,

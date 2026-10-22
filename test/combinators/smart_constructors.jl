@@ -41,6 +41,12 @@ using Static: static
 
         ws = weightedmeasure(static(0.5), StdNormal())^static(4)
         @test ws.logweight ≈ 2.0
+
+        # Integer-valued real counts:
+        @test StdNormal()^3.0 == powermeasure(StdNormal(), (3.0,)) == StdNormal()^3
+        @test StdNormal()^(2.0, 3.0) == StdNormal()^(2, 3)
+        @test_throws ArgumentError StdNormal()^2.5
+        @test_throws ArgumentError powermeasure(StdNormal(), (NaN,))
     end
 
     @testset "productmeasure" begin

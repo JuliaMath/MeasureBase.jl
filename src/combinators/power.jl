@@ -86,7 +86,7 @@ function Base.:^(μ::AbstractMeasure, dims::Tuple{Vararg{AbstractArray,N}}) wher
     powermeasure(μ, dims)
 end
 
-Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, maybestatic_oneto.(dims))
+Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, maybestatic_oneto.(_as_counts(dims)))
 Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
 params(d::PowerMeasure) = params(first(marginals(d)))

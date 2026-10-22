@@ -87,6 +87,24 @@ end
     end
 end
 
+@testset "Poisson process as a bind" begin
+    using Distributions: Poisson, Normal, logpdf
+    using MeasureBase: StdNormal, mbind
+    using Random: Xoshiro
+    # Poisson counts are floats, powers take integer-valued counts:
+    μ = mbind(n -> StdNormal()^n, AbstractMeasure(Poisson(3.0)), vcat)
+    ℓ_ref(x) = logpdf(Poisson(3.0), x[1]) + sum(logpdf.(Normal(), x[2:end]); init = 0.0)
+    xs = [rand(Xoshiro(i), μ) for i in 1:20]
+    @test all(x -> length(x) == x[1] + 1, xs) && any(x -> x[1] >= 3, xs)
+    @test rand(Xoshiro(1), mbind(n -> StdNormal()^n, AbstractMeasure(Poisson(1e-3)), vcat)) == [0.0]
+    @test MeasureBase.logdensityof(μ, xs[1]) ≈ ℓ_ref(xs[1])
+    @test MeasureBase.logdensityof(μ, [0.0]) ≈ -3
+    push!(xs, [0.0])
+    @test MeasureBase.logdensities(μ, xs) ≈ ℓ_ref.(xs)
+    @test MeasureBase.logdensities(μ, [2.0 2.0; 0.1 -0.3; 0.2 0.4]) ≈ ℓ_ref.([[2.0, 0.1, 0.2], [2.0, -0.3, 0.4]])
+    @test MeasureBase.logdensityof(μ, [2.5, 0.1, 0.2]) == -Inf
+end
+
 @testset "context precision of draws" begin
     using LinearAlgebra: I
     using StableRNGs: StableRNG

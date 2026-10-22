@@ -31,7 +31,15 @@ Constructs a power of a measure `μ`.
 function powermeasure end
 export powermeasure
 
-@inline powermeasure(μ, exponent) = _generic_powermeasure_stage1(asmeasure(μ), asaxes(exponent))
+@inline powermeasure(μ, exponent) = _generic_powermeasure_stage1(asmeasure(μ), asaxes(_as_counts(exponent)))
+
+# Counts may be integer-valued reals (e.g. Poisson variates as floats):
+@inline _as_counts(dims::Tuple) = map(_as_count, dims)
+@inline _as_counts(dims) = dims
+@inline _as_count(n::IntegerLike) = n
+@inline _as_count(n::Real) = isinteger(n) ? Int(n) : _throw_noninteger_count(n)
+@inline _as_count(ax) = ax
+@noinline _throw_noninteger_count(n) = throw(ArgumentError("Powers of measures need integer counts, got $n"))
 
 @inline _generic_powermeasure_stage1(μ::AbstractMeasure, ::Tuple{}) = μ
 
