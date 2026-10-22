@@ -173,6 +173,7 @@ massof(μ::CombinedMeasure) = massof(μ.α) * massof(μ.β)
 mdomain(μ::CombinedMeasure) = combinesets(μ.f_c, mdomain(μ.α), mdomain(μ.β))
 
 rootmeasure(μ::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ.α), rootmeasure(μ.β))
+@inline _counting_root(μ::CombinedMeasure) = _counting_root(μ.α) & _counting_root(μ.β)
 
 basemeasure(μ::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ.α), basemeasure(μ.β))
 

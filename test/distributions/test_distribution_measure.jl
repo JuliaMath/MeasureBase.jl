@@ -52,6 +52,24 @@ using MeasureBase: AbstractMeasure
     end
 end
 
+@testset "pushforwards of discrete distributions" begin
+    using Distributions: Poisson, Multinomial, logpdf
+    using AffineMaps: Mul
+    m = AbstractMeasure(Poisson(2.0))
+    p = MeasureBase.pushfwd(Mul(2.0), m)
+    @test MeasureBase.logdensityof(p, 4.0) == MeasureBase.logdensityof(m, 2.0)
+    @test MeasureBase.logdensityof(p, 3.0) == -Inf
+    @test sum(y -> exp(MeasureBase.logdensityof(p, y)), 0.0:0.5:80.0) ≈ 1
+    @test MeasureBase.logdensities(p, [0.0, 3.0, 4.0]) ≈ logpdf.(Poisson(2.0), [0.0, 1.5, 2.0])
+    @test MeasureBase.logdensity_rel(p, AbstractMeasure(Poisson(4.0)), 4.0) ≈ logpdf(Poisson(2.0), 2) - logpdf(Poisson(4.0), 4)
+    @test MeasureBase.logdensity_rel(p, AbstractMeasure(Poisson(4.0)), 3.0) == -Inf
+    mn = AbstractMeasure(Multinomial(3, [0.2, 0.8]))
+    X = [0.0 2.0 4.0; 6.0 4.0 2.0]
+    for f in (Mul(2.0), Base.BroadcastFunction(Base.Fix1(*, 2.0)))
+        @test MeasureBase.logdensities(MeasureBase.pushfwd(f, mn), X) ≈ logpdf(Multinomial(3, [0.2, 0.8]), X ./ 2)
+    end
+end
+
 @testset "context precision of draws" begin
     using LinearAlgebra: I
     using StableRNGs: StableRNG

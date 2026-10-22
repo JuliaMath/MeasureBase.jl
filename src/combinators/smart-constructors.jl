@@ -159,6 +159,26 @@ end
 # to counting measure:
 _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle) = Dirac(f(μ.x))
 
+# Injective maps push counting measure forward to counting measure on the
+# image, atoms keep their masses. Measures with counting root measures push
+# their root measure forward instead of adapting it with a volume element:
+@inline _pushfwd_style(style::PushFwdStyle, μ) = _style_for_root(style, _counting_root(μ))
+@inline _style_for_root(::AdaptRootMeasure, ::True) = PushfwdRootMeasure()
+@inline _style_for_root(style::PushFwdStyle, ::Any) = style
+
+# Whether the root measure of a measure is a counting measure, along the
+# chain of base measures and structurally for combinators:
+@inline _counting_root(μ) = _counting_root_of(basemeasure(μ), μ)
+@inline _counting_root_of(::M, ::M) where {M} = static(false)
+@inline _counting_root_of(β, ::Any) = _counting_root(β)
+@inline _counting_root(::Union{Counting,CountingBase,Dirac}) = static(true)
+@inline _counting_root(μ::PowerMeasure) = _counting_root(μ.parent)
+@inline _counting_root(μ::WeightedMeasure) = _counting_root(μ.base)
+@inline _counting_root(ν::PushforwardMeasure) = _counting_root(ν.origin)
+@inline _counting_root(μ::AbstractProductMeasure) = _all_counting_root(marginals(μ))
+@inline _counting_root(μ::SuperpositionMeasure) = _all_counting_root(μ.components)
+@inline _all_counting_root(μs) = mapreduce(_counting_root, &, values(μs); init = static(true))
+
 # Pushforward and weighting commute:
 function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle)
     weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style))

@@ -117,6 +117,16 @@ end
     -_pushfwd_root_ladj(ν, y)
 end
 
+# Pushed-forward counting roots relative to the root they push forward:
+# atoms in both supports have equal masses.
+const _CountingRoot = Union{Counting,PowerMeasure{<:Counting}}
+@inline function logdensity_rel_def(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, μ::M, y) where {F,I,M<:_CountingRoot}
+    logdensityof(ν, y) - logdensityof(μ, y)
+end
+@inline function logdensity_rel_def(μ::M, ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M<:_CountingRoot}
+    logdensityof(μ, y) - logdensityof(ν, y)
+end
+
 # Numeric flat variates of powers of measures with fixed stream sizes but
 # no variate rank (e.g. tuple products) are streams:
 @inline function mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}

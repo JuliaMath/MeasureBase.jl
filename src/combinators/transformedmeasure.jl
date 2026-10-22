@@ -22,6 +22,11 @@ Density calculations for pushforward measures constructed with
 `AdaptRootMeasure()` will take take the volume element of variate
 transform (typically via the log-abs-det-Jacobian of the transform) into
 account.
+
+Measures with counting root measures (e.g. point masses and discrete
+distributions) are always pushed forward with
+[`PushfwdRootMeasure()`](@ref): injective maps push counting measure
+forward to counting measure on the image, without a volume element.
 """
 struct AdaptRootMeasure <: PushFwdStyle end
 export AdaptRootMeasure
@@ -317,9 +322,11 @@ export pushfwd
 @inline pushfwd(::typeof(identity), μ) = μ
 @inline pushfwd(::typeof(identity), μ, ::PushFwdStyle) = μ
 
-_pushfwd_impl(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style, _pushfwd_varsize(f, μ))
+_pushfwd_impl(f, μ, style) = _pushfwd_with_style(f, μ, _pushfwd_style(style, μ))
 
-function _pushfwd_impl(
+_pushfwd_with_style(f, μ, style) = PushforwardMeasure(f, inverse(f), μ, style, _pushfwd_varsize(f, μ))
+
+function _pushfwd_with_style(
     f,
     μ::PushforwardMeasure{F,I,M,S},
     style::S,

@@ -116,7 +116,11 @@ arrays have `Adapt` rules.
 construction from a test value when the origin has a size. Batched
 application needs no traits: elementwise for `Base.BroadcastFunction`
 (fused density kernels), column batches for AffineMaps types (weak
-dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise.
+dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise. Measures
+with counting root measures push their root measure forward (counting
+measure on the image) instead of adapting it with a volume element, also
+under `AdaptRootMeasure()`; mixed roots (superpositions of continuous and
+atomic measures) still get the volume element everywhere.
 
 ## Extension points
 

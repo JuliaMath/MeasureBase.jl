@@ -98,6 +98,11 @@ implementation per measure type for single variates and batches. See the
   reshaped measures (`DimensionMismatch` before).
 - `transport_to(StdUniform, μ)` for measures `μ` with binds inside
   throws, use `transport_to(StdUniform()^n, μ)`.
+- Pushforwards of measures with counting root measures (point masses,
+  counting measures, discrete distributions) push the root measure forward
+  instead of applying a volume element, injective maps keep the masses of
+  atoms (`logdensityof(pushfwd(Mul(2), Poisson(2)), 4) ==
+  logdensityof(Poisson(2), 2)`).
 - The projections `mcombine(firstarg/secondarg, α, β)` and
   `mbind(f, α, firstarg)` keep the mass of the dropped measure as a weight.
   `rand` of a bind samples ancestrally from the normalized laws of its

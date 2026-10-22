@@ -222,6 +222,19 @@ using ChangesOfVariables: setladj
     @test_deprecated pullback(f, μ)
 end
 
+@testset "pushforwards of counting measures" begin
+    # Injective maps keep the masses of atoms, without a volume element:
+    D = MeasureBase.Dirac
+    a = superpose(2D(1.0), 3D(2.0))
+    p = pushfwd(AffineMaps.Mul(2.0), a)
+    @test p.style isa PushfwdRootMeasure
+    @test logdensityof(p, 2.0) ≈ log(2) && logdensityof(p, 4.0) ≈ log(3)
+    @test logdensityof(p, 3.0) == -Inf
+    @test sum(y -> exp(logdensityof(p, y)), 0.0:0.5:6.0) ≈ massof(a)
+    @test pushfwd(AffineMaps.Mul(2.0), Counting(ℤ)).style isa PushfwdRootMeasure
+    @test pushfwd(AffineMaps.Mul(2.0), StdNormal()).style isa AdaptRootMeasure
+end
+
 @testset "PushFwdStyle types" begin
     @test AdaptRootMeasure() isa PushFwdStyle
     @test PushfwdRootMeasure() isa PushFwdStyle
