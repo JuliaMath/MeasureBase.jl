@@ -65,6 +65,11 @@ $$A$$ and $$B$$)
 ```math
 \mu(f_c(A, B)) = \alpha(A)\, \beta(B)
 ```
+
+so `massof(μ) == massof(α) * massof(β)`. The projections
+`mcombine(OneTwoMany.firstarg, α, β)` and `mcombine(OneTwoMany.secondarg, α, β)`
+are `α` resp. `β` weighted by the mass of the other measure. If that mass is
+unknown, the projection has an unknown mass and no density.
 """
 function mcombine end
 export mcombine
@@ -73,8 +78,16 @@ export mcombine
     _generic_mcombine_impl_stage1(f_c, α, β)
 end
 
-@inline _generic_mcombine_impl_stage1(::typeof(firstarg), α::AbstractMeasure, β::AbstractMeasure) = α
-@inline _generic_mcombine_impl_stage1(::typeof(secondarg), α::AbstractMeasure, β::AbstractMeasure) = β
+@inline _generic_mcombine_impl_stage1(f_c::typeof(firstarg), α::AbstractMeasure, β::AbstractMeasure) =
+    _projection(f_c, α, β, α, massof(β))
+@inline _generic_mcombine_impl_stage1(f_c::typeof(secondarg), α::AbstractMeasure, β::AbstractMeasure) =
+    _projection(f_c, α, β, β, massof(α))
+
+@inline _projection(f_c, α, β, μ, mass::Real) = _mass_weighted(μ, mass)
+@inline _projection(f_c, α, β, μ, ::AbstractUnknownMass) = _generic_mcombine_impl_stage2(f_c, α, β)
+
+@inline _mass_weighted(μ, mass::Real) = weightedmeasure(log(mass), μ)
+@inline _mass_weighted(μ, ::StaticFloat64{1.0}) = μ
 
 @inline function _generic_mcombine_impl_stage1(::typeof(tuple), α::AbstractMeasure, β::AbstractMeasure)
     productmeasure((α, β))
@@ -149,6 +162,8 @@ end
 @inline _vcat_flatsize(::SizeLike, b::NoMSpaceElementSize) = b
 @inline _vcat_flatsize(a::NoMSpaceElementSize, ::NoMSpaceElementSize) = a
 
+massof(μ::CombinedMeasure) = massof(μ.α) * massof(μ.β)
+
 @inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
 @inline fast_dof(μ::CombinedMeasure) = fast_dof(μ.α) + fast_dof(μ.β)
 
@@ -191,6 +206,12 @@ function _combined_ld_impl(::typeof(merge), μ::CombinedMeasure, ab::NamedTuple)
     ℓ, _, x_rest = logdensityof_with_rest(μ, ab)
     isempty(x_rest) || _throw_stream_too_long()
     return ℓ
+end
+
+# Projections are only combined measures if the mass of the dropped measure
+# is unknown:
+@noinline function _combined_ld_impl(::Union{typeof(firstarg),typeof(secondarg)}, ::CombinedMeasure, ::Any)
+    throw(ArgumentError("Projection of a measure of unknown mass has no density"))
 end
 
 function _combined_ld_impl(f_c, μ::CombinedMeasure, ab)

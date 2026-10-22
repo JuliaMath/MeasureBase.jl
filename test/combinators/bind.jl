@@ -10,6 +10,8 @@ using MeasureBase
 using MeasureBase: StdExponential, StdNormal, StdUniform
 using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
 using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
+using MeasureBase: superpose, massof
+import OneTwoMany
 
 # A value combination function with a specialized split:
 struct _SwapCombine <: Function end
@@ -213,5 +215,25 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         μ = mbind(f_β, MeasureBase.Dirac(1.5), tuple)
         ab = rand(stblrng(), Float64, μ)
         @test ab[1] == 1.5
+    end
+
+    @testset "masses of binds and projections" begin
+        D = MeasureBase.Dirac
+        k(x) = (1 + 8x) * D(x)
+        # On finite spaces, the mass is the sum of the densities over the atoms:
+        a = superpose(2D(0.0), 3D(1.0))
+        μ = mbind(k, a, tuple)
+        @test massof(μ) ≈ 2 * 1 + 3 * 9
+        @test sum(x -> exp(logdensityof(μ, (x, x))), (0.0, 1.0)) ≈ massof(μ)
+        μ1 = mbind(k, a, OneTwoMany.firstarg)
+        @test massof(μ1) ≈ massof(μ)
+        @test sum(x -> exp(logdensityof(μ1, x)), (0.0, 1.0)) ≈ massof(μ1)
+        @test massof(mbind(x -> 3D(1.0), 2D(0.0), OneTwoMany.firstarg)) ≈ 6
+        @test logdensityof(mbind(x -> 2 * StdNormal(), α, OneTwoMany.firstarg), 0.3) ≈ log(2) + logdensityof(α, 0.3)
+        @test massof(mbind(f_β, α)) isa MeasureBase.UnknownMass
+        # Ancestral sampling of the normalized laws of the components, the
+        # primary variates follow the normalized law of `a`:
+        rng = stblrng()
+        @test count(_ -> rand(rng, μ)[1] == 1, 1:2000) / 2000 ≈ 3 / 5 atol = 0.05
     end
 end

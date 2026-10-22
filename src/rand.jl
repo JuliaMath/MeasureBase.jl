@@ -16,6 +16,10 @@ by default) and the compute unit that array-valued variates are generated
 on. Variates of powers of measures are generated as one flat batch of
 variates of the base measure.
 
+Variates follow the normalized law of `μ`, weights don't affect them.
+Binds are sampled ancestrally from the normalized laws of their components,
+see [`mbind`](@ref).
+
 Floating-point variates have the precision of the context, also through
 transformations. Point masses generate their atom exactly, and integer
 variates (e.g. of counting measures) stay integers.

@@ -27,9 +27,11 @@ struct UnknownMass <: AbstractUnknownMass end
 for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
+        Base.:+(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:+(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
         Base.:*(::$T, ::$T) = $T()
-        Base.:*(x::Real, ::$T) = isfinite(x) ? $T() : UnknownMass()
-        Base.:*(::$T, x::Real) = isfinite(x) ? $T() : UnknownMass()
+        Base.:*(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:*(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
         Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
         # Disambiguation:
         Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
@@ -75,6 +77,11 @@ finite, or we may know nothing at all about it. For these cases, it will return
 respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
 """
 massof(::AbstractMeasure) = UnknownMass()
+
+# The log of a known mass, densities that involve unknown masses are unknown:
+@inline _logmass(mass::Real) = log(dynamic(mass))
+@noinline _logmass(::AbstractUnknownMass) =
+    throw(ArgumentError("Density depends on a measure of unknown mass"))
 
 struct NormalizedMeasure{P,M} <: AbstractMeasure
     parent::P

@@ -261,6 +261,16 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   Lebesgue measure plus counting measure on the atoms. `CountingBase()` on
   all of the reals is not σ-finite and is never used as a base of a
   superposition component.
+- Bind sampling and masses (decided 2026-10-22): `rand` of a bind samples
+  ancestrally from the normalized laws of its components (the primary
+  variate from the normalized primary measure, the secondary one from the
+  normalized kernel measure), the normalized law of the bind only for
+  kernels of constant mass. The mass of a bind integrates the kernel
+  masses over the primary measure, known for weighted and superposed point
+  masses, unknown otherwise. Projections (`mcombine` and `mbind` with
+  `firstarg`/`secondarg`) weight the kept measure with the mass of the
+  dropped one (`massof(α) * massof(β)`), pointwise for binds; where that
+  mass is unknown, so are the mass and the density of the projection.
 - Pushforwards through non-surjective maps (`pushfwd(exp, StdNormal())`)
   throw a `DomainError` from the inverse outside the image (`log(-1.0)`),
   open decision: mask by the image or document.

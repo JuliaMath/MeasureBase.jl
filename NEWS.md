@@ -98,6 +98,10 @@ implementation per measure type for single variates and batches. See the
   reshaped measures (`DimensionMismatch` before).
 - `transport_to(StdUniform, μ)` for measures `μ` with binds inside
   throws, use `transport_to(StdUniform()^n, μ)`.
+- The projections `mcombine(firstarg/secondarg, α, β)` and
+  `mbind(f, α, firstarg)` keep the mass of the dropped measure as a weight.
+  `rand` of a bind samples ancestrally from the normalized laws of its
+  components.
 
 ### Migration for measure implementations
 

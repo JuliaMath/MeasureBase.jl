@@ -87,7 +87,8 @@ simplifies to
 
 which is equivalent to a monadic bind, viewing measures as monads.
 
-Computationally, `ab = rand(μ)` is equivalent to
+`rand(μ)` samples ancestrally from the normalized laws of the components,
+it is equivalent to
 
 ```julia
 a = rand(α)
@@ -95,6 +96,17 @@ a = rand(α)
 b = rand(β_a)
 ab = f_c(a, b)
 ```
+
+This is the normalized law of `μ` if the mass of `β_a` doesn't depend on
+`a`, as for kernels that return probability measures. Otherwise, the
+normalized law of `μ` reweights `α` by the mass of `β_a`, which `rand`
+does not do.
+
+The mass of `μ` integrates the masses of the `β_a` over `α`. It is known
+where `α` is a weighted or superposed combination of point masses, and
+unknown otherwise. With `f_c = OneTwoMany.firstarg`, `μ` is `α` reweighted
+by the mass of `β_a`, its density is that of `α` plus the log-mass of
+`β_a`.
 
 The measure `α` that went into the bind can be retrieved via
 `boundmeasure(mbind(f_β, α, f_c)) == α` and the kernel via
@@ -166,9 +178,6 @@ end
 end
 
 @inline _generic_mbind_impl(f_β, α::Dirac, f_c) = mcombine(f_c, α, asmeasure(f_β(α.x)))
-
-@inline _generic_mbind_impl(@nospecialize(f_β), α::AbstractMeasure, ::typeof(firstarg)) = α
-@inline _generic_mbind_impl(@nospecialize(f_β), α::Dirac, ::typeof(firstarg)) = α
 
 @inline _generic_mbind_impl(f_k::MKernel, α::AbstractMeasure, ::typeof(secondarg)) =
     mbind(f_k.f_β, α, f_k.f_c)
@@ -276,6 +285,13 @@ end
 
 @inline insupport(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
 
+# The mass of a bind is linear in the primary measure:
+massof(μ::Bind) = _bind_mass(μ, μ.α)
+_bind_mass(::Bind, ::AbstractMeasure) = UnknownMass()
+_bind_mass(μ::Bind, α::Dirac) = massof(_get_β_a(μ, α.x))
+_bind_mass(μ::Bind, α::WeightedMeasure) = exp(α.logweight) * _bind_mass(μ, α.base)
+_bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), α.components)
+
 @inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
 
 # Bypass `checked_arg`, would require potentially costly evaluation of f_β:
@@ -334,6 +350,12 @@ function _ld_whole_stream(μ, x)
     ℓ, _, x_rest = logdensityof_with_rest(μ, x)
     isempty(x_rest) || _throw_stream_too_long()
     return ℓ
+end
+
+# Projections onto the primary variate weight it with the mass of the
+# secondary measure:
+function _bind_ld_impl(::typeof(firstarg), μ::Bind, a)
+    _bind_ld(logdensityof(μ.α, a), () -> _logmass(massof(_get_β_a(μ, a))))
 end
 
 # Other value combination functions split via `tpmeasure_split_combined`:

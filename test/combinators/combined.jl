@@ -8,7 +8,7 @@ using OneTwoMany: firstarg, secondarg
 
 using MeasureBase
 using MeasureBase: StdExponential, StdLogistic, StdNormal, StdUniform
-using MeasureBase: mcombine, mbind, productmeasure, transport_to, pushfwd
+using MeasureBase: mcombine, mbind, productmeasure, transport_to, pushfwd, superpose, restrict, massof
 using StructArrays: StructArray
 using AffineMaps: Mul
 
@@ -32,6 +32,23 @@ using AffineMaps: Mul
         ) == productmeasure((a = α, b = β))
         @test mcombine(tuple, MeasureBase.Dirac(1), MeasureBase.Dirac(2)) ==
               MeasureBase.Dirac((1, 2))
+    end
+
+    @testset "projections keep the mass of the dropped measure" begin
+        D = MeasureBase.Dirac
+        # On finite spaces, the mass is the sum of the densities over the atoms:
+        a, b = superpose(2D(0.0), 3D(1.0)), superpose(D(5.0), 4D(6.0))
+        for (f_c, pts) in ((firstarg, (0.0, 1.0)), (secondarg, (5.0, 6.0)))
+            p = mcombine(f_c, a, b)
+            @test massof(p) ≈ massof(a) * massof(b) ≈ 25
+            @test sum(x -> exp(logdensityof(p, x)), pts) ≈ massof(p)
+            @test logdensityof(p, 0.5) == -Inf
+        end
+        @test massof(mcombine(firstarg, 2D(0.0), 3D(1.0))) ≈ 6
+        # Unknown masses give unknown projections without densities:
+        p = mcombine(firstarg, StdNormal(), restrict(>(0), StdNormal()))
+        @test massof(p) isa MeasureBase.UnknownMass
+        @test_throws ArgumentError logdensityof(p, 0.3)
     end
 
     @testset "mcombine of products" begin
