@@ -100,7 +100,7 @@ function test_transport(ν, μ)
         @test structisapprox(x, x2)
         @test structisapprox(y, y2)
         @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
-        @test ladj_fwd ≈ logdensityof(μ, x) - logdensityof(ν, y)
+        @test ladj_fwd ≈ logdensityof(MeasureBase._unweighted(μ), x) - logdensityof(MeasureBase._unweighted(ν), y)
     end
 end
 

@@ -285,6 +285,8 @@ end
 
 @inline insupport(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
 
+@inline _unweighted(μ::Bind) = mbind(_unweighted ∘ μ.f_β, _unweighted(μ.α), μ.f_c)
+
 # The mass of a bind is linear in the primary measure:
 massof(μ::Bind) = _bind_mass(μ, μ.α)
 _bind_mass(::Bind, ::AbstractMeasure) = UnknownMass()

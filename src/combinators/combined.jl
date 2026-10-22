@@ -164,6 +164,8 @@ end
 
 massof(μ::CombinedMeasure) = massof(μ.α) * massof(μ.β)
 
+@inline _unweighted(μ::CombinedMeasure) = mcombine(μ.f_c, _unweighted(μ.α), _unweighted(μ.β))
+
 @inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)
 @inline fast_dof(μ::CombinedMeasure) = fast_dof(μ.α) + fast_dof(μ.β)
 

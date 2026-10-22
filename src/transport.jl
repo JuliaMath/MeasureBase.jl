@@ -6,9 +6,11 @@ Generates a [measurable function](https://en.wikipedia.org/wiki/Measurable_funct
 a value `y = f(x)` distributed according to a measure `ν`.
 
 The [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
-from `μ` under `f` is equivalent to `ν`, so `f(rand(μ))` is equivalent
-to `rand(ν)`. `f` supports `InverseFunctions.inverse` and
-`ChangesOfVariables.with_logabsdet_jacobian`.
+from `μ` under `f` is equivalent to `ν`, up to normalization, so
+`f(rand(μ))` is equivalent to `rand(ν)`. `f` supports
+`InverseFunctions.inverse` and `ChangesOfVariables.with_logabsdet_jacobian`.
+Weighted measures transport like their unweighted base, map and
+log-abs-det Jacobian alike.
 
 Measures are transported via standard measures: `x` is transported to the
 standard measure type that the preferences of `ν` and `μ` promote to (see
@@ -105,15 +107,20 @@ end
     return TransportFunction{MU,NU}(f.μ, f.ν)
 end
 
+# Transports map normalized laws, weights don't change the map. The
+# Jacobian is the ratio of the densities without weights:
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
-    logd_src = logdensityof(f.μ, x)
-    logd_trg = logdensityof(f.ν, y)
+    logd_src = logdensityof(_unweighted(f.μ), x)
+    logd_trg = logdensityof(_unweighted(f.ν), y)
     ladj = logd_src - logd_trg
     # Both densities being -Inf leaves the Jacobian undefined, zero is a safe choice then:
     fixed_ladj = ifelse(isneginf(logd_src) & isneginf(logd_trg), zero(ladj), ladj)
     return y, fixed_ladj
 end
+
+# A measure without its weights, structurally:
+@inline _unweighted(μ) = μ
 
 Base.:(∘)(::typeof(identity), f::TransportFunction) = f
 Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f

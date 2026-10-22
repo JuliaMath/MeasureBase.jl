@@ -206,6 +206,8 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
+@inline _unweighted(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}) = productmeasure(map(_unweighted, marginals(μ)))
+
 @inline mspace_elsize(μ::ProductMeasure{<:AbstractArray}) = maybestatic_size(marginals(μ))
 
 @inline function mspace_flatsize(μ::ProductMeasure{<:AbstractArray{M}}) where {M}

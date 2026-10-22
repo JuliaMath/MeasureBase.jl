@@ -7,6 +7,7 @@ using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: Dirac, Half, restrict, mbind, productmeasure, pushfwd
 using MeasureBase: transport_to_std, transport_from_std, transport_from_std_with_rest, batched_transport_from_std
 using InverseFunctions: inverse
+using ChangesOfVariables: with_logabsdet_jacobian
 using MeasureBase: weightedmeasure, mcombine
 using StaticArrays: SVector
 using Static: static
@@ -40,6 +41,24 @@ include("testutils.jl")
             @test_throws ArgumentError transport_to(ν0, μ0)(rand(μ0^12))
             @test_throws ArgumentError transport_to(ν0^3, μ0^3)(rand(μ0^(3, 4)))
         end
+    end
+
+    @testset "weighted measures transport like their base" begin
+        f = transport_to(StdNormal(), 2 * StdNormal())
+        @test with_logabsdet_jacobian(f, 0.3) == (0.3, 0.0)
+        @test logdensityof(pushfwd(f, 2 * StdNormal()), 0.3) ≈ log(2) + logdensityof(StdNormal(), 0.3)
+        # u = 1 - exp(-x) has the log-Jacobian -x, weights don't change it:
+        g = transport_to(5 * StdUniform(), 2 * StdExponential())
+        @test last(with_logabsdet_jacobian(g, 1.2)) ≈ -1.2
+        @test last(with_logabsdet_jacobian(inverse(g), g(1.2))) ≈ 1.2
+        # Pushforwards of weighted origins carry the weight over:
+        @test logdensityof(pushfwd(g, 2 * StdExponential()), 0.3) ≈ log(2)
+        test_transport(3.0 * StdNormal(), 2.2 * StdExponential())
+        # Weights of marginals and of kernel measures:
+        h = transport_to(StdUniform()^2, productmeasure((StdNormal(), 2 * StdExponential())))
+        @test last(with_logabsdet_jacobian(h, (0.3, 1.2))) ≈ logdensityof(StdNormal(), 0.3) - 1.2
+        b = mbind(a -> weightedmeasure(log(a), StdNormal()), StdExponential(), tuple)
+        @test last(with_logabsdet_jacobian(transport_to(StdUniform()^2, b), (2.0, 0.5))) ≈ logdensityof(StdNormal(), 0.5) - 2.0
     end
 
     @testset "transfrom from/to Dirac" begin

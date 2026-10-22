@@ -71,7 +71,11 @@ transports a variate, `f.(X)` a whole batch. Leaves implement
 measure (`preferred_stdmeasure`, `promote_stdmeasure`, `AnyStdMeasure`,
 `NoStdTransport`), array-variate leaves also the `batched_` forms.
 `stdconvert` converts between standard measures in log form,
-`transport_def` may be specialized for direct pairs. Standard streams are
+`transport_def` may be specialized for direct pairs. Transports map
+normalized laws: weighted measures transport like their base, and the
+log-abs-det Jacobian is the density ratio of the measures with their
+weights stripped (structurally, through weighted measures, tuple products,
+combinations and binds). Standard streams are
 `(dof, batch dims...)`; the from-side default consumes `fast_dof(μ)`
 entries per variate, composed measures implement the with-rest forms.
 `getdof`/`fast_dof` are declaration-derived, used at construction time

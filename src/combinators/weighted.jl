@@ -80,6 +80,7 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
 
 # Weighted measures transport like their base:
+@inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))
 @inline transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, x) where {S<:StdMeasure} =
     transport_to_std(S, basemeasure(μ), x)
 @inline transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, z) where {S<:StdMeasure} =
