@@ -74,7 +74,9 @@ _adapt_cov(to, Σ::PDMats.ScalMat) = Σ
 # Dirichlet: densities over the simplex, transports via the stick-breaking
 # Beta transports (M. J. Betancourt, "Cruising The Simplex: Hamiltonian
 # Monte Carlo and the Dirichlet Distribution", arXiv:1010.3436), with the
-# cumulative sums and products running along the variate dimension.
+# cumulative sums and products running along the variate dimension. The
+# orientation is FlatPPL's: the break fractions `z_i ~ Beta(α_i, Σ_{j>i} α_j)`
+# give `x_i = z_i * (1 - Σ_{j<i} x_j)`.
 
 for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function MeasureBase.$bhead(m::DirichletMeasure, X::AbstractArray)
@@ -89,36 +91,36 @@ MeasureBase.unsafe_logdensityof(m::DirichletMeasure, x::AbstractVector) = Measur
 
 @inline _simplex_mask(Xc::AbstractArray) = MeasureBase._in_stdsimplex(Xc)
 
-# The stick-breaking Beta parameters, for the first `K - 1` components:
-@inline _stick_breaking_params(d::Dirichlet) = (_dropfront(_rev_cumsum(d.alpha)), _dropback(d.alpha))
+# The Beta parameters of the break fractions of the first `K - 1` components:
+@inline _stick_breaking_params(d::Dirichlet) = (_dropback(d.alpha), _dropfront(_rev_cumsum(d.alpha)))
 
 function MeasureBase.batched_transport_to_std(::Type{StdUniform}, d::Dirichlet, X::AbstractArray)
     K = length(d)
     αs, βs = _stick_breaking_params(d)
     Xc = _as_columns(X)
-    # The Beta variates are the fractions of the remaining mass (suffix
-    # sums, exact also for small trailing components) left after each
-    # component:
+    # The break fractions are the shares of the components in the remaining
+    # stick, given by the suffix sums (exact also for small trailing
+    # components):
     S = _suffix_sums(Xc)
-    beta_v = _ratio_or_zero.(_rows(S, 2:K), _rows(S, 1:(K - 1)))
-    Z = _beta_cdf.(αs, βs, _nonnan.(_unit_clamp.(beta_v), 1 // 2))
-    _from_columns(_nan_columns(Z, _simplex_mask(Xc)), X)
+    z = _ratio_or_zero.(_rows(Xc, 1:(K - 1)), _rows(S, 1:(K - 1)))
+    U = _beta_cdf.(αs, βs, _nonnan.(_unit_clamp.(z), 1 // 2))
+    _from_columns(_nan_columns(U, _simplex_mask(Xc)), X)
 end
 
-function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet, Z::AbstractArray)
+function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet, U::AbstractArray)
     αs, βs = _stick_breaking_params(d)
-    Zc = _as_columns(Z)
-    P = _quantile_arg.(Zc)
-    # The Beta variates `v` and their complements `1 - v`, both from the
-    # lower tail like `beta_inc_inv` does, exact also for `v` close to one:
+    Uc = _as_columns(U)
+    P = _quantile_arg.(Uc)
+    # The break fractions `z` and their complements `1 - z`, both from the
+    # lower tail like `beta_inc_inv` does, exact also for `z` close to one:
     lo = P .<= 1 // 2
     y = _beta_quantile.(ifelse.(lo, αs, βs), ifelse.(lo, βs, αs), ifelse.(lo, P, 1 .- P))
-    beta_v = ifelse.(lo, y, 1 .- y)
-    beta_w = ifelse.(lo, 1 .- y, y)
-    # Each component takes what its Beta variate leaves of the remaining
-    # mass, the last one all of it:
-    X = vcat(beta_w, _ones_row(beta_w)) .* vcat(_ones_row(beta_v), cumprod(beta_v; dims = 1))
-    _from_columns(_nan_columns(X, _column_all((Zc .>= 0) .& (Zc .<= 1))), Z)
+    z = ifelse.(lo, y, 1 .- y)
+    r = ifelse.(lo, 1 .- y, y)
+    # Each component takes its fraction of the remaining stick, the last one
+    # all of it:
+    X = vcat(z, _ones_row(z)) .* vcat(_ones_row(r), cumprod(r; dims = 1))
+    _from_columns(_nan_columns(X, _column_all((Uc .>= 0) .& (Uc .<= 1))), U)
 end
 
 @inline _suffix_sums(X::AbstractArray) = reverse(cumsum(reverse(X; dims = 1); dims = 1); dims = 1)

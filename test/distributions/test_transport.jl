@@ -204,19 +204,47 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
     @testset "Dirichlet precision and boundary" begin
         dir = Dirichlet([2.0, 3.0, 4.0])
         f = transport_to(StdUniform()^2, dir)
-        for x in ([1 - 2e-10, 1e-10, 1e-10], [0.2, 0.8 - 1e-12, 1e-12], [0.2, 0.3, 0.5])
+        # Small break fractions are exact, also when followed by a dominant
+        # component:
+        for x in ([1e-10, 1e-10, 1 - 2e-10], [1e-12, 0.8 - 1e-12, 0.2], [0.2, 0.3, 0.5])
             @test all(isapprox.(inverse(f)(f(x)), x, rtol = 1e-8))
         end
-        # Up to the saturation of uniform variates close to one:
-        for x in ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+        # Break fractions close to one saturate the uniform variates, which
+        # limits the resolution of the components after a dominant one to
+        # about `eps()^(1 / sum(α[i+1:end]))`:
+        for (x, atol) in (([0.0, 0.0, 1.0], 1e-12), ([0.0, 1.0, 0.0], 1e-3), ([1.0, 0.0, 0.0], 1e-2))
             @test all(isfinite, f(x))
-            @test inverse(f)(f(x)) ≈ x atol = 1e-5
+            @test inverse(f)(f(x)) ≈ x atol = atol
         end
         # A single component, without degrees of freedom:
         d1 = asmeasure(Dirichlet([1.0]))
         @test transport_to(d1, StdUniform()^0)(Float64[]) == [1.0]
         @test transport_to(StdUniform()^0, d1)([1.0]) == Float64[]
         @test MeasureBase.batched_transport_from_std(StdUniform, Dirichlet([1.0]), zeros(0, 3)) == ones(1, 3)
+    end
+
+    @testset "Dirichlet stick-breaking orientation" begin
+        α = [2.0, 3.0, 4.0, 1.5]
+        d = Dirichlet(α)
+        f = transport_to(d, StdUniform()^3)
+        # FlatPPL: break fractions `z_i ~ Beta(α_i, sum(α[i+1:end]))`, and
+        # `x_i = z_i * (1 - sum(x[1:i-1]))`:
+        u = [0.3, 0.7, 0.45]
+        x_ref = zeros(4)
+        for i in 1:3
+            x_ref[i] = quantile(Beta(α[i], sum(α[(i + 1):end])), u[i]) * (1 - sum(x_ref[1:(i - 1)]))
+        end
+        x_ref[4] = 1 - sum(x_ref[1:3])
+        @test f(u) ≈ x_ref
+        @test inverse(f)(x_ref) ≈ u
+        # The volume element of the free coordinates is the Dirichlet density:
+        J = ForwardDiff.jacobian(v -> f(v)[1:3], u)
+        @test logabsdet(J)[1] ≈ -logpdf(d, x_ref)
+        @test last(with_logabsdet_jacobian(f, u)) ≈ logabsdet(J)[1]
+        # Uniform variates give Dirichlet variates:
+        X = flatview(f.(sliced(rand(StableRNG(789990641), 3, 10^5), Val(1))))
+        @test vec(mean(X; dims = 2)) ≈ mean(d) rtol = 0.01
+        @test cov(X; dims = 2) ≈ cov(d) atol = 2e-3
     end
 
     @testset "trafo autodiff pullbacks" begin

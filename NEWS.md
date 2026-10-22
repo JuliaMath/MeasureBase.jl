@@ -107,6 +107,13 @@ implementation per measure type for single variates and batches. See the
   simplex, `Lebesgue(MeasureBase.StdSimplex(n))`, as base and root measure
   instead of Lebesgue measure on `ℝⁿ`, relative densities with respect to
   measures with densities on `ℝⁿ` throw.
+- Dirichlet transports use FlatPPL's stick-breaking orientation, with the
+  break fractions `z_i ~ Beta(α_i, Σ_{j>i} α_j)` and
+  `x_i = z_i * (1 - Σ_{j<i} x_j)`. The standard uniform coordinates of
+  Dirichlet variates differ from BAT 5.x and MeasureBase 0.14, they are
+  complemented per coordinate (`u ↦ 1 - u`). Small break fractions are
+  resolved exactly, components after a dominant one only to the resolution
+  of uniform variates close to one.
 - Transport Jacobians exclude weights: weighted measures transport like
   their base, map and log-abs-det Jacobian alike
   (`with_logabsdet_jacobian(transport_to(StdNormal(), 2 * StdNormal()), x) == (x, 0)`).

@@ -154,8 +154,10 @@ atomic measures) still get the volume element everywhere.
   transports to the standard measure matching their shape (`families.jl`),
   other univariate distributions go via `StdLogistic` (log-cdf and
   quantile). `MvNormal` works on column batches through its Cholesky
-  factor, `Dirichlet` through stick-breaking Beta transports with `cumsum`
-  and `cumprod` along the variate dimension (`multivariate.jl`), with
+  factor, `Dirichlet` through stick-breaking Beta transports in FlatPPL's
+  orientation (break fractions `Beta(α_i, Σ_{j>i} α_j)`, the complement
+  of BAT 5.x's coordinates) with `cumsum` and `cumprod` along the variate
+  dimension (`multivariate.jl`), with
   densities relative to `Lebesgue(StdSimplex(n))`, the coordinate measure
   of the simplex (as in FlatPPL), its own base and root measure. Incomplete
   gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
