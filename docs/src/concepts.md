@@ -68,13 +68,26 @@ over them. Other compute units allocate their own arrays.
 
 Variates of `mcombine(vcat, ...)`, of binds and of tuple products inside
 such combinations are flat vectors, consumed with the with-rest protocol.
-Point forms return `(result, x_μ, x_rest)` (binds need the consumed
-variate), batched forms take streams `(rows, batch dims...)` and a
-multiplicity `sz::SizeLike` of variates per stream and return
-`(result, rest)`. Powers pass their size as multiplicity to their base,
-combined measures and tuple products split rows by their fixed stream
-lengths. [`MeasureBase.fixed_stream_size`](@ref) decides whether a batch
-of streams is consumed in fused operations or stream by stream.
+Point forms take a single stream `x` (a vector) and return
+`(result, x_μ, x_rest)`, with the consumed variate `x_μ` (binds need it)
+and the unconsumed rest of the stream.
+
+Batched forms take a batch of streams `X`, an array `(rows, batch
+dims...)` with the streams along the first dimension, and a multiplicity
+`sz::SizeLike`: each stream holds `prod(sz)` consecutive variates of the
+measure, which are consumed together, and they return `(result, X_rest)`.
+The result is a batch over `(sz..., batch dims...)`: log-densities as an
+array of that shape, variates as a flat batch `(variate dims..., sz...,
+batch dims...)`, standard variates as streams `(dof * prod(sz), batch
+dims...)`. Scalar variates are consumed as `(1, sz..., batch dims...)`.
+A single stream with `sz == ()` is the point case. Powers pass their size
+as multiplicity to their base, combined measures and tuple products split
+rows by their fixed stream lengths.
+
+[`MeasureBase.fixed_stream_size`](@ref) decides whether a batch of
+streams is consumed in fused operations or stream by stream: measures for
+which it is false are only called with single streams and `sz == ()`, the
+outermost stream combinator loops over the streams.
 
 ## Transport
 
@@ -143,6 +156,28 @@ derived.
 
 All of these are declared `public` (see the [API](@ref) page) and
 must be qualified with `MeasureBase.` when extended.
+
+Measures come in two tiers:
+
+- **Fixed-size variates.** Measures whose variates all have the same size
+  declare their variate rank, `MeasureBase.mspace_ndims(::Type{<:M})`, and
+  optionally their flat variate size, `MeasureBase.mspace_flatsize(::M)`
+  (or the type form, for static sizes). They get the fused batched path:
+  batches of densities, transports and draws, and the consumption of any
+  number of variates per stream in a batch of streams, from their batched
+  kernels.
+- **Value-dependent variate sizes.** Measures whose variate size depends on
+  the variate (like binds) implement the with-rest hooks
+  [`MeasureBase.logdensityof_with_rest`](@ref),
+  [`MeasureBase.batched_logdensityof_with_rest`](@ref),
+  [`MeasureBase.transport_to_std_with_rest`](@ref),
+  [`MeasureBase.transport_from_std_with_rest`](@ref),
+  [`MeasureBase.batched_transport_to_std_with_rest`](@ref) and
+  [`MeasureBase.batched_transport_from_std_with_rest`](@ref) (the batched
+  forms for single streams and `sz == ()`), and declare
+  `MeasureBase.fixed_stream_size(::Type{<:M}) = static(false)`. Batches
+  of such variates are evaluated variate by variate, see
+  [Streams](@ref) for the conventions.
 
 A scalar-variate leaf `M` with `logdensity_def`, `basemeasure` and
 `insupport` has point densities. Batched densities, powers and products
