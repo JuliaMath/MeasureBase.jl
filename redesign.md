@@ -242,12 +242,14 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   unit shapes.
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
-  `checked_arg` at the entry points; variates of the right shape never
-  throw: densities are `-Inf` outside the support (including non-integers
-  for counting-based measures and infinite values), transports are `NaN`
-  outside the support of the source, `NaN` inputs give `NaN` or `-Inf`,
-  relative densities keep `+Inf`/`-Inf`/`NaN`. Finite inputs give finite
-  transports: uniform inputs are clamped into the open unit interval
+  `checked_arg` at the entry points; variates of the right shape in the
+  variate space of the measure never throw: densities are `-Inf` outside
+  the support (including non-integers for counting-based measures and
+  infinite values), transports are `NaN` outside the support of the
+  source, `NaN` inputs give `NaN` or `-Inf`, relative densities keep
+  `+Inf`/`-Inf`/`NaN`. Pushforwards are only defined on the image of their
+  map, the inverse may throw outside of it (see below). Finite inputs give
+  finite transports: uniform inputs are clamped into the open unit interval
   before quantiles (the endpoints stand for their nearest interior grid
   points, a null-set convention like BAT's `[eps, 1 - eps]` clamping in
   practice), tail probabilities of log-space conversions floor at the
@@ -283,9 +285,10 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   `firstarg`/`secondarg`) weight the kept measure with the mass of the
   dropped one (`massof(α) * massof(β)`), pointwise for binds; where that
   mass is unknown, so are the mass and the density of the projection.
-- Pushforwards through non-surjective maps (`pushfwd(exp, StdNormal())`)
-  throw a `DomainError` from the inverse outside the image (`log(-1.0)`),
-  open decision: mask by the image or document.
+- Pushforwards through non-surjective maps (decided 2026-10-23):
+  pushforwards are only defined on the image of their map, the inverse may
+  throw outside of it (`logdensityof(pushfwd(exp, StdNormal()), -1.0)`
+  throws a `DomainError` from `log`). Documented, not masked.
 - Empty batches of array products over heterogeneous marginals fail in
   the reduction (`zero(Any)`), needs an `init` keyword for
   `sum_leading_dims` in StaticThings.

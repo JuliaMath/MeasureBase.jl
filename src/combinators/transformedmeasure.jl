@@ -306,11 +306,16 @@ end
     pushfwd(f, μ, style = AdaptRootMeasure())
 
 Return the [pushforward
-measure](https://en.wikipedia.org/wiki/Pushforward_measure) from `μ` the
+measure](https://en.wikipedia.org/wiki/Pushforward_measure) of `μ` under the
 [measurable function](https://en.wikipedia.org/wiki/Measurable_function) `f`.
 
-To manually specify an inverse, call 
+To manually specify an inverse, call
 `pushfwd(InverseFunctions.setinverse(f, finv), μ, style)`.
+
+Pushforwards are only defined on the image of `f`. Kernels of measures
+never throw for values in their variate space, but the inverse of `f` may
+throw outside of the image: `logdensityof(pushfwd(exp, StdNormal()), -1.0)`
+throws a `DomainError` from `log`.
 """
 function pushfwd end
 export pushfwd

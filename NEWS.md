@@ -46,7 +46,10 @@ implementation per measure type for single variates and batches. See the
   finite inputs give finite results (uniform inputs are clamped into the
   open unit interval).
 - Only variates of the wrong shape throw (an `ArgumentError`), kernels
-  never throw for values.
+  never throw for values in the variate space of a measure. Pushforwards
+  are only defined on the image of their map, outside of it the inverse
+  may throw (`logdensityof(pushfwd(exp, StdNormal()), -1.0)` throws a
+  `DomainError` from `log`).
 - `getdof` may return a static integer, `insupportof` may return
   `MeasureBase.NoFastInsupport`.
 - Batched kernels of measures without a declared variate rank throw.

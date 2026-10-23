@@ -137,8 +137,12 @@ test_measure_contracts(μ, x_out; kwargs...) =
         @test f.(xs) ≈ map(f, xs)
     end
 
+    # Pushforwards are only defined on the image of their map, the inverse
+    # may throw outside of it:
+    @test logdensityof(pushfwd(exp, StdNormal()), 2.0) ≈ -log(2.0) - log(2π) / 2 - log(2.0)^2 / 2
+    @test_throws DomainError logdensityof(pushfwd(exp, StdNormal()), -1.0)
+
     # Known gaps:
-    @test_broken logdensityof(pushfwd(exp, StdNormal()), -1.0) == -Inf
     let P = productmeasure([StdNormal(), StdExponential()])
         @test isempty(logdensities(P, rand(P^0)))
     end
