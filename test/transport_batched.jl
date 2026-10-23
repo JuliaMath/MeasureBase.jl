@@ -201,6 +201,20 @@ using JLArrays
         @test_throws ArgumentError transports(f, nestedview(randn(3, 2, 4), 2))
     end
 
+    @testset "transported batches have the layout of rand" begin
+        for ν in (
+            productmeasure((StdNormal(), StdExponential())),
+            productmeasure((a = StdNormal(), b = StdExponential()^2, c = Dirac(2.0))),
+            productmeasure((a = weightedmeasure(0.3, StdNormal()), b = productmeasure((x = StdUniform(),)))),
+            productmeasure((StdNormal(), StdExponential()))^3,
+            weightedmeasure(0.3, StdNormal()^2),
+        )
+            n = Int(MeasureBase.getdof(ν))
+            Y = transports(transport_to(ν, StdUniform()^n), rand(n, 5))
+            @test typeof(Y) == typeof(rand(ν^5))
+        end
+    end
+
     @testset "batch layouts" begin
         f = transport_to(StdNormal()^3, StdUniform()^3)
         @test_throws ArgumentError f.(rand(6, 2))
