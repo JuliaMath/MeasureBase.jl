@@ -36,6 +36,7 @@ include("contracts.jl")
 
 include("combinators/smart_constructors.jl")
 include("combinators/weighted.jl")
+include("combinators/normalized.jl")
 include("combinators/superpose.jl")
 include("combinators/transformedmeasure.jl")
 include("combinators/reshape.jl")

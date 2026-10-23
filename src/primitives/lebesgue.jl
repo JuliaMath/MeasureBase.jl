@@ -79,6 +79,8 @@ end
 
 @inline logdensityof_impl(μ::Lebesgue, x) = _checksupport(insupportof(μ, x), 0.0)
 
+massof(μ::Lebesgue{<:AbstractInterval}) = width(μ.support)
+
 massof(::Lebesgue{RealValues}, s::Interval) = width(s)
 
 # Example: 

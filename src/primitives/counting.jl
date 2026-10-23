@@ -47,6 +47,10 @@ insupportof(μ::Counting, x) = x ∈ μ.support
 
 insupportof(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 
+massof(::Counting{IntegerValues}) = static(Inf)
+massof(μ::Counting{<:BoundedInts}) = max(μ.support.upper - μ.support.lower + static(1), static(0))
+massof(μ::Counting{<:Union{AbstractSet,AbstractRange}}) = length(μ.support)
+
 massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupportof(c), s))
 
 massof(::CountingBase, s::Set) = length(s)
