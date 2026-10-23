@@ -295,6 +295,7 @@ _bind_mass(μ::Bind, α::WeightedMeasure) = exp(α.logweight) * _bind_mass(μ, �
 _bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), α.components)
 
 @inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
+@inline fast_dof(μ::Bind) = NoDOF{typeof(μ)}()
 
 # Bypass `checked_arg`, would require potentially costly evaluation of f_β:
 @inline checked_arg(::Bind, x) = x

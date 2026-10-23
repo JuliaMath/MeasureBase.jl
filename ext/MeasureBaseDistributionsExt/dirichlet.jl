@@ -4,6 +4,7 @@ const DirichletMeasure = AsMeasure{<:Dirichlet}
 
 MeasureBase.getdof(d::Dirichlet) = length(d) - 1
 MeasureBase.getdof(m::DirichletMeasure) = getdof(m.obj)
+MeasureBase.fast_dof(m::DirichletMeasure) = getdof(m.obj)
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Dirichlet}) = StdUniform
 

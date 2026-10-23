@@ -361,7 +361,7 @@ end
 @inline _all_insupport(A::AbstractArray) = all(A)
 
 getdof(d::AbstractProductMeasure) = _sum_dofs(getdof, marginals(d))
-fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
+fast_dof(d::AbstractProductMeasure) = _sum_fast_dofs(marginals(d), d)
 
 # Sums over static DOFs of tuples fold at compile time, arrays of marginals
 # are summed dynamically (also on GPU arrays):
@@ -369,6 +369,13 @@ fast_dof(d::AbstractProductMeasure) = _sum_dofs(fast_dof, marginals(d))
 @inline _sum_dofs(f, mar::AbstractArray{M}) where {M} = _sum_dofs(f, mar, _unit_dof(M))
 @inline _sum_dofs(f, mar::AbstractArray, ::True) = length(mar)
 @inline _sum_dofs(f, mar::AbstractArray, ::False) = mapreduce(_dynamic_dof ∘ f, +, mar; init = 0)
+
+# Summing over a dynamic number of marginals is not constant time:
+@inline _sum_fast_dofs(mar, ::Any) = _sum_dofs(fast_dof, mar)
+@inline _sum_fast_dofs(mar::AbstractArray{M}, d) where {M} = _sum_fast_dofs(mar, d, _unit_dof(M))
+@inline _sum_fast_dofs(mar::AbstractArray, ::Any, ::True) = length(mar)
+@inline _sum_fast_dofs(::AbstractArray, d, ::False) = NoFastDOF{typeof(d)}()
+@inline _sum_fast_dofs(mar::StaticArray, ::Any, ::False) = _sum_dofs(fast_dof, mar)
 
 # Marginals with scalar variates and a standard transport have one degree
 # of freedom each, so their total needs no reduction over the marginals

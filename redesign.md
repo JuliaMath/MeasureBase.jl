@@ -80,8 +80,13 @@ normalized by their mass. Leaves of unknown mass make
 `with_logabsdet_jacobian` throw. Standard streams are
 `(dof, batch dims...)`; the from-side default consumes `fast_dof(μ)`
 entries per variate, composed measures implement the with-rest forms.
-`getdof`/`fast_dof` are declaration-derived, used at construction time
-and for chunking, never inside kernels.
+`fast_dof` is static or constant-time (standard measures, Lebesgue, Dirac,
+wrapped univariate and Dirichlet distributions, powers, tuple products,
+arrays of single-DOF marginals, combinations), `NoFastDOF` otherwise
+(default: the fast DOF of the base measure, static `getdof` of
+primitives). Transports and draws split streams with it, without it
+composed measures take the with-rest path and leaves fall back to
+`getdof` once per call. Neither is used inside kernels.
 
 **Static variates.** Sizes are `StaticThings.SizeLike` throughout, the
 with-rest multiplicity and the batch size of `rand` included, so a

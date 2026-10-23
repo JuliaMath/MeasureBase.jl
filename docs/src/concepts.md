@@ -106,9 +106,18 @@ log form, tail-accurately. Measure types implement transport to and from
 their preferred standard measure only. Standard variates are flat
 streams `(dof, batch dims...)`.
 
-`getdof` gives the degrees of freedom of a measure. It is derived from
-declarations, used at construction time and for chunking, never inside
-kernels.
+[`getdof`](@ref) gives the degrees of freedom of a measure, and
+[`fast_dof`](@ref) gives them where they are static or take constant time:
+for standard measures, Lebesgue measure, point masses, wrapped univariate
+and Dirichlet distributions, and for powers, tuple products, products over
+arrays of marginals with one degree of freedom each and combinations of
+measures with fast degrees of freedom. Other measures return
+`MeasureBase.NoFastDOF`. Transports and random variate generation split
+streams of standard variates into the chunks of single variates with
+`fast_dof`. Without it, composed measures consume their standard variates
+component by component (the with-rest path, see [Streams](@ref)) and
+other measures fall back to `getdof`, once per call. Neither is used
+inside kernels.
 
 ## Random variates
 
@@ -152,7 +161,8 @@ derived.
 | Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupportof` | `mspace_ndims`, `batched_logdensityof_impl` (or `batched_logdensity_def`) | kernels via components, with-rest forms |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | also `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
 | Random | `batched_rand_impl` or `rand_impl` (derived from a transport) | `batched_rand_impl` | derived |
-| Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
+| Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize` | derived |
+| Degrees of freedom | `getdof` and `fast_dof` where they differ from those of the base measure (e.g. over counting measures) | the same | derived |
 
 All of these are declared `public` (see the [API](@ref) page) and
 must be qualified with `MeasureBase.` when extended.
@@ -165,7 +175,8 @@ Measures come in two tiers:
   (or the type form, for static sizes). They get the fused batched path:
   batches of densities, transports and draws, and the consumption of any
   number of variates per stream in a batch of streams, from their batched
-  kernels.
+  kernels. Their fast degrees of freedom (`fast_dof`) let transports and
+  draws split batches of standard variates up front.
 - **Value-dependent variate sizes.** Measures whose variate size depends on
   the variate (like binds) implement the with-rest hooks
   [`MeasureBase.logdensityof_with_rest`](@ref),

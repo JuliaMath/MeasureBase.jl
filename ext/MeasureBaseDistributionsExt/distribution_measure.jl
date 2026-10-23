@@ -116,7 +116,8 @@ end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D)
 
-@inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = 1
+@inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
+@inline MeasureBase.fast_dof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
 
 # Delegate transport to the wrapped distribution:
 @inline MeasureBase.transport_to_std(::Type{S}, m::DistributionMeasure, x) where {S<:StdMeasure} =

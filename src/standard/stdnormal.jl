@@ -19,8 +19,6 @@ export StdNormal
 @inline logdensity_def(::StdNormal, x) = -float(x)^2 / 2
 @inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), LebesgueBase())
 
-@inline getdof(::StdNormal) = static(1)
-
 @inline rand_impl(ctx::GenContext, ::StdNormal) = randn(ctx)
 @inline batched_rand_impl(ctx::GenContext, ::StdNormal, sz::SizeLike) = _randn_bulk(ctx, sz)
 

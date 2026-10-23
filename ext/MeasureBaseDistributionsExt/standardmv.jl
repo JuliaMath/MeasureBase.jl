@@ -3,6 +3,7 @@
 
 MeasureBase.getdof(d::AbstractMvNormal) = length(d)
 MeasureBase.getdof(m::AsMeasure{<:AbstractMvNormal}) = getdof(m.obj)
+MeasureBase.fast_dof(m::AsMeasure{<:AbstractMvNormal}) = getdof(m.obj)
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:AbstractMvNormal}) = StdNormal
 

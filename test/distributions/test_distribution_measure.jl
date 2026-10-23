@@ -59,6 +59,7 @@ end
     L = MeasureBase.Lebesgue(MeasureBase.StdSimplex(3))
     @test MeasureBase.basemeasure(d1) == L && MeasureBase.rootmeasure(d1) == L
     @test MeasureBase.getdof(d1) == MeasureBase.getdof(L) == 2
+    @test MeasureBase.fast_dof(d1) == 2
     x = [0.2, 0.3, 0.5]
     @test MeasureBase.logdensity_rel(d2, d1, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x) - log(2)
     @test MeasureBase.logdensity_rel(d2, L, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x)
@@ -67,6 +68,19 @@ end
         @test_throws ArgumentError MeasureBase.logdensity_rel(d1, ν, x)
         @test_throws ArgumentError MeasureBase.logdensity_rel(ν, d1, x)
     end
+end
+
+@testset "fast DOF of wrapped distributions" begin
+    using Distributions: Normal, Poisson, Dirichlet, MvNormal
+    using MeasureBase: fast_dof, restrict
+    @test @inferred(fast_dof(AbstractMeasure(Normal(0.3, 2.0)))) === MeasureBase.static(1)
+    @test @inferred(fast_dof(AbstractMeasure(Poisson(2.0)))) === MeasureBase.static(1)
+    @test fast_dof(restrict(x -> x > 1, AbstractMeasure(Poisson(2.0)))) === MeasureBase.static(1)
+    @test fast_dof(AbstractMeasure(Dirichlet([1.0, 2.0, 3.0, 4.0]))) == 3
+    @test fast_dof(AbstractMeasure(MvNormal([1.0 0.2; 0.2 2.0]))) == 2
+    @test fast_dof(AbstractMeasure(Normal())^3) == 3
+    # Transport partners take the fast DOF, static where it is static:
+    @test transport_to(StandardNormal, Normal(0.3, 2.0)).ν === MeasureBase.StdNormal()
 end
 
 @testset "pushforwards of discrete distributions" begin

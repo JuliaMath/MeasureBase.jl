@@ -30,11 +30,15 @@ struct NoDOF{MU} <: AbstractNoDOF{MU} end
     getdof(μ)
 
 Returns the effective number of degrees of freedom of variates of
-measure `μ`.
+measure `μ`, or [`NoDOF{typeof(μ)}()`](@ref NoDOF) if they have no global
+number of degrees of freedom (e.g. for binds).
 
 The effective NDOF may differ from the length of the variates. For example,
 the effective NDOF for a Dirichlet distribution with variates of length `n`
-is `n - 1`.
+is `n - 1`. `getdof` may take time linear in the number of components of
+`μ`, see [`fast_dof`](@ref) for the constant-time tier.
+
+Defaults to the DOF of `basemeasure(μ)`.
 
 Also see [`check_dof`](@ref).
 """
@@ -50,8 +54,8 @@ function getdof end
 """
     MeasureBase.NoFastDOF{MU} <: AbstractNoDOF{MU}
 
-Indicates that there is no way to compute the degrees of freedom of a
-measure of type `MU` efficiently.
+Indicates that the degrees of freedom of a measure of type `MU` can't be
+computed in constant time.
 """
 struct NoFastDOF{MU} <: AbstractNoDOF{MU} end
 
@@ -59,19 +63,44 @@ struct NoFastDOF{MU} <: AbstractNoDOF{MU} end
 """
     fast_dof(μ::MU)
 
-Returns the effective number of degrees of freedom of variates of
-measure `μ`, if it can be computed efficiently, otherwise
-returns [`NoFastDOF{MU}()`](@ref).
+Returns the effective number of degrees of freedom of variates of measure
+`μ` if it is static or can be computed in constant time, otherwise
+[`NoFastDOF{MU}()`](@ref) (or [`NoDOF{MU}()`](@ref NoDOF) if `μ` has no
+global number of degrees of freedom).
 
-Defaults to `getdof(μ)` and should be specialized for measures for
-which DOF can't be computed instantly.
+Transports and random variate generation split streams of standard
+variates into the chunks of single variates with `fast_dof`. Without fast
+DOF, composed measures consume their standard variates component by
+component (see [`MeasureBase.transport_from_std_with_rest`](@ref)), and
+other measures fall back to [`getdof`](@ref).
+
+Standard measures, Lebesgue measure on the reals, point masses and wrapped
+univariate distributions have a static DOF, Dirichlet distributions
+`n - 1`. Powers, tuple products, products over arrays of marginals with one
+DOF each and combinations of measures with fast DOF have fast DOF as well.
+Measures without a specialization take the fast DOF of their base measure,
+down to a primitive measure with a static `getdof`.
 
 Also see [`getdof`](@ref) and [`check_dof`](@ref).
 """
 function fast_dof end
 export fast_dof
 
-fast_dof(μ) = getdof(μ)
+@inline fast_dof(μ::MU) where {MU} = _default_fast_dof(MU, basemeasure(μ))
+
+# Primitive measures (their own base measure) have fast DOF if their DOF is
+# static:
+@inline _default_fast_dof(::Type{MU}, μ::MU) where {MU} = _static_dof_or_nofast(getdof(μ), MU)
+@inline _default_fast_dof(::Type{MU}, mu_base) where {MU} = fast_dof(mu_base)
+@inline _static_dof_or_nofast(n::StaticInteger, ::Type) = n
+@inline _static_dof_or_nofast(nodof::NoDOF, ::Type) = nodof
+@inline _static_dof_or_nofast(::Any, ::Type{MU}) where {MU} = NoFastDOF{MU}()
+
+# The DOF used to split streams of standard variates: fast where possible,
+# else exact (computed once per call):
+@inline _split_dof(μ) = _split_dof(fast_dof(μ), μ)
+@inline _split_dof(n::IntegerLike, μ) = n
+@inline _split_dof(::AbstractNoDOF, μ) = getdof(μ)
 
 
 """
@@ -90,7 +119,7 @@ function some_dof end
 
 function some_dof(μ)
     m = asmeasure(μ)
-    _try_direct_dof(m, getdof(m))
+    _try_direct_dof(m, _split_dof(m))
 end
 
 _try_direct_dof(::AbstractMeasure, dof::IntegerLike) = dof

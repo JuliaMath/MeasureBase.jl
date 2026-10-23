@@ -79,7 +79,7 @@ struct _NoRandImpl end
 @inline _rand_default(ctx::GenContext, μ, sz::SizeLike, ::_NoRandImpl) = _rand_default(ctx, μ, sz)
 
 @inline function _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{S}) where {S<:StdMeasure}
-    _rand_via_std_dof(ctx, μ, sz, S, fast_dof(μ))
+    _rand_via_std_dof(ctx, μ, sz, S, _split_dof(μ))
 end
 @inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{AnyStdMeasure}) = _rand_via_std(ctx, μ, sz, StdUniform)
 @inline _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Any) = _rand_pointwise(ctx, μ, sz)

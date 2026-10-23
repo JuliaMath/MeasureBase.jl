@@ -193,8 +193,15 @@ function _batched_from_std_bydof(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, 
     Z_μ, Z_rest = _batched_split(Z, _chunk_rows(n, sz))
     return batched_transport_from_std(S, μ, _split_multiplicity(Z_μ, sz, n)), Z_rest
 end
-@noinline function _batched_from_std_bydof(::Type{S}, μ, ::AbstractArray, ::SizeLike, ::AbstractNoDOF) where {S}
-    throw(ArgumentError("Batched transport from standard measures requires measures of type $(nameof(typeof(μ))) to have fast degrees of freedom or to implement MeasureBase.batched_transport_from_std_with_rest"))
+# Without fast degrees of freedom, the exact ones split the streams:
+function _batched_from_std_bydof(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, ::NoFastDOF) where {S}
+    _batched_from_std_bydof(S, μ, Z, sz, getdof(μ))
+end
+function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, ::NoFastDOF) where {S}
+    _from_std_with_rest_bydof(S, μ, z, getdof(μ))
+end
+@noinline function _batched_from_std_bydof(::Type{S}, μ, ::AbstractArray, ::SizeLike, ::NoDOF) where {S}
+    throw(ArgumentError("Batched transport from standard measures requires measures of type $(nameof(typeof(μ))) to have degrees of freedom or to implement MeasureBase.batched_transport_from_std_with_rest"))
 end
 
 

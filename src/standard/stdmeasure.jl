@@ -15,6 +15,8 @@ StdMeasure(::typeof(randn)) = StdNormal()
 @inline mspace_flatsize(::StdMeasure) = ()
 @inline mspace_flatsize(::Type{<:StdMeasure}) = ()
 
+@inline getdof(::StdMeasure) = static(1)
+@inline fast_dof(::StdMeasure) = static(1)
 @inline check_dof(::StdMeasure, ::StdMeasure) = nothing
 
 # Standard measures have real scalar variates, checking them directly keeps
