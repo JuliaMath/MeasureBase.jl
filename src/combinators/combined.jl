@@ -70,6 +70,9 @@ so `massof(μ) == massof(α) * massof(β)`. The projections
 `mcombine(OneTwoMany.firstarg, α, β)` and `mcombine(OneTwoMany.secondarg, α, β)`
 are `α` resp. `β` weighted by the mass of the other measure. If that mass is
 unknown, the projection has an unknown mass and no density.
+
+The parts of a `CombinedMeasure` are available via
+[`MeasureBase.combinedmeasures`](@ref) and [`MeasureBase.valuecombinator`](@ref).
 """
 function mcombine end
 export mcombine
@@ -145,6 +148,35 @@ struct CombinedMeasure{FC,MA<:AbstractMeasure,MB<:AbstractMeasure} <: AbstractMe
     α::MA
     β::MB
 end
+
+
+"""
+    MeasureBase.combinedmeasures(μ::CombinedMeasure)
+
+Returns the measures `(α, β)` that went into the combined measure
+`μ = mcombine(f_c, α, β)`.
+
+See [`mcombine`](@ref) and [`MeasureBase.valuecombinator`](@ref).
+"""
+function combinedmeasures end
+
+combinedmeasures(μ::CombinedMeasure) = (μ.α, μ.β)
+
+
+"""
+    MeasureBase.valuecombinator(μ::CombinedMeasure)
+    MeasureBase.valuecombinator(μ::MeasureBase.Bind)
+    MeasureBase.valuecombinator(f_k::MeasureBase.MKernel)
+
+Returns the value combination function `f_c` of a combined measure
+`mcombine(f_c, α, β)`, a bind `mbind(f_β, α, f_c)` or a transition kernel
+`mkernel(f_β, f_c)`.
+
+See [`mcombine`](@ref), [`mbind`](@ref) and [`mkernel`](@ref).
+"""
+function valuecombinator end
+
+valuecombinator(μ::CombinedMeasure) = μ.f_c
 
 @inline function preferred_stdmeasure(::Type{<:CombinedMeasure{<:Any,MA,MB}}) where {MA,MB}
     promote_stdmeasure(preferred_stdmeasure(MA), preferred_stdmeasure(MB))

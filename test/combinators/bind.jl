@@ -10,7 +10,7 @@ using MeasureBase
 using MeasureBase: StdExponential, StdNormal, StdUniform
 using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
 using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
-using MeasureBase: superpose, massof
+using MeasureBase: superpose, massof, mcombine
 import OneTwoMany
 
 # A value combination function with a specialized split:
@@ -218,6 +218,26 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         f = transport_to(StdUniform()^2, μ)
         @test f(ba) ≈ transport_to(StdUniform()^2, mbind(f_β, α, tuple))((ba[2], ba[1]))
         @test_throws ArgumentError logdensityof(mbind(f_β, α, (a, b) -> a + b), 1.0)
+    end
+
+    @testset "kernel accessors" begin
+        kernelmeasure, valuecombinator = MeasureBase.kernelmeasure, MeasureBase.valuecombinator
+        μ = mbind(f_β, α, tuple)
+        f_k = bindkernel(μ)
+        @test kernelmeasure(f_k, 0.7) == f_β(0.7)
+        @test kernelmeasure(f_β, 0.7) == f_β(0.7)
+        @test kernelmeasure(mkernel(f_β), 0.7) == f_β(0.7)
+        # The kernel itself returns the combined measure, `kernelmeasure` not:
+        @test f_k(0.7) == mcombine(tuple, MeasureBase.Dirac(0.7), f_β(0.7))
+        @test kernelmeasure(a -> StdNormal(), 0.7) === StdNormal()
+        @test valuecombinator(μ) === tuple
+        @test valuecombinator(f_k) === tuple
+        @test valuecombinator(mkernel(f_β)) === OneTwoMany.secondarg
+        @test valuecombinator(mbind(f_β, α, vcat)) === vcat
+
+        ab = rand(stblrng(), Float64, μ)
+        @test logdensityof(μ, ab) ≈
+              logdensityof(boundmeasure(μ), ab[1]) + logdensityof(kernelmeasure(f_k, ab[1]), ab[2])
     end
 
     @testset "mbind with Dirac" begin

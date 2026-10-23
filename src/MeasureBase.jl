@@ -272,6 +272,7 @@ using .Interface
     # Measure types and accessors:
     pwr_base, pwr_axes, pwr_size, DensityMeasure, AsMeasure, StdSimplex,
     transportmeasure, tpmeasure_split_combined,
+    kernelmeasure, valuecombinator, combinedmeasures,
     gettransform, TransformVolCorr, NoVolCorr, WithVolCorr
 
 end # module MeasureBase

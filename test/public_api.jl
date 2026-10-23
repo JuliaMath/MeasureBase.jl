@@ -10,7 +10,7 @@ using MeasureBase
             :logdensityof_impl, :batched_logdensityof_impl, :rand_impl, :batched_rand_impl,
             :transport_to_std, :transport_from_std, :preferred_stdmeasure, :mspace_ndims,
             :mspace_flatsize, :checked_arg, :NoDOF, :UnknownMass, :DensityMeasure,
-            :TransportFunction, :GenContext,
+            :TransportFunction, :GenContext, :kernelmeasure, :valuecombinator, :combinedmeasures,
         )
             @test Base.ispublic(MeasureBase, n) && !Base.isexported(MeasureBase, n)
         end

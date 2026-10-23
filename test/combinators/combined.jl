@@ -127,4 +127,15 @@ using AffineMaps: Mul
         ab_reco = transport_to(μ, StdUniform()^2)(y)
         @test ab_reco.first ≈ ab.first && ab_reco.second ≈ ab.second
     end
+
+    @testset "accessors" begin
+        μ = mcombine(vcat, StdNormal()^2, StdExponential()^1)
+        @test μ isa MeasureBase.CombinedMeasure
+        @test MeasureBase.combinedmeasures(μ) == (StdNormal()^2, StdExponential()^1)
+        @test MeasureBase.valuecombinator(μ) === vcat
+        @test mcombine(MeasureBase.valuecombinator(μ), MeasureBase.combinedmeasures(μ)...) == μ
+        a_m, b_m = MeasureBase.combinedmeasures(μ)
+        x = [0.3, -1.2, 0.7]
+        @test logdensityof(μ, x) ≈ logdensityof(a_m, x[1:2]) + logdensityof(b_m, x[3:3])
+    end
 end

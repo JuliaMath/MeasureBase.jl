@@ -101,7 +101,9 @@ implementation per measure type for single variates and batches. See the
 - Extension points and internals for measure implementations are declared
   `public` (on Julia >= 1.11), e.g. `MeasureBase.logdensityof_impl`,
   `MeasureBase.batched_rand_impl`, `MeasureBase.transport_to_std` and
-  `MeasureBase.mspace_ndims`.
+  `MeasureBase.mspace_ndims`. The parts of binds, kernels and combined
+  measures are available via `MeasureBase.kernelmeasure`,
+  `MeasureBase.valuecombinator` and `MeasureBase.combinedmeasures`.
 - Package extensions for Distributions (branch-free kernels for the main
   univariate families, `MvNormal`, `Dirichlet`), AffineMaps and Reactant.
 - `truncate(μ, a..b)` restricts measures with scalar variates and no

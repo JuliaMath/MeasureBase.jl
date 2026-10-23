@@ -110,7 +110,8 @@ by the mass of `β_a`, its density is that of `α` plus the log-mass of
 
 The measure `α` that went into the bind can be retrieved via
 `boundmeasure(mbind(f_β, α, f_c)) == α` and the kernel via
-`bindkernel(mbind(f_β, α, f_c)) == mkernel(f_β, f_c)`.
+`bindkernel(mbind(f_β, α, f_c)) == mkernel(f_β, f_c)`, its parts via
+[`MeasureBase.kernelmeasure`](@ref) and [`MeasureBase.valuecombinator`](@ref).
 
 Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
 can be unambiguously split into `a` and `b` again, knowing `α`. This is
@@ -228,6 +229,26 @@ function boundmeasure end
 export boundmeasure
 
 boundmeasure(μ::Bind) = μ.α
+
+
+"""
+    MeasureBase.kernelmeasure(f_k, a)::AbstractMeasure
+
+Returns the secondary measure `β_a` of the transition kernel `f_k` at the
+primary value `a`, without the value combination: `asmeasure(f_β(a))` for
+`f_k = mkernel(f_β, f_c)` and `asmeasure(f_k(a))` for kernels given as
+plain functions. `kernelmeasure(bindkernel(μ), a)` is the secondary measure
+of the bind `μ` at `a`.
+
+See [`mkernel`](@ref), [`mbind`](@ref) and [`MeasureBase.valuecombinator`](@ref).
+"""
+function kernelmeasure end
+
+kernelmeasure(f_k, a) = asmeasure(f_k(a))
+kernelmeasure(f_k::MKernel, a) = asmeasure(f_k.f_β(a))
+
+valuecombinator(f_k::MKernel) = f_k.f_c
+valuecombinator(μ::Bind) = μ.f_c
 
 
 _get_β_a(μ::Bind, a) = asmeasure(μ.f_β(a))
