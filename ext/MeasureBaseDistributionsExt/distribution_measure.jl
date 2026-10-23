@@ -24,7 +24,7 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 # the context then.
 function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
     if _native_rand(ctx, m.obj)
-        convert_realtype(get_precision(ctx), rand(get_rng(ctx), m.obj))
+        convert_realtype(get_precision(ctx), _dist_rand(get_rng(ctx), m.obj))
     else
         MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
     end
@@ -47,9 +47,18 @@ end
 end
 @inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
 
+# Constant RNGs (for test values) only draw floats, but Distributions'
+# samplers draw integer ranges and may reject constant draws forever, so
+# univariate distributions are sampled by inversion then (in the type of
+# their native draws):
+@inline _dist_rand(rng::AbstractRNG, d::Distribution) = rand(rng, d)
+@inline _dist_rand(rng::ConstantRNG, d::Distribution{Univariate}) = convert(eltype(d), Distributions.quantile(d, rand(rng)))
+
 # A single variate for zero batch dimensions, flat batches otherwise:
-_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, rand(rng, d))
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, _dist_rand(rng, d))
 _flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real} = _flat_powrand_batch(rng, T, d, sz)
+_flat_powrand(rng::ConstantRNG, ::Type{T}, d::Distribution{Univariate}, sz::Dims) where {T<:Real} =
+    fill(convert_realtype(T, _dist_rand(rng, d)), sz)
 
 function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
     convert_realtype(T, reshape(rand(rng, d, prod(sz)), sz...))

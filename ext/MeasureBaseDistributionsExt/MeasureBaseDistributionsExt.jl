@@ -44,6 +44,7 @@ using LogExpFunctions: logistic, log1pexp
 using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, beta_inc_inv
 
 using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
+using ConstantRNGs: ConstantRNG
 
 using Static: True, False, static
 using StaticThings: SizeLike, asnonstatic

@@ -150,3 +150,16 @@ end
     # Without standard transports, Distributions' samplers are used:
     @test rand(ctx(Float64), AbstractMeasure(Poisson(2f0))) isa Int
 end
+
+@testset "test values" begin
+    # Constant RNGs sample univariate distributions by inversion, at the
+    # median, in the type of their native draws:
+    for d in (DiscreteUniform(1, 6), Poisson(3.5), Bernoulli(0.3), Categorical([0.2, 0.5, 0.3]), Gamma(2.0, 3.0))
+        m = AbstractMeasure(d)
+        x = MeasureBase.testvalue(m)
+        @test x isa eltype(d) && x == quantile(d, 0.5)
+        @test Distributions.insupport(d, x) && isfinite(logdensityof(m, x))
+        @test MeasureBase.testvalue(Float32, m) ≈ x
+        @test rand(MeasureBase.ConstantRNG(), Float64, m^3) == fill(x, 3)
+    end
+end

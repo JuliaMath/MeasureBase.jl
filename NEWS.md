@@ -147,6 +147,9 @@ implementation per measure type for single variates and batches. See the
   names) is removed, use `paramnames`. Transformed measures have no
   parameters.
 - Transports between point masses return floats.
+- `testvalue` of wrapped univariate distributions is their median (the
+  inversion of the constant uniform draw), also for discrete
+  distributions like `DiscreteUniform` that failed before.
 - Batches of point masses with numeric atoms (from `rand` and from
   transports, also as components of products and powers) are
   `FillArrays.Fill`s on the host, dense arrays on other compute units.
