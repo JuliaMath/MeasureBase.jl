@@ -45,14 +45,12 @@ ForwardDiffPullbacks = "450a3b6d-2448-4ee1-8e34-e4eb8713b605"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [extensions]
 MeasureBaseAffineMapsExt = "AffineMaps"
 MeasureBaseChainRulesCoreExt = "ChainRulesCore"
-MeasureBaseDistributionsExt = ["Distributions", "StatsBase", "StatsFuns", "PDMats"]
+MeasureBaseDistributionsExt = ["Distributions", "PDMats"]
 MeasureBaseDistributionsChainRulesCoreExt = ["Distributions", "ChainRulesCore"]
 MeasureBaseDistributionsForwardDiffExt = ["Distributions", "ForwardDiff"]
 MeasureBaseDistributionsForwardDiffPullbacksExt = ["Distributions", "ForwardDiffPullbacks", "ChainRulesCore"]
@@ -102,8 +100,6 @@ StaticArrays = "1.5"
 StaticThings = "0.3"
 Statistics = "1"
 StructArrays = "0.6.18, 0.7"
-StatsBase = "0.33, 0.34"
-StatsFuns = "0.9, 1, 2"
 Test = "1"
 Tricks = "0.1"
 julia = "1.10"
