@@ -71,5 +71,6 @@ include("mixture.jl")
 include("dirichlet.jl")
 include("multivariate.jl")
 include("dirac.jl")
+include("moments.jl")
 
 end # module MeasureBaseDistributionsExt

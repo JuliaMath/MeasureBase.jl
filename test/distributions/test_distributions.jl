@@ -25,4 +25,5 @@ using .MeasureBaseDistributionsExt:
     include("test_mooncake.jl")
     include("test_reference_values.jl")
     include("test_truncated.jl")
+    include("test_moments.jl")
 end

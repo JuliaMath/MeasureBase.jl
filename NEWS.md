@@ -102,6 +102,11 @@ implementation per measure type for single variates and batches. See the
   uniform variates, as for `Half`). `smf` and `invsmf` are now defined for
   wrapped univariate distributions (cdf and quantile), weighted measures
   and `StdExponential`.
+- `mean`, `var`, `std` and `cov` (Statistics) of the normalized laws of
+  measures with exactly known moments: wrapped distributions, standard
+  measures, point masses, weighted and normalized measures, products and
+  powers (covariances for scalar marginals) and affine pushforwards
+  (AffineMaps). Other measures throw an `ArgumentError`.
 - The transports of `Gamma`, `Beta` and `Dirichlet` are differentiable
   with respect to their shape parameters under ForwardDiff, ChainRules
   (Zygote) and Mooncake, e.g. for hierarchical models with a Dirichlet

@@ -234,6 +234,7 @@ include("combinators/combined.jl")
 include("combinators/bind.jl")
 include("combinators/half.jl")
 include("combinators/truncated.jl")
+include("moments.jl")
 
 #include("implicitmaps.jl")
 

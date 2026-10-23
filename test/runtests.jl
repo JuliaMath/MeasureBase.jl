@@ -27,6 +27,7 @@ include("numtype.jl")
 include("transport.jl")
 include("transport_batched.jl")
 include("smf.jl")
+include("moments.jl")
 include("domains.jl")
 
 include("test_mooncake.jl")

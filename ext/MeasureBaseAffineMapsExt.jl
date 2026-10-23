@@ -5,8 +5,10 @@ module MeasureBaseAffineMapsExt
 using MeasureBase
 using MeasureBase: PushforwardMeasure, AdaptRootMeasure, PushfwdRootMeasure
 using MeasureBase: StaticInteger
-using AffineMaps: AbstractAffineMap
+using AffineMaps: AbstractAffineMap, Mul, Add, Subtract, MulAdd, AddMul, InvMul, InvMulAdd, InvAddMul
 using ChangesOfVariables: with_logabsdet_jacobian
+using LinearAlgebra: diag
+import Statistics
 
 # Affine maps treat matrices as batches of column vectors, so flat batches
 # of vector variates are applied as `(n, :)` matrices:
@@ -45,5 +47,22 @@ _affine_pushfwd_ld(ν::PushforwardMeasure, Y::AbstractArray, k) = MeasureBase._d
 
 @inline _ladj_back(ladj::Number, ::AbstractVector) = ladj
 @inline _ladj_back(ladj::AbstractMatrix, Y::AbstractArray) = reshape(ladj, Base.tail(size(Y)))
+
+
+# Moments of affine pushforwards follow from those of their origin,
+# (co)variances for scalar and vector variates:
+Statistics.mean(ν::_AffinePushfwd) = ν.f(Statistics.mean(ν.origin))
+Statistics.var(ν::_AffinePushfwd) = _affine_var(ν, Statistics.var(ν.origin))
+Statistics.cov(ν::_AffinePushfwd) = _affine_cov(ν, Statistics.var(ν.origin))
+
+_affine_var(ν, v::Number) = _cov_through(ν.f, v)
+_affine_var(ν, ::AbstractVector{<:Number}) = diag(Statistics.cov(ν))
+_affine_var(ν, ::Any) = MeasureBase._no_moment(ν, :variance)
+_affine_cov(ν, ::AbstractVector{<:Number}) = _cov_through(ν.f, Statistics.cov(ν.origin))
+_affine_cov(ν, ::Any) = MeasureBase._no_moment(ν, :covariance)
+
+_cov_through(f::Union{Mul,MulAdd,AddMul}, C) = f.A * C * f.A'
+_cov_through(::Union{Add,Subtract}, C) = C
+_cov_through(f::Union{InvMul,InvMulAdd,InvAddMul}, C) = (f.A \ C) / f.A'
 
 end # module MeasureBaseAffineMapsExt

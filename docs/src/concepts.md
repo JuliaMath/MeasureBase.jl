@@ -180,6 +180,16 @@ Floating-point variates have the precision of the context, also through
 transformations and combinators. Point masses generate their atom
 exactly, and integer variates (e.g. of counting measures) stay integers.
 
+## Moments
+
+`mean`, `var`, `std` and `cov` (from Statistics) give the moments of the
+normalized law of a measure where they are known exactly: for wrapped
+distributions, standard measures, point masses, weighted and normalized
+measures, products and powers (in the layout of their variates,
+covariances for scalar marginals only) and, with AffineMaps loaded, affine
+pushforwards. Other measures throw an `ArgumentError`, MeasureBase doesn't
+estimate moments by sampling.
+
 ## Measure combinators
 
 - `powermeasure(μ, dims)` or `μ^dims`: variates `(base dims..., power
