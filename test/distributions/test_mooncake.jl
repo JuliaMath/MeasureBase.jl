@@ -37,7 +37,7 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
         _test_gradient(x -> transport_def(StdUniform(), Gamma(2.0, 1.0), x), 0.7)
         _test_gradient(x -> transport_def(StdUniform(), truncated(Normal(0.3, 1.2), -0.5, 1.5), x), 0.4)
         _test_gradient(x -> transport_def(StdUniform(), 2.0 * Weibull(0.7) + 1.0, x), 3.0)
-        _test_gradient(x -> transport_def(StdNormal(), StandardDist{Uniform}(), x), 0.4)
+        _test_gradient(x -> transport_def(StdNormal(), Uniform(), x), 0.4)
     end
 
     @testset "multivariate transport gradients" begin

@@ -27,6 +27,13 @@ implementation per measure type for single variates and batches. See the
     "Random variates" below. `rand!` for product measures.
   - The `_trafo_cdf`/`_trafo_quantile` hooks of the Distributions
     integration.
+  - `StandardDist` (`StandardUniform`, `StandardNormal`) of the
+    Distributions extension and the conversion of standard measures to
+    distributions (`Distribution(StdNormal())`), use the standard measures
+    `StdUniform()`, `StdNormal()` and their powers (as BAT 6 does).
+    `transport_to(Normal, μ)` and `transport_to(Uniform, μ)` stay
+    shorthands for `transport_to(StdNormal, μ)` and
+    `transport_to(StdUniform, μ)`.
 - `pullback` is deprecated in favor of `pullbck`.
 - `insupport` and `params` are renamed to `insupportof` and `paramsof`,
   they clashed with the functions exported by Distributions. The old names

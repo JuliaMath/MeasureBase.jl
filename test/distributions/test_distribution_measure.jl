@@ -80,7 +80,7 @@ end
     @test fast_dof(AbstractMeasure(MvNormal([1.0 0.2; 0.2 2.0]))) == 2
     @test fast_dof(AbstractMeasure(Normal())^3) == 3
     # Transport partners take the fast DOF, static where it is static:
-    @test transport_to(StandardNormal, Normal(0.3, 2.0)).ν === MeasureBase.StdNormal()
+    @test transport_to(MeasureBase.StdNormal, Normal(0.3, 2.0)).ν === MeasureBase.StdNormal()
 end
 
 @testset "pushforwards of discrete distributions" begin

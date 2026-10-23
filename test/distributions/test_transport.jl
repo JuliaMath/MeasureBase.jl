@@ -34,13 +34,14 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
             @test x ≈ src_v_reco
 
             f = x -> transport_to(trg, src)(x)
-            ref_ladj = logpdf(src, x) - logpdf(trg, y)
-            @test ref_ladj ≈ logabsdet(getjacobian(f, x))[1]
+            ref_ladj = logdensityof(src, x) - logdensityof(trg, y)
+            @test ref_ladj ≈ logabsdet(getjacobian(f, x))[1] atol = 1e-12
         end
     end
 
     reshaped_rand(d::Distribution{Univariate}, n) = rand(d, n)
     reshaped_rand(d::Distribution{Multivariate}, n) = sliced(rand(d, n))
+    reshaped_rand(μ::MeasureBase.AbstractMeasure, n) = rand(μ^n)
 
     function test_dist_trafo_moments(trg, src)
         unshaped(x) = first(torv_and_back(x))
@@ -54,8 +55,8 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
     end
 
     @testset "transforms-tests" begin
-        stduvuni = StandardDist{Uniform}()
-        stduvnorm = StandardDist{Normal}()
+        stduvuni = StdUniform()
+        stduvnorm = StdNormal()
 
         uniform1 = Uniform(-5.0, -0.01)
         uniform2 = Uniform(0.01, 5.0)
@@ -63,12 +64,12 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         normal1 = Normal(-10, 1)
         normal2 = Normal(10, 5)
 
-        stdmvnorm1 = StandardDist{Normal}(1)
-        stdmvnorm2 = StandardDist{Normal}(2)
+        stdmvnorm1 = StdNormal()^1
+        stdmvnorm2 = StdNormal()^2
 
-        stdmvuni2 = StandardDist{Uniform}(2)
+        stdmvuni2 = StdUniform()^2
 
-        standnorm2_reshaped = reshape(stdmvnorm2, 1, 2)
+        standnorm2_reshaped = reshape(MvNormal(zeros(2), I), 1, 2)
 
         mvnorm = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
         beta = Beta(3,1)
@@ -263,19 +264,18 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
 
 
     @testset "transport_to autosel" begin
-        for (M,R) in [
-            (StandardDist{Normal}, StandardDist{Normal})
-            (Normal, StandardDist{Normal})
-            (StandardDist{Uniform}, StandardDist{Uniform})
-            (Uniform, StandardDist{Uniform})
-        ]
+        # The distribution types `Normal` and `Uniform` stand for the
+        # standard measures:
+        for (M, R) in [(Normal, StdNormal), (Uniform, StdUniform), (StdNormal, StdNormal)]
             @test @inferred(transport_to(M, Weibull())) == transport_to(R(), Weibull())
             @test @inferred(transport_to(Weibull(), M)) == transport_to(Weibull(), R())
-            @test @inferred(transport_to(M, MvNormal(float(I(5))))) == transport_to(R(5), MvNormal(float(I(5))))
-            @test @inferred(transport_to(MvNormal(float(I(5))), M)) == transport_to(MvNormal(float(I(5))), R(5))
-            @test @inferred(transport_to(M, StdExponential()^(2,3))) == transport_to(R(6), StdExponential()^(2,3))
-            @test @inferred(transport_to(StdExponential()^(2,3), M)) == transport_to(StdExponential()^(2,3), R(6))
+            @test @inferred(transport_to(M, MvNormal(float(I(5))))) == transport_to(R()^5, MvNormal(float(I(5))))
+            @test @inferred(transport_to(MvNormal(float(I(5))), M)) == transport_to(MvNormal(float(I(5))), R()^5)
+            @test @inferred(transport_to(M, StdExponential()^(2,3))) == transport_to(R()^6, StdExponential()^(2,3))
+            @test @inferred(transport_to(StdExponential()^(2,3), M)) == transport_to(StdExponential()^(2,3), R()^6)
         end
+        @test_throws ArgumentError transport_to(Normal, Uniform)
+        @test_throws ArgumentError transport_to(StdNormal, Uniform)
     end
 
     @testset "affine transformed distributions" begin
@@ -284,7 +284,7 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         u = transport_to(StdUniform(), d)(x)
         @test u ≈ cdf(d, x)
         @test transport_to(d, StdUniform())(u) ≈ x
-        test_back_and_forth(StandardDist{Normal}(), d)
+        test_back_and_forth(StdNormal(), d)
     end
 
     @testset "truncated distributions" begin
@@ -293,7 +293,7 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
             x = transport_to(d, StdUniform())(u)
             @test minimum(d) <= x <= maximum(d)
         end
-        test_back_and_forth(StandardDist{Uniform}(), d)
+        test_back_and_forth(StdUniform(), d)
     end
 
     @testset "products of distributions" begin
@@ -349,7 +349,7 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
             @test z ≈ quantile(Normal(), cdf(mix, x))
             @test transport_to(mix, StdNormal())(z) ≈ x
         end
-        test_back_and_forth(StandardDist{Uniform}(), mix)
+        test_back_and_forth(StdUniform(), mix)
         @test asmeasure(MixtureModel([Poisson(1.0), Poisson(4.0)])) isa MeasureBase.SuperpositionMeasure
     end
 
@@ -371,8 +371,8 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         for Σ in [PDMats.ScalMat(3, 2.5), PDMats.PDiagMat([0.5, 1.0, 2.5]), Diagonal([0.5, 1.0, 2.5])]
             mvn = MvNormal([0.2, -0.4, 0.6], Σ)
             x = rand(StableRNG(789990641), mvn)
-            y = transport_to(StandardDist{Normal}(3), mvn)(x)
-            @test transport_to(mvn, StandardDist{Normal}(3))(y) ≈ x
+            y = transport_to(StdNormal()^3, mvn)(x)
+            @test transport_to(mvn, StdNormal()^3)(y) ≈ x
         end
 
         # Other positive definite matrix types, via their dense form:

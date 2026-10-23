@@ -86,31 +86,4 @@ using MeasureBase: logdensityof, massof, insupportof
             @test logdensityof(m2, x) ≈ logpdf(d, x)
         end
     end
-
-    @testset "standard distributions" begin
-        @test StandardUniform === StandardDist{Uniform}
-        @test StandardNormal === StandardDist{Normal}
-        @test StandardUniform{0} === StandardDist{Uniform,0}
-        @test StandardNormal{1} === StandardDist{Normal,1}
-
-        for (D, B) in [
-            (Uniform, StdUniform()),
-            (Exponential, StdExponential()),
-            (Logistic, StdLogistic()),
-            (Normal, StdNormal()),
-        ]
-            @test @inferred(asmeasure(StandardDist{D}())) === B
-            @test @inferred(asmeasure(StandardDist{D}(3))) == B^3
-            @test @inferred(asmeasure(StandardDist{D}(2, 3))) == B^(2, 3)
-
-            @test @inferred(Distributions.Distribution(B)) === StandardDist{D}()
-            @test @inferred(convert(Distribution, B)) === StandardDist{D}()
-            @test @inferred(Distributions.Distribution(B^3)) == StandardDist{D}(3)
-            @test @inferred(convert(Distribution, B^(2, 3))) == StandardDist{D}(2, 3)
-
-            d = StandardDist{D}(3)
-            x = rand(stblrng(), d)
-            @test logdensityof(asmeasure(d), x) ≈ logpdf(d, x)
-        end
-    end
 end

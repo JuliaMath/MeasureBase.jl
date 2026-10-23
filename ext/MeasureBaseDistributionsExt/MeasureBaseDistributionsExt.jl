@@ -2,11 +2,10 @@
 
 module MeasureBaseDistributionsExt
 
-using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, dot, cholesky, logdet
+using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, cholesky, logdet
 import Adapt
 
-import Random
-using Random: AbstractRNG, rand!
+using Random: AbstractRNG
 
 import DensityInterface
 using DensityInterface: logdensityof, densityof
@@ -16,9 +15,9 @@ using MeasureBase: AbstractMeasure, AsMeasure, asmeasure
 using MeasureBase: Lebesgue, Counting, ℝ
 using MeasureBase: StdMeasure, StdUniform, StdExponential, StdLogistic, StdNormal
 using MeasureBase: _unit_interior
-using MeasureBase: PowerMeasure, WeightedMeasure, SuperpositionMeasure, PushforwardMeasure
+using MeasureBase: WeightedMeasure, SuperpositionMeasure, PushforwardMeasure
 using MeasureBase: basemeasure, rootmeasure, testvalue, productmeasure, pushfwd, superpose
-using MeasureBase: getdof, checked_arg, massof
+using MeasureBase: getdof, massof
 using MeasureBase: transport_to, transport_def, transport_to_std, transport_from_std
 using MeasureBase: batched_transport_to_std, batched_transport_from_std
 using MeasureBase: Reshape
@@ -38,28 +37,23 @@ using Distributions: MvNormal, AbstractMvNormal, Beta, Dirichlet
 using Distributions: ReshapedDistribution, AbstractMixtureModel
 
 import Statistics
-import StatsBase
-import StatsFuns
 import PDMats
 
-using IrrationalConstants: log2π, invsqrt2π
+using IrrationalConstants: log2π
 using LogExpFunctions: logistic, log1pexp
 using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, beta_inc_inv
 
 using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
 
-using Static: True, False, StaticInt, static, dynamic
+using Static: True, False, static
 using StaticThings: SizeLike, asnonstatic
-using FillArrays: Fill, Ones, Zeros
+using FillArrays: Fill
 
 using ArgCheck: @argcheck
 
 using ArraysOfArrays: ArrayOfSimilarArrays, flatview
 
 include("measure_interface.jl")
-include("standard_dist.jl")
-include("standard_uniform.jl")
-include("standard_normal.jl")
 include("distribution_measure.jl")
 include("dist_vartransform.jl")
 include("univariate.jl")
