@@ -97,11 +97,11 @@ end
 
 # Root measures of pushforwards that change the number of power dimensions
 # of a power of a primitive measure are reshaped:
-@inline function _reshape_root(root::PowerMeasure, sz::SizeLike)
-    ν, n = _pwr_unwrap(root)
-    _reshape_pwr_root(root, ν, n, sz)
+@inline function _reshape_root(root::PowerMeasure, ν::PushforwardMeasure)
+    β, n = _pwr_unwrap(root)
+    _reshape_pwr_root(root, β, n, mspace_flatsize(ν))
 end
-@inline _reshape_pwr_root(root, ::Any, ::Any, ::SizeLike) = root
+@inline _reshape_pwr_root(root, ::Any, ::Any, ::Any) = root
 @inline function _reshape_pwr_root(root, ν::PrimitiveMeasure, n::StaticInteger, sz::SizeLike)
     n == length(size_tuple(sz)) ? root : powermeasure(ν, sz)
 end

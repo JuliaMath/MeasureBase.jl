@@ -123,8 +123,13 @@ Fusion needs concrete scalar-variate marginals (one DOF for transport);
 other array products loop over host-resident marginals. Measures holding
 arrays have `Adapt` rules.
 
-**Pushforwards.** `pushfwd(f, μ)` learns its output size once at
-construction from a test value when the origin has a size. Batched
+**Pushforwards.** `pushfwd(f, μ)` never evaluates `f` at construction.
+The output size is declared (`pushfwd(f, μ; varsize)`), the origin's for
+`Base.BroadcastFunction`s, or inferred from the type `f` returns for
+numbers or arrays of the origin's rank (static sizes for static origins,
+`Core.Compiler.return_type`, used only for these declarations); otherwise
+it is learned from `f(testvalue(μ))` on demand (not cached, point
+densities don't need it). Batched
 application needs no traits: elementwise for `Base.BroadcastFunction`
 (fused density kernels), column batches for AffineMaps types (weak
 dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise. Measures

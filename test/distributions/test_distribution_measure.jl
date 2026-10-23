@@ -94,6 +94,11 @@ end
     @test MeasureBase.logdensities(p, [0.0, 3.0, 4.0]) ≈ logpdf.(Poisson(2.0), [0.0, 1.5, 2.0])
     @test MeasureBase.logdensity_rel(p, AbstractMeasure(Poisson(4.0)), 4.0) ≈ logpdf(Poisson(2.0), 2) - logpdf(Poisson(4.0), 4)
     @test MeasureBase.logdensity_rel(p, AbstractMeasure(Poisson(4.0)), 3.0) == -Inf
+    # Origins without random variates:
+    pr = MeasureBase.pushfwd(Mul(2.0), MeasureBase.restrict(x -> x > 1, m))
+    @test MeasureBase.logdensityof(pr, 4.0) == MeasureBase.logdensityof(m, 2.0)
+    @test MeasureBase.logdensityof(pr, 2.0) == -Inf
+    @test MeasureBase.logdensities(pr, [2.0, 4.0, 6.0]) ≈ [-Inf, logpdf(Poisson(2.0), 2), logpdf(Poisson(2.0), 3)]
     mn = AbstractMeasure(Multinomial(3, [0.2, 0.8]))
     X = [0.0 2.0 4.0; 6.0 4.0 2.0]
     for f in (Mul(2.0), Base.BroadcastFunction(Base.Fix1(*, 2.0)))

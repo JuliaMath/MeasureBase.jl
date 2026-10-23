@@ -165,7 +165,7 @@ end
 # The pushforward of a point mass is a point mass. Note that no density
 # volume correction applies, Dirac measures are density-defined relative
 # to counting measure:
-_pushfwd_impl(f, μ::Dirac, ::PushFwdStyle) = Dirac(f(μ.x))
+_pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 
 # Injective maps push counting measure forward to counting measure on the
 # image, atoms keep their masses. Measures with counting root measures push
@@ -188,8 +188,8 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle) = Dirac(f(μ.x))
 @inline _all_counting_root(μs) = mapreduce(_counting_root, &, values(μs); init = static(true))
 
 # Pushforward and weighting commute:
-function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle)
-    weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style))
+function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle, varsize)
+    weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style, varsize))
 end
 @inline function _pushfwd_base(ν::PushforwardMeasure, β::WeightedMeasure)
     weightedmeasure(β.logweight, _pushfwd_base(ν, β.base))

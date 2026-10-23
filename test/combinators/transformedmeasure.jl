@@ -246,7 +246,7 @@ end
         Pt = productmeasure((StdNormal(), StdUniform()^2))
         ν = pushfwd(x -> vcat(x[1], x[2]), Pt)
         @test MeasureBase.mspace_flatsize(ν) == (3,)
-        @test MeasureBase.mspace_ndims(typeof(ν)) == 1
+        @test MeasureBase.mspace_ndims(ν) == 1
         @test MeasureBase.mspace_flatsize(pushfwd(x -> x, mbind(x -> StdNormal()^(x > 0 ? 1 : 2), StdNormal()))) isa MeasureBase.NoMSpaceElementSize
     end
 
@@ -262,4 +262,65 @@ end
         v = [0.3, 0.2, 0.7]
         @test Zygote.gradient(g, v)[1] ≈ [-0.3, 0.0, 0.0]
     end
+end
+
+
+# Doubling that counts its evaluations:
+const _doubling_calls = Ref(0)
+struct CountedDoubling end
+struct CountedHalving end
+(::CountedDoubling)(x) = (_doubling_calls[] += 1; 2 .* x)
+(::CountedHalving)(y) = y ./ 2
+InverseFunctions.inverse(::CountedDoubling) = CountedHalving()
+InverseFunctions.inverse(::CountedHalving) = CountedDoubling()
+ChangesOfVariables.with_logabsdet_jacobian(f::CountedHalving, y) = (f(y), -length(y) * log(2))
+
+@testset "variate sizes of pushforwards" begin
+    using MeasureBase: mspace_ndims, mspace_flatsize, fixed_stream_size, restrict, logdensities, StdNormal
+    using AffineMaps: Mul
+    using StaticArrays: SMatrix, Size
+    using Static: static
+
+    # Origins without random variates: construction and point densities
+    # need no variate size, batches take it from the type `f` returns or
+    # from a declaration:
+    r = restrict(x -> x > 0, StdNormal())
+    ν = pushfwd(Mul(2.0), r)
+    @test logdensityof(ν, 1.0) ≈ logdensityof(StdNormal(), 0.5) - log(2)
+    @test logdensityof(ν, -1.0) == -Inf
+    @test @inferred(mspace_ndims(typeof(ν))) == 0
+    @test logdensities(ν, [1.0, -1.0, 3.0]) ≈ [logdensityof(ν, y) for y in (1.0, -1.0, 3.0)]
+    r2 = restrict(x -> all(>(0), x), StdNormal()^2)
+    ν2 = pushfwd(CountedDoubling(), r2)
+    @test logdensityof(ν2, [1.0, 2.0]) ≈ logdensityof(StdNormal()^2, [0.5, 1.0]) - 2 * log(2)
+    @test_throws ArgumentError logdensities(ν2, [1.0 2.0; 2.0 1.0])
+    ν2d = pushfwd(CountedDoubling(), r2; varsize = (2,))
+    @test @inferred(mspace_ndims(typeof(ν2d))) == 1 && fixed_stream_size(typeof(ν2d)) == true
+    @test logdensities(ν2d, [1.0 2.0; 2.0 -1.0]) ≈ [logdensityof(ν2, [1.0, 2.0]), -Inf]
+    @test_throws ArgumentError pushfwd(Mul(2.0), r; varsize = 3)
+
+    # Sizes are learned on demand, the function is not evaluated at
+    # construction or for point densities:
+    _doubling_calls[] = 0
+    μ3 = StdNormal()^3
+    ν3 = pushfwd(CountedDoubling(), μ3)
+    y = [0.2, 0.4, 0.6]
+    @test logdensityof(ν3, y) ≈ logdensityof(μ3, y ./ 2) - 3 * log(2)
+    @test _doubling_calls[] == 0
+    @test @inferred(mspace_ndims(typeof(ν3))) == 1
+    @test @inferred(mspace_flatsize(ν3)) == (3,)
+    @test _doubling_calls[] == 1
+    Y = [0.2 0.4; 0.4 -0.8; 0.6 1.0]
+    @test logdensities(ν3, Y) ≈ [logdensityof(ν3, Y[:, j]) for j in 1:2]
+    @test_throws ArgumentError logdensities(ν3, Y[1:2, :])
+
+    # Static sizes follow from the type `f` returns for statically sized
+    # variates:
+    n_calls = _doubling_calls[]
+    A = SMatrix{2,2}(1.0, 0.5, 0.0, 2.0)
+    νs = pushfwd(Mul(A), StdNormal()^static(2))
+    @test @inferred(mspace_flatsize(typeof(νs))) === Size(2)
+    @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), μ3; varsize = (static(3),))))) === Size(3)
+    @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), StdNormal()^static(3))))) === Size(3)
+    @test _doubling_calls[] == n_calls
 end

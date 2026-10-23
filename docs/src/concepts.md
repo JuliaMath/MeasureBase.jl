@@ -143,7 +143,12 @@ exactly, and integer variates (e.g. of counting measures) stay integers.
 - `mcombine(vcat, α, β)` and `mcombine(merge, α, β)`, `mbind(k, μ)`
   (flat stream variates for `vcat`, merged named tuples for `merge`).
 - `pushfwd(f, μ)` and `pullbck(f, μ)`, with batched application for
-  `Base.BroadcastFunction` and AffineMaps functions.
+  `Base.BroadcastFunction` and AffineMaps functions. The variate size of a
+  pushforward is declared (`pushfwd(f, μ; varsize)`), the size of the
+  origin for `Base.BroadcastFunction`s, or follows from the type `f`
+  returns for variates of the variate rank (or static size) of the origin.
+  Otherwise it is learned from `f` applied to a test value of `μ` when an
+  operation needs it. `f` is never evaluated at construction.
 - `weightedmeasure`, `superpose`, `restrict`, `mintegrate`,
   `mintegrate_exp`, `half`.
 

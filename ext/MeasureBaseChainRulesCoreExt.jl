@@ -76,7 +76,7 @@ end
 # Variate layouts are type-level information:
 using MeasureBase: fixed_stream_size, _pushfwd_varsize, _unit_bounds, _prob_floor
 @non_differentiable fixed_stream_size(::Type)
-@non_differentiable _pushfwd_varsize(f, μ)
+@non_differentiable _pushfwd_varsize(ν)
 @non_differentiable _unit_bounds(p)
 @non_differentiable _prob_floor(p)
 
