@@ -9,8 +9,12 @@ The [pushforward measure](https://en.wikipedia.org/wiki/Pushforward_measure)
 from `μ` under `f` is equivalent to `ν`, up to normalization, so
 `f(rand(μ))` is equivalent to `rand(ν)`. `f` supports
 `InverseFunctions.inverse` and `ChangesOfVariables.with_logabsdet_jacobian`.
-Weighted measures transport like their unweighted base, map and
-log-abs-det Jacobian alike.
+Transports map normalized laws: weighted measures transport like their
+unweighted base, map and log-abs-det Jacobian alike, and the Jacobian is
+the density ratio of the normalized measures (see [`normalize`](@ref)),
+binds are normalized component by component. `with_logabsdet_jacobian`
+throws an `ArgumentError` where the normalization requires an unknown mass
+(see [`massof`](@ref)).
 
 Measures are transported via standard measures: `x` is transported to the
 standard measure type that the preferences of `ν` and `μ` promote to (see
@@ -108,7 +112,7 @@ end
 end
 
 # Transports map normalized laws, weights don't change the map. The
-# Jacobian is the ratio of the densities without weights:
+# Jacobian is the ratio of the normalized densities, see `_unweighted`:
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
     logd_src = logdensityof(_unweighted(f.μ), x)
@@ -118,9 +122,6 @@ function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     fixed_ladj = ifelse(isneginf(logd_src) & isneginf(logd_trg), zero(ladj), ladj)
     return y, fixed_ladj
 end
-
-# A measure without its weights, structurally:
-@inline _unweighted(μ) = μ
 
 Base.:(∘)(::typeof(identity), f::TransportFunction) = f
 Base.:(∘)(f::TransportFunction, ::typeof(identity)) = f

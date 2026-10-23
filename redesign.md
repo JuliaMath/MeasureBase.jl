@@ -73,9 +73,11 @@ measure (`preferred_stdmeasure`, `promote_stdmeasure`, `AnyStdMeasure`,
 `stdconvert` converts between standard measures in log form,
 `transport_def` may be specialized for direct pairs. Transports map
 normalized laws: weighted measures transport like their base, and the
-log-abs-det Jacobian is the density ratio of the measures with their
-weights stripped (structurally, through weighted measures, tuple products,
-combinations and binds). Standard streams are
+log-abs-det Jacobian is the density ratio of the normalized measures, with
+weights stripped structurally (through weighted measures, tuple products,
+powers, combinations, pushforwards and binds) and the remaining leaves
+normalized by their mass. Leaves of unknown mass make
+`with_logabsdet_jacobian` throw. Standard streams are
 `(dof, batch dims...)`; the from-side default consumes `fast_dof(μ)`
 entries per variate, composed measures implement the with-rest forms.
 `getdof`/`fast_dof` are declaration-derived, used at construction time
@@ -309,7 +311,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   (`ArgumentError`), but samples, transports and has the support of its
   base. `massof` is type stable and known for `Lebesgue(a..b)`, `Counting`
   of bounded integers, ranges and sets, weighted measures, products,
-  powers and superpositions, restrictions stay unknown.
+  powers and superpositions, restrictions stay unknown. Transport Jacobians
+  normalize the leaves of the structural weight stripping, see Transport.
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   exported as deprecations for one release.

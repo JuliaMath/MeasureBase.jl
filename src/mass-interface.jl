@@ -77,7 +77,9 @@ finite, or we may know nothing at all about it. For these cases, it will return
 respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
 
 `massof` must be type stable. Types of normalized measures should return
-`static(1.0)`, [`normalize`](@ref) then returns them as they are.
+`static(1.0)`, [`normalize`](@ref) then returns them as they are. Transport
+Jacobians are density ratios of normalized measures, they require known
+masses.
 """
 massof(::AbstractMeasure) = UnknownMass()
 

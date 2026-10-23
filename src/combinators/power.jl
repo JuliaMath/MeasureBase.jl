@@ -373,6 +373,8 @@ massof(m::PowerMeasure) = _pwr_mass(massof(m.parent), size2length(pwr_size(m)))
 # Unit masses stay static, independent of the dynamic exponent:
 @inline _pwr_mass(mass::StaticFloat64{1.0}, ::IntegerLike) = mass
 
+@inline _unweighted(μ::PowerMeasure) = powermeasure(_unweighted(pwr_base(μ)), pwr_axes(μ))
+
 
 # Transport: the standard variate of a power is the flat vector of the
 # standard variates of its innermost base measure, in the order of the flat

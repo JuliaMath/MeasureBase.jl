@@ -279,6 +279,7 @@ end
 end
 
 massof(m::PushforwardMeasure) = massof(m.origin)
+@inline _unweighted(ν::PushforwardMeasure) = PushforwardMeasure(ν.f, ν.finv, _unweighted(ν.origin), ν.style, ν.varsize)
 
 rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origin, ν.f(rand_impl(ctx, ν.origin)))
 

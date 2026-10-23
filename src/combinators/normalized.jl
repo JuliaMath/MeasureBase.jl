@@ -64,3 +64,12 @@ gentype(μ::NormalizedMeasure) = gentype(μ.base)
 Pretty.tile(μ::NormalizedMeasure) = Pretty.list_layout([Pretty.tile(μ.base)]; prefix = :normalize)
 
 Adapt.adapt_structure(to, μ::NormalizedMeasure) = NormalizedMeasure(Adapt.adapt(to, μ.base), μ.logmass)
+
+# Transport Jacobians are density ratios of the laws that transports map:
+# measures without their weights, structurally (through weighted measures,
+# tuple products, powers, combinations, pushforwards and binds), normalized
+# at the leaves. Leaves of unknown mass have no normalized density:
+@inline _unweighted(μ) = _normalized_leaf(μ, massof(μ))
+@inline _normalized_leaf(μ, mass) = _normalize(μ, mass)
+@noinline _normalized_leaf(μ, ::AbstractUnknownMass) =
+    throw(ArgumentError("Transport Jacobians require normalized densities, the mass of measures of type $(nameof(typeof(μ))) is unknown"))

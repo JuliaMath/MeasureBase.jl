@@ -131,6 +131,8 @@ implementation per measure type for single variates and batches. See the
 - Transport Jacobians exclude weights: weighted measures transport like
   their base, map and log-abs-det Jacobian alike
   (`with_logabsdet_jacobian(transport_to(StdNormal(), 2 * StdNormal()), x) == (x, 0)`).
+  Jacobians are density ratios of the normalized measures, they throw an
+  `ArgumentError` where that requires an unknown mass.
 - `normalize(μ)` returns a `NormalizedMeasure` (or `μ` itself if its mass
   is statically one), with a density if the mass of `μ` is known, it used
   to return a weighted measure. Normalized measures of unknown mass sample
@@ -158,6 +160,10 @@ Implement
 - `MeasureBase.batched_rand_impl` (and optionally `MeasureBase.rand_impl`)
   instead of `rand`. Measures with a standard transport get draws via
   transport by default.
+
+Measures with transports should declare `massof` (`static(1.0)` for
+normalized measures), transport Jacobians of measures of unknown mass
+throw.
 
 ### Dependencies
 
