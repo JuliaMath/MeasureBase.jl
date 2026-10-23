@@ -38,6 +38,21 @@ using DensityInterface: logdensityof
     end
 end
 
+using IntervalSets: (..)
+struct ProxiedUnitInterval <: MeasureBase.AbstractMeasure end
+MeasureBase.proxy(::ProxiedUnitInterval) = Lebesgue(0.0 .. 1.0)
+MeasureBase.@useproxy ProxiedUnitInterval
+
+@testset "Lebesgue measure on intervals and proxies" begin
+    L = Lebesgue(0.0 .. 2.0)
+    @test measure_insupport(L, 0.5) == true && measure_insupport(L, 2.5) == false
+    @test measure_insupport(L)(0.5) == true && measure_insupport(L)(-0.5) == false
+    @test logdensityof(L, 0.5) == 0 && logdensityof(L, -0.5) == -Inf
+    p = ProxiedUnitInterval()
+    @test measure_insupport(p, 0.5) == true && measure_insupport(p, 1.5) == false
+    @test measure_insupport(p)(0.5) == true && measure_insupport(p)(1.5) == false
+end
+
 @testset "Lebesgue measure on the standard simplex" begin
     using Random: Xoshiro
     using Statistics: mean, var

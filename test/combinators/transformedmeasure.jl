@@ -133,6 +133,7 @@ using ChangesOfVariables: setladj
     ν = pushfwd(f, μ)
 
     @test ν isa PushforwardMeasure
+    @test MeasureBase.paramsof(ν) == NamedTuple() && MeasureBase.paramnames(ν) == ()
 
     # TODO: How do we access the parent?
     # @test parent(ν) === μ

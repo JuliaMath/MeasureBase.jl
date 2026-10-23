@@ -114,8 +114,6 @@ paramnames(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
 
 paramnames(μ::AbstractMeasure) = propertynames(μ)
 
-paramsof(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
-
 function paramnames(μ, constraints::NamedTuple{N}) where {N}
     tuple((k for k in paramnames(μ) if k ∉ N)...)
 end

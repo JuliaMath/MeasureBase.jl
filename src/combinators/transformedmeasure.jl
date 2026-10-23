@@ -63,24 +63,23 @@ Returns the function that `ν` transforms its origin measure with.
 """
 function gettransform(::AbstractTransformedMeasure) end
 
-function paramsof(::AbstractTransformedMeasure) end
-
-function paramnames(::AbstractTransformedMeasure) end
+paramnames(::AbstractTransformedMeasure) = ()
 
 function parent(::AbstractTransformedMeasure) end
 
 export PushforwardMeasure
 
 """
-    struct PushforwardMeasure{F,I,M,S<:PushFwdStyle} <: AbstractPushforward
+    struct PushforwardMeasure{F,I,M,S<:PushFwdStyle,VS} <: AbstractPushforward
         f :: F
         finv :: I
         origin :: M
         style :: S
+        varsize :: VS
     end
 
-    Users should not call `PushforwardMeasure` directly. Instead call or add
-    methods to `pushfwd`.
+Users should not call `PushforwardMeasure` directly. Instead call or add
+methods to `pushfwd`.
 """
 struct PushforwardMeasure{F,I,M,S<:PushFwdStyle,VS} <: AbstractPushforward
     f::F

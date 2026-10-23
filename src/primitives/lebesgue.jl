@@ -68,8 +68,6 @@ Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueBase()
 
 Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
-insupportof(μ::Lebesgue, x) = x ∈ μ.support
-
 insupportof(::Lebesgue{RealValues}, ::Real) = true
 
 @inline function logdensityof_impl(μ::Lebesgue, x::Number)
