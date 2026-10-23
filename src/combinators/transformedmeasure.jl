@@ -63,7 +63,7 @@ Returns the function that `ν` transforms its origin measure with.
 """
 function gettransform(::AbstractTransformedMeasure) end
 
-function params(::AbstractTransformedMeasure) end
+function paramsof(::AbstractTransformedMeasure) end
 
 function paramnames(::AbstractTransformedMeasure) end
 

@@ -89,7 +89,7 @@ end
 Base.:^(μ::AbstractMeasure, dims::Tuple) = powermeasure(μ, maybestatic_oneto.(_as_counts(dims)))
 Base.:^(μ::AbstractMeasure, n) = powermeasure(μ, (n,))
 
-params(d::PowerMeasure) = params(first(marginals(d)))
+paramsof(d::PowerMeasure) = paramsof(first(marginals(d)))
 
 @inline function basemeasure(d::PowerMeasure)
     basemeasure(d.parent)^d.axes

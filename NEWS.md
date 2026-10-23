@@ -28,9 +28,10 @@ implementation per measure type for single variates and batches. See the
   - The `_trafo_cdf`/`_trafo_quantile` hooks of the Distributions
     integration.
 - `pullback` is deprecated in favor of `pullbck`.
-- `insupport` is renamed to `insupportof`, it clashed with the function
-  exported by Distributions. The old name is deprecated, measure
-  implementations must add methods to `insupportof`.
+- `insupport` and `params` are renamed to `insupportof` and `paramsof`,
+  they clashed with the functions exported by Distributions. The old names
+  are deprecated, measure implementations must add methods to the new
+  names.
 - `mspace_elsize` is not exported anymore (it is still available as
   `MeasureBase.mspace_elsize`), `MeasureBase.mspace_flatsize` and
   `MeasureBase.mspace_ndims` replace it for kernels.

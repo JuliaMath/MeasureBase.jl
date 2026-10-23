@@ -21,6 +21,8 @@ end
     @test Base.isexported(MeasureBase, :insupport)
     @test (@test_deprecated MeasureBase.insupport(StdUniform(), 1.5)) == false
     @test (@test_deprecated MeasureBase.insupport(StdUniform())(0.5)) == true
+    @test Base.isexported(MeasureBase, :params)
+    @test (@test_deprecated MeasureBase.params(StdNormal())) == NamedTuple()
 end
 
 @testset "conditioning" begin

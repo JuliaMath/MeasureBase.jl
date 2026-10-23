@@ -45,10 +45,10 @@ using MeasureBase: AbstractMeasure
 
     @test MeasureBase.paramnames(c0) == (:α, :θ)
     if VERSION >= v"1.8"
-        @test @inferred(MeasureBase.params(c0)) == (α = 0.7, θ = 1.3)
+        @test @inferred(MeasureBase.paramsof(c0)) == (α = 0.7, θ = 1.3)
     else
         # v1.6 can't type-infer this:
-        @test (MeasureBase.params(c0)) == (α = 0.7, θ = 1.3)
+        @test (MeasureBase.paramsof(c0)) == (α = 0.7, θ = 1.3)
     end
 end
 

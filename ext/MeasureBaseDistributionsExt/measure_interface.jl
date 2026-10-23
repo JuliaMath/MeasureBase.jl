@@ -11,7 +11,7 @@
 @inline MeasureBase.basemeasure(d::Distribution{<:ArrayLikeVariate,<:Discrete}) = Counting()^size(d)
 
 @inline MeasureBase.paramnames(d::Distribution) = propertynames(d)
-@inline MeasureBase.params(d::Distribution) = NamedTuple{propertynames(d)}(Distributions.params(d))
+@inline MeasureBase.paramsof(d::Distribution) = NamedTuple{propertynames(d)}(Distributions.params(d))
 
 @inline MeasureBase.testvalue(d::Distribution) = testvalue(basemeasure(d))
 @inline MeasureBase.testvalue(::Type{T}, d::Distribution) where {T} = testvalue(T, basemeasure(d))

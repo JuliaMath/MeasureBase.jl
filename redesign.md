@@ -299,7 +299,10 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   symmetric-only `Half`, `Half` tails via log-ccdf, the
   `smart-constructors.jl` review (location-scale arrays as affine
   pushforwards of powers), `_static_ndims` type-first vs. instance-first,
-  `normalize`/`NormalizedMeasure` (FlatPPL), the `insupport`/`params`
-  export clash with Distributions, `@compat public` once Compat ≥ 4.10.
+  `normalize`/`NormalizedMeasure` (FlatPPL), `@compat public` once
+  Compat ≥ 4.10.
+- Names clashing with Distributions (decided 2026-10-23): `insupport` and
+  `params` are renamed to `insupportof` and `paramsof`, the old names stay
+  exported as deprecations for one release.
 - Polish before merge: final docs and NEWS pass, history curation, version bump,
   remove this file.
