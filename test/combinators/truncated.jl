@@ -34,6 +34,8 @@ end
         t = @inferred truncate(μ, a_b)
         @test t isa TruncatedMeasure
         @test mspace_ndims(t) == 0 && getdof(t) == 1 && fast_dof(t) == 1
+        # Scalar variates, so numeric batches are flat batches:
+        @test MeasureBase.stream_ndims(typeof(t)) == mspace_ndims(typeof(t)) == MeasureBase.stream_ndims(t) == 0
         density(x) = exp(logdensityof(μ, x))
         @test massof(t) ≈ _simpson(density, a, b) rtol = 1e-10
         @test massof(t) ≈ massof(μ, a_b)
