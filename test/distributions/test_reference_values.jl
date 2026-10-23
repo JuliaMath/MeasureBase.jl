@@ -8,11 +8,12 @@ using Test
 using LinearAlgebra
 using Distributions
 import AffineMaps
+using ArraysOfArrays: nestedview, flatview
 import ForwardDiff, Zygote, Mooncake
 using SpecialFunctions: digamma
 
 using MeasureBase
-using MeasureBase: StdNormal, StdUniform, transport_to, logdensities
+using MeasureBase: StdNormal, StdUniform, transport_to, logdensities, pushfwd
 
 const _derivatives = (
     ForwardDiff = (f, x) -> x isa Real ? ForwardDiff.derivative(f, x) : ForwardDiff.gradient(f, x),
@@ -109,6 +110,51 @@ const _derivatives = (
         @test isnan(MeasureBase._gamma_cdf_dshape(2.0, -1.0)) && isnan(MeasureBase._gamma_cdf_dshape(0.0, 1.0))
         @test MeasureBase._beta_cdf_dshape(2.0, 3.0, 0.0) == (0, 0) == MeasureBase._beta_cdf_dshape(2.0, 3.0, 1.0)
         @test all(isnan, MeasureBase._beta_cdf_dshape(2.0, 3.0, 1.5)) && all(isnan, MeasureBase._beta_cdf_dshape(2.0, -1.0, 0.5))
+    end
+
+    @testset "shape derivatives of transports" begin
+        # Fourth-order central differences as references:
+        fd(f, a::Real) = (h = 1e-4 * a; (8 * (f(a + h) - f(a - h)) - (f(a + 2h) - f(a - 2h))) / (12 * h))
+        fd(f, a::AbstractVector) = [fd(t -> f(setindex!(copy(a), t, i)), a[i]) for i in eachindex(a)]
+        # With ForwardDiffPullbacks loaded, Zygote fails to pass the thunked
+        # distribution tangents of its univariate transport rules to the
+        # distribution constructors (for all distributions):
+        fdpullbacks = !isnothing(Base.get_extension(MeasureBase, :MeasureBaseDistributionsForwardDiffPullbacksExt))
+        @testset "$backend" for (backend, ∂) in pairs(_derivatives)
+            for shape in [0.05, 0.8, 3.0, 50.0, 2000.0]
+                x_gamma = quantile(Gamma(shape, 1.5), 0.3)
+                x_beta, y_beta = quantile(Beta(shape, 2.0), 0.6), quantile(Beta(1.5, shape), 0.6)
+                for f in [
+                    a -> transport_to(StdUniform(), Gamma(a, 1.5))(x_gamma),
+                    a -> transport_to(Gamma(a, 1.5), StdUniform())(0.97),
+                    a -> transport_to(StdUniform(), Beta(a, 2.0))(x_beta),
+                    b -> transport_to(StdUniform(), Beta(1.5, b))(y_beta),
+                    a -> transport_to(Beta(a, 2.0), StdUniform())(0.2),
+                    b -> transport_to(Beta(1.5, b), StdUniform())(0.9),
+                ]
+                    @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 broken = backend == :Zygote && fdpullbacks
+                end
+            end
+            # Dirichlet transports, also with a concentration that depends on
+            # another parameter:
+            x, u, U = [0.2, 0.3, 0.5], [0.3, 0.8], [0.3 0.1 0.9; 0.8 0.5 0.2]
+            for α in [[0.3, 2.0, 40.0], [2.0, 3.0, 4.0]]
+                to_uniform = α -> dot([0.4, -0.7], transport_to(StdUniform()^2, Dirichlet(α))(x))
+                from_uniform = α -> dot([0.2, -0.5, 0.7], transport_to(Dirichlet(α), StdUniform()^2)(u))
+                @test ∂(to_uniform, α) ≈ fd(to_uniform, α) rtol = 1e-7
+                @test ∂(from_uniform, α) ≈ fd(from_uniform, α) rtol = 1e-7
+                hierarchical = τ -> from_uniform(τ .* α)
+                @test ∂(hierarchical, 1.5) ≈ fd(hierarchical, 1.5) rtol = 1e-7
+                batched = α -> sum(flatview(transport_to(Dirichlet(α), StdUniform()^2).(nestedview(U))) .* [0.2, -0.5, 0.7])
+                @test ∂(batched, α) ≈ fd(batched, α) rtol = 1e-7
+            end
+            # Laws of transported variates:
+            ℓ_gamma(a) = logdensityof(pushfwd(transport_to(Gamma(a, 1.5), StdNormal()), StdNormal()), 1.7)
+            @test ∂(ℓ_gamma, 2.5) ≈ log(1.7 / 1.5) - digamma(2.5)
+            α = [0.7, 2.0, 3.0]
+            ℓ_dirichlet(α) = logdensityof(pushfwd(transport_to(Dirichlet(α), StdNormal()^2), StdNormal()^2), x)
+            @test ∂(ℓ_dirichlet, α) ≈ log.(x) .- digamma.(α) .+ digamma(sum(α))
+        end
     end
 
     @testset "Float32 tails" begin

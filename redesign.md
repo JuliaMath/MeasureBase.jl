@@ -162,12 +162,16 @@ atomic measures) still get the volume element everywhere.
   of the simplex (as in FlatPPL), its own base and root measure. Incomplete
   gamma and beta functions go through the `_gamma_cdf`/`_beta_cdf` hooks
   (and quantiles), whose ForwardDiff and ChainRules derivatives come from
-  the densities. Draws use the Distributions samplers on host compute
-  units (`is_host_unit`) and the standard transports on others, and on the
-  host too where the parameter precision (`partype`) is below the context
-  precision. Distributions without standard transports convert their draws
-  afterwards (the context then sets the type, not the resolution). Remaining
-  array-variate distributions batch via `logpdf(d, X)` on the host.
+  the densities and, for the shape parameters, from
+  `_gamma_cdf_dshape`/`_beta_cdf_dshape` (term-wise differentiated series
+  and continued fractions, Moore 1982 and Boik & Robison-Cox 1998; host
+  only, like SpecialFunctions). Draws use the Distributions samplers on
+  host compute units (`is_host_unit`) and the standard transports on
+  others, and on the host too where the parameter precision (`partype`) is
+  below the context precision. Distributions without standard transports
+  convert their draws afterwards (the context then sets the type, not the
+  resolution). Remaining array-variate distributions batch via
+  `logpdf(d, X)` on the host.
 
 ## Changes relative to `main`
 
@@ -235,11 +239,6 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   HeterogeneousComputing has no splittable per-stream RNGs yet and
   doesn't allocate FixedSizeArrays; JLArrays has no triangular solves;
   Reactant rejects traced `VectorOfArrays` and empty batches.
-- Derivatives of the Gamma, Beta and Dirichlet transports with respect to
-  their shape parameters are not implemented: NaN in ForwardDiff and
-  Mooncake, `NotImplemented` in ChainRules (which Zygote drops silently).
-  Their densities are differentiable with respect to the shapes, also at
-  unit shapes.
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
   `checked_arg` at the entry points; variates of the right shape in the

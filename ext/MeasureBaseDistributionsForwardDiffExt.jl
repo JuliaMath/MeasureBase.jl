@@ -58,10 +58,13 @@ end
 end
 
 # Dual numbers through the regularized incomplete gamma and beta functions
-# and their inverses: the derivative with respect to the variate resp.
-# probability argument follows from the density, derivatives with respect
-# to the parameters are not available and yield NaN partials.
+# and their inverses: the derivatives with respect to the variate resp.
+# probability follow from the density, the ones with respect to the shape
+# parameters from `_gamma_cdf_dshape` and `_beta_cdf_dshape` (by the
+# implicit function theorem for the quantiles). The latter are only
+# computed for shape parameters with partials of the tag.
 using MeasureBase: _gamma_cdf, _gamma_quantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf
+using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape
 
 const _Dual = ForwardDiff.Dual
 
@@ -73,38 +76,43 @@ const _Dual = ForwardDiff.Dual
 
 @inline _value(::Type{_Dual{T}}, x) where {T} = ForwardDiff.value(T, x)
 
-# The derivative through the last argument; the partials of parameters
-# are marked NaN where they are nonzero (their derivatives are unknown):
-@inline _arg_partials(::Type{_Dual{T}}, x::_Dual{T}, params...) where {T} = ForwardDiff.partials(x)
-@inline _arg_partials(::Type{D}, ::Real, params...) where {D<:_Dual} = zero(ForwardDiff.partials(_first_dual(D, params...)))
-@inline _first_dual(::Type{_Dual{T}}, x::_Dual{T}, rest...) where {T} = x
-@inline _first_dual(::Type{D}, ::Real, rest...) where {D<:_Dual} = _first_dual(D, rest...)
-@inline _nan_partials(::Type{D}, ∂, ::Real) where {D<:_Dual} = ∂
-@inline function _nan_partials(::Type{_Dual{T}}, ∂, x::_Dual{T}) where {T}
-    ∂ + ForwardDiff.Partials(map(v -> ifelse(iszero(v), zero(v), oftype(v, NaN)), ForwardDiff.partials(x).values))
+@inline _isdual(::Type{D}, xs...) where {D<:_Dual} = any(x -> x isa D, xs)
+
+# The dual number with the given value and the partials ∑ᵢ ∂ᵢ ẋᵢ over the
+# arguments xᵢ with partials ẋᵢ of the tag:
+@inline function _chain(::Type{_Dual{T}}, value, ∂s::Tuple, xs::Tuple) where {T}
+    ForwardDiff.Dual{T}(value, reduce(_add_partials, map((∂, x) -> _scaled_partials(_Dual{T}, ∂, x), ∂s, xs)))
 end
-@inline function _through_last(::Type{_Dual{T}}, value, dvalue, last, params...) where {T}
-    ∂ = dvalue * _arg_partials(_Dual{T}, last, params...)
-    ForwardDiff.Dual{T}(value, foldl((∂, p) -> _nan_partials(_Dual{T}, ∂, p), params; init = ∂))
-end
+@inline _scaled_partials(::Type{_Dual{T}}, ∂, x::_Dual{T}) where {T} = ∂ * ForwardDiff.partials(x)
+@inline _scaled_partials(::Type{<:_Dual}, ∂, ::Real) = nothing
+@inline _add_partials(a, b) = a + b
+@inline _add_partials(a, ::Nothing) = a
+@inline _add_partials(::Nothing, b) = b
+@inline _add_partials(::Nothing, ::Nothing) = nothing
 
 @inline function MeasureBase._gamma_cdf_impl(::Type{D}, α, x) where {D<:_Dual}
     αv, xv = _value(D, α), _value(D, x)
-    _through_last(D, _gamma_cdf(αv, xv), exp(_gamma_logpdf(αv, xv)), x, α)
+    ∂α = _isdual(D, α) ? _gamma_cdf_dshape(αv, xv) : nothing
+    _chain(D, _gamma_cdf(αv, xv), (∂α, exp(_gamma_logpdf(αv, xv))), (α, x))
 end
 @inline function MeasureBase._gamma_quantile_impl(::Type{D}, α, p) where {D<:_Dual}
     αv, pv = _value(D, α), _value(D, p)
     xv = _gamma_quantile(αv, pv)
-    _through_last(D, xv, exp(-_gamma_logpdf(αv, xv)), p, α)
+    ∂p = exp(-_gamma_logpdf(αv, xv))
+    ∂α = _isdual(D, α) ? -_gamma_cdf_dshape(αv, xv) * ∂p : nothing
+    _chain(D, xv, (∂α, ∂p), (α, p))
 end
 @inline function MeasureBase._beta_cdf_impl(::Type{D}, α, β, x) where {D<:_Dual}
     αv, βv, xv = _value(D, α), _value(D, β), _value(D, x)
-    _through_last(D, _beta_cdf(αv, βv, xv), exp(_beta_logpdf(αv, βv, xv)), x, α, β)
+    ∂α, ∂β = _isdual(D, α, β) ? _beta_cdf_dshape(αv, βv, xv) : (nothing, nothing)
+    _chain(D, _beta_cdf(αv, βv, xv), (∂α, ∂β, exp(_beta_logpdf(αv, βv, xv))), (α, β, x))
 end
 @inline function MeasureBase._beta_quantile_impl(::Type{D}, α, β, p) where {D<:_Dual}
     αv, βv, pv = _value(D, α), _value(D, β), _value(D, p)
     xv = _beta_quantile(αv, βv, pv)
-    _through_last(D, xv, exp(-_beta_logpdf(αv, βv, xv)), p, α, β)
+    ∂p = exp(-_beta_logpdf(αv, βv, xv))
+    ∂α, ∂β = _isdual(D, α, β) ? map(∂ -> -∂ * ∂p, _beta_cdf_dshape(αv, βv, xv)) : (nothing, nothing)
+    _chain(D, xv, (∂α, ∂β, ∂p), (α, β, p))
 end
 
 # The quantile of Beta doesn't support dual parameters:

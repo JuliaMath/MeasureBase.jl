@@ -8,6 +8,7 @@ using Distributions, ArraysOfArrays
 using ArraysOfArrays: sliced, flatview
 using StableRNGs
 import ForwardDiff, Zygote
+using SpecialFunctions: digamma
 import PDMats
 
 using MeasureBase: transport_to
@@ -156,6 +157,11 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         # differentiable with respect to the shape:
         ∂P_∂α = ForwardDiff.derivative(a -> ForwardDiff.derivative(x -> MeasureBase._gamma_cdf(a, x), 0.7), 2.0)
         @test ∂P_∂α ≈ 0.7 * exp(-0.7) * (log(0.7) - (1 - Base.MathConstants.eulergamma))
+        # The shape derivatives are differentiable as well:
+        ∂I_∂α(x) = ForwardDiff.derivative(a -> MeasureBase._beta_cdf(a, 3.0, x), 2.0)
+        @test ForwardDiff.derivative(∂I_∂α, 0.3) ≈ pdf(Beta(2.0, 3.0), 0.3) * (log(0.3) - digamma(2.0) + digamma(5.0))
+        ∂Q_∂α(a) = ForwardDiff.derivative(a -> MeasureBase._gamma_quantile(a, 0.3), a)
+        @test ForwardDiff.derivative(∂Q_∂α, 2.0) ≈ (∂Q_∂α(2.0 + 1e-5) - ∂Q_∂α(2.0 - 1e-5)) / 2e-5 rtol = 1e-6
     end
 
     @testset "tails of univariate transports" begin

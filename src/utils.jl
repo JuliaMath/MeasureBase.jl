@@ -148,8 +148,8 @@ convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
 # Regularized incomplete gamma and beta functions and their inverses, with
 # the log-densities of the standard gamma and beta distributions for their
 # derivatives. Implemented in the Distributions extension, differentiated
-# with respect to the variate resp. probability argument in the autodiff
-# extensions:
+# in the autodiff extensions (see also `_gamma_cdf_dshape` and
+# `_beta_cdf_dshape`):
 function _gamma_cdf end
 function _gamma_quantile end
 function _beta_cdf end

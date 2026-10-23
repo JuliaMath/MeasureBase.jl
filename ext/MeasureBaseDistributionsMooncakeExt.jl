@@ -13,8 +13,7 @@ using MeasureBase: _dist_params_numtype, _gamma_cdf, _gamma_quantile, _beta_cdf,
 
 # Mooncake differentiates the generic cdf/quantile-based transports
 # natively. The incomplete gamma and beta functions and their inverses use
-# the ChainRules rules of the Distributions/ChainRulesCore extension, so
-# that all backends agree (shape parameter derivatives are NaN):
+# the ChainRules rules of the Distributions/ChainRulesCore extension:
 
 @zero_derivative MinimalCtx Tuple{typeof(_dist_params_numtype),Distribution}
 

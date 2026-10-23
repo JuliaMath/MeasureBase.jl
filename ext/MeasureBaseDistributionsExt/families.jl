@@ -91,10 +91,8 @@ end
 # families on the normal resp. exponential measure.
 
 # The regularized incomplete gamma and beta functions and their inverses
-# (from SpecialFunctions), with derivatives with respect to the variate
-# resp. probability argument provided by the autodiff extensions.
-# Derivatives with respect to the shape parameters are not available: NaN
-# in ForwardDiff and Mooncake, `NotImplemented` in ChainRules.
+# (from SpecialFunctions), differentiable with respect to all arguments via
+# the autodiff extensions.
 @inline MeasureBase._gamma_cdf(α, x) = MeasureBase._gamma_cdf_impl(MeasureBase._dualtag(α, x), α, x)
 @inline MeasureBase._gamma_quantile(α, p) = MeasureBase._gamma_quantile_impl(MeasureBase._dualtag(α, p), α, p)
 @inline MeasureBase._beta_cdf(α, β, x) = MeasureBase._beta_cdf_impl(MeasureBase._dualtag(α, β, x), α, β, x)
