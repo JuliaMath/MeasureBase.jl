@@ -300,8 +300,16 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   symmetry declared by the Distributions extension) versus the current
   symmetric-only `Half`, `Half` tails via log-ccdf, the
   `smart-constructors.jl` review (location-scale arrays as affine
-  pushforwards of powers), `_static_ndims` type-first vs. instance-first,
-  `normalize`/`NormalizedMeasure` (FlatPPL).
+  pushforwards of powers), `_static_ndims` type-first vs. instance-first.
+- `normalize` (decided 2026-10-23, review D7): `normalize(μ)` is a
+  `NormalizedMeasure(base, logmass)`, a weighted measure with the weight
+  `-logmass`, or `μ` itself if `massof(μ)` is statically one. It strips
+  weights and is idempotent, zero and infinite masses throw. Of unknown
+  mass (`logmass` is an `AbstractUnknownMass`) it has no density
+  (`ArgumentError`), but samples, transports and has the support of its
+  base. `massof` is type stable and known for `Lebesgue(a..b)`, `Counting`
+  of bounded integers, ranges and sets, weighted measures, products,
+  powers and superpositions, restrictions stay unknown.
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   exported as deprecations for one release.

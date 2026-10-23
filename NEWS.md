@@ -131,6 +131,13 @@ implementation per measure type for single variates and batches. See the
 - Transport Jacobians exclude weights: weighted measures transport like
   their base, map and log-abs-det Jacobian alike
   (`with_logabsdet_jacobian(transport_to(StdNormal(), 2 * StdNormal()), x) == (x, 0)`).
+- `normalize(μ)` returns a `NormalizedMeasure` (or `μ` itself if its mass
+  is statically one), with a density if the mass of `μ` is known, it used
+  to return a weighted measure. Normalized measures of unknown mass sample
+  and transport, but have no density. `normalize` strips weights and throws
+  for zero and infinite masses. `massof` is known for `Lebesgue(a..b)`,
+  `Counting` of bounded integers, ranges and sets, and type stable for
+  powers.
 - The projections `mcombine(firstarg/secondarg, α, β)` and
   `mbind(f, α, firstarg)` keep the mass of the dropped measure as a weight.
   `rand` of a bind samples ancestrally from the normalized laws of its

@@ -75,6 +75,9 @@ LebesgueBase()`, users can call `massof(m, a_b)` where
 finite, or we may know nothing at all about it. For these cases, it will return
 [`UnknownFiniteMass()`](@ref UnknownFiniteMass) or [`UnknownMass()`](@ref UnknownMass),
 respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
+
+`massof` must be type stable. Types of normalized measures should return
+`static(1.0)`, [`normalize`](@ref) then returns them as they are.
 """
 massof(::AbstractMeasure) = UnknownMass()
 
@@ -82,22 +85,6 @@ massof(::AbstractMeasure) = UnknownMass()
 @inline _logmass(mass::Real) = log(dynamic(mass))
 @noinline _logmass(::AbstractUnknownMass) =
     throw(ArgumentError("Density depends on a measure of unknown mass"))
-
-struct NormalizedMeasure{P,M} <: AbstractMeasure
-    parent::P
-    parent_mass::M
-end
-
-massof(m::NormalizedMeasure) = static(1.0)
-
-normalize(m::AbstractMeasure) = _normalize(m, massof(m))
-
-_normalize(m::AbstractMeasure, mass::AbstractUnknownMass) = NormalizedMeasure(m, mass)
-
-function _normalize(m::AbstractMeasure, mass)
-    isinf(mass) && error("Measure cannot be normalized: $m")
-    inv(mass) * m
-end
 
 export isnormalized
 

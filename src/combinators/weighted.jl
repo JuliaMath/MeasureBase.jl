@@ -1,18 +1,19 @@
 export WeightedMeasure, AbstractWeightedMeasure
 
 """
-    struct WeightedMeasure{R,M} <: AbstractMeasure
-        logweight :: R
-        base :: M
-    end
-"""
+    abstract type AbstractWeightedMeasure <: AbstractMeasure
 
+Supertype of measures that are constant multiples of their base measure,
+like [`WeightedMeasure`](@ref) and [`NormalizedMeasure`](@ref). They
+sample and transport like their base measure.
+"""
 abstract type AbstractWeightedMeasure <: AbstractMeasure end
 
 # By default the weight for all measure is 1
 _logweight(::AbstractMeasure) = 0
+_logweight(μ::AbstractWeightedMeasure) = μ.logweight
 
-@inline logdensity_def(d::AbstractWeightedMeasure, x) = _logweight_for(d.logweight, x)
+@inline logdensity_def(d::AbstractWeightedMeasure, x) = _logweight_for(_logweight(d), x)
 
 # Plain floating-point log-weights adopt the number type of the variate,
 # log-weights that carry more information (dual numbers, traced values)
@@ -23,11 +24,11 @@ _logweight(::AbstractMeasure) = 0
 # The weight-shifted density of a support-safe base density is support-safe,
 # no explicit support check required:
 @inline function logdensityof_impl(d::AbstractWeightedMeasure, x)
-    _add_logweight(_logweight_for(d.logweight, x), logdensityof_impl(basemeasure(d), x))
+    _add_logweight(_logweight_for(_logweight(d), x), logdensityof_impl(basemeasure(d), x))
 end
 
 @inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, X)
-    _lazy_add_logweight(_logweight_for(d.logweight, X), batched_logdensityof_impl(basemeasure(d), X))
+    _lazy_add_logweight(_logweight_for(_logweight(d), X), batched_logdensityof_impl(basemeasure(d), X))
 end
 
 # A zero weight gives zero densities, also where the base density is
@@ -36,7 +37,7 @@ end
 @inline _lazy_add_logweight(ℓ_w, ℓ::Number) = _add_logweight(ℓ_w, ℓ)
 @inline _lazy_add_logweight(ℓ_w, ℓ) = Broadcast.instantiate(Broadcast.broadcasted(_add_logweight, ℓ_w, ℓ))
 @inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
-    _lazy_add(_logweight_for(d.logweight, X), _zero_logd_batch(X, _static_ndims(basemeasure(d))))
+    _lazy_add(_logweight_for(_logweight(d), X), _zero_logd_batch(X, _static_ndims(basemeasure(d))))
 end
 
 @inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
@@ -47,6 +48,12 @@ testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basem
 
 ###############################################################################
 
+"""
+    struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
+        logweight :: R
+        base :: M
+    end
+"""
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight::R
     base::M
@@ -60,7 +67,6 @@ end
 
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
-_logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
 function Pretty.tile(d::WeightedMeasure)
