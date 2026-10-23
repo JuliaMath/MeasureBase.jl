@@ -5,7 +5,7 @@ using LinearAlgebra
 import LogarithmicNumbers
 
 using MeasureBase
-using MeasureBase: test_interface, test_smf
+using MeasureBase.Interface: test_interface, test_smf
 
 include("test_aqua.jl")
 

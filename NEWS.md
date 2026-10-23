@@ -207,4 +207,7 @@ throw.
 - New weak dependencies: Distributions (with StatsBase, StatsFuns and
   PDMats), AffineMaps, Reactant, ForwardDiff, ForwardDiffPullbacks and
   Mooncake.
+- `Test` is a weak dependency instead of a dependency: the test utilities
+  `MeasureBase.Interface.test_interface`, `test_transport` and `test_smf`
+  are defined by a package extension and require `using Test`.
 - Requires Compat 4.10 or later.
