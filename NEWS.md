@@ -66,7 +66,10 @@ implementation per measure type for single variates and batches. See the
 
 - Batched densities: `logdensities(μ, X)` for flat batches, nested arrays,
   struct arrays and tuples of batches.
-- Batched transports: `f.(X)` for `f = transport_to(ν, μ)`.
+- Batched transports: `transports(f, X)` for `f = transport_to(ν, μ)`,
+  with the batch conventions of `logdensities`. Broadcasting, `f.(X)`, is
+  equivalent: it transports the batch as a whole, not variate by
+  variate.
 - Random variates via HeterogeneousComputing: `rand(ctx::GenContext, μ)`
   with RNG, precision and compute unit, batches via `rand(ctx, μ^n)`.
 - Static variate sizes: statically sized measures give type stable,
@@ -87,7 +90,7 @@ implementation per measure type for single variates and batches. See the
 - Powers take integer-valued real counts (`StdNormal()^3.0`), so binds
   with counts drawn from discrete distributions work, e.g. the Poisson
   process `mbind(n -> μ^n, Poisson(λ), vcat)`.
-- New exports: `logdensities`, `mcombine`, `mbind`, `mkernel`,
+- New exports: `logdensities`, `transports`, `mcombine`, `mbind`, `mkernel`,
   `bindkernel`, `boundmeasure`, `mintegrate`, `mintegrate_exp`,
   `localmeasure`, `fast_dof`, `asmeasure`, `powermeasure`,
   `weightedmeasure`, `superpose`, `half`, `as_likelihood`,

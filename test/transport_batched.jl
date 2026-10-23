@@ -10,10 +10,11 @@ using MeasureBase: batched_transport_to_std, batched_transport_from_std
 using MeasureBase: batched_transport_to_std_with_rest, batched_transport_from_std_with_rest
 using MeasureBase: batched_rand_impl
 using InverseFunctions: inverse
-using ArraysOfArrays: sliced, flatview
+using ArraysOfArrays: sliced, flatview, nestedview
 using StaticArrays: SVector, SMatrix, @SMatrix
 using MeasureBase: logdensities
-using Distributions: MvNormal, LogNormal, logpdf
+using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf
+using StructArrays: StructArray, StructArrays
 using AffineMaps: Mul, MulAdd
 using JLArrays
 
@@ -168,6 +169,36 @@ using JLArrays
         @test batched_transport_to_std(StdUniform, Dirac(1.0), 1.0) == SVector{0,Bool}()
         @test batched_transport_from_std(StdUniform, Dirac(2.0), SVector{0,Bool}()) == 2.0
         @test_throws ArgumentError transport_to_std(StdUniform, StdNormal()^3, randn(3, 2))
+    end
+
+    @testset "transports" begin
+        f = transport_to(StdUniform()^3, StdNormal()^3)
+        X = randn(3, 5)
+        Y = transports(f, X)
+        @test length(Y) == 5 && flatview(Y) ≈ cdf.(Normal(), X)
+        @test transports(f, nestedview(X)) == Y && f.(X) == Y
+        @test transports(f, X[:, 1]) ≈ f(X[:, 1])
+        g = transport_to(StdUniform(), StdNormal())
+        @test transports(g, 0.3) == g(0.3) && transports(g, X) ≈ cdf.(Normal(), X)
+
+        # Results are materialized, not views of temporary arrays:
+        fw = transport_to(StdLogistic(), weightedmeasure(0.3, StdNormal()))
+        x = randn(5)
+        @test transports(fw, x) isa Vector{Float64} && transports(fw, x) ≈ map(fw, x)
+        ft = transport_to(productmeasure((StdNormal(), StdExponential())), StdUniform()^2)
+        U = rand(2, 5)
+        Yt = transports(ft, U)
+        @test Yt isa StructArray && all(c -> c isa Array, StructArrays.components(Yt))
+        @test all(Yt[j][1] ≈ ft(U[:, j])[1] && Yt[j][2] ≈ ft(U[:, j])[2] for j in 1:5)
+
+        # Fused arguments are materialized once, nested ones into flat storage:
+        v = [0.5, 1.0, 1.5]
+        @test flatview(f.(nestedview(X) .+ Ref(v))) ≈ cdf.(Normal(), X .+ v)
+        @test flatview(f.(X .+ 1)) ≈ cdf.(Normal(), X .+ 1)
+
+        # Batches that don't fit the variate rank or size throw:
+        @test_throws ArgumentError transports(f, randn(2, 5))
+        @test_throws ArgumentError transports(f, nestedview(randn(3, 2, 4), 2))
     end
 
     @testset "batch layouts" begin

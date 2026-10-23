@@ -8,8 +8,8 @@ the CPU, on GPUs and under Reactant.
 
 A single variate is a batch with zero batch dimensions. The point API
 (`logdensityof`, `transport_to(ν, μ)(x)`, `rand`) and the batched API
-(`logdensities`, `f.(X)`, `rand(μ^n)`) run the same kernels, so they can't
-drift apart. Static arrays keep the point path allocation-free.
+(`logdensities`, `transports`, `rand(μ^n)`) run the same kernels, so they
+can't drift apart. Static arrays keep the point path allocation-free.
 
 ```julia
 using MeasureBase
@@ -18,7 +18,7 @@ using MeasureBase
 X = rand(μ^100)            # batch of 100 variates, nested view of a 3×100 matrix
 logdensities(μ, X)         # 100 log-densities
 f = transport_to(StdUniform()^3, μ)
-f.(X)                      # the batch transported to the unit cube
+transports(f, X)           # the batch transported to the unit cube, or f.(X)
 ```
 
 **Variate rank.** [`MeasureBase.mspace_ndims`](@ref) gives the number of
@@ -45,6 +45,16 @@ arrays (ArraysOfArrays containers are fused into their flat storage,
 ragged containers are evaluated variate by variate), tuples and named
 tuples of batches for tuple-valued variates, struct arrays and arrays of
 tuples. `rand` of a power of a tuple product returns a struct array.
+
+**Batched transports.** `transports(f, X)` takes a batch `X` of variates
+of `μ` like `logdensities(μ, X)` does and returns the batch of transported
+variates of `ν` (for `f = transport_to(ν, μ)`) over the batch dimensions
+of `X`: an array of numbers for scalar variates, nested arrays over flat
+storage for array variates, struct arrays for tuple variates. The result
+is materialized (static for static batches), not a view of temporary
+arrays. Broadcasting `f.(X)` is the same operation, so `f.(x)` of a single
+vector variate `x` of a measure with vector variates is `f(x)`, and fused
+arguments (`f.(X .+ 1)`) are materialized once before the transport.
 
 **Static variates.** Sizes are `StaticThings.SizeLike` throughout. On the
 CPU, bulk draws of a fully static size are static arrays and stream splits
@@ -148,9 +158,9 @@ outermost stream combinator loops over the streams.
 ## Transport
 
 `transport_to(ν, μ)` returns a [`MeasureBase.TransportFunction`](@ref).
-`f(x)` transports a variate, `f.(X)` a whole batch. Transports are
-invertible (`InverseFunctions.inverse`) and provide their log-abs-det
-Jacobian (`ChangesOfVariables.with_logabsdet_jacobian`).
+`f(x)` transports a variate, `transports(f, X)` (or `f.(X)`) a whole
+batch. Transports are invertible (`InverseFunctions.inverse`) and provide
+their log-abs-det Jacobian (`ChangesOfVariables.with_logabsdet_jacobian`).
 
 Transport goes through standard measures (`StdUniform`, `StdNormal`,
 `StdExponential`, `StdLogistic` and their powers) as pivots. Each measure

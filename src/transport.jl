@@ -19,11 +19,10 @@ throws an `ArgumentError` where the normalization requires an unknown mass
 Measures are transported via standard measures: `x` is transported to the
 standard measure type that the preferences of `ν` and `μ` promote to (see
 [`MeasureBase.preferred_stdmeasure`](@ref)) and from there to `ν`.
-Broadcasting `f` over an array of variates with flat storage, or over
-the flat storage of a batch of variates (see
-[`MeasureBase.mspace_ndims`](@ref)), transports the whole batch at once. A standard measure
-type like `StdUniform` or `StdNormal` may also be used directly as the
-source or target:
+[`transports(f, X)`](@ref transports), or equivalently `f.(X)`, transports
+a whole batch `X` of variates at once. A standard measure type like
+`StdUniform` or `StdNormal` may also be used directly as the source or
+target:
 
 ```julia
 transport_to(StdNormal, μ)
@@ -81,6 +80,12 @@ Transforms a variate from one measure to a variate of another.
 
 In general `TransportFunction` should not be called directly, call
 [`transport_to`](@ref) instead.
+
+`f(x)` transports a single variate, [`transports(f, X)`](@ref transports)
+a batch of variates. Broadcasting, `f.(X)`, is equivalent to
+`transports(f, X)`: it transports the batch as a whole, with the batch
+conventions of [`logdensities`](@ref), not variate by variate (for a
+measure with vector variates, `f.(x)` of a single vector `x` is `f(x)`).
 """
 struct TransportFunction{NU,MU} <: Function
     ν::NU

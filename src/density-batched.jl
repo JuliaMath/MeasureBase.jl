@@ -21,7 +21,7 @@ Compute the log-density of `μ` at each variate in the batch `X`.
 `X` is an array of variates (e.g. an `ArraysOfArrays.ArrayOfSimilarArrays`,
 or an array of numbers for measures with scalar variates), the flat storage
 of a batch (an array of numbers with the variate dimensions leading, see
-[`MeasureBase.mspace_ndims`](@ref)), or a tuple resp. `NamedTuple` of
+[`MeasureBase.stream_ndims`](@ref)), or a tuple resp. `NamedTuple` of
 batches for measures with tuple resp. `NamedTuple` variates. Returns an
 array over the batch dimensions (a number for a single variate),
 semantically equivalent to `logdensityof.(Ref(μ), X)` for arrays of
@@ -29,6 +29,7 @@ variates. Batches with flat storage are evaluated in fused operations,
 compatible with GPU and traced arrays.
 
 Measure types implement [`MeasureBase.batched_logdensityof_impl`](@ref).
+See [`transports`](@ref) for batches of transports.
 """
 function logdensities end
 

@@ -121,7 +121,7 @@ include("testutils.jl")
         @test allocations_of(logdensityof, m2, x2) == 0
         g = transport_to(StdUniform()^3, StdNormal()^3)
         v = randn(3)
-        @test g.(SVector{3}(v))[] ≈ g(v)
+        @test g.(SVector{3}(v)) isa SVector{3,Float64} && g.(SVector{3}(v)) ≈ g(v)
         gs = transport_to(StdUniform(), StdNormal())
         @test gs.(SVector{3}(v)) isa SVector{3,Float64}
     end
