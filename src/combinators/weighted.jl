@@ -85,6 +85,13 @@ gentype(μ::WeightedMeasure) = gentype(μ.base)
 
 insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 
+# The Stieltjes measure function scales with the weight:
+smf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), smf(basemeasure(μ), x))
+invsmf(μ::AbstractWeightedMeasure, p) = invsmf(basemeasure(μ), p / exp(_logweight(μ)))
+
+@inline _scaled_smf(w, F) = w * F
+@inline _scaled_smf(w, F::NoSMF) = F
+
 # Weighted measures transport like their base:
 @inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))
 @inline transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, x) where {S<:StdMeasure} =

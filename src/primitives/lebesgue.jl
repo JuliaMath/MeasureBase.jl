@@ -97,6 +97,8 @@ function smf(μ::Lebesgue{<:AbstractInterval}, x)
     clamp(x, a, b)
 end
 
+invsmf(μ::Lebesgue{<:AbstractInterval}, p) = p
+
 smf(::Lebesgue{<:RealValues}, x) = x
 smf(::Lebesgue{<:RealValues}) = identity
 invsmf(::Lebesgue{<:RealValues}, x) = x

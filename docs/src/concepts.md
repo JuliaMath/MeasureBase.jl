@@ -199,6 +199,11 @@ exactly, and integer variates (e.g. of counting measures) stay integers.
   operation needs it. `f` is never evaluated at construction.
 - `weightedmeasure`, `superpose`, `restrict`, `mintegrate`,
   `mintegrate_exp`, `half`.
+- `truncate(μ, a..b)` for measures with scalar variates and a Stieltjes
+  measure function ([`smf`](@ref), the generalization of the cdf to
+  measures): densities of `μ` inside the interval, the mass of `μ` on it,
+  transports and draws via `smf` and [`invsmf`](@ref).
+  `normalize(truncate(μ, a..b))` is the conditional law.
 
 The operators `⋄` (pushforward), `⊙` (pullback), `▷` (bind), `⊗`
 (product), `∫`, `∫exp`, `𝒹` and `log𝒹` are shorthands for these, see

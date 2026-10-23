@@ -95,6 +95,21 @@ end
 end
 
 
+# The cdf is the Stieltjes measure function of a distribution, the quantile
+# its inverse:
+@inline MeasureBase.smf(m::DistributionMeasure{Univariate}, x) = MeasureBase.smf(m.obj, x)
+@inline MeasureBase.invsmf(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.invsmf(m.obj, p)
+
+# Infinite arguments give exact values, also for derivatives with respect to
+# the parameters, which would be NaN:
+@inline function MeasureBase.smf(d::Distribution{Univariate}, x::Real)
+    F = Distributions.cdf(d, _nonnan(x, zero(x)))
+    ifelse(isnan(x), oftype(F, NaN), ifelse(isinf(x), oftype(F, x > 0), F))
+end
+@inline MeasureBase.invsmf(d::Distribution{Univariate,Continuous}, p::Real) =
+    _nan_outside(StdUniform, p, _dist_quantile(d, _quantile_arg(p)))
+
+
 # Location-scale families of standard measures transport by their affine map:
 
 @inline function _affine_to_std(d::Distribution{Univariate}, x::Number)

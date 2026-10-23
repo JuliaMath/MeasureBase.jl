@@ -94,6 +94,14 @@ implementation per measure type for single variates and batches. See the
   `MeasureBase.mspace_ndims`.
 - Package extensions for Distributions (branch-free kernels for the main
   univariate families, `MvNormal`, `Dirichlet`), AffineMaps and Reactant.
+- `truncate(μ, a..b)` restricts measures with scalar variates and no
+  atoms to an interval (a `TruncatedMeasure`), structurally via their
+  Stieltjes measure function `smf`: the mass is `smf(μ, b) - smf(μ, a)`,
+  `normalize(truncate(μ, a..b))` is the conditional law, transports and
+  draws go through `smf` and `invsmf` (tails limited by the resolution of
+  uniform variates, as for `Half`). `smf` and `invsmf` are now defined for
+  wrapped univariate distributions (cdf and quantile), weighted measures
+  and `StdExponential`.
 - The transports of `Gamma`, `Beta` and `Dirichlet` are differentiable
   with respect to their shape parameters under ForwardDiff, ChainRules
   (Zygote) and Mooncake, e.g. for hierarchical models with a Dirichlet

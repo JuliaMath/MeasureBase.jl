@@ -23,3 +23,6 @@ end
 
 @inline rand_impl(ctx::GenContext, ::StdExponential) = randexp(ctx)
 @inline batched_rand_impl(ctx::GenContext, ::StdExponential, sz::SizeLike) = _randexp_bulk(ctx, sz)
+
+smf(::StdExponential, x) = -expm1(-max(x, zero(x)))
+invsmf(μ::StdExponential, p) = transport_def(μ, StdUniform(), p)

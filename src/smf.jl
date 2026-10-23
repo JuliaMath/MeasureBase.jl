@@ -24,6 +24,12 @@ function smf end
 
 export smf
 
+"""
+    invsmf(μ, p)
+
+The inverse of the Stieltjes measure function [`smf`](@ref) of the measure
+`μ`, `smf(μ, invsmf(μ, p)) ≈ p` for measures without atoms.
+"""
 function invsmf end
 
 export invsmf
