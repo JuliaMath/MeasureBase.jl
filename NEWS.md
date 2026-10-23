@@ -153,3 +153,4 @@ Implement
 - New weak dependencies: Distributions (with StatsBase, StatsFuns and
   PDMats), AffineMaps, Reactant, ForwardDiff, ForwardDiffPullbacks and
   Mooncake.
+- Requires Compat 4.10 or later.

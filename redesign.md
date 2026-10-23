@@ -189,8 +189,8 @@ and the exports `kleisli`, `AbstractTransitionKernel`, `↣`, `rebase`,
 
 API: the operators live in `MeasureOperators` and are re-exported; `⊙`
 is now the pullback (it was the pointwise product). Extension points and
-the internals BAT uses are declared `public` (`Expr(:public)` on Julia
-1.11+, `@compat public` once Compat >= 4.10). `mspace_elsize` (size of
+the internals BAT uses are declared `public` (`@compat public`, effective
+on Julia 1.11+). `mspace_elsize` (size of
 array variates, `NoMSpaceElementSize` for structured ones) is only used
 for with-rest stream consumption and `mreshape`, and is to be unexported
 (and declared public). Kernels use `mspace_ndims` and `mspace_flatsize`
@@ -299,8 +299,7 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   symmetric-only `Half`, `Half` tails via log-ccdf, the
   `smart-constructors.jl` review (location-scale arrays as affine
   pushforwards of powers), `_static_ndims` type-first vs. instance-first,
-  `normalize`/`NormalizedMeasure` (FlatPPL), `@compat public` once
-  Compat ≥ 4.10.
+  `normalize`/`NormalizedMeasure` (FlatPPL).
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   exported as deprecations for one release.

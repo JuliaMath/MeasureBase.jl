@@ -244,34 +244,30 @@ include("interface.jl")
 using .Interface
 
 # Public but not exported: extension points and internals for measure
-# implementations. Use `@compat public` once the Compat lower bound is 4.10.
-@static if VERSION >= v"1.11"
-    eval(Expr(:public,
-        :MeasureOperators,
-        # Densities:
-        :logdensityof_impl, :batched_logdensityof_impl, :batched_logdensity_def,
-        :logdensityof_with_rest, :batched_logdensityof_with_rest,
-        :logdensity_rel_def, :as_integrand, :as_integrand_exp,
-        # Random variates:
-        :GenContext, :rand_impl, :batched_rand_impl,
-        # Transport:
-        :transport_def, :batched_transport_def,
-        :transport_to_std, :transport_from_std,
-        :transport_to_std_with_rest, :transport_from_std_with_rest,
-        :batched_transport_to_std, :batched_transport_from_std,
-        :batched_transport_to_std_with_rest, :batched_transport_from_std_with_rest,
-        :preferred_stdmeasure, :promote_stdmeasure, :StdMeasure, :AnyStdMeasure,
-        :NoStdTransport, :stdconvert, :TransportFunction,
-        # Measurable spaces, degrees of freedom and argument checks:
-        :mspace_ndims, :mspace_flatsize, :mspace_elsize, :NoMSpaceElementSize, :fixed_stream_size,
-        :checked_arg, :NoDOF, :NoFastDOF, :NoFastInsupport,
-        # Masses:
-        :AbstractUnknownMass, :UnknownMass, :UnknownFiniteMass,
-        # Measure types and accessors:
-        :pwr_base, :pwr_axes, :pwr_size, :DensityMeasure, :AsMeasure, :StdSimplex,
-        :transportmeasure, :tpmeasure_split_combined,
-        :gettransform, :TransformVolCorr, :NoVolCorr, :WithVolCorr,
-    ))
-end
+# implementations.
+@compat public MeasureOperators,
+    # Densities:
+    logdensityof_impl, batched_logdensityof_impl, batched_logdensity_def,
+    logdensityof_with_rest, batched_logdensityof_with_rest,
+    logdensity_rel_def, as_integrand, as_integrand_exp,
+    # Random variates:
+    GenContext, rand_impl, batched_rand_impl,
+    # Transport:
+    transport_def, batched_transport_def,
+    transport_to_std, transport_from_std,
+    transport_to_std_with_rest, transport_from_std_with_rest,
+    batched_transport_to_std, batched_transport_from_std,
+    batched_transport_to_std_with_rest, batched_transport_from_std_with_rest,
+    preferred_stdmeasure, promote_stdmeasure, StdMeasure, AnyStdMeasure,
+    NoStdTransport, stdconvert, TransportFunction,
+    # Measurable spaces, degrees of freedom and argument checks:
+    mspace_ndims, mspace_flatsize, mspace_elsize, NoMSpaceElementSize, fixed_stream_size,
+    checked_arg, NoDOF, NoFastDOF, NoFastInsupport,
+    # Masses:
+    AbstractUnknownMass, UnknownMass, UnknownFiniteMass,
+    # Measure types and accessors:
+    pwr_base, pwr_axes, pwr_size, DensityMeasure, AsMeasure, StdSimplex,
+    transportmeasure, tpmeasure_split_combined,
+    gettransform, TransformVolCorr, NoVolCorr, WithVolCorr
 
 end # module MeasureBase
