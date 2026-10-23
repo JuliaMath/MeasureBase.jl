@@ -65,6 +65,52 @@ const _derivatives = (
         @test _derivatives.Zygote(transport_to(StdUniform(), asmeasure(Laplace(0f0, 1f0))), -90f0) ≈ exp(-90f0) / 2
     end
 
+    @testset "shape derivatives of the incomplete gamma and beta functions" begin
+        # Reference values from mpmath (numerical differentiation at 50 digits):
+        for (a, x, ref) in [
+            (0.01, 1.0e-5, -9.8167252611925644),
+            (0.01, 0.5, -0.56554591171525781),
+            (0.01, 20.0, -1.0564460222193207e-10),
+            (0.5, 0.01, -0.52251433779748302),
+            (0.5, 1.9, -0.15075191952357514),
+            (2.5, 2.75, -0.245741695389706),
+            (2.5, 125.0, -2.2719815141074742e-51),
+            (100.0, 80.0, -0.0044026432434686354),
+            (100.0, 117.0, -0.010053392530833614),
+            (10000.0, 9800.0, -0.00053081913130245152),
+            (10000.0, 10000.0, -0.0039894560494536683),
+            (10000.0, 10300.0, -4.7684995140463611e-5),
+        ]
+            @test MeasureBase._gamma_cdf_dshape(a, x) ≈ ref rtol = 1e-10
+        end
+        for (a, b, x, ref_a, ref_b) in [
+            (0.01, 0.01, 0.5, -25.004009427632699, 25.004009427632699),
+            (0.01, 10.0, 1.0e-30, -34.160918876479137, 0.00054187794405317934),
+            (0.1, 3.0, 0.2, -0.52003687114105701, 0.021625588481686938),
+            (2.0, 3.0, 0.3, -0.2460937277467235, 0.12954506096487189),
+            (2.0, 3.0, 0.7, -0.069571251131060496, 0.08187252372208087),
+            (3.0, 0.1, 0.99, -0.027525027681462349, 2.3542697095364313),
+            (30.0, 30.0, 0.45, -0.040413295224917996, 0.036568626794300736),
+            (0.5, 10000.0, 1.0e-5, -0.82292693041303622, 1.6143697022234938e-5),
+            (10000.0, 0.5, 0.99999, -1.6143697022205549e-5, 0.82292693041278708),
+            (1000.0, 10000.0, 0.09, -0.011439648473102025, 0.001137496159575596),
+            (10000.0, 10000.0, 0.497, -0.0019740649137160666, 0.0019622559785972475),
+            (0.01, 10000.0, 0.0001, -0.22385735472191154, 3.699968863145381e-7),
+        ]
+            ∂a, ∂b = MeasureBase._beta_cdf_dshape(a, b, x)
+            @test ∂a ≈ ref_a rtol = 1e-10
+            @test ∂b ≈ ref_b rtol = 1e-10
+        end
+        @test MeasureBase._gamma_cdf_dshape(2.5f0, 2.75f0) ≈ -0.245741695389706 rtol = eps(Float32)
+        ∂32 = MeasureBase._beta_cdf_dshape(2f0, 3f0, 0.3f0)
+        @test ∂32 isa NTuple{2,Float32} && all(isapprox.(∂32, MeasureBase._beta_cdf_dshape(2.0, 3.0, Float64(0.3f0)), rtol = eps(Float32)))
+        # Constant at the ends of the support, NaN outside of the domain:
+        @test MeasureBase._gamma_cdf_dshape(2.0, 0.0) == 0 == MeasureBase._gamma_cdf_dshape(2.0, Inf)
+        @test isnan(MeasureBase._gamma_cdf_dshape(2.0, -1.0)) && isnan(MeasureBase._gamma_cdf_dshape(0.0, 1.0))
+        @test MeasureBase._beta_cdf_dshape(2.0, 3.0, 0.0) == (0, 0) == MeasureBase._beta_cdf_dshape(2.0, 3.0, 1.0)
+        @test all(isnan, MeasureBase._beta_cdf_dshape(2.0, 3.0, 1.5)) && all(isnan, MeasureBase._beta_cdf_dshape(2.0, -1.0, 0.5))
+    end
+
     @testset "Float32 tails" begin
         # Cauchy quantiles are `-cot(πp)`:
         f = transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform())

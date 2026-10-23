@@ -197,6 +197,7 @@ include("parameterized.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
+include("special-derivatives.jl")
 include("mass-interface.jl")
 
 include("density.jl")
