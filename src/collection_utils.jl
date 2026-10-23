@@ -82,9 +82,12 @@ Base.@propagate_inbounds _consume_from_stream(x::AbstractVector, sz::Tuple{Integ
 
 Base.@propagate_inbounds function _consume_from_stream(x::AbstractVector, ::Tuple{})
     idxs = maybestatic_eachindex(x)
+    isempty(idxs) && _throw_stream_too_short()
     i_first = maybestatic_first(idxs)
     x[i_first], maybestatic_view(x, i_first + one(i_first), maybestatic_last(idxs))
 end
+
+@noinline _throw_stream_too_short() = throw(ArgumentError("Variate stream too short"))
 
 function _consume_from_stream(x::AbstractVector, sz::Tuple{Vararg{IntegerLike}})
     a_flat, x_rest = maybestatic_split(x, size2length(sz))

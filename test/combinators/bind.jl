@@ -73,6 +73,11 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         xy_reco = transport_to(μ, StdUniform()^3)(y)
         @test xy_reco ≈ xy
 
+        # Streams too short for the primary variate:
+        μs = mbind(x -> StdNormal()^2, StdNormal(), vcat)
+        @test_throws ArgumentError logdensityof(μs, Float64[])
+        @test_throws ArgumentError transport_to(StdUniform()^3, μs)(Float64[])
+
         # Transport between two measures of unknown DOF (standard pivot):
         μ2 = mbind(f_βv, StdUniform()^1, vcat)
         xy2 = transport_to(μ2, μ)(xy)
