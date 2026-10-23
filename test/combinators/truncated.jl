@@ -8,7 +8,8 @@ using MeasureBase.Interface: test_transport, test_smf
 using ChangesOfVariables: with_logabsdet_jacobian
 using InverseFunctions: inverse
 using IntervalSets
-using Static: static
+import JLArrays
+using JLArrays: JLArray
 
 # Composite Simpson rule:
 function _simpson(f, a, b, n = 4000)
@@ -131,6 +132,16 @@ end
         f32 = transport_to(StdUniform(), t32)
         @test f32(0.5f0) isa Float32 && inverse(f32)(0.5f0) isa Float32
         @test f32(0.5f0) ≈ transport_to(StdUniform(), t)(0.5) rtol = 1e-6
+    end
+
+    @testset "device arrays" begin
+        JLArrays.allowscalar(false)
+        t = truncate(StdNormal(), -1.0 .. 2.0)
+        x = [-2.0, 0.0, 0.5, 1.9, 3.0]
+        @test all(Array(logdensities(t, JLArray(x))) .≈ logdensities(t, x))
+        f = transport_to(StdUniform(), t)
+        @test isequal(Array(f.(JLArray(x))), f.(x))
+        @test Array(inverse(f).(JLArray([0.0, 0.3, 1.0]))) ≈ inverse(f).([0.0, 0.3, 1.0])
     end
 
     @testset "Half and normalized truncations" begin

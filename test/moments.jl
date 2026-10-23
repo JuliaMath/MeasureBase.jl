@@ -6,7 +6,7 @@ using IntervalSets
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, normalize
 using AffineMaps: Mul, Add, MulAdd, AddMul, InvMul, Subtract, InvMulAdd, InvAddMul
-using StaticArrays: SVector, SMatrix
+using StaticArrays: SVector
 using Static: static
 
 @testset "moments" begin
