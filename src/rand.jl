@@ -153,11 +153,25 @@ end
     reshape(mask, (ntuple(_ -> 1, Val(K))..., size(mask)...))
 end
 
-# A batch of copies of a constant variate:
-function _const_batch(ctx::GenContext, x, sz::SizeLike)
+# A batch of copies of a constant variate. On the host, batches of numbers
+# and fills are fills (static arrays for static sizes), so that constant
+# components of batches stay recognizable:
+@inline function _const_batch(ctx::GenContext, x, sz::SizeLike)
+    _on_host(ctx) && _has_fill_batch(x) ? _fill_batch(x, sz) : _dense_const_batch(ctx, x, sz)
+end
+@inline _const_batch(::GenContext, x::Number, ::Tuple{}) = x
+
+@inline _has_fill_batch(::Union{Number,FillArrays.AbstractFill}) = true
+@inline _has_fill_batch(::Any) = false
+
+@inline _fill_batch(x::Number, sz::SizeLike) = maybestatic_fill(x, sz)
+@inline function _fill_batch(x::FillArrays.AbstractFill, sz::SizeLike)
+    maybestatic_fill(FillArrays.getindex_value(x), (size(x)..., size_tuple(sz)...))
+end
+
+@inline _dense_const_batch(ctx::GenContext, x::Number, sz::SizeLike) = _const_bulk(ctx, x, sz)
+function _dense_const_batch(ctx::GenContext, x, sz::SizeLike)
     X = allocate_array(ctx, eltype(x), (size(x)..., asnonstatic(sz)...))
     X .= x
     return X
 end
-@inline _const_batch(ctx::GenContext, x::Number, sz::SizeLike) = _const_bulk(ctx, x, sz)
-@inline _const_batch(::GenContext, x::Number, ::Tuple{}) = x

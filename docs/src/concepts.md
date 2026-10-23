@@ -197,6 +197,10 @@ compute unit and transported to `μ`.
 Floating-point variates have the precision of the context, also through
 transformations and combinators. Point masses generate their atom
 exactly, and integer variates (e.g. of counting measures) stay integers.
+On the host, batches of point masses with numeric atoms are
+`FillArrays.Fill`s (static arrays for static sizes), from `rand` and from
+transports alike, so constant components of struct array batches are
+recognizable. Other compute units get dense arrays.
 
 ## Moments
 

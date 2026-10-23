@@ -8,6 +8,9 @@ using MeasureBase: weightedmeasure, mintegrate_exp, mcombine
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
 using ArraysOfArrays: flatview
+using FillArrays: Fill
+using Distributions: Normal, cdf
+using MeasureBase: Dirac
 
 @testset "structured batches" begin
     Pt = productmeasure((StdNormal(), StdExponential()^2))
@@ -39,6 +42,25 @@ using ArraysOfArrays: flatview
     @test Yn isa StructArray && Yn[1] isa NamedTuple{(:a, :b)}
     @test all(Yn[i].a ≈ X[i][1] && Yn[i].b ≈ X[i][2] for i in 1:6)
     @test inverse(h).(Yn) isa StructArray
+
+    @testset "fill columns" begin
+        # Constant columns (`rand` gives them for point masses) mix with
+        # dense ones:
+        Q = productmeasure((a = StdNormal(), b = StdUniform()))
+        Xq = StructArray((a = randn(5), b = Fill(0.25, 5)))
+        @test logdensities(Q, Xq) ≈ logdensityof.(Ref(Q), Xq)
+        fq = transport_to(StdNormal()^2, Q)
+        @test flatview(transports(fq, Xq)) ≈ stack(map(fq, Xq))
+        Pd = productmeasure((a = StdNormal(), c = Dirac(2.0)))
+        Xd = StructArray((a = randn(4), c = Fill(3.0, 4)))
+        @test all(==(-Inf), logdensities(Pd, Xd))
+        Xd = rand(Pd^4)
+        fd = transport_to(StdUniform()^1, Pd)
+        U = transports(fd, Xd)
+        @test flatview(U) ≈ reshape(cdf.(Normal(), Xd.a), 1, 4)
+        Xr = transports(inverse(fd), U)
+        @test Xr.c isa Fill && Xr.a ≈ Xd.a
+    end
 
     @test insupportof(StdUniform()^3, [0.1, 0.5, 0.9]) && !insupportof(StdUniform()^3, [0.1, 1.5, 0.9])
     @test insupportof((StdUniform()^2)^3, rand(2, 3)) && !insupportof((StdUniform()^2)^3, fill(2.0, 2, 3))

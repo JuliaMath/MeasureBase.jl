@@ -85,7 +85,10 @@ function batched_transport_from_std(::Type{S}, μ::_FlatDirac, Z::AbstractArray)
     _const_variates(μ.x, Z)
 end
 @inline _const_variates(x::Number, ::AbstractVector) = x
-function _const_variates(x, Z::AbstractArray)
+@inline function _const_variates(x, Z::AbstractArray)
+    _is_host_array(Z) && _has_fill_batch(x) ? _fill_batch(x, Base.tail(maybestatic_size(Z))) : _dense_const_variates(x, Z)
+end
+function _dense_const_variates(x, Z::AbstractArray)
     X = similar(Z, eltype(x), (size(x)..., Base.tail(size(Z))...))
     X .= x
     return X

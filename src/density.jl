@@ -280,6 +280,7 @@ end
 @inline _is_host_array(A) = _is_host_unit(get_compute_unit(A))
 @inline _is_host_unit(unit) = is_host_unit(unit)
 @inline _is_host_unit(::HeterogeneousComputing.ComputeUnitIndependent) = true
+@inline _is_host_unit(::HeterogeneousComputing.UnknownComputeUnitOf) = false
 
 function _integrand_lds_at(f, Θ, ℓ_base)
     idxs = findall(!isneginf, ℓ_base)

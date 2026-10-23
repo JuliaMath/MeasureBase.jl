@@ -15,6 +15,9 @@ using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, 
 using MeasureBase: rand_impl, batched_rand_impl, asmeasure, logdensities
 using Distributions: Normal, MvNormal, Weibull, Poisson, logpdf
 using JLArrays: JLArrays, JLArray, JLBackend
+using FillArrays: Fill
+using StaticArrays: SVector
+using Static: static
 
 struct NoBatchRandMeasure <: AbstractMeasure end
 MeasureBase.rand_impl(ctx::GenContext, ::NoBatchRandMeasure) = 3 * rand(MeasureBase.get_rng(ctx), MeasureBase.get_precision(ctx))
@@ -120,6 +123,22 @@ struct NoRandMeasure <: AbstractMeasure end
         @test size(Xmv) == (2, n) && isapprox(vec(mean(Xmv, dims = 2)), [1.0, 2.0], atol = 0.05)
     end
 
+    @testset "constant batches" begin
+        # Batches of point masses are fills on the host, so constants are
+        # recognizable in batches:
+        X = batched_rand_impl(ctx(), Dirac(2.5), (4,))
+        @test X isa Fill{Float64} && X == fill(2.5, 4)
+        @test batched_rand_impl(ctx(), Dirac(2.5), (static(3),)) === SVector(2.5, 2.5, 2.5)
+        @test rand(Dirac(2.0)^3) isa Fill
+        Xp = rand((Dirac(2.0)^3)^4)
+        @test flatview(Xp) isa Fill && size(flatview(Xp)) == (3, 4) && all(==(2.0), flatview(Xp))
+        @test flatview(rand(Dirac([1.0, 2.0])^3)) == [1.0 1.0 1.0; 2.0 2.0 2.0]
+        P = productmeasure((a = StdNormal(), c = Dirac(2.0)))
+        Xn = rand(ctx(), P^5)
+        @test Xn.c isa Fill && all(==(2.0), Xn.c) && Xn.a isa Vector{Float64}
+        @test logdensities(P, Xn) ≈ logdensityof.(Ref(P), Xn)
+    end
+
     @testset "variates on device compute units" begin
         JLArrays.allowscalar(false)
         dctx = GenContext{Float32}(AbstractComputeUnit(JLBackend()))
@@ -143,5 +162,7 @@ struct NoRandMeasure <: AbstractMeasure end
         @test Xt isa Tuple{JLArray{Float32,1},JLArray{Float32,2}} && size(Xt[2]) == (2, n)
         @test all(isfinite, Array(logdensities(Pt, Xt)))
         @test isapprox(mean(Array(Xt[2])), 1.0, atol = 0.05)
+        Xc = batched_rand_impl(dctx, productmeasure((a = StdNormal(), c = Dirac(2.0f0))), (n,))
+        @test Xc.c isa JLArray{Float32,1} && all(==(2.0f0), Array(Xc.c))
     end
 end

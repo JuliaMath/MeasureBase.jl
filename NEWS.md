@@ -147,6 +147,9 @@ implementation per measure type for single variates and batches. See the
   names) is removed, use `paramnames`. Transformed measures have no
   parameters.
 - Transports between point masses return floats.
+- Batches of point masses with numeric atoms (from `rand` and from
+  transports, also as components of products and powers) are
+  `FillArrays.Fill`s on the host, dense arrays on other compute units.
 - Variates of the wrong shape throw `ArgumentError` everywhere, also for
   reshaped measures (`DimensionMismatch` before).
 - `transport_to(StdUniform, μ)` for measures `μ` with binds inside
