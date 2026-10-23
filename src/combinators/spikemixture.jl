@@ -60,7 +60,7 @@ _spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::SizeLike, ::NoMSpaceE
 
 testvalue(::Type{T}, μ::SpikeMixture) where {T} = zero(T)
 
-insupport(μ::SpikeMixture, x) = _insupport_mask(insupport(μ.m, x)) | iszero(x)
+insupportof(μ::SpikeMixture, x) = _insupport_mask(insupportof(μ.m, x)) | iszero(x)
 
 
 @inline mspace_flatsize(μ::SpikeMixture) = mspace_flatsize(typeof(μ))

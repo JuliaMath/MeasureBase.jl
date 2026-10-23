@@ -314,18 +314,18 @@ end
 
 # Support checks of powers run over the flat variate storage where the
 # innermost base measure has scalar variates, elementwise otherwise:
-@inline function insupport(μ::PowerMeasure, x::AbstractArray)
+@inline function insupportof(μ::PowerMeasure, x::AbstractArray)
     ν, _ = _pwr_unwrap(μ)
     _powered_insupport(μ, x, _flat_storage(x), _static_ndims(ν))
 end
 
 @inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::StaticInteger{0})
     ν, _ = _pwr_unwrap(μ)
-    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x_flat))
+    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupportof, ν), x_flat))
 end
 @inline function _powered_insupport(μ::PowerMeasure, x, x_flat::AbstractArray, ::StaticInteger{K}) where {K}
     ν, _ = _pwr_unwrap(μ)
-    _all_insupport(map(_insupport_bool ∘ Base.Fix1(insupport, ν), sliced(x_flat, Val(K))))
+    _all_insupport(map(_insupport_bool ∘ Base.Fix1(insupportof, ν), sliced(x_flat, Val(K))))
 end
 @inline function _powered_insupport(μ::PowerMeasure, x, ::AbstractArray{<:Number}, ::NoMSpaceElementSize)
     NoFastInsupport{typeof(μ)}()
@@ -333,11 +333,11 @@ end
 @inline _powered_insupport(μ::PowerMeasure, x, ::Any, ::Any) = _powered_insupport_elementwise(pwr_base(μ), x)
 
 @inline function _powered_insupport_elementwise(ν, x::AbstractArray)
-    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupport, ν), x))
+    _all_insupport(broadcast(_insupport_bool ∘ Base.Fix1(insupportof, ν), x))
 end
 
-function insupport(μ::PowerMeasure, x)
-    mapreduce(_insupport_bool ∘ Base.Fix1(insupport, pwr_base(μ)), _insupport_and, x)
+function insupportof(μ::PowerMeasure, x)
+    mapreduce(_insupport_bool ∘ Base.Fix1(insupportof, pwr_base(μ)), _insupport_and, x)
 end
 
 @inline getdof(μ::PowerMeasure) = getdof(μ.parent) * size2length(axes2size(μ.axes))

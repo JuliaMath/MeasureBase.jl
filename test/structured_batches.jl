@@ -3,7 +3,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupport, transport_to
+using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupportof, transport_to
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
 using ArraysOfArrays: flatview
@@ -39,9 +39,9 @@ using ArraysOfArrays: flatview
     @test all(Yn[i].a ≈ X[i][1] && Yn[i].b ≈ X[i][2] for i in 1:6)
     @test inverse(h).(Yn) isa StructArray
 
-    @test insupport(StdUniform()^3, [0.1, 0.5, 0.9]) && !insupport(StdUniform()^3, [0.1, 1.5, 0.9])
-    @test insupport((StdUniform()^2)^3, rand(2, 3)) && !insupport((StdUniform()^2)^3, fill(2.0, 2, 3))
-    @test insupport(StdUniform()^3, [0.1, 0.5, 0.9]) isa Bool
+    @test insupportof(StdUniform()^3, [0.1, 0.5, 0.9]) && !insupportof(StdUniform()^3, [0.1, 1.5, 0.9])
+    @test insupportof((StdUniform()^2)^3, rand(2, 3)) && !insupportof((StdUniform()^2)^3, fill(2.0, 2, 3))
+    @test insupportof(StdUniform()^3, [0.1, 0.5, 0.9]) isa Bool
 
     @testset "transports of powers of tuple products" begin
         flat(x) = reduce(vcat, [vcat(xi...) for xi in x])

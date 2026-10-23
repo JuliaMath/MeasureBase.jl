@@ -64,9 +64,9 @@ function logdensity_def(s::SuperpositionMeasure, x)
     terms = map(cs, αs) do cᵢ, αᵢ
         ℓᵢ = _dynamic_logd(logdensity_def(cᵢ, x), x)
         log_dΣα_dαᵢ = _logsumexp_components(map(αs) do αⱼ
-            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupport(αⱼ, x))
+            _masked_logd(logdensity_rel(αⱼ, αᵢ, x), insupportof(αⱼ, x))
         end)
-        _masked_logd(ℓᵢ - log_dΣα_dαᵢ, insupport(cᵢ, x))
+        _masked_logd(ℓᵢ - log_dΣα_dαᵢ, insupportof(cᵢ, x))
     end
     _logsumexp_components(terms)
 end
@@ -74,7 +74,7 @@ end
 function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
     cs = values(s.components)
     ds = map(cs) do μ
-        _masked_logd(logdensity_rel(μ, β, x), insupport(μ, x))
+        _masked_logd(logdensity_rel(μ, β, x), insupportof(μ, x))
     end
     _logsumexp_components(ds)
 end
@@ -140,8 +140,8 @@ end
 _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, ::NoMSpaceElementSize) =
     _batched_rand_pointwise(ctx, μ, sz)
 
-@inline function insupport(d::SuperpositionMeasure, x)
-    mapreduce(c -> _insupport_mask(insupport(c, x)), |, values(d.components))
+@inline function insupportof(d::SuperpositionMeasure, x)
+    mapreduce(c -> _insupport_mask(insupportof(c, x)), |, values(d.components))
 end
 
 

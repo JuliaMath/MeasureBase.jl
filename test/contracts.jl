@@ -11,7 +11,7 @@ import AffineMaps
 struct _MinimalLaplace <: AbstractMeasure end
 MeasureBase.logdensity_def(::_MinimalLaplace, x) = -abs(x)
 MeasureBase.basemeasure(::_MinimalLaplace) = weightedmeasure(-log(2.0), LebesgueBase())
-MeasureBase.insupport(::_MinimalLaplace, x) = true
+MeasureBase.insupportof(::_MinimalLaplace, x) = true
 MeasureBase.mspace_flatsize(::Type{<:_MinimalLaplace}) = ()
 MeasureBase.mspace_flatsize(::_MinimalLaplace) = ()
 MeasureBase.preferred_stdmeasure(::Type{<:_MinimalLaplace}) = StdUniform

@@ -138,7 +138,7 @@ struct _NoSampler <: AbstractMeasure end
             @test isapprox(mean(X), m, atol = 5 * sqrt(v / n) + 1e-3)
             @test isapprox(var(X), v, rtol = 0.05)
             xs = [rand_impl(GenContext{Float64}(stblrng()), μ) for _ in 1:20]
-            @test all(x -> insupport(μ, x) != false, xs)
+            @test all(x -> insupportof(μ, x) != false, xs)
         end
 
         mix = superpose(weightedmeasure(log(0.3), Dirac(0.0)), weightedmeasure(log(0.7), Dirac(1.0)))

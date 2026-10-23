@@ -283,7 +283,7 @@ function _bind_tpm_sc_cat(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::Na
 end
 
 
-@inline insupport(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
+@inline insupportof(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
 
 @inline _unweighted(μ::Bind) = mbind(_unweighted ∘ μ.f_β, _unweighted(μ.α), μ.f_c)
 

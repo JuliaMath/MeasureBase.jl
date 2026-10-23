@@ -86,7 +86,7 @@ for (bhead, phead) in ((:batched_logdensityof_impl, :logdensityof_impl), (:batch
     end
 end
 @inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
-@inline MeasureBase.insupport(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x) & _finite_variate(m.obj, x)
+@inline MeasureBase.insupportof(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x) & _finite_variate(m.obj, x)
 # Infinite values lie outside the support of univariate distributions,
 # where Distributions may evaluate to NaN:
 @inline _finite_variate(::Distribution{Univariate}, x) = isfinite(x)

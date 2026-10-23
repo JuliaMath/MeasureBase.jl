@@ -120,7 +120,7 @@ using AffineMaps: Mul
 
         @test MeasureBase.getdof(μ) == 2
         @test MeasureBase.fast_dof(μ) == 2
-        @test MeasureBase.insupport(μ, ab) isa MeasureBase.NoFastInsupport
+        @test MeasureBase.insupportof(μ, ab) isa MeasureBase.NoFastInsupport
 
         y = transport_to(StdUniform()^2, μ)(ab)
         @test y isa AbstractVector{<:Real} && length(y) == 2

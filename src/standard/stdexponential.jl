@@ -8,11 +8,11 @@ struct StdExponential <: StdMeasure end
 
 export StdExponential
 
-insupport(::StdExponential, x) = x ≥ zero(x)
+insupportof(::StdExponential, x) = x ≥ zero(x)
 
 @inline function logdensityof_impl(d::StdExponential, x)
     R = float(typeof(x))
-    _checksupport(insupport(d, x), convert(R, -x))
+    _checksupport(insupportof(d, x), convert(R, -x))
 end
 
 @inline logdensity_def(::StdExponential, x) = -x

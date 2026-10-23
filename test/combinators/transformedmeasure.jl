@@ -100,7 +100,7 @@ using IrrationalConstants: loghalf
     @test logdensityof(μ, 0.0) ≈ logdensityof(StdNormal(), 0.0) - loghalf
 
     @test logdensities(μ, [-1.0, 1.0]) ≈ [-Inf, logdensityof(μ, 1.0)]
-    @test MeasureBase.insupport(μ, -1.0) == false && MeasureBase.insupport(μ, 1.0) == true
+    @test MeasureBase.insupportof(μ, -1.0) == false && MeasureBase.insupportof(μ, 1.0) == true
     @test logdensityof(Half(2 * StdNormal()), 1.0) ≈ log(2) + logdensityof(μ, 1.0)
 
     # Half requires scalar variates and parents symmetric about zero:
@@ -211,7 +211,7 @@ using ChangesOfVariables: setladj
 
     # Test rand
     @test rand(ν) isa Real
-    @test insupport(ν, rand(ν)) != false
+    @test insupportof(ν, rand(ν)) != false
 
     # Test pullback
     pb = pullbck(f, ν)

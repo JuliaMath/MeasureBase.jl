@@ -25,13 +25,13 @@ using LinearAlgebra: I
     @test @inferred(MeasureBase.basemeasure(c0)) == MeasureBase.Lebesgue(MeasureBase.ℝ)
     @test @inferred(MeasureBase.basemeasure(c1)) == MeasureBase.Lebesgue(MeasureBase.ℝ) ^ 2
 
-    @test @inferred(MeasureBase.insupport(c0, 3)) == true
-    @test @inferred(MeasureBase.insupport(c0, -3)) == false
-    @test @inferred(MeasureBase.insupport(c1, [0.1, 0.2])) == true
-    @test @inferred(MeasureBase.insupport(d0, 3)) == true
-    @test @inferred(MeasureBase.insupport(d0, 3.2)) == false
-    @test @inferred(MeasureBase.insupport(d1, [1, 2])) == true
-    @test @inferred(MeasureBase.insupport(d1, [1.1, 2.2])) == false
+    @test @inferred(MeasureBase.insupportof(c0, 3)) == true
+    @test @inferred(MeasureBase.insupportof(c0, -3)) == false
+    @test @inferred(MeasureBase.insupportof(c1, [0.1, 0.2])) == true
+    @test @inferred(MeasureBase.insupportof(d0, 3)) == true
+    @test @inferred(MeasureBase.insupportof(d0, 3.2)) == false
+    @test @inferred(MeasureBase.insupportof(d1, [1, 2])) == true
+    @test @inferred(MeasureBase.insupportof(d1, [1.1, 2.2])) == false
 
     @test MeasureBase.paramnames(c0) == (:α, :θ)
     if VERSION >= v"1.8"

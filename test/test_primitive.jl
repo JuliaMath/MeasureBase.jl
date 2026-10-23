@@ -1,7 +1,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: insupport as measure_insupport
+using MeasureBase: insupportof as measure_insupport
 
 using DensityInterface: logdensityof
 

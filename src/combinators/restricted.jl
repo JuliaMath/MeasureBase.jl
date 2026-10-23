@@ -10,12 +10,12 @@ end
 @inline fixed_stream_size(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
 
 # The density relative to the base is one on the restriction, the support
-# is handled by `insupport`:
+# is handled by `insupportof`:
 @inline logdensity_def(::RestrictedMeasure, x) = zero(_logd_numtype(x))
 
 basemeasure(μ::RestrictedMeasure) = μ.base
 
-insupport(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupport(μ.base, x))
+insupportof(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupportof(μ.base, x))
 
 function Pretty.quoteof(d::RestrictedMeasure)
     qf = Pretty.quoteof(d.predicate)

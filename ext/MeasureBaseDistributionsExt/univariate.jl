@@ -83,7 +83,7 @@ end
 # Distributions' functions run on the host only, so these may branch:
 @inline function _to_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
     R = _result_numtype(d, x)
-    MeasureBase.insupport(asmeasure(d), x) ? convert(R, _trafo_logcdf(d, x) - _trafo_logccdf(d, x)) : convert(R, NaN)
+    MeasureBase.insupportof(asmeasure(d), x) ? convert(R, _trafo_logcdf(d, x) - _trafo_logccdf(d, x)) : convert(R, NaN)
 end
 
 @inline function _from_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)

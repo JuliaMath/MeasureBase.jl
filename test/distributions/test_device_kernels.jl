@@ -8,7 +8,7 @@ using Test
 using Distributions, LinearAlgebra, StableRNGs, Statistics
 using MeasureBase
 using MeasureBase: asmeasure, GenContext, StdUniform, StdNormal, StdExponential, StdLogistic
-using MeasureBase: batched_rand_impl, logdensities, insupport
+using MeasureBase: batched_rand_impl, logdensities, insupportof
 using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
 import Adapt
@@ -32,7 +32,7 @@ using JLArrays
         @test all(map((a, b) -> a == b || a ≈ b || (isnan(a) && isnan(b)), logdensityof.(Ref(m), xs), ℓ_ref))
         @test logdensities(m, xs) ≈ ℓ_ref nans = true
         @test Array(logdensities(m, JLArray(xs))) ≈ ℓ_ref nans = true
-        @test insupport.(Ref(m), xs) == (Distributions.insupport.(d, xs) .& isfinite.(xs))
+        @test insupportof.(Ref(m), xs) == (Distributions.insupport.(d, xs) .& isfinite.(xs))
 
         if d isa ContinuousUnivariateDistribution
             x = rand(stblrng(), d, 12)
@@ -47,7 +47,7 @@ using JLArrays
             @test X isa Vector{Float64} && length(X) == 5
             # The transport-based generation used on devices, in single precision:
             Xs = MeasureBase._rand_default(GenContext{Float32}(stblrng()), m, (2000,), MeasureBase._NoRandImpl())
-            @test Xs isa Vector{Float32} && all(insupport.(Ref(m), Xs))
+            @test Xs isa Vector{Float32} && all(insupportof.(Ref(m), Xs))
             if isfinite(mean(d)) && isfinite(var(d))
                 @test isapprox(mean(Xs), mean(d), atol = 5 * sqrt(var(d) / 2000) + 1e-3)
             end

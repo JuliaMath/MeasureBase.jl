@@ -12,9 +12,9 @@ massof(::LebesgueBase, s::Interval) = width(s)
 
 testvalue(::LebesgueBase) = 0.0
 
-insupport(::LebesgueBase, x) = true
+insupportof(::LebesgueBase, x) = true
 
-insupport(::LebesgueBase) = Returns(true)
+insupportof(::LebesgueBase) = Returns(true)
 
 logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = _neg_inf_logd(x)
 
@@ -68,16 +68,16 @@ Base.:∘(::typeof(basemeasure), ::Type{Lebesgue}) = LebesgueBase()
 
 Base.show(io::IO, d::Lebesgue) = print(io, "Lebesgue(", d.support, ")")
 
-insupport(μ::Lebesgue, x) = x ∈ μ.support
+insupportof(μ::Lebesgue, x) = x ∈ μ.support
 
-insupport(::Lebesgue{RealValues}, ::Real) = true
+insupportof(::Lebesgue{RealValues}, ::Real) = true
 
 @inline function logdensityof_impl(μ::Lebesgue, x::Number)
     R = float(typeof(x))
-    _checksupport(insupport(μ, x), zero(R))
+    _checksupport(insupportof(μ, x), zero(R))
 end
 
-@inline logdensityof_impl(μ::Lebesgue, x) = _checksupport(insupport(μ, x), 0.0)
+@inline logdensityof_impl(μ::Lebesgue, x) = _checksupport(insupportof(μ, x), 0.0)
 
 massof(::Lebesgue{RealValues}, s::Interval) = width(s)
 
@@ -125,7 +125,7 @@ gentype(::_SimplexLebesgue) = Vector{Float64}
 
 testvalue(::Type{T}, μ::_SimplexLebesgue) where {T} = testvalue(T, μ.support)
 
-insupport(μ::_SimplexLebesgue) = Base.Fix1(insupport, μ)
+insupportof(μ::_SimplexLebesgue) = Base.Fix1(insupportof, μ)
 localmeasure(μ::_SimplexLebesgue, ::Any) = μ
 transportmeasure(μ::_SimplexLebesgue, ::Any) = μ
 

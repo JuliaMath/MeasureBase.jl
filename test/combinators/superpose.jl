@@ -57,7 +57,7 @@ using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixtu
     @test isapprox(count(iszero, draws) / length(draws), 0.5 / 0.8, atol = 0.01)
     @test isapprox(count(iszero, rand(sm2^(10^5))) / 10^5, 0.5 / 0.8, atol = 0.01)
 
-    @test MeasureBase.insupport(MeasureBase.TrivialMeasure(), 1.0) == false
+    @test MeasureBase.insupportof(MeasureBase.TrivialMeasure(), 1.0) == false
     @test logdensity_rel(MeasureBase.TrivialMeasure(), MeasureBase.LebesgueBase(), 1.0) == -Inf
 
     # Dirac equality is not decidable from types, so no weighted collapse:

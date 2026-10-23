@@ -349,12 +349,12 @@ function testvalue(::Type{T}, d::AbstractProductMeasure) where {T}
 end
 
 
-@inline function insupport(d::AbstractProductMeasure, x::AbstractArray)
-    _all_insupport(broadcast(_insupport_bool ∘ insupport, marginals(d), x))
+@inline function insupportof(d::AbstractProductMeasure, x::AbstractArray)
+    _all_insupport(broadcast(_insupport_bool ∘ insupportof, marginals(d), x))
 end
 
-@inline function insupport(d::AbstractProductMeasure, x)
-    mapreduce(insupport, _insupport_and, marginals(d), x)
+@inline function insupportof(d::AbstractProductMeasure, x)
+    mapreduce(insupportof, _insupport_and, marginals(d), x)
 end
 
 @inline _all_insupport(A::AbstractArray{<:NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()

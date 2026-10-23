@@ -71,7 +71,7 @@ function ChainRulesCore.rrule(::typeof(_exp_cumsum_log), xs::AbstractVector)
 end
 
 
-# = insupport & friends ======================================================
+# = insupportof & friends ======================================================
 
 # Variate layouts are type-level information:
 using MeasureBase: fixed_stream_size, _pushfwd_varsize, _unit_bounds, _prob_floor

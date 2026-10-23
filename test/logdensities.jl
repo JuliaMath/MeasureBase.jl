@@ -35,7 +35,7 @@ MeasureBase.mspace_elsize(::VecTestMeasure) = (2,)
 MeasureBase.mspace_flatsize(::VecTestMeasure) = (2,)
 MeasureBase.mspace_flatsize(::Type{<:VecTestMeasure}) = (2,)
 MeasureBase.basemeasure(::VecTestMeasure) = LebesgueBase()^2
-MeasureBase.insupport(::VecTestMeasure, x) = true
+MeasureBase.insupportof(::VecTestMeasure, x) = true
 MeasureBase.logdensityof_impl(m::VecTestMeasure, x) = -sum(abs2, x) / (2 * m.s)
 
 include("testutils.jl")

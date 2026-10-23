@@ -151,7 +151,7 @@ end
 end
 
 
-@inline insupport(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
+@inline insupportof(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
 
 @inline function mspace_flatsize(μ::CombinedMeasure{typeof(vcat)})
     _vcat_flatsize(mspace_flatsize(μ.α), mspace_flatsize(μ.β))

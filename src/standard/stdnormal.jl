@@ -11,7 +11,7 @@ struct StdNormal <: StdMeasure end
 
 export StdNormal
 
-@inline insupport(::StdNormal, x) = true
+@inline insupportof(::StdNormal, x) = true
 
 # Integer variates are converted before squaring, which could overflow:
 @inline logdensityof_impl(::StdNormal, x) = (-float(x)^2 - log2π) / 2

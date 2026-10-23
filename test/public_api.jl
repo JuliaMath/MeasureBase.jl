@@ -17,6 +17,12 @@ using MeasureBase
     end
 end
 
+@testset "deprecated names" begin
+    @test Base.isexported(MeasureBase, :insupport)
+    @test (@test_deprecated MeasureBase.insupport(StdUniform(), 1.5)) == false
+    @test (@test_deprecated MeasureBase.insupport(StdUniform())(0.5)) == true
+end
+
 @testset "conditioning" begin
     P = productmeasure((a = StdNormal(), b = StdExponential()))
     C = P | (b = 1.0,)

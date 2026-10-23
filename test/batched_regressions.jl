@@ -6,7 +6,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, Dirac, Lebesgue, GenContext
-using MeasureBase: productmeasure, pushfwd, mcombine, mbind, weightedmeasure, insupport, testvalue
+using MeasureBase: productmeasure, pushfwd, mcombine, mbind, weightedmeasure, insupportof, testvalue
 using MeasureBase: batched_rand_impl, batched_transport_to_std_with_rest, batched_transport_from_std_with_rest
 using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: VectorOfVectors, nestedview, flatview, sliced
@@ -19,7 +19,7 @@ using JLArrays
 struct UnknownRankMeasure <: AbstractMeasure end
 MeasureBase.basemeasure(::UnknownRankMeasure) = Lebesgue()
 MeasureBase.logdensity_def(::UnknownRankMeasure, x) = -sum(abs, x)
-MeasureBase.insupport(::UnknownRankMeasure, x) = true
+MeasureBase.insupportof(::UnknownRankMeasure, x) = true
 
 # A parameterized function object (not unwrapped into struct array columns):
 struct Scale <: Function
@@ -47,8 +47,8 @@ include("testutils.jl")
     @testset "support of powers with array-variate bases" begin
         mv = MeasureBase.AsMeasure{typeof(MvNormal(zeros(2), I(2)))}(MvNormal(zeros(2), I(2)))
         Xf = randn(2, 3)
-        @test insupport(mv^3, Xf) === true
-        @test insupport(mv^3, nestedview(Xf)) === true
+        @test insupportof(mv^3, Xf) === true
+        @test insupportof(mv^3, nestedview(Xf)) === true
         @test logdensities(mv, Xf) ≈ [logpdf(mv.obj, Xf[:, j]) for j in 1:3]
         @test logdensityof(mv^3, Xf) ≈ sum(logpdf(mv.obj, Xf))
     end
@@ -58,7 +58,7 @@ include("testutils.jl")
         μ = D^3
         x = [1.0 1.0 1.0; 2.0 2.0 2.0]
         @test MeasureBase.mspace_ndims(typeof(μ)) == 2
-        @test logdensityof(μ, x) == 0 && insupport(μ, x)
+        @test logdensityof(μ, x) == 0 && insupportof(μ, x)
         @test logdensityof(μ, [[1.0, 2.0] for _ in 1:3]) == 0
         @test logdensityof(μ, 2 .* x) == -Inf
         @test logdensities(μ, cat(x, 2 .* x; dims = 3)) == [0.0, -Inf]

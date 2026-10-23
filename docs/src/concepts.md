@@ -149,7 +149,7 @@ derived.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |:--- |:--- |:--- |:--- |
-| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupport` | `mspace_ndims`, `batched_logdensityof_impl` (or `batched_logdensity_def`) | kernels via components, with-rest forms |
+| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupportof` | `mspace_ndims`, `batched_logdensityof_impl` (or `batched_logdensity_def`) | kernels via components, with-rest forms |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | also `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
 | Random | `batched_rand_impl` or `rand_impl` (derived from a transport) | `batched_rand_impl` | derived |
 | Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
@@ -180,7 +180,7 @@ Measures come in two tiers:
   [Streams](@ref) for the conventions.
 
 A scalar-variate leaf `M` with `logdensity_def`, `basemeasure` and
-`insupport` has point densities. Batched densities, powers and products
+`insupportof` has point densities. Batched densities, powers and products
 need its variate rank, `MeasureBase.mspace_flatsize(::Type{<:M}) = ()`.
 Streams (`mcombine(vcat, ...)`, binds) need its variate size,
 `MeasureBase.mspace_flatsize(::M) = ()`, or draw a test variate to learn

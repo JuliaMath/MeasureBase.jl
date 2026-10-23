@@ -28,10 +28,10 @@ massof(::Dirac) = static(1.0)
 
 function logdensityof_impl(μ::Dirac, x::Number)
     R = float(typeof(x))
-    _checksupport(insupport(μ, x), zero(R))
+    _checksupport(insupportof(μ, x), zero(R))
 end
 
-logdensityof_impl(μ::Dirac, x) = _checksupport(insupport(μ, x), zero(_logd_numtype(x)))
+logdensityof_impl(μ::Dirac, x) = _checksupport(insupportof(μ, x), zero(_logd_numtype(x)))
 
 logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
 logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
@@ -43,7 +43,7 @@ export dirac
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
-insupport(d::Dirac, x) = x == d.x
+insupportof(d::Dirac, x) = x == d.x
 
 @inline getdof(::Dirac) = static(0)
 

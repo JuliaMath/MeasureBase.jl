@@ -5,7 +5,7 @@ using Reexport
 @reexport using MeasureBase
 
 using MeasureBase: basemeasure_depth, proxy
-using MeasureBase: insupport, basemeasure_sequence
+using MeasureBase: insupportof, basemeasure_sequence
 using MeasureBase: transport_to
 
 using DensityInterface: logdensityof
@@ -19,7 +19,7 @@ export test_transport
 export test_smf
 export basemeasure_depth
 export proxy
-export insupport
+export insupportof
 export basemeasure_sequence
 
 using Test
@@ -117,8 +117,8 @@ function test_smf(μ, n = 100)
         @assert issorted(p)
         x = invsmf.(μ, p)
         @test issorted(x)
-        # insupport may return a non-Bool "don't know" (NoFastInsupport):
-        @test all(x_i -> insupport(μ, x_i) != false, x)
+        # insupportof may return a non-Bool "don't know" (NoFastInsupport):
+        @test all(x_i -> insupportof(μ, x_i) != false, x)
 
         @test all((Finv ∘ F).(x) .≈ x)
 

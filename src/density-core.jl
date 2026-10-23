@@ -49,13 +49,13 @@ Measure types should specialize `logdensityof_impl` instead of
 at `x` relative to [`rootmeasure(μ)`](@ref) and must handle `x` outside of
 the support of `μ` (the result must be `-Inf` then).
 
-The default implementation checks `insupport(μ, x)` (unless the result is
+The default implementation checks `insupportof(μ, x)` (unless the result is
 a [`MeasureBase.NoFastInsupport`](@ref)) and computes the density via
 [`unsafe_logdensityof`](@ref).
 """
 @inline function logdensityof_impl(μ::AbstractMeasure, x)
     result = _dynamic_logd(unsafe_logdensityof(μ, x), x)
-    _checksupport(insupport(μ, x), result)
+    _checksupport(insupportof(μ, x), result)
 end
 
 # Log-density kernels return dynamic numbers, never static ones, so that
@@ -87,7 +87,7 @@ end
 # Transports of variates outside the support of the source measure give
 # NaN. Both branches are evaluated, formulas must not throw outside the
 # support:
-@inline _nan_outside(μ, x, y) = ifelse(_insupport_mask(insupport(μ, x)), y, oftype(y, NaN))
+@inline _nan_outside(μ, x, y) = ifelse(_insupport_mask(insupportof(μ, x)), y, oftype(y, NaN))
 
 # On the floating-point grid the endpoints of the unit interval stand for
 # their nearest interior points (the smallest normal float above zero,
@@ -170,7 +170,7 @@ export unsafe_logdensityof
     unsafe_logdensityof(m, x)
 
 Compute the log-density of the measure `m` at `x` relative to `rootmeasure(m)`.
-This is "unsafe" because it does not check `insupport(m, x)`.
+This is "unsafe" because it does not check `insupportof(m, x)`.
 
 See also `logdensityof`.
 """
@@ -206,8 +206,8 @@ inside the support of `m2` it is `-Inf`. If `x` is known to be in the support
 of both, it can be more efficient to call `unsafe_logdensity_rel`.
 """
 @inline function logdensity_rel(μ, ν, x)
-    inμ = _insupport_mask(insupport(μ, x))
-    inν = _insupport_mask(insupport(ν, x))
+    inμ = _insupport_mask(insupportof(μ, x))
+    inν = _insupport_mask(insupportof(ν, x))
     _select(
         inμ & inν,
         () -> _dynamic_logd(unsafe_logdensity_rel(μ, ν, x), x),

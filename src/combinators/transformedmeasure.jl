@@ -215,9 +215,9 @@ end
 @inline _lazy_combine_ladj(ℓ::Number, ladj::Number) = _combine_logd_with_ladj(ℓ, ladj)
 @inline _lazy_combine_ladj(ℓ, ladj) = Broadcast.instantiate(Broadcast.broadcasted(_combine_logd_with_ladj, ℓ, ladj))
 
-# Checking insupport via the origin would require a potentially costly
+# Checking the support via the origin would require a potentially costly
 # transformation of x:
-insupport(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
+insupportof(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))

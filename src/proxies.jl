@@ -27,7 +27,7 @@ macro useproxy(M)
         @inline $MeasureBase.basemeasure_depth(μ::$M) = basemeasure_depth(proxy(μ))
         @inline $MeasureBase.rootmeasure(μ::$M) = rootmeasure(proxy(μ))
 
-        @inline $MeasureBase.insupport(μ::$M) = insupport(proxy(μ))
+        @inline $MeasureBase.insupportof(μ::$M) = insupportof(proxy(μ))
 
         @inline $MeasureBase.getdof(μ::$M) = getdof(proxy(μ))
         @inline $MeasureBase.fast_dof(μ::$M) = fast_dof(proxy(μ))

@@ -63,7 +63,7 @@ end
 
 logdensity_def(μ::Half, x) = logdensity_def(unhalf(μ), x)
 
-@inline insupport(d::Half, x) = _insupport_and(x ≥ 0, insupport(unhalf(d), x))
+@inline insupportof(d::Half, x) = _insupport_and(x ≥ 0, insupportof(unhalf(d), x))
 
 testvalue(::Type{T}, ::Half) where {T} = one(T)
 

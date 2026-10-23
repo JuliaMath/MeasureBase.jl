@@ -104,7 +104,7 @@ end
 
 # A vanishing integrand shows as a density of `-Inf`, so the support
 # check doesn't need to evaluate it:
-@inline insupport(d::DensityMeasure, x) = insupport(d.base, x)
+@inline insupportof(d::DensityMeasure, x) = insupportof(d.base, x)
 
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("mintegrate(")

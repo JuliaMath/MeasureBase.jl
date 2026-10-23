@@ -8,7 +8,7 @@ struct StdLogistic <: StdMeasure end
 
 export StdLogistic
 
-@inline insupport(d::StdLogistic, x) = true
+@inline insupportof(d::StdLogistic, x) = true
 
 @inline logdensityof_impl(::StdLogistic, x) = (u = -abs(x); u - 2 * log1pexp(u))
 

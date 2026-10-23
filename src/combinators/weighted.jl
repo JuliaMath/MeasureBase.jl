@@ -77,7 +77,7 @@ Base.:*(m::AbstractMeasure, k::Number) = k * m
 
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
-insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
+insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 
 # Weighted measures transport like their base:
 @inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))

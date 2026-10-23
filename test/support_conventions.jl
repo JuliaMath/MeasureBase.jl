@@ -60,7 +60,7 @@ import AffineMaps
             @test f(1.0) == f(prevfloat(1.0)) && f(0.0) == f(floatmin(Float64))
         end
         for (ν, μ) in ((StdExponential(), StdNormal()), (StdNormal(), StdExponential()), (StdNormal(), StdLogistic()))
-            @test all(isfinite, transport_to(ν, μ).([-1e6, -40.0, 40.0, 1e6][MeasureBase.insupport.(Ref(μ), [-1e6, -40.0, 40.0, 1e6])]))
+            @test all(isfinite, transport_to(ν, μ).([-1e6, -40.0, 40.0, 1e6][MeasureBase.insupportof.(Ref(μ), [-1e6, -40.0, 40.0, 1e6])]))
         end
         @test !isnan(transport_to(StdUniform(), StdNormal())(-37.0))
         @test !isnan(transport_to(StdUniform(), StdLogistic())(-800.0))
@@ -95,7 +95,7 @@ import AffineMaps
         @test logdensityof(post, -0.5) == -Inf
         @test logdensityof(post, 0.5) == log(0.5)
         @test logdensities(post, [-0.5, 0.5]) == [-Inf, log(0.5)]
-        @test MeasureBase.insupport(post, -0.5) == false
+        @test MeasureBase.insupportof(post, -0.5) == false
         @test logdensity_rel(post, StdNormal(), -0.5) == -Inf
         @test isnan(logdensity_rel(post, StdUniform(), -0.5))
         @test logdensity_rel(post, StdUniform(), 0.5) == log(0.5)
@@ -106,7 +106,7 @@ import AffineMaps
         # restricts:
         p = pushfwd(AffineMaps.Add(1.0), StdNormal())
         r = restrict(>(0), p)
-        @test MeasureBase.insupport(r, -1.0) == false
+        @test MeasureBase.insupportof(r, -1.0) == false
         @test logdensityof(r, -1.0) == -Inf
         @test logdensityof(r, 1.0) ≈ logdensityof(StdNormal(), 0.0)
         @test logdensities(r, [-1.0, 1.0]) ≈ [-Inf, logdensityof(StdNormal(), 0.0)]

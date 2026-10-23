@@ -75,7 +75,7 @@ end
     μ = TrivialMeasure()
     @test massof(μ) == 0
     @test basemeasure(μ) == μ
-    @test insupport(μ, 1.5) == false
+    @test insupportof(μ, 1.5) == false
     @test logdensityof(μ, 1.5) == -Inf
 end
 

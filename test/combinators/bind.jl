@@ -37,7 +37,7 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         b = rand(copy(stblrng()), Float64, μ)  # not comparable directly, just smoke:
         @test rand(stblrng(), Float64, μ) isa Real
 
-        @test MeasureBase.insupport(μ, 0.4) isa MeasureBase.NoFastInsupport
+        @test MeasureBase.insupportof(μ, 0.4) isa MeasureBase.NoFastInsupport
         @test MeasureBase.getdof(μ) isa MeasureBase.NoDOF
         @test_throws ArgumentError basemeasure(μ)
         @test_throws ArgumentError MeasureBase.rootmeasure(μ)

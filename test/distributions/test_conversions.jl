@@ -10,7 +10,7 @@ import MeasureBase
 using MeasureBase: AbstractMeasure, AsMeasure, asmeasure
 using MeasureBase: StdUniform, StdNormal, StdExponential, StdLogistic
 using MeasureBase: SuperpositionMeasure, PushforwardMeasure, ProductMeasure
-using MeasureBase: logdensityof, massof, insupport
+using MeasureBase: logdensityof, massof, insupportof
 
 
 @testset "conversions" begin
@@ -30,13 +30,13 @@ using MeasureBase: logdensityof, massof, insupport
             for x in (rand(stblrng(), d) for _ in 1:10)
                 @test logdensityof(m, x) ≈ logpdf(d, x)
                 @test logpdf(d2, x) ≈ logpdf(d, x)
-                @test insupport(m, x) != false
+                @test insupportof(m, x) != false
             end
 
             x = rand(stblrng(), Float64, m)
             # Tuple-marginal product measures have tuple variates:
             x isa Tuple ? (@test length(x) == length(d)) : (@test size(x) == size(d))
-            @test insupport(m, x) != false
+            @test insupportof(m, x) != false
         end
     end
 

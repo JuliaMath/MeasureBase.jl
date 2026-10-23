@@ -8,11 +8,11 @@ struct StdUniform <: StdMeasure end
 
 export StdUniform
 
-insupport(::StdUniform, x) = (zero(x) ≤ x) & (x ≤ one(x))
+insupportof(::StdUniform, x) = (zero(x) ≤ x) & (x ≤ one(x))
 
 @inline function logdensityof_impl(d::StdUniform, x)
     R = float(typeof(x))
-    _checksupport(insupport(d, x), zero(R))
+    _checksupport(insupportof(d, x), zero(R))
 end
 
 @inline logdensity_def(::StdUniform, x) = zero(x)

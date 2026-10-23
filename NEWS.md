@@ -28,6 +28,9 @@ implementation per measure type for single variates and batches. See the
   - The `_trafo_cdf`/`_trafo_quantile` hooks of the Distributions
     integration.
 - `pullback` is deprecated in favor of `pullbck`.
+- `insupport` is renamed to `insupportof`, it clashed with the function
+  exported by Distributions. The old name is deprecated, measure
+  implementations must add methods to `insupportof`.
 - `mspace_elsize` is not exported anymore (it is still available as
   `MeasureBase.mspace_elsize`), `MeasureBase.mspace_flatsize` and
   `MeasureBase.mspace_ndims` replace it for kernels.
@@ -43,7 +46,7 @@ implementation per measure type for single variates and batches. See the
   open unit interval).
 - Only variates of the wrong shape throw (an `ArgumentError`), kernels
   never throw for values.
-- `getdof` may return a static integer, `insupport` may return
+- `getdof` may return a static integer, `insupportof` may return
   `MeasureBase.NoFastInsupport`.
 - Batched kernels of measures without a declared variate rank throw.
 - `==` and `hash` of measures are value-based.

@@ -8,7 +8,7 @@ struct CountingBase <: PrimitiveMeasure end
 @inline mspace_flatsize(::CountingBase) = ()
 @inline mspace_flatsize(::Type{CountingBase}) = ()
 
-insupport(::CountingBase, x) = true
+insupportof(::CountingBase, x) = true
 
 struct Counting{T} <: AbstractMeasure
     support::T
@@ -18,10 +18,10 @@ end
 
 @inline function logdensityof_impl(μ::Counting, x::Number)
     R = float(typeof(x))
-    _checksupport(insupport(μ, x), zero(R))
+    _checksupport(insupportof(μ, x), zero(R))
 end
 
-@inline logdensityof_impl(μ::Counting, x) = _checksupport(insupport(μ, x), 0.0)
+@inline logdensityof_impl(μ::Counting, x) = _checksupport(insupportof(μ, x), 0.0)
 
 # Counting measures on a set are their own base measures, so that the base
 # carries the set (`CountingBase()` has an atom at every real number and is
@@ -43,11 +43,11 @@ proxy(d::Counting) = restrict(in(d.support), CountingBase())
 
 Base.show(io::IO, d::Counting) = print(io, "Counting(", d.support, ")")
 
-insupport(μ::Counting, x) = x ∈ μ.support
+insupportof(μ::Counting, x) = x ∈ μ.support
 
-insupport(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
+insupportof(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 
-massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupport(c), s))
+massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupportof(c), s))
 
 massof(::CountingBase, s::Set) = length(s)
 
