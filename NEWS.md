@@ -114,6 +114,15 @@ implementation per measure type for single variates and batches. See the
   uniform variates, as for `Half`). `smf` and `invsmf` are now defined for
   wrapped univariate distributions (cdf and quantile), weighted measures
   and `StdExponential`.
+- `csmf(μ, x)`, the complementary Stieltjes measure function `μ((x, ∞))`
+  (the generalization of the ccdf), accurate in the upper tail, with its
+  inverse `invcsmf` and the log forms `logsmf` and `logcsmf` (inverses
+  `invlogsmf` and `invlogcsmf`), for the standard measures, wrapped
+  univariate distributions (ccdf, logcdf, logccdf and their inverses),
+  weighted, normalized and truncated measures, `Half` and Lebesgue
+  measure on intervals. Truncations and interval masses use the
+  complementary side in the upper tail, so `truncate(StdNormal(), 9..Inf)`
+  has the mass `1.1e-19` and accurate transports.
 - `mean`, `var`, `std` and `cov` (Statistics) of the normalized laws of
   measures with exactly known moments: wrapped distributions, standard
   measures, point masses, weighted and normalized measures, products and

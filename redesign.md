@@ -336,6 +336,12 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   of bounded integers, ranges and sets, weighted measures, products,
   powers and superpositions, restrictions stay unknown. Transport Jacobians
   normalize the leaves of the structural weight stripping, see Transport.
+- Complementary Stieltjes measure functions (decided 2026-10-23): `csmf`
+  (`μ((x, ∞))`, ccdf-like, accurate in the upper tail), `invcsmf`, and the
+  log forms `logsmf`, `logcsmf`, `invlogsmf`, `invlogcsmf` (defaults via
+  `log`/`exp`, stable forms for the standard measures and wrapped
+  distributions). `truncate` and interval masses use `csmf` where
+  `csmf(μ, a) < smf(μ, b)` (branch-free for traced bounds).
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   exported as deprecations for one release.

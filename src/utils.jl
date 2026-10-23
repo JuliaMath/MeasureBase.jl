@@ -107,6 +107,8 @@ isposinf(x) = isinf(x) & (x > zero(x))
     y = f_true()
     ifelse(cond, y, oftype(y, f_false()))
 end
+@inline _select(::True, f_true::F, ::Any) where {F} = f_true()
+@inline _select(::False, ::Any, f_false::G) where {G} = f_false()
 
 containsnan(x::Number) = isnan(x)
 containsnan(x) = any(containsnan, x)

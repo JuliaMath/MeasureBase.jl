@@ -44,6 +44,12 @@ macro useproxy(M)
 
         @inline $MeasureBase.smf(μ::$M, x) = smf(proxy(μ), x)
         @inline $MeasureBase.invsmf(μ::$M, x) = invsmf(proxy(μ), x)
+        @inline $MeasureBase.csmf(μ::$M, x) = csmf(proxy(μ), x)
+        @inline $MeasureBase.invcsmf(μ::$M, x) = invcsmf(proxy(μ), x)
+        @inline $MeasureBase.logsmf(μ::$M, x) = logsmf(proxy(μ), x)
+        @inline $MeasureBase.logcsmf(μ::$M, x) = logcsmf(proxy(μ), x)
+        @inline $MeasureBase.invlogsmf(μ::$M, x) = invlogsmf(proxy(μ), x)
+        @inline $MeasureBase.invlogcsmf(μ::$M, x) = invlogcsmf(proxy(μ), x)
         (μ::$M)(s) = proxy(μ)(s)
     end
 end

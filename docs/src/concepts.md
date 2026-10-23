@@ -237,8 +237,12 @@ estimate moments by sampling.
 - `truncate(μ, a..b)` for measures with scalar variates and a Stieltjes
   measure function ([`smf`](@ref), the generalization of the cdf to
   measures): densities of `μ` inside the interval, the mass of `μ` on it,
-  transports and draws via `smf` and [`invsmf`](@ref).
-  `normalize(truncate(μ, a..b))` is the conditional law.
+  transports and draws via `smf` and [`invsmf`](@ref), or via the
+  complementary [`csmf`](@ref) (the generalization of the ccdf) and
+  [`invcsmf`](@ref) for intervals in the upper tail, so truncations to
+  either tail keep their precision. `normalize(truncate(μ, a..b))` is the
+  conditional law. [`logsmf`](@ref) and [`logcsmf`](@ref) (with their
+  inverses) resolve tails beyond floating-point underflow.
 
 The operators `⋄` (pushforward), `⊙` (pullback), `▷` (bind), `⊗`
 (product), `∫`, `∫exp`, `𝒹` and `log𝒹` are shorthands for these, see

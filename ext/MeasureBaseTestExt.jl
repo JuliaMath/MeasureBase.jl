@@ -112,6 +112,18 @@ function test_smf(μ, n = 100)
 
         @test all((Finv ∘ F).(x) .≈ x)
 
+        # The complementary and log Stieltjes measure functions, where defined:
+        if csmf(μ, first(x)) isa Real
+            G(x) = csmf(μ, x)
+            F_inf = F(oftype(first(x), Inf))
+            @test all(G.(x) .≈ F_inf .- F.(x))
+            @test all(invcsmf.(μ, G.(x)) .≈ x)
+            @test all(logsmf.(μ, x) .≈ log.(F.(x)))
+            @test all(logcsmf.(μ, x) .≈ log.(G.(x)))
+            @test all(invlogsmf.(μ, logsmf.(μ, x)) .≈ x)
+            @test all(invlogcsmf.(μ, logcsmf.(μ, x)) .≈ x)
+        end
+
         for j in 1:n
             a = rand()
             b = rand()

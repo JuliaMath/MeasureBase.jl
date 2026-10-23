@@ -78,5 +78,8 @@ function invsmf(μ::Half, p)
     _nan_outside(StdUniform(), p, invsmf(μ.parent, _unit_interior((p + 1) / 2)))
 end
 
+csmf(μ::Half, x) = 2 * csmf(μ.parent, max(x, zero(x)))
+invcsmf(μ::Half, p) = _nan_outside(StdUniform(), p, invcsmf(μ.parent, p / 2))
+
 @inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, smf(μ, x))
 @inline transport_from_std(::Type{StdUniform}, μ::Half, p) = invsmf(μ, p)

@@ -96,18 +96,38 @@ end
 
 
 # The cdf is the Stieltjes measure function of a distribution, the quantile
-# its inverse:
-@inline MeasureBase.smf(m::DistributionMeasure{Univariate}, x) = MeasureBase.smf(m.obj, x)
-@inline MeasureBase.invsmf(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.invsmf(m.obj, p)
+# its inverse, the ccdf and the complementary quantile their complements:
+for f in (:smf, :csmf, :logsmf, :logcsmf)
+    @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate}, x) = MeasureBase.$f(m.obj, x)
+end
+for f in (:invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
+    @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.$f(m.obj, p)
+end
 
 # Infinite arguments give exact values, also for derivatives with respect to
 # the parameters, which would be NaN:
-@inline function MeasureBase.smf(d::Distribution{Univariate}, x::Real)
-    F = Distributions.cdf(d, _nonnan(x, zero(x)))
-    ifelse(isnan(x), oftype(F, NaN), ifelse(isinf(x), oftype(F, x > 0), F))
+@inline MeasureBase.smf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.cdf, d, x, x > 0)
+@inline MeasureBase.csmf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.ccdf, d, x, x < 0)
+@inline MeasureBase.logsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logcdf, d, x, x > 0)
+@inline MeasureBase.logcsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logccdf, d, x, x < 0)
+
+@inline function _dist_smf(f::F, d, x, at_one) where {F}
+    y = f(d, _nonnan(x, zero(x)))
+    ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), oftype(y, at_one), y))
 end
+@inline function _dist_logsmf(f::F, d, x, at_zero) where {F}
+    y = f(d, _nonnan(x, zero(x)))
+    ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), ifelse(at_zero, zero(y), oftype(y, -Inf)), y))
+end
+
 @inline MeasureBase.invsmf(d::Distribution{Univariate,Continuous}, p::Real) =
     _nan_outside(StdUniform, p, _dist_quantile(d, _quantile_arg(p)))
+@inline MeasureBase.invcsmf(d::Distribution{Univariate,Continuous}, p::Real) =
+    _nan_outside(StdUniform, p, _dist_cquantile(d, _quantile_arg(p)))
+@inline MeasureBase.invlogsmf(d::Distribution{Univariate,Continuous}, logp::Real) =
+    _nan_above_zero(logp, Distributions.invlogcdf(d, _logquantile_arg(logp)))
+@inline MeasureBase.invlogcsmf(d::Distribution{Univariate,Continuous}, logp::Real) =
+    _nan_above_zero(logp, Distributions.invlogccdf(d, _logquantile_arg(logp)))
 
 
 # Location-scale families of standard measures transport by their affine map:
@@ -131,6 +151,8 @@ end
 # these are replaced before the calls and the results masked afterwards:
 @inline _nonnan(x, y) = ifelse(isnan(x), oftype(x, y), x)
 @inline _quantile_arg(p) = _nonnan(_unit_interior(p), 1 // 2)
+@inline _logquantile_arg(logp) = _nonnan(min(logp, zero(logp)), -log(oftype(float(logp), 2)))
+@inline _nan_above_zero(logp, y) = ifelse(logp > zero(logp), oftype(y, NaN), y)
 
 for (D, S) in [
     (Logistic, StdLogistic),

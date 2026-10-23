@@ -99,6 +99,13 @@ end
 
 invsmf(μ::Lebesgue{<:AbstractInterval}, p) = p
 
+function csmf(μ::Lebesgue{<:AbstractInterval}, x)
+    a, b = endpoints(μ.support)
+    b - clamp(x, a, b)
+end
+
+invcsmf(μ::Lebesgue{<:AbstractInterval}, p) = rightendpoint(μ.support) - p
+
 smf(::Lebesgue{<:RealValues}, x) = x
 smf(::Lebesgue{<:RealValues}) = identity
 invsmf(::Lebesgue{<:RealValues}, x) = x

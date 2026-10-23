@@ -26,5 +26,11 @@ end
 
 smf(::StdLogistic, x) = logistic(x)
 smf(::StdLogistic) = logistic
+csmf(::StdLogistic, x) = logistic(-x)
+invcsmf(μ::StdLogistic, p) = -invsmf(μ, p)
+logsmf(::StdLogistic, x) = -log1pexp(-x)
+logcsmf(::StdLogistic, x) = -log1pexp(x)
+invlogsmf(::StdLogistic, logp) = (lp = min(logp, zero(logp)); _nan_above_zero(logp, lp - log1mexp(lp)))
+invlogcsmf(μ::StdLogistic, logp) = -invlogsmf(μ, logp)
 
 invsmf(μ::StdLogistic, p) = transport_def(μ, StdUniform(), p)

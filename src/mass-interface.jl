@@ -122,12 +122,16 @@ in this way, users should add the corresponding `massof` method.
 (m::AbstractMeasure)(s) = massof(m, s)
 
 function massof(μ, a_b::AbstractInterval)
-    _smf_interval_massof(μ, smf(μ, rightendpoint(a_b)), smf(μ, leftendpoint(a_b)))
+    lo, hi = endpoints(a_b)
+    _smf_interval_massof(μ, smf(μ, lo), smf(μ, hi), csmf(μ, lo), csmf(μ, hi))
 end
 
-_smf_interval_massof(μ, smf_r, smf_l) = smf_r - smf_l
+# Via the complementary Stieltjes measure function in the upper tail:
+function _smf_interval_massof(μ, smf_lo, smf_hi, csmf_lo, csmf_hi)
+    _select(_upper_side(smf_hi, csmf_lo), () -> csmf_lo - csmf_hi, () -> smf_hi - smf_lo)
+end
 
-function _smf_interval_massof(μ, ::NoSMF, ::NoSMF)
+function _smf_interval_massof(μ, ::NoSMF, ::NoSMF, ::Any, ::Any)
     throw(
         ArgumentError(
             "Can't compute the mass over an interval for a measure of type $(nameof(typeof(μ))), no statistical measure function available",

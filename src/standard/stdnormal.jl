@@ -30,6 +30,12 @@ InverseFunctions.inverse(::typeof(Φinv)) = Φ
 
 smf(::StdNormal, x) = Φ(x)
 invsmf(μ::StdNormal, p) = transport_def(μ, StdUniform(), p)
+csmf(::StdNormal, x) = _normccdf(x)
+invcsmf(μ::StdNormal, p) = -invsmf(μ, p)
+# The log-cdf rounds to zero above the median, the log of the complement is
+# accurate there:
+logsmf(::StdNormal, x) = ifelse(x < zero(x), _normlogcdf(x), log1p(-_normccdf(x)))
+logcsmf(::StdNormal, x) = ifelse(x > zero(x), _normlogccdf(x), log1p(-Φ(x)))
 
 smf(::StdNormal) = Φ
 

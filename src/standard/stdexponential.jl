@@ -26,3 +26,12 @@ end
 
 smf(::StdExponential, x) = -expm1(-max(x, zero(x)))
 invsmf(μ::StdExponential, p) = transport_def(μ, StdUniform(), p)
+csmf(::StdExponential, x) = exp(-max(x, zero(x)))
+invcsmf(::StdExponential, p) = _nan_outside(StdUniform(), p, -log(_unit_interior(p)))
+logsmf(::StdExponential, x) = log1mexp(-max(float(x), zero(float(x))))
+logcsmf(::StdExponential, x) = -max(float(x), zero(float(x)))
+invlogsmf(::StdExponential, logp) = _nan_above_zero(logp, -log1mexp(min(logp, zero(logp))))
+invlogcsmf(::StdExponential, logp) = _nan_above_zero(logp, -float(logp))
+
+# Log-probabilities above zero are invalid arguments:
+@inline _nan_above_zero(logp, y) = ifelse(logp > zero(logp), oftype(y, NaN), y)

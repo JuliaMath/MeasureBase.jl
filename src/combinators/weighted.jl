@@ -89,9 +89,17 @@ insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 # The Stieltjes measure function scales with the weight:
 smf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), smf(basemeasure(μ), x))
 invsmf(μ::AbstractWeightedMeasure, p) = invsmf(basemeasure(μ), p / exp(_logweight(μ)))
+csmf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), csmf(basemeasure(μ), x))
+invcsmf(μ::AbstractWeightedMeasure, p) = invcsmf(basemeasure(μ), p / exp(_logweight(μ)))
+logsmf(μ::AbstractWeightedMeasure, x) = _shifted_logsmf(_logweight(μ), logsmf(basemeasure(μ), x))
+logcsmf(μ::AbstractWeightedMeasure, x) = _shifted_logsmf(_logweight(μ), logcsmf(basemeasure(μ), x))
+invlogsmf(μ::AbstractWeightedMeasure, logp) = invlogsmf(basemeasure(μ), logp - _logweight(μ))
+invlogcsmf(μ::AbstractWeightedMeasure, logp) = invlogcsmf(basemeasure(μ), logp - _logweight(μ))
 
 @inline _scaled_smf(w, F) = w * F
 @inline _scaled_smf(w, F::NoSMF) = F
+@inline _shifted_logsmf(logw, logF) = logw + logF
+@inline _shifted_logsmf(logw, logF::NoSMF) = logF
 
 # Weighted measures transport like their base:
 @inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))
