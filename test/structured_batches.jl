@@ -4,6 +4,7 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupportof, transport_to
+using MeasureBase: weightedmeasure, mintegrate_exp, mcombine
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
 using ArraysOfArrays: flatview
@@ -69,5 +70,42 @@ using ArraysOfArrays: flatview
         @test logdensities(T^3, (randn(3, 2), rand(3, 2))) isa AbstractVector
         @test_throws ArgumentError logdensities(T^3, (randn(5), rand(5)))
         @test_throws ArgumentError logdensities(T^3, (randn(2, 4), rand(2, 4)))
+    end
+
+    @testset "variate and stream rank of powers of tuple products" begin
+        T = productmeasure((StdNormal(), StdExponential()))
+        flat(x) = reduce(vcat, [vcat(xi...) for xi in x])
+        nflat(x) = reduce(vcat, map(flat, x))
+
+        # Variates are struct arrays over the power dimensions, numeric
+        # batches are flat streams:
+        @test MeasureBase.mspace_ndims(typeof(T^(2, 3))) == 2
+        @test logdensities(T, [0.1 0.2; 0.5 0.7]) ≈ [logdensityof(T, (0.1, 0.5)), logdensityof(T, (0.2, 0.7))]
+
+        for P in (T^3, T^(2, 3), weightedmeasure(0.5, T^(2, 3)))
+            n = 2 * length(rand(P))
+            X = rand(P^4)
+            g = transport_to(P, P)
+            Y = g.(X)
+            @test length(Y) == 4 && all(size(Y[j]) == size(X[j]) && flat(Y[j]) ≈ flat(X[j]) for j in 1:4)
+            f = transport_to(StdUniform()^n, P)
+            U = rand(StdUniform()^(n, 4))
+            Xu = inverse(f).(U)
+            @test all(Xu[j] isa StructArray && size(Xu[j]) == size(X[1]) && flat(Xu[j]) ≈ flat(inverse(f)(U[:, j])) for j in 1:4)
+            x = rand(P)
+            @test f(flat(x)) ≈ f(x)
+            @test_throws ArgumentError f(randn(n - 1))
+            d = mintegrate_exp(x -> sum(first, x), P)
+            @test logdensities(d, X) ≈ [logdensityof(P, X[j]) + sum(first, X[j]) for j in 1:4]
+        end
+
+        # Nested powers of tuple products inside streams:
+        P2 = (T^3)^2
+        x2 = rand(P2)
+        m = mcombine(vcat, productmeasure((StdNormal(), P2)), StdNormal())
+        s = vcat(0.3, nflat(x2), -0.2)
+        @test logdensityof(m, s) ≈ logdensityof(StdNormal(), 0.3) + logdensityof(P2, x2) + logdensityof(StdNormal(), -0.2)
+        h = transport_to(StdUniform()^14, m)
+        @test inverse(h)(h(s)) ≈ s
     end
 end

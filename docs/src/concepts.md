@@ -30,6 +30,14 @@ used for validation, for stream consumption and for static fast paths,
 never for routing. Without a rank, the batched defaults throw with a
 message naming the missing declaration, point kernels keep working.
 
+**Stream rank.** Numeric batches of measures with structured variates of
+fixed stream size, tuple products and powers of them, are batches of flat
+streams. [`MeasureBase.stream_ndims`](@ref) gives the number of leading
+dimensions of a single variate in a numeric batch: the variate rank for
+numeric variates, one for streams. The variates of a power of a tuple
+product are struct arrays of the power's rank, so `T^(2, 3)` has variate
+rank 2 and stream rank 1.
+
 **Flat batches.** A flat batch is an array `(variate dims..., batch
 dims...)`. Batched kernels return arrays over the batch dimensions (a
 number for a single variate), possibly lazily. Entry points accept nested

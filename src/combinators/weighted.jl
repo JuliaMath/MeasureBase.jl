@@ -37,7 +37,7 @@ end
 @inline _lazy_add_logweight(ℓ_w, ℓ::Number) = _add_logweight(ℓ_w, ℓ)
 @inline _lazy_add_logweight(ℓ_w, ℓ) = Broadcast.instantiate(Broadcast.broadcasted(_add_logweight, ℓ_w, ℓ))
 @inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
-    _lazy_add(_logweight_for(_logweight(d), X), _zero_logd_batch(X, _static_ndims(basemeasure(d))))
+    _lazy_add(_logweight_for(_logweight(d), X), _zero_logd_batch(X, _stream_ndims(basemeasure(d))))
 end
 
 @inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
@@ -63,6 +63,7 @@ end
 @inline mspace_flatsize(μ::WeightedMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
 @inline mspace_ndims(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_ndims(M)
+@inline stream_ndims(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = stream_ndims(M)
 @inline fixed_stream_size(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
 
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)

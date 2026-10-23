@@ -39,6 +39,7 @@ _symmetric_about_zero(μ::WeightedMeasure) = _symmetric_about_zero(μ.base)
 @inline mspace_flatsize(μ::Half) = mspace_flatsize(μ.parent)
 @inline mspace_flatsize(::Type{<:Half{M}}) where {M} = mspace_flatsize(M)
 @inline mspace_ndims(::Type{<:Half{M}}) where {M} = mspace_ndims(M)
+@inline stream_ndims(::Type{<:Half{M}}) where {M} = stream_ndims(M)
 @inline fixed_stream_size(::Type{<:Half{M}}) where {M} = fixed_stream_size(M)
 @inline preferred_stdmeasure(::Type{<:Half}) = StdUniform
 

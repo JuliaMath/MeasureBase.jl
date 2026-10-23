@@ -29,12 +29,12 @@ const _AffinePushfwd{M,S} = PushforwardMeasure{<:AbstractAffineMap,<:AbstractAff
 # both kernels use the full density of the origin:
 for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:AdaptRootMeasure}, Y::AbstractArray) where {M}
-        _affine_pushfwd_ld(ν, Y, MeasureBase._static_ndims(ν))
+        _affine_pushfwd_ld(ν, Y, MeasureBase._stream_ndims(ν))
     end
 end
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:PushfwdRootMeasure}, Y::AbstractArray) where {M}
-        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, MeasureBase._static_ndims(ν)))
+        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, MeasureBase._stream_ndims(ν)))
     end
 end
 

@@ -102,14 +102,18 @@ without inspecting each component.
     MeasureBase.mspace_ndims(::Type{MU})
     MeasureBase.mspace_ndims(μ)
 
-The number of dimensions of the flat variates of measures of type `MU`,
-`0` for scalar variates, or a [`MeasureBase.NoMSpaceElementSize`](@ref)
-if unknown.
+The variate rank of measures of type `MU`: the number of dimensions of
+their flat variates, `0` for scalar variates, or a
+[`MeasureBase.NoMSpaceElementSize`](@ref) if unknown or if the variates
+are not arrays (e.g. tuples). The variates of powers of tuple products are
+struct arrays, their rank is the number of power dimensions.
 
 Batched kernels rely on it to tell the variate dimensions of a flat batch
 from its batch dimensions. It follows from
 [`MeasureBase.mspace_flatsize`](@ref) where that is known, measure types
 with array variates of dynamic size declare it directly.
+
+See also [`MeasureBase.stream_ndims`](@ref).
 """
 function mspace_ndims end
 
@@ -123,3 +127,25 @@ function mspace_ndims end
 
 @inline _add_ndims(n::Integer, k::Integer) = n + k
 @inline _add_ndims(n::NoMSpaceElementSize, ::Integer) = n
+
+
+"""
+    MeasureBase.stream_ndims(::Type{MU})
+    MeasureBase.stream_ndims(μ)
+
+The stream rank of measures of type `MU`: the number of leading dimensions
+that hold a single variate in a numeric batch, or a
+[`MeasureBase.NoMSpaceElementSize`](@ref) if numeric batches aren't
+supported.
+
+Numeric batches of measures with numeric variates are their flat batches,
+the stream rank is the variate rank [`MeasureBase.mspace_ndims`](@ref).
+Measures with structured variates of fixed stream size, like tuple
+products and powers of them, take batches of flat streams, their stream
+rank is one. Measure types that forward `mspace_ndims` to a wrapped
+measure forward `stream_ndims` as well.
+"""
+function stream_ndims end
+
+@inline stream_ndims(::Type{MU}) where {MU} = mspace_ndims(MU)
+@inline stream_ndims(μ::MU) where {MU} = _ndims_of_size(mspace_flatsize(μ), MU, stream_ndims(MU))

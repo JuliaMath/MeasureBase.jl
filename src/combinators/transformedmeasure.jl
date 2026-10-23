@@ -121,6 +121,7 @@ const _ElementwiseUndeclaredPushfwd{M} =
     _ndims_of_size_type(VS, MU)
 end
 @inline mspace_ndims(::Type{MU}) where {M,MU<:_ElementwisePushfwd{M}} = mspace_ndims(M)
+@inline stream_ndims(::Type{MU}) where {M,MU<:_ElementwisePushfwd{M}} = stream_ndims(M)
 @inline _ndims_of_size_type(::Type{<:Tuple{Vararg{Any,N}}}, ::Type) where {N} = N
 @inline _ndims_of_size_type(::Type{StaticArrays.Size{S}}, ::Type) where {S} = length(S)
 @inline _ndims_of_size_type(::Type{_UndeclaredVarSize}, ::Type{MU}) where {F,M,MU<:_UndeclaredPushfwd{F,M}} = _type_ndims(_image_type(F, M), MU)
@@ -204,7 +205,7 @@ end
 @inline function _point_ld(f::F, ν::PushforwardMeasure, x::AbstractArray{<:Number}) where {F}
     _pushfwd_point_ld(f, ν, x, _known_flatsize(ν, ν.varsize))
 end
-@inline _pushfwd_point_ld(f::F, ν, x, ::SizeLike) where {F} = _point_ld_byrank(f, ν, x, _static_ndims(ν))
+@inline _pushfwd_point_ld(f::F, ν, x, ::SizeLike) where {F} = _point_ld_byrank(f, ν, x, _stream_ndims(ν))
 @inline _pushfwd_point_ld(f::F, ν, x, ::NoMSpaceElementSize) where {F} = f(ν, x)
 
 const _NonBijectivePusfwdMeasure{M,S<:PushFwdStyle} = Union{
@@ -272,7 +273,7 @@ end
 # of the origin:
 for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function $bhead(ν::_ElementwisePushfwd{M,<:AdaptRootMeasure}, Y) where {M}
-        _elementwise_pushfwd_ld(logdensityof_impl, ν, Y, _static_ndims(ν.origin))
+        _elementwise_pushfwd_ld(logdensityof_impl, ν, Y, _stream_ndims(ν.origin))
     end
 end
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
@@ -288,7 +289,7 @@ function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, k::StaticInteg
     return _lazy_combine_ladj(ℓ, ladj)
 end
 function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, ::NoMSpaceElementSize) where {F}
-    _default_batched_kernel(f, ν, Y, _static_ndims(ν))
+    _default_batched_kernel(f, ν, Y, _stream_ndims(ν))
 end
 
 struct _LadjOf{F} <: Function
@@ -343,10 +344,10 @@ end
 # origin, elementwise for `Base.BroadcastFunction`s and variate by variate
 # (in a host loop) otherwise. The AffineMaps extension adds affine maps.
 function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y) where {S<:StdMeasure}
-    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, _static_ndims(ν)))
+    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, _stream_ndims(ν)))
 end
 function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
-    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _static_ndims(ν.origin))
+    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _stream_ndims(ν.origin))
 end
 
 # Apply `f` to a flat batch of variates of rank `k`:
@@ -375,7 +376,7 @@ rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origi
 # Batches of pushforwards apply the function to the variates of a batch of
 # the origin:
 function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike)
-    _pushfwd_batched_rand(ctx, ν, sz, _static_ndims(ν.origin))
+    _pushfwd_batched_rand(ctx, ν, sz, _stream_ndims(ν.origin))
 end
 @inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, k::StaticInteger)
     _pushfwd_draw(ctx, ν.origin, _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k))

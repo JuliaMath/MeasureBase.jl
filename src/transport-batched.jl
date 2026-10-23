@@ -3,8 +3,8 @@
 # Batched-first transport over flat batches of variates `(variate dims...,
 # batch dims...)`, zero batch dims meaning a single variate. Streams of
 # standard variates are batches `(dof, batch dims...)`, consumed along their
-# first dimension. Kernels know the variate rank of their measure (see
-# `mspace_ndims`), structural measures implement them once in terms of the
+# first dimension. Kernels know the stream rank of their measure (see
+# `stream_ndims`), structural measures implement them once in terms of the
 # kernels of their components.
 
 """
@@ -24,7 +24,7 @@ should implement `batched_transport_to_std` directly.
 function batched_transport_to_std end
 
 @inline function batched_transport_to_std(::Type{S}, μ, X) where {S<:StdMeasure}
-    _batched_to_std(S, μ, X, _static_ndims(μ))
+    _batched_to_std(S, μ, X, _stream_ndims(μ))
 end
 
 @inline function _batched_to_std(::Type{S}, μ, X, ::StaticInteger{0}) where {S}
@@ -49,7 +49,7 @@ end
 # dimensions merged into the first dimension. Tuples of batches (tuple
 # products and their powers) interleave the rows of their components
 # variate by variate.
-@inline _as_stream_batch(X, μ) = _as_stream_batch(X, _static_ndims(μ))
+@inline _as_stream_batch(X, μ) = _as_stream_batch(X, _stream_ndims(μ))
 @inline function _as_stream_batch(X::AbstractArray, ::StaticInteger{K}) where {K}
     ndims(X) >= K || _throw_size_mismatch()
     merge_leading_dims(X, static(K))
@@ -98,7 +98,7 @@ with array variates of a declared number of dimensions.
 function batched_transport_from_std end
 
 @inline function batched_transport_from_std(::Type{S}, μ, Z::AbstractArray) where {S<:StdMeasure}
-    _batched_from_std(S, μ, Z, _static_ndims(μ))
+    _batched_from_std(S, μ, Z, _stream_ndims(μ))
 end
 
 @inline _batched_from_std(::Type{S}, μ, Z::AbstractArray, ::StaticInteger{0}) where {S} = _from_std_scalar(S, μ, Z)
@@ -231,7 +231,7 @@ end
 # whole. Fused broadcast arguments are materialized first, static arrays
 # are transported point by point.
 function Broadcast.broadcasted(f::TransportFunction, X::AbstractArray)
-    _broadcast_transport(f, X, _flat_storage(X), _static_ndims(f.μ), _static_ndims(f.ν))
+    _broadcast_transport(f, X, _flat_storage(X), _stream_ndims(f.μ), _stream_ndims(f.ν))
 end
 
 function Broadcast.broadcasted(f::TransportFunction, bc::Broadcast.Broadcasted)
@@ -239,27 +239,19 @@ function Broadcast.broadcasted(f::TransportFunction, bc::Broadcast.Broadcasted)
 end
 
 # Static arrays of scalar variates are transported point by point:
-Broadcast.broadcasted(f::TransportFunction, X::StaticArray) = _broadcast_static(f, X, _static_ndims(f.μ))
+Broadcast.broadcasted(f::TransportFunction, X::StaticArray) = _broadcast_static(f, X, _stream_ndims(f.μ))
 _broadcast_static(f::TransportFunction, X::StaticArray, ::StaticInteger{0}) = map(_Pointwise(f), X)
 function _broadcast_static(f::TransportFunction, X::StaticArray, k)
-    _broadcast_transport(f, X, _flat_storage(X), k, _static_ndims(f.ν))
+    _broadcast_transport(f, X, _flat_storage(X), k, _stream_ndims(f.ν))
 end
 
-function _broadcast_transport(f::TransportFunction, X, X_flat::AbstractArray, ::StaticInteger, ::StaticInteger{K}) where {K}
-    Y_flat = batched_transport_def(f.ν, f.μ, X_flat)
-    return _batch_variates(Y_flat, f.ν, Val(K))
+function _broadcast_transport(f::TransportFunction, X, X_flat::AbstractArray, ::StaticInteger, ::StaticInteger)
+    _batch_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
 end
-
-# Batches of tuple and named tuple variates are tuples of batches, the
-# target layout follows from the target measure:
+# Batches of tuple and named tuple variates are tuples of batches:
 function _broadcast_transport(f::TransportFunction, X, X_flat::Union{Tuple,NamedTuple}, ::Any, ::Any)
-    _structured_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
+    _batch_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
 end
-function _broadcast_transport(f::TransportFunction{<:ProductMeasure{<:Union{Tuple,NamedTuple}}}, X, X_flat::AbstractArray, ::StaticInteger, ::NoMSpaceElementSize)
-    _structured_variates(batched_transport_def(f.ν, f.μ, X_flat), f.ν)
-end
-@inline _structured_variates(Y::Union{Tuple,NamedTuple}, ν) = _pwr_variate(ν, Y)
-@inline _structured_variates(Y::AbstractArray, ν) = _batch_variates(Y, ν, Val(dynamic(_static_ndims(ν))))
 
 _broadcast_transport(f::TransportFunction, X, ::Any, k, ::Any) = _map_variates(f, X, k)
 
@@ -283,13 +275,20 @@ struct _Pointwise{F} <: Function
 end
 @inline (p::_Pointwise)(x) = p.f(x)
 
-# The batch of variates in the layout of the target measure over the flat
-# result, nested powers included, batches of tuple variates as struct
-# arrays:
-@inline _batch_variates(Y::AbstractArray, ν, ::Val{K}) where {K} = _nest_batch(Y, Val(K))
-@inline function _batch_variates(Y::AbstractArray, ν::PowerMeasure, ::Val)
-    sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
+# The batch of variates of `ν` in their layout over the flat batch `Y`,
+# nested powers included, batches of tuple variates as struct arrays.
+# Tuples of batches of other measures have the layout of their base
+# measure, which shares their variate space:
+@inline _batch_variates(Y, ν) = _batch_variates(Y, ν, _static_ndims(ν))
+@inline _batch_variates(Y, ν::PowerMeasure) = sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
+@inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν::ProductMeasure{<:Union{Tuple,NamedTuple}}) = _pwr_variate(ν, Y)
+@inline _batch_variates(Y::AbstractArray, ν, ::StaticInteger{K}) where {K} = _nest_batch(Y, Val(K))
+@inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν, ::Any) = _batch_variates_via(basemeasure(ν), ν, Y)
+@inline _batch_variates_via(β, ::Any, Y) = _batch_variates(Y, β)
+@noinline function _batch_variates_via(::M, ::M, Y) where {M}
+    throw(ArgumentError("Batches of tuple variates of measures of type $(nameof(M)) are not supported"))
 end
+
 @inline _nest_batch(Y::AbstractArray, ::Val{0}) = Y
 @inline _nest_batch(Y::AbstractArray{<:Any,K}, ::Val{K}) where {K} = Y
 @inline _nest_batch(Y::AbstractArray, ::Val{K}) where {K} = sliced(Y, Val(K))

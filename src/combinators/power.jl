@@ -127,14 +127,31 @@ end
     logdensityof(μ, y) - logdensityof(ν, y)
 end
 
-# Numeric flat variates of powers of measures with fixed stream sizes but
-# no variate rank (e.g. tuple products) are streams:
+# The variates of powers of measures with fixed stream sizes but no
+# variate rank (tuple products) are struct arrays over the power
+# dimensions:
 @inline function mspace_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}
     _pwr_ndims(mspace_ndims(M), fieldcount(A), fixed_stream_size(M))
 end
 @inline _pwr_ndims(n::Integer, k::Integer, ::Any) = n + k
-@inline _pwr_ndims(::NoMSpaceElementSize, ::Integer, ::True) = 1
+@inline _pwr_ndims(::NoMSpaceElementSize, k::Integer, ::True) = k
 @inline _pwr_ndims(n::NoMSpaceElementSize, ::Integer, ::False) = n
+
+# Numeric batches of powers have the power dimensions after the stream
+# dimensions of the base, the streams of bases without a variate rank
+# (tuple products) are concatenated instead:
+@inline function stream_ndims(::Type{<:PowerMeasure{M,A}}) where {M,A<:Tuple}
+    _pwr_stream_ndims(stream_ndims(M), mspace_ndims(M), fieldcount(A))
+end
+@inline _pwr_stream_ndims(n::Integer, ::Integer, k::Integer) = n + k
+@inline _pwr_stream_ndims(n::Integer, ::NoMSpaceElementSize, ::Integer) = n
+@inline _pwr_stream_ndims(n::NoMSpaceElementSize, ::Any, ::Integer) = n
+
+# The stream rank of a base measure that keeps its own dimensions in
+# numeric batches of powers:
+@inline _base_stream_ndims(ν) = _base_stream_ndims(_static_ndims(ν), ν)
+@inline _base_stream_ndims(::StaticInteger, ν) = _stream_ndims(ν)
+@inline _base_stream_ndims(n::NoMSpaceElementSize, ::Any) = n
 
 # Local measures of powers at nested variates are products of the local
 # measures of the elements:
@@ -157,7 +174,7 @@ end
 # sums the leading dimensions of the result that belong to its axes.
 @inline function _powered_kernel(f::F, μ::PowerMeasure, X) where {F}
     _check_pwr_batch(X, μ)
-    _powered_kernel_impl(f, μ, X, _static_ndims(pwr_base(μ)))
+    _powered_kernel_impl(f, μ, X, _base_stream_ndims(pwr_base(μ)))
 end
 @inline function _powered_kernel_impl(f::F, μ::PowerMeasure, X, ::Any) where {F}
     _pwr_sum_dims(_batched_kernel(f, pwr_base(μ), X), static(length(pwr_axes(μ))))
@@ -183,9 +200,9 @@ function _powered_stream_kernel(f::F, μ::PowerMeasure, X::AbstractArray, ::True
 end
 _powered_stream_kernel(f::F, μ::PowerMeasure, X::AbstractArray, ::False) where {F} = _streamwise_ld(f, μ, X)
 
-# Flat batches of powers have the power dimensions after the variate
-# dimensions of the base measure (where the rank of the base is known):
-@inline _check_pwr_batch(X::AbstractArray, μ::PowerMeasure) = _check_pwr_dims(X, _static_ndims(pwr_base(μ)), asnonstatic(pwr_size(μ)), false)
+# Numeric batches of powers have the power dimensions after the stream
+# dimensions of the base measure (where it has a variate rank):
+@inline _check_pwr_batch(X::AbstractArray, μ::PowerMeasure) = _check_pwr_dims(X, _base_stream_ndims(pwr_base(μ)), asnonstatic(pwr_size(μ)), false)
 @inline _check_pwr_batch(::Any, ::PowerMeasure) = nothing
 # Tuples of batches of powers of tuple products carry the power dimensions
 # after the variate dimensions of each marginal:
@@ -274,12 +291,13 @@ end
     throw(ArgumentError("Batches of variate streams containing powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
 end
 
-# Single streams: bases without a variate rank (tuple products) are
-# consumed via the batched protocol, bases without fixed variate sizes
-# element by element.
+# Single streams: powers of tuple products (innermost bases without a
+# variate rank) are consumed via the batched protocol, bases without fixed
+# variate sizes element by element.
 function logdensityof_with_rest(μ::PowerMeasure, x::AbstractVector)
-    _pwr_point_ld_with_rest(μ, x, fixed_stream_size(pwr_base(μ)), _static_ndims(pwr_base(μ)))
+    _pwr_point_ld_with_rest(μ, x, fixed_stream_size(pwr_base(μ)), _pwr_leaf_ndims(μ))
 end
+@inline _pwr_leaf_ndims(μ::PowerMeasure) = _static_ndims(first(_pwr_unwrap(μ)))
 function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::True, ::StaticInteger)
     a, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
     return _point_ld(logdensityof_impl, μ, a), a, x_rest
@@ -359,12 +377,23 @@ end
 
 @inline function _check_pwr_variate(μ::PowerMeasure, x::AbstractArray)
     if maybestatic_size(x) != pwr_size(μ)
-        _check_pwr_flat(x, _static_ndims(pwr_base(μ)), asnonstatic(pwr_size(μ)))
+        _check_pwr_flat(x, _base_stream_ndims(pwr_base(μ)), μ)
     end
     return nothing
 end
-@inline _check_pwr_flat(x::AbstractArray, k::StaticInteger, dims::Dims) = _check_pwr_dims(x, k, dims, true)
-@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::Dims) = _throw_size_mismatch()
+@inline _check_pwr_flat(x::AbstractArray, k::StaticInteger, μ) = _check_pwr_dims(x, k, asnonstatic(pwr_size(μ)), true)
+@inline _check_pwr_flat(::AbstractArray, ::NoMSpaceElementSize, ::Any) = _throw_size_mismatch()
+# Numeric variates of powers of tuple products are flat streams:
+@inline function _check_pwr_flat(x::AbstractArray{<:Number}, ::NoMSpaceElementSize, μ)
+    _check_pwr_stream(x, μ, fixed_stream_size(pwr_base(μ)))
+end
+@inline function _check_pwr_stream(x::AbstractArray, μ, ::True)
+    if ndims(x) != 1 || length(x) != _fixed_stream_length(μ)
+        _throw_size_mismatch()
+    end
+    return nothing
+end
+@inline _check_pwr_stream(::AbstractArray, ::Any, ::False) = _throw_size_mismatch()
 
 checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
@@ -383,7 +412,7 @@ massof(m::PowerMeasure) = _pwr_mass(massof(m.parent), size2length(pwr_size(m)))
 
 function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::AbstractArray) where {S<:StdMeasure}
     _check_pwr_batch(X, μ)
-    _pwr_batched_to_std(S, μ, X, _static_ndims(pwr_base(μ)))
+    _pwr_batched_to_std(S, μ, X, _base_stream_ndims(pwr_base(μ)))
 end
 function batched_transport_to_std(::Type{S}, μ::PowerMeasure, X::Union{Tuple,NamedTuple}) where {S<:StdMeasure}
     _check_pwr_batch(X, μ)
@@ -421,12 +450,6 @@ end
 # All power dimensions of nested powers, innermost first:
 @inline _pwr_dims(μ::PowerMeasure) = (_pwr_dims(pwr_base(μ))..., size_tuple(pwr_size(μ))...)
 @inline _pwr_dims(ν) = ()
-
-# Batches of variates of powers of tuple products are tuples of batches,
-# the variates struct arrays:
-@inline function _batch_variates(Y::Union{Tuple,NamedTuple}, ν::PowerMeasure, ::Val)
-    sliced(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
-end
 
 # Point transport: flat variates are batches with zero batch dimensions,
 # nested variates without flat storage transport element by element.
@@ -466,14 +489,13 @@ function transport_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVect
     _pwr_point_to_std_with_rest(S, μ, x, fixed_stream_size(pwr_base(μ)))
 end
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::True) where {S}
-    _pwr_point_to_std_with_rest(S, μ, x, _static_ndims(pwr_base(μ)))
+    _pwr_point_to_std_with_rest(S, μ, x, _pwr_leaf_ndims(μ))
 end
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::StaticInteger) where {S}
     x_μ, x_rest = _consume_from_stream(x, _stream_consume_size(μ))
     return _as_stdstream(transport_to_std(S, μ, x_μ)), x_μ, x_rest
 end
-# Bases without a variate rank (tuple products) consume streams via the
-# batched protocol:
+# Powers of tuple products consume streams via the batched protocol:
 function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVector, ::NoMSpaceElementSize) where {S}
     z, x_rest = _pwr_to_std_with_rest(S, μ, x, (), static(true))
     x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
@@ -541,17 +563,13 @@ end
 @inline _pwr_axes_of(ms::StructArray) = StructArrays.component(ms, :axes)
 @inline _pwr_axes_of(ms::AbstractArray) = map(pwr_axes, ms)
 
-# The variates of a batch as an array, for density measures over it:
-@inline _variates_of_batch(μ, X::AbstractArray{<:Number}) = _variates_of_flat_batch(X, _static_ndims(μ))
+# The variates of a batch as an array, for density measures over it,
+# numeric batches sliced by their stream rank:
+@inline _variates_of_batch(μ, X::AbstractArray{<:Number}) = _variates_of_flat_batch(X, _stream_ndims(μ))
 @inline _variates_of_flat_batch(X::AbstractArray, ::StaticInteger{K}) where {K} = _nest_batch(X, Val(K))
 @noinline function _variates_of_flat_batch(::AbstractArray, ::NoMSpaceElementSize{MU}) where {MU}
     throw(ArgumentError("Batches of variates of measures of type $(nameof(MU)) need a declared variate rank (MeasureBase.mspace_ndims)"))
 end
-@inline _variates_of_batch(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::Union{Tuple,NamedTuple}) = _pwr_variate(μ, X)
-@inline _variates_of_batch(μ, X::Union{Tuple,NamedTuple}) = _variates_of_batch_via(basemeasure(μ), μ, X)
-@inline _variates_of_batch_via(β, ::Any, X) = _variates_of_batch(β, X)
-@noinline function _variates_of_batch_via(::M, ::M, X) where {M}
-    throw(ArgumentError("Batches of tuple variates of measures of type $(nameof(M)) are not supported"))
-end
+@inline _variates_of_batch(μ, X::Union{Tuple,NamedTuple}) = _batch_variates(X, μ)
 
 Adapt.adapt_structure(to, μ::PowerMeasure) = PowerMeasure(Adapt.adapt(to, pwr_base(μ)), pwr_axes(μ))

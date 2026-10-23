@@ -217,6 +217,15 @@ end
 @inline function mspace_ndims(::Type{<:ProductMeasure{<:AbstractArray{M,N}}}) where {M,N}
     _add_ndims(mspace_ndims(M), N)
 end
+@inline function stream_ndims(::Type{<:ProductMeasure{<:AbstractArray{M,N}}}) where {M,N}
+    _add_ndims(stream_ndims(M), N)
+end
+# Numeric batches of tuple products are batches of flat streams:
+@inline function stream_ndims(::Type{MU}) where {MU<:ProductMeasure{<:Union{Tuple,NamedTuple}}}
+    _flat_stream_ndims(fixed_stream_size(MU), MU)
+end
+@inline _flat_stream_ndims(::True, ::Type) = 1
+@inline _flat_stream_ndims(::False, ::Type{MU}) where {MU} = NoMSpaceElementSize{MU}()
 # Batches of streams consume array products in fused operations only where
 # the flat variate size of the marginals is known from their type:
 @inline function fixed_stream_size(::Type{<:ProductMeasure{<:AbstractArray{M}}}) where {M}
@@ -269,7 +278,7 @@ end
 # their slices of the batch.
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval @inline function $bhead(μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {M}
-        _array_product_kernel($head, μ, X, _static_ndims_of(mspace_ndims(M)))
+        _array_product_kernel($head, μ, X, _static_ndims_of(stream_ndims(M)))
     end
 end
 
@@ -315,10 +324,10 @@ end
 # marginal by marginal otherwise:
 @inline _point_ld(f::F, μ::AbstractProductMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
 @inline function logdensityof_impl(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
-    _array_product_ld(logdensityof_impl, μ, x, mspace_ndims(M))
+    _array_product_ld(logdensityof_impl, μ, x, stream_ndims(M))
 end
 @inline function logdensity_def(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
-    _array_product_ld(logdensity_def, μ, x, mspace_ndims(M))
+    _array_product_ld(logdensity_def, μ, x, stream_ndims(M))
 end
 @inline function _array_product_ld(f::F, μ::ProductMeasure, x::AbstractArray, ::Integer) where {F}
     _point_result(_materialize(_batched_kernel(f, μ, x)), μ)
@@ -394,7 +403,7 @@ end
 # Variates of array products are arrays of marginal variates or, for
 # marginals with array variates of declared rank, their flat storage:
 @propagate_inbounds function checked_arg(μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {M}
-    @boundscheck _check_product_arg(marginals(μ), x, _static_ndims_of(mspace_ndims(M)))
+    @boundscheck _check_product_arg(marginals(μ), x, _static_ndims_of(stream_ndims(M)))
     return x
 end
 
@@ -612,7 +621,7 @@ end
 @inline _fused_marginals(::Type{M}) where {M} = Val(isconcretetype(M) && _unit_dof(M) === static(true))
 
 function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_batched_to_std(S, μ, X, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
+    _array_product_batched_to_std(S, μ, X, _fused_marginals(M), _static_ndims_of(stream_ndims(M)))
 end
 function _array_product_batched_to_std(::Type{S}, μ, X::AbstractArray, ::Val{true}, ::Any) where {S}
     mar = marginals(μ)
@@ -638,7 +647,7 @@ function _marginals_to_std_loop(::Type{S}, mar::AbstractArray{<:Any,N}, X::Abstr
 end
 
 function batched_transport_from_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_batched_from_std(S, μ, Z, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
+    _array_product_batched_from_std(S, μ, Z, _fused_marginals(M), _static_ndims_of(stream_ndims(M)))
 end
 function _array_product_batched_from_std(::Type{S}, μ, Z::AbstractArray, ::Val{true}, ::Any) where {S}
     mar = marginals(μ)
@@ -655,7 +664,7 @@ end
 end
 
 function batched_transport_from_std_with_rest(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure,M}
-    _array_product_batched_from_std_with_rest(S, μ, Z, sz, _fused_marginals(M), _static_ndims_of(mspace_ndims(M)))
+    _array_product_batched_from_std_with_rest(S, μ, Z, sz, _fused_marginals(M), _static_ndims_of(stream_ndims(M)))
 end
 function _array_product_batched_from_std_with_rest(::Type{S}, μ, Z::AbstractArray, sz::SizeLike, ::Val{true}, ::Any) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, length(marginals(μ)))
@@ -694,7 +703,7 @@ end
 # storage and flat variates go through the batched kernels, marginals
 # without a declared variate rank transport one by one.
 function transport_to_std(::Type{S}, μ::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray) where {S<:StdMeasure,M}
-    _array_product_to_std(S, μ, x, _flat_storage(x), _static_ndims_of(mspace_ndims(M)))
+    _array_product_to_std(S, μ, x, _flat_storage(x), _static_ndims_of(stream_ndims(M)))
 end
 @inline function _array_product_to_std(::Type{S}, μ, x::AbstractArray, x_flat::AbstractArray, ::StaticInteger) where {S}
     _single_std(batched_transport_to_std(S, μ, x_flat))

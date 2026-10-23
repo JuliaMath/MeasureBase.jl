@@ -6,7 +6,7 @@
 # zero batch dims meaning a single variate. Nested batches (arrays of
 # variates with flat storage, see ArraysOfArrays) are fused at the entry
 # points, the container then determines the batch dimensions. Batched
-# kernels know the variate rank of their measure (see `mspace_ndims`) and
+# kernels know the stream rank of their measure (see `stream_ndims`) and
 # return arrays over the batch dimensions, a number for a single variate.
 # Structural measures implement their kernels once, in terms of the kernels
 # of their components.
@@ -79,13 +79,18 @@ directly. Structural measures evaluate their components via
 function batched_logdensityof_impl end
 
 @inline function batched_logdensityof_impl(μ::AbstractMeasure, X)
-    _default_batched_kernel(logdensityof_impl, μ, X, _static_ndims(μ))
+    _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
 end
 
-# The variate rank as a static integer, from the type where known:
+# The variate rank (for the layout of variates) and the stream rank (for
+# the layout of numeric batches) as static integers, from the type where
+# known:
 @inline _static_ndims(μ::MU) where {MU} = _static_ndims(mspace_ndims(MU), μ)
 @inline _static_ndims(n::Integer, μ) = static(n)
 @inline _static_ndims(::NoMSpaceElementSize, μ) = _static_ndims_of(mspace_ndims(μ))
+@inline _stream_ndims(μ::MU) where {MU} = _stream_ndims(stream_ndims(MU), μ)
+@inline _stream_ndims(n::Integer, μ) = static(n)
+@inline _stream_ndims(::NoMSpaceElementSize, μ) = _static_ndims_of(stream_ndims(μ))
 @inline _static_ndims_of(n::Integer) = static(n)
 @inline _static_ndims_of(n::NoMSpaceElementSize) = n
 
@@ -99,7 +104,7 @@ conventions and defaults as [`MeasureBase.batched_logdensityof_impl`](@ref).
 function batched_logdensity_def end
 
 @inline function batched_logdensity_def(μ::AbstractMeasure, X)
-    _default_batched_kernel(logdensity_def, μ, X, _static_ndims(μ))
+    _default_batched_kernel(logdensity_def, μ, X, _stream_ndims(μ))
 end
 
 @inline _default_batched_kernel(f::F, μ, X, n::Integer) where {F} = _default_batched_kernel(f, μ, X, static(n))
@@ -175,7 +180,7 @@ end
 @inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _checked_batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, x::Number) where {F} = _point_ld(f, μ, x)
 @inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X)
-@inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _static_ndims(μ))
+@inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _stream_ndims(μ))
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::AbstractArray, ::StaticInteger) where {F}
     _check_batch_shape(_checked_batched_kernel(f, μ, X_flat), X)
 end
@@ -220,7 +225,7 @@ end
 # single variate has taken the variate for a batch: the variate doesn't
 # fit the measure, or the measure lacks a batched kernel for array
 # variates.
-@inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_ld_byrank(f, μ, x, _static_ndims(μ))
+@inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_ld_byrank(f, μ, x, _stream_ndims(μ))
 @inline _point_ld(f::F, μ, x) where {F} = f(μ, x)
 @inline _point_ld_byrank(f::F, μ, x, ::StaticInteger) where {F} = _point_result(_materialize(_checked_batched_kernel(f, μ, x)), μ)
 @inline _point_ld_byrank(f::F, μ, x, ::NoMSpaceElementSize) where {F} = f(μ, x)
@@ -407,7 +412,7 @@ end
 # Parameter batches: arrays of measures at batches of variates, paired as
 # in broadcasting.
 
-@inline _measures_ld(ms::AbstractArray{M}, X) where {M} = _measures_ld(ms, X, _static_ndims_of(mspace_ndims(M)))
+@inline _measures_ld(ms::AbstractArray{M}, X) where {M} = _measures_ld(ms, X, _static_ndims_of(stream_ndims(M)))
 
 # Scalar variates in one broadcast over the measures (their parameter
 # columns for struct arrays) and the batch:
@@ -437,7 +442,7 @@ end
     _measures_bc(ms, X)
 end
 @inline function Broadcast.broadcasted(::typeof(logdensityof), ms::AbstractArray{M}, x::Base.RefValue{<:AbstractArray{<:Number}}) where {M<:AbstractMeasure}
-    _shared_variate_ld(ms, x, _static_ndims_of(mspace_ndims(M)))
+    _shared_variate_ld(ms, x, _static_ndims_of(stream_ndims(M)))
 end
 @inline function _shared_variate_ld(ms, x::Base.RefValue{<:AbstractArray{<:Number,K}}, k::StaticInteger{K}) where {K}
     _measures_ld(ms, x[], k)

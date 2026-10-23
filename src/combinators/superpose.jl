@@ -123,7 +123,7 @@ end
 # Batches of superpositions draw a batch from each component and select
 # by mass, branch-free:
 function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike)
-    _superpose_batched_rand(ctx, μ, sz, _static_ndims(μ))
+    _superpose_batched_rand(ctx, μ, sz, _stream_ndims(μ))
 end
 function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, k::StaticInteger)
     components = values(μ.components)
@@ -152,6 +152,10 @@ end
 @inline mspace_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = mspace_ndims(eltype(C))
 @inline function mspace_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
     tuple_type_mapreduce(mspace_ndims, _CommonNDims{MU}(), C)
+end
+@inline stream_ndims(::Type{<:SuperpositionMeasure{C}}) where {C<:AbstractArray} = stream_ndims(eltype(C))
+@inline function stream_ndims(::Type{MU}) where {C<:Tuple,MU<:SuperpositionMeasure{C}}
+    tuple_type_mapreduce(stream_ndims, _CommonNDims{MU}(), C)
 end
 struct _CommonNDims{MU} <: Function end
 @inline (::_CommonNDims{MU})(a::Integer, b::Integer) where {MU} = a == b ? a : NoMSpaceElementSize{MU}()

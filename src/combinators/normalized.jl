@@ -53,6 +53,7 @@ _logweight(μ::NormalizedMeasure{<:Any,<:AbstractUnknownMass}) = _throw_unknown_
 @inline mspace_flatsize(μ::NormalizedMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:NormalizedMeasure{M}}) where {M} = mspace_flatsize(M)
 @inline mspace_ndims(::Type{<:NormalizedMeasure{M}}) where {M} = mspace_ndims(M)
+@inline stream_ndims(::Type{<:NormalizedMeasure{M}}) where {M} = stream_ndims(M)
 @inline fixed_stream_size(::Type{<:NormalizedMeasure{M}}) where {M} = fixed_stream_size(M)
 @inline getdof(μ::NormalizedMeasure) = getdof(μ.base)
 @inline fast_dof(μ::NormalizedMeasure) = fast_dof(μ.base)

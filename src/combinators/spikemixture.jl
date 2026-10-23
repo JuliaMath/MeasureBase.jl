@@ -49,7 +49,7 @@ function rand_impl(ctx::GenContext, μ::SpikeMixture)
 end
 
 function batched_rand_impl(ctx::GenContext, μ::SpikeMixture, sz::SizeLike)
-    _spike_batched_rand(ctx, μ, sz, _static_ndims(μ.m))
+    _spike_batched_rand(ctx, μ, sz, _stream_ndims(μ.m))
 end
 function _spike_batched_rand(ctx::GenContext, μ::SpikeMixture, sz::SizeLike, k::StaticInteger)
     X = batched_rand_impl(ctx, μ.m, sz)

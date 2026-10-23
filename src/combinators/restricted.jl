@@ -7,6 +7,7 @@ end
 @inline mspace_flatsize(μ::RestrictedMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
 @inline mspace_ndims(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = mspace_ndims(M)
+@inline stream_ndims(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = stream_ndims(M)
 @inline fixed_stream_size(::Type{<:RestrictedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
 
 # The density relative to the base is one on the restriction, the support
