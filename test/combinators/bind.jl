@@ -181,6 +181,16 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         @test y isa AbstractVector{<:Real} && length(y) == 2
         x_reco = transport_to(μ, StdUniform()^2)(y)
         @test x_reco.position ≈ x.position && x_reco.noise ≈ x.noise
+
+        # Stream names come from the measures where they are declared, so
+        # primary measures without random variates are fine:
+        αr = productmeasure((position = MeasureBase.restrict(x -> x > 0, StdNormal()),))
+        μr = mbind(f_βnt, αr, merge)
+        @test logdensityof(μr, (position = 0.3, noise = 0.2)) ≈
+              logdensityof(StdNormal(), 0.3) + logdensityof(f_βnt((position = 0.3,)), (noise = 0.2,))
+        @test logdensityof(μr, (position = -0.3, noise = 0.2)) == -Inf
+        @test logdensities(μr, (position = [0.3, -0.3], noise = [0.2, 0.2])) ≈
+              [logdensityof(μr, (position = 0.3, noise = 0.2)), -Inf]
     end
 
     @testset "densities outside of the primary support" begin
