@@ -11,7 +11,8 @@ using Reactant
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac, asmeasure
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
-using MeasureBase: mcombine, batched_rand_impl, GenContext
+using MeasureBase: mcombine, batched_rand_impl, GenContext, likelihoodof
+using StructArrays: StructArray
 using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
@@ -75,6 +76,13 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensities(dm, x), x)
         sm = SpikeMixture(StdNormal(), 0.2)
         test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
+    end
+
+    # Likelihoods with scalar observations over struct arrays of traced
+    # parameters, in one broadcast over the parameter columns:
+    @testset "parameter batches" begin
+        ℒ = likelihoodof(θ -> weightedmeasure(θ.w, StdNormal()), 0.3)
+        test_traced((w, s) -> logdensityof.(Ref(ℒ), StructArray((w = w, s = s))), randn(5), rand(5))
     end
 
     # Products over arrays of marginals are not covered: Reactant can't

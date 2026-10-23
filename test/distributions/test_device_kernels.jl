@@ -13,6 +13,7 @@ using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
 import Adapt
 using JLArrays
+using StructArrays: StructArray
 
 @testset "device kernels of distribution families" begin
     JLArrays.allowscalar(false)
@@ -63,6 +64,18 @@ using JLArrays
             @test Array(logdensities(m, JLArray(xs))) ≈ logpdf.(d, xs)
             @test logdensityof(m, -1) == -Inf && logdensityof(m, 1.5) == -Inf
         end
+    end
+
+    @testset "parameter batches of distributions" begin
+        μs, σs = [0.3, -1.0, 2.0], [1.7, 0.5, 1.2]
+        ds = Normal.(μs, σs)
+        xs = [0.1, -0.4, 2.5]
+        @test logdensityof.(asmeasure.(ds), xs) ≈ logpdf.(ds, xs)
+        @test Array(logdensityof.(JLArray(asmeasure.(ds)), JLArray(xs))) ≈ logpdf.(ds, xs)
+        data = [0.2, 0.9, -0.3]
+        ℒ = likelihoodof(θ -> asmeasure(Normal(θ.μ, θ.σ))^3, JLArray(data))
+        Θ = StructArray((μ = JLArray(μs), σ = JLArray(σs)))
+        @test Array(logdensityof.(Ref(ℒ), Θ)) ≈ [sum(logpdf.(d, data)) for d in ds]
     end
 
     @testset "MvNormal" begin

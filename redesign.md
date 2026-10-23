@@ -123,6 +123,19 @@ Fusion needs concrete scalar-variate marginals (one DOF for transport);
 other array products loop over host-resident marginals. Measures holding
 arrays have `Adapt` rules.
 
+**Parameter batches.** Arrays of measures are evaluated with
+`logdensities(ms, X)` (batch dimensions of `X` broadcast against `ms`)
+and by broadcasting `logdensityof`/`densityof` over them, which share the
+implementation: scalar-variate measures in one broadcast over the leaf
+columns of struct arrays (`_marginal_broadcast`), powers of one shape via
+their bases over the power dimensions, other array variates measure by
+measure. `logdensityof.(Ref(ℒ), Θ)` builds the kernel's measures by
+broadcasting over `Θ` (struct arrays stay struct arrays), scalar
+observations broadcast over the parameter columns directly (traced too).
+`DensityMeasure` batches are base batch plus integrand batch, the
+integrand evaluated on the in-support subset on the host (everywhere,
+masked, on devices and when traced).
+
 **Pushforwards.** `pushfwd(f, μ)` never evaluates `f` at construction.
 The output size is declared (`pushfwd(f, μ; varsize)`), the origin's for
 `Base.BroadcastFunction`s, or inferred from the type `f` returns for

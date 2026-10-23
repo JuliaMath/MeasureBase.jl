@@ -114,6 +114,44 @@ function DensityInterface.densityof(ℒ::AbstractLikelihood, p)
 end
 
 
+# Broadcasting over arrays of parameter values evaluates the measures the
+# kernel returns for them as a parameter batch (see `logdensities` for
+# arrays of measures), scalar observations in a single broadcast over the
+# parameters (their columns for struct arrays):
+const _LikelihoodArg = Union{AbstractLikelihood,Base.RefValue{<:AbstractLikelihood}}
+@inline _unref(ℒ::AbstractLikelihood) = ℒ
+@inline _unref(ℒ::Base.RefValue{<:AbstractLikelihood}) = ℒ[]
+
+function Broadcast.broadcasted(::typeof(logdensityof), ℒ::_LikelihoodArg, Θ::AbstractArray)
+    _likelihood_bc(_unref(ℒ), Θ, likelihood_obs(_unref(ℒ)))
+end
+function Broadcast.broadcasted(::typeof(densityof), ℒ::_LikelihoodArg, Θ::AbstractArray)
+    Broadcast.broadcasted(Base.Fix1(exp, ULogarithmic), Broadcast.broadcasted(logdensityof, ℒ, Θ))
+end
+
+@inline _likelihood_bc(ℒ, Θ, x::Number) = _marginal_broadcast(_KernelLogd(likelihood_kernel(ℒ)), Θ, x)
+@inline _likelihood_bc(ℒ, Θ, x) = Broadcast.broadcasted(logdensityof, _kernel_measures(ℒ, Θ), Ref(x))
+
+struct _KernelMeasure{K} <: Function
+    k::K
+end
+_KernelMeasure(k::Type{K}) where {K} = _KernelMeasure{Type{K}}(k)
+@inline (f::_KernelMeasure)(θ) = asmeasure(f.k(θ))
+
+struct _KernelLogd{K} <: Function
+    k::K
+end
+_KernelLogd(k::Type{K}) where {K} = _KernelLogd{Type{K}}(k)
+@inline (f::_KernelLogd)(θ, x) = _dynamic_logd(logdensityof(asmeasure(f.k(θ)), x), x)
+
+# Broadcasting over struct arrays of parameters gives struct arrays of
+# measures:
+_kernel_measures(ℒ::AbstractLikelihood, Θ::AbstractArray) = broadcast(_KernelMeasure(likelihood_kernel(ℒ)), Θ)
+
+# Integrands of density measures over arrays of variates:
+_integrand_lds(ℒ::AbstractLikelihood, Θ::AbstractArray) = Broadcast.materialize(Broadcast.broadcasted(logdensityof, ℒ, Θ))
+
+
 const _SimpleLikelihood1 = ComposedFunction{<:Base.Fix2{typeof(densityof),<:Any},<:Any}
 as_likelihood(l::_SimpleLikelihood1) = likelihoodof(l.inner, l.outer.x)
 as_integrand(l::_SimpleLikelihood1) = as_likelihood(l)

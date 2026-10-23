@@ -526,4 +526,32 @@ end
 @inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = sliced(B, Val(length(pwr_axes(ν))))
 @inline _pwr_nest(ν, B::AbstractArray) = B
 
+# Arrays of powers of one shape broadcast their base measures over the
+# power dimensions of the batch:
+function _measures_array_ld(ms::AbstractArray{<:PowerMeasure{<:Any,<:NTuple{P,Any}}}, X::AbstractArray, ::StaticInteger{K}) where {P,K}
+    k_base = K - P
+    pwr_dims = ntuple(i -> size(X, k_base + i), Val(P))
+    all(Base.Fix2(_has_axes_size, pwr_dims), _pwr_axes_of(ms)) || _throw_size_mismatch()
+    bases = reshape(_pwr_bases_of(ms), (ntuple(_ -> 1, Val(P))..., size(ms)...))
+    _sum_leading_logd(_measures_ld(bases, X, static(k_base)), static(P); init = zero(_logd_numtype(X)))
+end
+@inline _has_axes_size(axs::Tuple, sz::Tuple) = map(length, axs) == sz
+@inline _pwr_bases_of(ms::StructArray) = StructArrays.component(ms, :parent)
+@inline _pwr_bases_of(ms::AbstractArray) = map(pwr_base, ms)
+@inline _pwr_axes_of(ms::StructArray) = StructArrays.component(ms, :axes)
+@inline _pwr_axes_of(ms::AbstractArray) = map(pwr_axes, ms)
+
+# The variates of a batch as an array, for density measures over it:
+@inline _variates_of_batch(μ, X::AbstractArray{<:Number}) = _variates_of_flat_batch(X, _static_ndims(μ))
+@inline _variates_of_flat_batch(X::AbstractArray, ::StaticInteger{K}) where {K} = _nest_batch(X, Val(K))
+@noinline function _variates_of_flat_batch(::AbstractArray, ::NoMSpaceElementSize{MU}) where {MU}
+    throw(ArgumentError("Batches of variates of measures of type $(nameof(MU)) need a declared variate rank (MeasureBase.mspace_ndims)"))
+end
+@inline _variates_of_batch(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::Union{Tuple,NamedTuple}) = _pwr_variate(μ, X)
+@inline _variates_of_batch(μ, X::Union{Tuple,NamedTuple}) = _variates_of_batch_via(basemeasure(μ), μ, X)
+@inline _variates_of_batch_via(β, ::Any, X) = _variates_of_batch(β, X)
+@noinline function _variates_of_batch_via(::M, ::M, X) where {M}
+    throw(ArgumentError("Batches of tuple variates of measures of type $(nameof(M)) are not supported"))
+end
+
 Adapt.adapt_structure(to, μ::PowerMeasure) = PowerMeasure(Adapt.adapt(to, pwr_base(μ)), pwr_axes(μ))

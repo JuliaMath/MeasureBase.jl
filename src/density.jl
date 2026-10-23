@@ -245,10 +245,47 @@ density_def(μ::DensityMeasure, x) = densityof(μ.f, x)
 # The integrand is not evaluated outside of the support of the base measure,
 # where it may be undefined, except for traced or device conditions:
 function logdensityof_impl(μ::DensityMeasure, x::Any)
-    base_logval = dynamic(logdensityof(μ.base, x))
-    _select(
-        isneginf(base_logval),
-        () -> base_logval,
-        () -> dynamic(logdensityof(μ.f, x)) + base_logval,
-    )
+    _density_measure_ld(μ, x, logdensityof(μ.base, x))
 end
+
+# Batches evaluate the base measure and the integrand over the whole batch.
+# On the host, the integrand is evaluated only at the variates within the
+# support of the base measure, device and traced batches evaluate it
+# everywhere and mask the result:
+function batched_logdensityof_impl(μ::DensityMeasure, X)
+    _density_measure_ld(μ, X, _materialize(batched_logdensityof_impl(μ.base, X)))
+end
+
+function _density_measure_ld(μ::DensityMeasure, x, ℓ_base::Number)
+    base_logval = dynamic(ℓ_base)
+    _select(isneginf(base_logval), () -> base_logval, () -> dynamic(logdensityof(μ.f, x)) + base_logval)
+end
+function _density_measure_ld(μ::DensityMeasure, X, ℓ_base::AbstractArray)
+    Θ = _variates_of_batch(μ.base, X)
+    size(Θ) == size(ℓ_base) || _throw_batch_shape(size(ℓ_base), size(Θ))
+    broadcast(_add_unless_neginf, ℓ_base, _integrand_lds_insupport(μ.f, Θ, ℓ_base))
+end
+
+@inline function _add_unless_neginf(ℓ_base, ℓ_f)
+    ℓ = ℓ_base + ℓ_f
+    ifelse(isneginf(ℓ_base), oftype(ℓ, ℓ_base), ℓ)
+end
+
+@inline _integrand_lds_insupport(f, Θ, ℓ_base) = _integrand_lds_insupport(f, Θ, ℓ_base, _is_host_array(ℓ_base))
+function _integrand_lds_insupport(f, Θ, ℓ_base, on_host::Bool)
+    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, Θ, ℓ_base) : _integrand_lds(f, Θ)
+end
+
+@inline _is_host_array(A) = _is_host_unit(get_compute_unit(A))
+@inline _is_host_unit(unit) = is_host_unit(unit)
+@inline _is_host_unit(::HeterogeneousComputing.ComputeUnitIndependent) = true
+
+function _integrand_lds_at(f, Θ, ℓ_base)
+    idxs = findall(!isneginf, ℓ_base)
+    ℓ_f = fill!(similar(ℓ_base), 0)
+    ℓ_f[idxs] = _integrand_lds(f, Θ[idxs])
+    return ℓ_f
+end
+
+_integrand_lds(f, Θ::AbstractArray) = broadcast(Base.Fix1(logdensityof, f), Θ)
+

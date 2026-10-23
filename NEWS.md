@@ -66,6 +66,17 @@ implementation per measure type for single variates and batches. See the
   allocation-free densities, transports and draws.
 - Arrays of isbits parameterized measures are stored as struct arrays and
   evaluated in fused kernels, also on GPUs and under Reactant.
+- Parameter batches: broadcasting `logdensityof` and `densityof` over
+  arrays of measures and over likelihoods (`logdensityof.(Ref(ℒ), Θ)` for
+  arrays or struct arrays of parameter values) evaluates the measures in
+  fused kernels, `logdensities(ms, X)` is the named form for flat batches.
+  Density measures (posteriors) have batched kernels.
+- `pushfwd(f, μ; varsize)` declares the variate size of a pushforward.
+  `f` is no longer evaluated at construction, sizes that don't follow from
+  types are learned from a test value when needed.
+- `fast_dof` returns static or constant-time degrees of freedom and
+  `MeasureBase.NoFastDOF` otherwise, transports and draws fall back to
+  `getdof` or the with-rest path.
 - Powers take integer-valued real counts (`StdNormal()^3.0`), so binds
   with counts drawn from discrete distributions work, e.g. the Poisson
   process `mbind(n -> μ^n, Poisson(λ), vcat)`.
@@ -107,6 +118,9 @@ implementation per measure type for single variates and batches. See the
   discrete and continuous components are taken relative to Lebesgue
   measure plus counting measure on the atoms.
 - `mcombine(merge, ...)` throws on overlapping names.
+- `paramsof(::Type{<:ParameterizedMeasure})` (which returned the parameter
+  names) is removed, use `paramnames`. Transformed measures have no
+  parameters.
 - Transports between point masses return floats.
 - Variates of the wrong shape throw `ArgumentError` everywhere, also for
   reshaped measures (`DimensionMismatch` before).

@@ -45,6 +45,54 @@ of a measure whose variate sizes are all static are type stable and
 allocation-free, for powers, tuple and named tuple products and binds
 over them. Other compute units allocate their own arrays.
 
+## Parameter batches
+
+Arrays of measures, for example the measures a likelihood kernel returns
+for an array of parameter values, are evaluated as batches. Broadcasting
+`logdensityof` (or `densityof`) over an array of measures `ms` keeps the
+ordinary broadcasting semantics: `logdensityof.(ms, x)`,
+`logdensityof.(ms, xs)`, and `logdensityof.(ms, Ref(x))` for an array
+variate `x` shared by all measures. `logdensities(ms, X)` is the named
+form for flat batches of variates, the batch dimensions of `X` broadcast
+against the dimensions of `ms`. Broadcasting over a likelihood,
+`logdensityof.(Ref(ℒ), Θ)`, evaluates the measures of its kernel for an
+array (or struct array) of parameter values `Θ` that way, and density
+measures, e.g. posteriors `mintegrate(ℒ, prior)`, evaluate batches of
+variates as the batch of the base measure plus the batch of the
+integrand.
+
+```julia
+using MeasureBase, StructArrays
+using AffineMaps: MulAdd
+
+data = randn(100)
+ℒ = likelihoodof(θ -> pushfwd(MulAdd(θ.σ, θ.μ), StdNormal())^length(data), data)
+Θ = StructArray((μ = randn(1000), σ = rand(1000) .+ 0.5))
+logdensityof.(Ref(ℒ), Θ)                # 1000 log-likelihoods
+prior = productmeasure((μ = StdNormal(), σ = StdExponential()))
+logdensities(mintegrate(ℒ, prior), Θ)   # 1000 posterior log-densities
+```
+
+Fused evaluation, also on GPUs:
+
+- Measures with scalar variates: one broadcast over the measures and the
+  batch, over the parameter columns of struct arrays of measures
+  (broadcasting a kernel over a struct array of parameters returns one).
+  Likelihoods with scalar observations broadcast over the parameter
+  columns directly, also under Reactant.
+- Arrays of powers of the same shape, e.g. likelihoods of independent
+  observations: one broadcast of their base measures over the power
+  dimensions.
+- Density measures: the batch of the base measure plus the batch of the
+  integrand. On the host, the integrand is evaluated only at the variates
+  within the support of the base measure, device and traced batches
+  evaluate it everywhere and mask the result.
+
+Other measures with array variates and measures with tuple variates are
+evaluated measure by measure, each with its own batched kernel. Under
+Reactant, arrays of measures with traced parameters can't be built, so
+only the likelihood path above runs traced.
+
 ## Support and shape conventions
 
 - Densities are `-Inf` outside of the support, including non-integer

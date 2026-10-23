@@ -35,6 +35,29 @@ function logdensities end
 @inline logdensities(μ::AbstractMeasure, X) = _materialize(_batched_ld(logdensityof_impl, μ, X))
 
 """
+    logdensities(ms::AbstractArray{<:AbstractMeasure}, X)
+
+Compute the log-densities of the measures in `ms` at the variates of the
+batch `X`, paired with the measures as in broadcasting over the batch
+dimensions of `X`.
+
+`X` is a batch as for `logdensities(μ, X)` with array or numeric
+variates, its batch dimensions broadcast against the dimensions of `ms`.
+A single variate (no batch dimensions) is shared by all measures. This is
+equivalent to `logdensityof.(ms, Xs)` for the array `Xs` of the variates
+in `X`, and to `logdensityof.(ms, Ref(x))` for a single array variate
+`x`, which share the implementation.
+
+Measures with scalar variates are evaluated in one fused broadcast, over
+the parameter columns of `ms` if it is a struct array (broadcasting over
+a struct array of parameters returns one), also on GPUs. Arrays of powers
+of the same shape broadcast their base measures over the power
+dimensions. Other measures with array variates are evaluated measure by
+measure.
+"""
+@inline logdensities(ms::AbstractArray{<:AbstractMeasure}, X) = _materialize(_measures_ld(ms, X))
+
+"""
     MeasureBase.batched_logdensityof_impl(μ::AbstractMeasure, X)
 
 Log-densities of `μ` (relative to its root measure) at the variates of the
@@ -378,4 +401,49 @@ function _streamwise_ld(::typeof(logdensityof_impl), μ, X::AbstractArray)
         isempty(x_rest) || _throw_stream_too_long()
         _dynamic_logd(_materialize(ℓ), x)
     end
+end
+
+
+# Parameter batches: arrays of measures at batches of variates, paired as
+# in broadcasting.
+
+@inline _measures_ld(ms::AbstractArray{M}, X) where {M} = _measures_ld(ms, X, _static_ndims_of(mspace_ndims(M)))
+
+# Scalar variates in one broadcast over the measures (their parameter
+# columns for struct arrays) and the batch:
+@inline _measures_ld(ms, x::Number, ::Any) = _measures_bc(ms, x)
+@inline _measures_ld(ms, X::AbstractArray{<:Number}, ::StaticInteger{0}) = _measures_bc(ms, X)
+@inline function _measures_ld(ms, X::AbstractArray{<:Number}, k::StaticInteger)
+    ndims(X) >= k || _throw_size_mismatch()
+    _measures_array_ld(ms, X, k)
+end
+# Array variates measure by measure, a single variate is shared by all:
+@inline _measures_array_ld(ms, X::AbstractArray, ::StaticInteger{K}) where {K} = _measures_bc(ms, _variates_arg(X, Val(K)))
+@inline _variates_arg(X::AbstractArray{<:Any,K}, ::Val{K}) where {K} = Ref(X)
+@inline _variates_arg(X::AbstractArray, ::Val{K}) where {K} = sliced(X, Val(K))
+# Arrays of variates via their flat storage where they have one:
+@inline _measures_ld(ms, X::AbstractArray, k) = _measures_ld_nested(ms, X, _flat_storage(X), k)
+@inline _measures_ld_nested(ms, ::AbstractArray, X_flat::AbstractArray{<:Number}, k::StaticInteger) = _measures_ld(ms, X_flat, k)
+@inline _measures_ld_nested(ms, X::AbstractArray, ::Any, ::Any) = _measures_bc(ms, X)
+@noinline function _measures_ld(ms, X, ::Any)
+    throw(ArgumentError("logdensities over arrays of measures supports numeric and array variates, broadcast logdensityof over arrays of other variates"))
+end
+
+@inline _measures_bc(ms, X) = _marginal_broadcast(_DynamicPointLogd(logdensityof), ms, X)
+
+# Broadcasting log-densities over arrays of measures shares the
+# implementation of `logdensities`:
+@inline function Broadcast.broadcasted(::typeof(logdensityof), ms::AbstractArray{<:AbstractMeasure}, X)
+    _measures_bc(ms, X)
+end
+@inline function Broadcast.broadcasted(::typeof(logdensityof), ms::AbstractArray{M}, x::Base.RefValue{<:AbstractArray{<:Number}}) where {M<:AbstractMeasure}
+    _shared_variate_ld(ms, x, _static_ndims_of(mspace_ndims(M)))
+end
+@inline function _shared_variate_ld(ms, x::Base.RefValue{<:AbstractArray{<:Number,K}}, k::StaticInteger{K}) where {K}
+    _measures_ld(ms, x[], k)
+end
+@inline _shared_variate_ld(ms, x::Base.RefValue, ::Any) = _measures_bc(ms, x)
+
+@inline function Broadcast.broadcasted(::typeof(densityof), ms::AbstractArray{<:AbstractMeasure}, X)
+    Broadcast.broadcasted(exp, Broadcast.broadcasted(logdensityof, ms, X))
 end
