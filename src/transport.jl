@@ -109,8 +109,12 @@ end
 Base.hash(f::TransportFunction, h::UInt) = hash(f.ν, hash(f.μ, hash(:TransportFunction, h)))
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return transport_def(f.ν, f.μ, checked_arg(f.μ, x))
+    return transport_def(f.ν, f.μ, _checked_variate(checked_arg(f.μ, x), x))
 end
+
+# Variates that can't be checked are passed on as they are:
+@inline _checked_variate(x_checked, ::Any) = x_checked
+@inline _checked_variate(::NoArgCheck, x) = x
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
     return TransportFunction{MU,NU}(f.μ, f.ν)

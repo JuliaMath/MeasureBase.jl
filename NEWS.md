@@ -147,6 +147,11 @@ implementation per measure type for single variates and batches. See the
   names) is removed, use `paramnames`. Transformed measures have no
   parameters.
 - Transports between point masses return floats.
+- Numeric vectors and batches of tuple and named tuple products are flat
+  streams, for densities and transports, like those of powers of tuple
+  products (`[a, b1, b2]` for `(a, [b1, b2])`). Numeric vectors used to be
+  read as vectors of marginal variates only, which is the same for scalar
+  marginals.
 - `testvalue` of wrapped univariate distributions is their median (the
   inversion of the constant uniform draw), also for discrete
   distributions like `DiscreteUniform` that failed before.

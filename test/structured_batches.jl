@@ -66,6 +66,31 @@ using MeasureBase: Dirac
     @test insupportof((StdUniform()^2)^3, rand(2, 3)) && !insupportof((StdUniform()^2)^3, fill(2.0, 2, 3))
     @test insupportof(StdUniform()^3, [0.1, 0.5, 0.9]) isa Bool
 
+    @testset "numeric streams of tuple products" begin
+        # Numeric vectors are flat streams, for scalar marginals the vector
+        # of the marginal variates:
+        T = productmeasure((StdNormal(), StdExponential()))
+        @test logdensityof(T, [0.3, 0.7]) == logdensityof(T, (0.3, 0.7))
+        for P in (Pt, productmeasure((a = StdNormal(), b = StdExponential()^2)))
+            x = rand(P)
+            s = vcat(values(x)...)
+            ℓ_ref = logdensityof(StdNormal(), s[1]) + logdensityof(StdExponential()^2, s[2:3])
+            @test logdensityof(P, s) ≈ logdensityof(P, x) ≈ ℓ_ref
+            @test MeasureBase.logdensity_def(P, s) ≈ MeasureBase.logdensity_def(P, x)
+            f = transport_to(StdUniform()^3, P)
+            @test f(s) ≈ f(x) ≈ vcat(cdf(Normal(), s[1]), 1 .- exp.(-s[2:3]))
+            X = rand(P^5)
+            S = stack(map(x -> vcat(values(x)...), X))
+            @test logdensities(P, S) ≈ logdensityof.(Ref(P), X)
+            @test flatview(transports(f, S)) ≈ stack(map(f, X))
+            for s_bad in (s[1:2], vcat(s, 0.5))
+                @test_throws ArgumentError logdensityof(P, s_bad)
+                @test_throws ArgumentError f(s_bad)
+            end
+            @test_throws ArgumentError logdensities(P, S[1:2, :])
+        end
+    end
+
     @testset "transports of powers of tuple products" begin
         flat(x) = reduce(vcat, [vcat(xi...) for xi in x])
         for P in (productmeasure((StdNormal(), StdExponential()))^3, productmeasure((a = StdNormal(), b = StdExponential()))^3)

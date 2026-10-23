@@ -54,8 +54,8 @@ end
     return nothing
 end
 @inline _check_marginal_count(::AbstractArray, x) = _throw_marginal_mismatch()
-# Tuple products also take vector variates (e.g. from converted product
-# distributions):
+# Tuple products also take vectors of marginal variates (numeric vectors
+# are flat streams, see below):
 @inline function _check_marginal_count(mar::Tuple, x::Union{Tuple,AbstractVector})
     length(mar) == length(x) || _throw_marginal_mismatch()
     return nothing
@@ -86,6 +86,24 @@ _array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _rand_ma
 function batched_rand_impl(ctx::GenContext, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, sz::SizeLike)
     map(m -> batched_rand_impl(ctx, m, sz), marginals(μ))
 end
+
+# Numeric batches of tuple and named tuple products are batches of flat
+# streams (for scalar marginals, of the marginal variates in order). Fixed
+# stream lengths split the batch into marginal batches, others are
+# consumed stream by stream:
+for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
+    @eval @inline function $bhead(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray{<:Number})
+        _tuple_product_stream_kernel($head, μ, X, fixed_stream_size(μ))
+    end
+end
+function _tuple_product_stream_kernel(f::F, μ, X::AbstractArray, fixed::True) where {F}
+    _check_stream_length(μ, X, fixed)
+    _batched_kernel(f, μ, _stream_batch(μ, X))
+end
+_tuple_product_stream_kernel(f::F, μ, X::AbstractArray, ::False) where {F} = _streamwise_ld(f, μ, X)
+
+@inline _check_stream_length(μ, X::AbstractArray, ::True) = size(X, 1) == _fixed_stream_length(μ) || _throw_size_mismatch()
+@inline _check_stream_length(μ, ::AbstractArray, ::False) = nothing
 
 # Batches of tuple and named tuple variates are tuples resp. named tuples
 # of batches, the marginal densities add up lazily:
@@ -147,17 +165,34 @@ end
 end
 
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
-    # For tuples, `mapreduce` has trouble with type inference
-    @eval @inline function $head(d::ProductMeasure{T}, x) where {T<:Tuple}
-        _check_marginal_count(marginals(d), x)
-        ℓs = map($func, marginals(d), x)
-        sum(ℓs)
-    end
+    @eval @inline $head(d::ProductMeasure{T}, x) where {T<:Tuple} = _marginalwise_ld($func, d, x)
 
     @eval function $head(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
         _product_gen_impl(Val($func), d, x)
     end
+
+    # Numeric vectors are single streams:
+    @eval @inline function $head(d::ProductMeasure{T}, x::AbstractVector{<:Number}) where {T<:Tuple}
+        _stream_point_ld($head, $func, d, x, fixed_stream_size(d))
+    end
+    @eval @inline function $head(d::ProductMeasure{NamedTuple{N,T}}, x::AbstractVector{<:Number}) where {N,T}
+        _stream_point_ld($head, $func, d, x, fixed_stream_size(d))
+    end
 end
+
+# For tuples, `mapreduce` has trouble with type inference
+@inline function _marginalwise_ld(func::F, d::ProductMeasure{<:Tuple}, x) where {F}
+    _check_marginal_count(marginals(d), x)
+    sum(map(func, marginals(d), x))
+end
+
+@inline function _stream_point_ld(head::F, ::Any, d, x::AbstractVector, fixed::True) where {F}
+    _point_result(_materialize(_tuple_product_stream_kernel(head, d, x, fixed)), d)
+end
+# Without a fixed stream length, numeric vectors of tuple products are
+# vectors of scalar marginal variates:
+@inline _stream_point_ld(::Any, func::F, d::ProductMeasure{<:Tuple}, x::AbstractVector, ::False) where {F} = _marginalwise_ld(func, d, x)
+@inline _stream_point_ld(::Any, ::Any, ::ProductMeasure, ::AbstractVector, ::False) = _throw_marginal_mismatch()
 
 function basemeasure(μ::ProductMeasure{Base.Generator{I,F}}) where {I,F}
     mar = marginals(μ)
@@ -450,6 +485,17 @@ end
 
 function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {S<:StdMeasure,names}
     batched_transport_to_std(S, productmeasure(values(marginals(μ))), values(X))
+end
+
+# Numeric variates and batches are flat streams:
+function batched_transport_to_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, X::AbstractArray{<:Number}) where {S<:StdMeasure}
+    _check_stream_length(μ, X, fixed_stream_size(μ))
+    Z, X_rest = batched_transport_to_std_with_rest(S, μ, X, ())
+    size(X_rest, 1) == 0 || _throw_stream_too_long()
+    return Z
+end
+function transport_to_std(::Type{S}, μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x::AbstractVector{<:Number}) where {S<:StdMeasure}
+    batched_transport_to_std(S, μ, x)
 end
 
 @inline _vcat_std(Zs::Tuple) = vcat(Zs...)

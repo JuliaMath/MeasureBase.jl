@@ -36,7 +36,10 @@ streams. [`MeasureBase.stream_ndims`](@ref) gives the number of leading
 dimensions of a single variate in a numeric batch: the variate rank for
 numeric variates, one for streams. The variates of a power of a tuple
 product are struct arrays of the power's rank, so `T^(2, 3)` has variate
-rank 2 and stream rank 1.
+rank 2 and stream rank 1. A numeric vector is a single stream, so for
+`T = productmeasure((StdNormal(), StdExponential()^2))` the vector
+`[a, b1, b2]` stands for the variate `(a, [b1, b2])`, and for scalar
+marginals it is the vector of the marginal variates.
 
 **Flat batches.** A flat batch is an array `(variate dims..., batch
 dims...)`. Batched kernels return arrays over the batch dimensions (a
