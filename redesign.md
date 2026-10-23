@@ -342,6 +342,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   `log`/`exp`, stable forms for the standard measures and wrapped
   distributions). `truncate` and interval masses use `csmf` where
   `csmf(μ, a) < smf(μ, b)` (branch-free for traced bounds).
+- Constant batches (2026-10-23): batches of point masses with numeric atoms
+  are `Fill`s on the host, from `rand` and transports alike, dense arrays
+  on devices.
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   exported as deprecations for one release.
