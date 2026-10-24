@@ -55,9 +55,11 @@ variates of `ν` (for `f = transport_to(ν, μ)`) over the batch dimensions
 of `X`: an array of numbers for scalar variates, nested arrays over flat
 storage for array variates, struct arrays for tuple variates. The result
 is materialized (static for static batches), not a view of temporary
-arrays. Broadcasting `f.(X)` is the same operation, so `f.(x)` of a single
-vector variate `x` of a measure with vector variates is `f(x)`, and fused
-arguments (`f.(X .+ 1)`) are materialized once before the transport.
+arrays, and shares no memory with `X`, also for identity transports (as
+do the results of `f(x)` for array variates). Broadcasting `f.(X)` is the
+same operation, so `f.(x)` of a single vector variate `x` of a measure
+with vector variates is `f(x)`, and fused arguments (`f.(X .+ 1)`) are
+materialized once before the transport.
 
 **Static variates.** Sizes are `StaticThings.SizeLike` throughout. On the
 CPU, bulk draws of a fully static size are static arrays and stream splits

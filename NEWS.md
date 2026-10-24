@@ -69,7 +69,8 @@ implementation per measure type for single variates and batches. See the
 - Batched transports: `transports(f, X)` for `f = transport_to(ν, μ)`,
   with the batch conventions of `logdensities`. Broadcasting, `f.(X)`, is
   equivalent: it transports the batch as a whole, not variate by
-  variate.
+  variate. Transport results share no memory with their input, also for
+  identity transports.
 - Random variates via HeterogeneousComputing: `rand(ctx::GenContext, μ)`
   with RNG, precision and compute unit, batches via `rand(ctx, μ^n)`.
 - Static variate sizes: statically sized measures give type stable,

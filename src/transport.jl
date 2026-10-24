@@ -82,10 +82,12 @@ In general `TransportFunction` should not be called directly, call
 [`transport_to`](@ref) instead.
 
 `f(x)` transports a single variate, [`transports(f, X)`](@ref transports)
-a batch of variates. Broadcasting, `f.(X)`, is equivalent to
-`transports(f, X)`: it transports the batch as a whole, with the batch
-conventions of [`logdensities`](@ref), not variate by variate (for a
-measure with vector variates, `f.(x)` of a single vector `x` is `f(x)`).
+a batch of variates. Array results are fresh arrays, they share no memory
+with the input, also for identity transports. Broadcasting, `f.(X)`, is
+equivalent to `transports(f, X)`: it transports the batch as a whole, with
+the batch conventions of [`logdensities`](@ref), not variate by variate
+(for a measure with vector variates, `f.(x)` of a single vector `x` is
+`f(x)`).
 """
 struct TransportFunction{NU,MU} <: Function
     ν::NU
@@ -109,12 +111,24 @@ end
 Base.hash(f::TransportFunction, h::UInt) = hash(f.ν, hash(f.μ, hash(:TransportFunction, h)))
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
-    return transport_def(f.ν, f.μ, _checked_variate(checked_arg(f.μ, x), x))
+    return _materialized(transport_def(f.ν, f.μ, _checked_variate(checked_arg(f.μ, x), x)), x)
 end
 
 # Variates that can't be checked are passed on as they are:
 @inline _checked_variate(x_checked, ::Any) = x_checked
 @inline _checked_variate(::NoArgCheck, x) = x
+
+# Transport results are no views of temporary arrays and share no memory
+# with their input (identity transports, e.g. between equal standard
+# measures, pass arrays through), static results stay static:
+@inline _materialized(Y::Union{DenseArray,StaticArray}, X) = _mightalias(Y, X) ? copy(Y) : Y
+@inline _materialized(Y::AbstractArray, ::Any) = copy(Y)
+@inline _materialized(Y::Union{Tuple,NamedTuple}, X) = map(Base.Fix2(_materialized, X), Y)
+@inline _materialized(y, ::Any) = y
+
+@inline _mightalias(Y::AbstractArray, X::AbstractArray) = Base.mightalias(Y, X)
+@inline _mightalias(Y::AbstractArray, X::Union{Tuple,NamedTuple}) = any(Base.Fix1(_mightalias, Y), values(X))
+@inline _mightalias(::AbstractArray, ::Any) = false
 
 @inline function InverseFunctions.inverse(f::TransportFunction{NU,MU}) where {NU,MU}
     return TransportFunction{MU,NU}(f.μ, f.ν)

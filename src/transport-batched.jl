@@ -243,7 +243,8 @@ semantically equivalent to `f.(xs)` for the array `xs` of the variates in
 
 Batches with flat storage are transported in fused operations,
 compatible with GPU and traced arrays. The result is materialized, it is
-no view of temporary arrays, static batches give static results.
+no view of temporary arrays and shares no memory with `X` (also for
+identity transports), static batches give static results.
 Broadcasting `f`, `f.(X)`, is equivalent to `transports(f, X)`.
 """
 function transports end
@@ -270,15 +271,9 @@ end
 _transports(f::TransportFunction, X, ::Any, k, ::Any) = _map_variates(f, X, k)
 
 function _transported_batch(f::TransportFunction, X, X_flat)
-    Y = _batch_variates(_materialized(batched_transport_def(f.ν, f.μ, X_flat)), f.ν)
+    Y = _batch_variates(_materialized(batched_transport_def(f.ν, f.μ, X_flat), X_flat), f.ν)
     _check_transported_shape(Y, X)
 end
-
-# Results are no views of temporary arrays, static results stay static:
-@inline _materialized(Y::Union{DenseArray,StaticArray}) = Y
-@inline _materialized(Y::AbstractArray) = copy(Y)
-@inline _materialized(Y::Union{Tuple,NamedTuple}) = map(_materialized, Y)
-@inline _materialized(y) = y
 
 # Arrays of variates must keep their shape, a mismatch means the variate
 # rank of the measure doesn't match the batch:

@@ -10,7 +10,7 @@ using MeasureBase: batched_transport_to_std, batched_transport_from_std
 using MeasureBase: batched_transport_to_std_with_rest, batched_transport_from_std_with_rest
 using MeasureBase: batched_rand_impl
 using InverseFunctions: inverse
-using ArraysOfArrays: sliced, flatview, nestedview
+using ArraysOfArrays: sliced, flatview, nestedview, ArrayOfSimilarArrays
 using StaticArrays: SVector, SMatrix, @SMatrix
 using MeasureBase: logdensities
 using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf
@@ -208,6 +208,47 @@ using JLArrays
         # Batches that don't fit the variate rank or size throw:
         @test_throws ArgumentError transports(f, randn(2, 5))
         @test_throws ArgumentError transports(f, nestedview(randn(3, 2, 4), 2))
+    end
+
+    @testset "results share no memory with the input" begin
+        storage(A::AbstractArray{<:Number}) = (A,)
+        storage(A::ArrayOfSimilarArrays) = (flatview(A),)
+        storage(A::StructArray) = Tuple(Iterators.flatten(map(storage, values(StructArrays.components(A)))))
+        storage(X::NamedTuple) = Tuple(Iterators.flatten(map(storage, values(X))))
+        P = productmeasure((a = StdNormal(), b = StdLogistic()^2))
+        mc = mcombine(vcat, StdNormal()^2, StdNormal()^1)
+        for (f, X) in (
+            (transport_to(StdNormal(), StdNormal()), randn(5)),
+            (transport_to(StdNormal()^3, StdNormal()^3), randn(3, 5)),
+            (transport_to(StdNormal()^3, StdNormal()^3), nestedview(randn(3, 5))),
+            (transport_to(StdNormal()^3, StdNormal()^3), randn(3)),
+            (transport_to(StdLogistic()^(2, 3), StdLogistic()^(2, 3)), randn(2, 3, 4)),
+            (transport_to(StdNormal()^2, productmeasure([StdNormal(), StdNormal()])), randn(2, 4)),
+            (transport_to(StdNormal()^3, mc), randn(3, 4)),
+            (transport_to(mc, mc), randn(3, 4)),
+            (transport_to(P, P), StructArray((a = randn(4), b = nestedview(randn(2, 4))))),
+            (transport_to(P, P), (a = randn(4), b = randn(2, 4))),
+        )
+            Y = transports(f, X)
+            @test Y !== X
+            Y_ref = deepcopy(Y)
+            foreach(A -> fill!(A, NaN), storage(X))
+            @test isequal(Y, Y_ref)
+        end
+        f = transport_to(StdNormal()^3, StdNormal()^3)
+        JLArrays.allowscalar(false)
+        Xj = JLArray(randn(3, 5))
+        Yj = transports(f, Xj)
+        Yj_ref = Array(flatview(Yj))
+        fill!(Xj, NaN)
+        @test Array(flatview(Yj)) == Yj_ref
+        # Single array variates as well:
+        x = randn(3)
+        y = f(x)
+        @test y !== x && f.(x) !== x
+        y_ref = copy(y)
+        x .= NaN
+        @test y == y_ref
     end
 
     @testset "transported batches have the layout of rand" begin
