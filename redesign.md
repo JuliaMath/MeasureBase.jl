@@ -150,8 +150,14 @@ application needs no traits: elementwise for `Base.BroadcastFunction`
 dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise. Measures
 with counting root measures push their root measure forward (counting
 measure on the image) instead of adapting it with a volume element, also
-under `AdaptRootMeasure()`; mixed roots (superpositions of continuous and
-atomic measures) still get the volume element everywhere.
+under `AdaptRootMeasure()`, and so do measures on the simplex (its
+coordinate measure is a chart, maps of the ambient space have no volume
+element for it); mixed roots (superpositions of continuous and atomic
+measures) still get the volume element everywhere. Pushforwards by
+transports adapt the root measure to the one of the transport's target
+(the volume element of a transport is the density ratio relative to the
+roots of its source and target) and don't compose with other
+pushforwards.
 
 ## Extension points
 

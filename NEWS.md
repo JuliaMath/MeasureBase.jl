@@ -72,7 +72,9 @@ implementation per measure type for single variates and batches. See the
   variate. Transport results share no memory with their input, also for
   identity transports. `transports_with_ladj(f, X)` returns the
   transported batch and the log-abs-det Jacobians of the transport over
-  the batch, the batched form of `with_logabsdet_jacobian`.
+  the batch, the batched form of `with_logabsdet_jacobian`. Targets with
+  variates of value-dependent size (binds) are transported variate by
+  variate, to arrays of variates.
 - Random variates via HeterogeneousComputing: `rand(ctx::GenContext, μ)`
   with RNG, precision and compute unit, batches via `rand(ctx, μ^n)`.
 - Static variate sizes: statically sized measures give type stable,
@@ -137,7 +139,9 @@ implementation per measure type for single variates and batches. See the
 - The transports of `Gamma`, `Beta` and `Dirichlet` are differentiable
   with respect to their shape parameters under ForwardDiff, ChainRules
   (Zygote) and Mooncake, e.g. for hierarchical models with a Dirichlet
-  concentration that depends on other parameters.
+  concentration that depends on other parameters. So are the Stieltjes
+  measure functions of `Gamma` and `Beta`, and with them their
+  truncations.
 
 ### Behavior changes
 
@@ -158,6 +162,10 @@ implementation per measure type for single variates and batches. See the
   discrete and continuous components are taken relative to Lebesgue
   measure plus counting measure on the atoms.
 - `mcombine(merge, ...)` throws on overlapping names.
+- Pushforwards of measures on the simplex (e.g. Dirichlet distributions)
+  push their root measure forward instead of adapting it with a volume
+  element, like those of discrete measures. Pushforwards by transports
+  have the root measure of the transport's target.
 - `paramsof(::Type{<:ParameterizedMeasure})` (which returned the parameter
   names) is removed, use `paramnames`. Transformed measures have no
   parameters.
