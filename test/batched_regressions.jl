@@ -77,7 +77,8 @@ include("testutils.jl")
         @test logdensities(m, hcat(x, x)) ≈ [ℓ, ℓ]
         f = transport_to(StdUniform()^6, m)
         @test inverse(f)(f(x)) ≈ x
-        @test flatview(inverse(f).(f.(sliced(hcat(x, x), Val(1))))) ≈ hcat(x, x)
+        # Variates of value-dependent size are transported one by one:
+        @test stack(inverse(f).(f.(sliced(hcat(x, x), Val(1))))) ≈ hcat(x, x)
     end
 
     @testset "powers of tuple products in streams" begin

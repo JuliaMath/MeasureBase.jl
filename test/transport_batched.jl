@@ -320,6 +320,38 @@ using JLArrays
         end
     end
 
+    @testset "targets with value-dependent variate sizes" begin
+        # Binds and their powers are transported variate by variate, to
+        # arrays of variates like `rand` generates them for their powers:
+        b = mbind(a -> StdNormal()^2, StdUniform()^1, vcat)
+        for (ν, n) in ((b, 3), (b^2, 6))
+            f = transport_to(ν, StdNormal()^n)
+            Z = randn(n, 4)
+            Y = transports(f, Z)
+            @test Y == map(f, eachcol(Z)) && typeof(Y) == typeof(rand(ν^4))
+            @test transports(f, nestedview(Z)) == Y && f.(Z) == Y && transports(f, Z[:, 1]) == f(Z[:, 1])
+            Y_l, ladjs = transports_with_ladj(f, Z)
+            # Only the primary variates change, z ↦ Φ(z) (per bind variate):
+            @test Y_l == Y && ladjs ≈ vec(sum(logdensityof.(StdNormal(), Z[1:3:end, :]), dims = 1))
+            @test stack(transports(inverse(f), Y)) ≈ Z
+        end
+        ft = transport_to(b, productmeasure((StdNormal(), StdNormal()^2)))
+        Xt = (randn(4), randn(2, 4))
+        @test transports(ft, Xt) == [ft((Xt[1][i], Xt[2][:, i])) for i in 1:4]
+        # Points of a point process like bind, as many as the primary
+        # variate a gives (0 to 3), normal resp. uniform:
+        pn = mbind(a -> StdNormal()^floor(Int, 4 * only(a)), StdUniform()^1, vcat)
+        pu = mbind(a -> StdUniform()^floor(Int, 4 * only(a)), StdUniform()^1, vcat)
+        g = transport_to(pu, pn)
+        X = rand(pn^20)
+        @test X isa Vector{Vector{Float64}} && length(unique(length.(X))) > 1
+        Y, ladjs = transports_with_ladj(g, X)
+        @test Y isa Vector{Vector{Float64}} && Y == transports(g, X) == map(g, X)
+        @test all(((x, y),) -> y[1] == x[1] && y[2:end] ≈ cdf.(Normal(), x[2:end]), zip(X, Y))
+        @test ladjs ≈ [sum(logdensityof.(StdNormal(), x[2:end]); init = 0.0) for x in X]
+        @test transports(transport_to(pu^2, pn^2), [X[1:2], X[3:4]]) == [map(g, X[1:2]), map(g, X[3:4])]
+    end
+
     @testset "batch layouts" begin
         f = transport_to(StdNormal()^3, StdUniform()^3)
         @test_throws ArgumentError f.(rand(6, 2))

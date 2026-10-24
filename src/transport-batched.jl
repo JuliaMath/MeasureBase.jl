@@ -239,7 +239,9 @@ variates. Returns the array of the transported variates over the batch
 dimensions of `X` (a single variate for a single variate `X`),
 semantically equivalent to `f.(xs)` for the array `xs` of the variates in
 `X`. Array variates are returned as nested arrays over flat storage
-(ArraysOfArrays), tuple variates as struct arrays.
+(ArraysOfArrays), tuple variates as struct arrays. Variates of
+value-dependent size (e.g. of binds) are transported one by one, to an
+array of variates.
 
 Batches with flat storage are transported in fused operations,
 compatible with GPU and traced arrays. The result is materialized, it is
@@ -270,10 +272,31 @@ function _transports(f::TransportFunction, X, X_flat::Union{Tuple,NamedTuple}, :
 end
 _transports(f::TransportFunction, X, ::Any, k, ::Any) = _map_variates(f, X, k)
 
-function _transported_batch(f::TransportFunction, X, X_flat)
+_transported_batch(f::TransportFunction, X, X_flat) = _transported_batch(f, X, X_flat, _flat_batchable(f.ν))
+function _transported_batch(f::TransportFunction, X, X_flat, ::True)
     Y = _batch_variates(_materialized(batched_transport_def(f.ν, f.μ, X_flat), X_flat), f.ν)
     _check_transported_shape(Y, X)
 end
+# Variates of value-dependent size (of binds and measures composed of them)
+# have no flat batches, they are transported from the standard variates of
+# the batch one by one, to an array of variates as `rand` generates them for
+# powers of such measures:
+function _transported_batch(f::TransportFunction, X, X_flat, ::False)
+    S = _transport_pivot(f.ν, f.μ)
+    _from_std_variates(S, f.ν, batched_transport_to_std(S, f.μ, X_flat))
+end
+@inline _from_std_variates(::Type{S}, ν, z::AbstractVector) where {S} = _from_std_stream(S, ν, z, _static_ndims(ν))
+function _from_std_variates(::Type{S}, ν, Z::AbstractArray) where {S}
+    map(z -> _from_std_stream(S, ν, z, _static_ndims(ν)), sliced(Z, Val(1)))
+end
+
+# Measures without fixed stream sizes have variates of value-dependent size
+# if they have no degrees of freedom either:
+@inline _flat_batchable(ν) = _flat_batchable(ν, fixed_stream_size(ν))
+@inline _flat_batchable(::Any, ::True) = static(true)
+@inline _flat_batchable(ν, ::False) = _has_dof(getdof(ν))
+@inline _has_dof(::Any) = static(true)
+@inline _has_dof(::NoDOF) = static(false)
 
 # Arrays of variates must keep their shape, a mismatch means the variate
 # rank of the measure doesn't match the batch:
