@@ -28,7 +28,11 @@ can still be sampled and transported. Throws an `ArgumentError` for
 measures of zero or infinite mass.
 """
 normalize(μ::AbstractMeasure) = _normalize(μ, massof(μ))
-normalize(μ::AbstractWeightedMeasure) = normalize(basemeasure(μ))
+# Zero and infinite weights are rejected before they are stripped:
+function normalize(μ::AbstractWeightedMeasure)
+    _check_normalizable(μ, isfinite(dynamic(_logweight(μ))))
+    normalize(basemeasure(μ))
+end
 normalize(μ::NormalizedMeasure) = μ
 
 @inline _normalize(μ, mass) = NormalizedMeasure(μ, _checked_logmass(μ, log(dynamic(mass))))

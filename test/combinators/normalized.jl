@@ -62,6 +62,10 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test_throws ArgumentError normalize(Lebesgue())
         @test_throws ArgumentError normalize(Lebesgue(2 .. 1))
         @test_throws ArgumentError normalize(Counting())
+        # Zero and infinite weights are rejected, not stripped:
+        @test_throws ArgumentError normalize(0 * StdNormal())
+        @test_throws ArgumentError normalize(Inf * StdNormal())
+        @test_throws ArgumentError normalize(weightedmeasure(-Inf, Lebesgue(0 .. 2)))
     end
 
     @testset "densities" begin
