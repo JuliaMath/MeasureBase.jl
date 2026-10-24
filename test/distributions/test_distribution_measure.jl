@@ -143,6 +143,9 @@ end
     @test MeasureBase.logdensities(μ, xs) ≈ ℓ_ref.(xs)
     @test MeasureBase.logdensities(μ, [2.0 2.0; 0.1 -0.3; 0.2 0.4]) ≈ ℓ_ref.([[2.0, 0.1, 0.2], [2.0, -0.3, 0.4]])
     @test MeasureBase.logdensityof(μ, [2.5, 0.1, 0.2]) == -Inf
+    # Discrete measures have no transports, neither do binds of them:
+    f = MeasureBase.transport_to(mbind(n -> MeasureBase.StdUniform()^n, AbstractMeasure(Poisson(3.0)), vcat), μ)
+    @test_throws ArgumentError MeasureBase.transports(f, xs)
 end
 
 @testset "context precision of draws" begin
