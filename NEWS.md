@@ -114,7 +114,10 @@ implementation per measure type for single variates and batches. See the
   Stieltjes measure function `smf`: the mass is `smf(μ, b) - smf(μ, a)`,
   `normalize(truncate(μ, a..b))` is the conditional law, transports and
   draws go through `smf` and `invsmf` (tails limited by the resolution of
-  uniform variates, as for `Half`). `smf` and `invsmf` are now defined for
+  uniform variates, as for `Half`). The inverses `invsmf` and `invcsmf`
+  of truncations are `NaN` outside of the range `[0, mass]` (the unit
+  interval for normalized truncations, resolved exactly at its ends).
+  `smf` and `invsmf` are now defined for
   wrapped univariate distributions (cdf and quantile), weighted measures
   and `StdExponential`.
 - `csmf(μ, x)`, the complementary Stieltjes measure function `μ((x, ∞))`

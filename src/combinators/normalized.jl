@@ -46,6 +46,18 @@ massof(::NormalizedMeasure) = static(1.0)
 
 _logweight(μ::NormalizedMeasure) = -μ.logmass
 _logweight(μ::NormalizedMeasure{<:Any,<:AbstractUnknownMass}) = _throw_unknown_normalization(μ.base)
+
+# Stieltjes measure functions scale with the mass of the base itself
+# (not `exp(logmass)`), so that their range is exactly the unit interval:
+smf(μ::NormalizedMeasure, x) = _unscaled_smf(_basemass(μ), smf(μ.base, x))
+csmf(μ::NormalizedMeasure, x) = _unscaled_smf(_basemass(μ), csmf(μ.base, x))
+invsmf(μ::NormalizedMeasure, p) = invsmf(μ.base, p * _basemass(μ))
+invcsmf(μ::NormalizedMeasure, p) = invcsmf(μ.base, p * _basemass(μ))
+
+@inline _unscaled_smf(mass, F) = F / mass
+@inline _unscaled_smf(mass, F::NoSMF) = F
+@inline _basemass(μ::NormalizedMeasure) = massof(μ.base)
+@inline _basemass(μ::NormalizedMeasure{<:Any,<:AbstractUnknownMass}) = _throw_unknown_normalization(μ.base)
 @noinline _throw_unknown_normalization(μ) =
     throw(ArgumentError("A normalized measure of type $(nameof(typeof(μ))) has no density, its mass is unknown"))
 

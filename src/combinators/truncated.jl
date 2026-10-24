@@ -106,15 +106,26 @@ function csmf(t::TruncatedMeasure, x)
     x_t = clamp(x, t.lo, t.hi)
     _select(t.upper, () -> csmf(t.parent, x_t) - t.s_hi, () -> t.s_hi - smf(t.parent, x_t))
 end
+
+# The inverses are NaN outside of the range `[0, mass]` of the Stieltjes
+# measure functions, within it the arguments passed to the parent and the
+# results stay within the truncation despite rounding:
 function invsmf(t::TruncatedMeasure, p)
-    _clamped_invsmf(t, _select(t.upper, () -> invcsmf(t.parent, t.s_lo - p), () -> invsmf(t.parent, t.s_lo + p)))
+    x = _select(t.upper, () -> invcsmf(t.parent, _in_smf_range(t, t.s_lo - p)), () -> invsmf(t.parent, _in_smf_range(t, t.s_lo + p)))
+    _truncation_inverse(t, p, x)
 end
 function invcsmf(t::TruncatedMeasure, p)
-    _clamped_invsmf(t, _select(t.upper, () -> invcsmf(t.parent, t.s_hi + p), () -> invsmf(t.parent, t.s_hi - p)))
+    x = _select(t.upper, () -> invcsmf(t.parent, _in_smf_range(t, t.s_hi + p)), () -> invsmf(t.parent, _in_smf_range(t, t.s_hi - p)))
+    _truncation_inverse(t, p, x)
 end
 
-@inline _clamped_invsmf(t::TruncatedMeasure, x) = clamp(x, t.lo, t.hi)
-@noinline _clamped_invsmf(t::TruncatedMeasure, ::NoSMFInverse) =
+@inline _in_smf_range(t::TruncatedMeasure, s) = clamp(s, min(t.s_lo, t.s_hi), max(t.s_lo, t.s_hi))
+
+@inline function _truncation_inverse(t::TruncatedMeasure, p, x)
+    x_t = clamp(x, t.lo, t.hi)
+    ifelse((zero(p) <= p) & (p <= t.mass), x_t, oftype(x_t, NaN))
+end
+@noinline _truncation_inverse(t::TruncatedMeasure, p, ::NoSMFInverse) =
     throw(ArgumentError("Measures of type $(nameof(typeof(t.parent))) have no inverse Stieltjes measure function"))
 
 # The conditional Stieltjes measure function maps to the unit interval:

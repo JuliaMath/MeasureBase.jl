@@ -3,7 +3,7 @@ using StableRNGs: StableRNG
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, TruncatedMeasure, NormalizedMeasure
-using MeasureBase: normalize, massof, smf, invsmf, logdensities, transport_to, mspace_ndims, getdof, fast_dof
+using MeasureBase: normalize, massof, smf, invsmf, csmf, invcsmf, logdensities, transport_to, mspace_ndims, getdof, fast_dof
 using MeasureBase.Interface: test_transport, test_smf
 using ChangesOfVariables: with_logabsdet_jacobian
 using InverseFunctions: inverse
@@ -105,6 +105,32 @@ end
         X = rand(StableRNG(789990641), t^(3, 4))
         @test f.(X) ≈ map(f, X)
         @test inverse(f).(f.(X)) ≈ X
+    end
+
+    @testset "inverse Stieltjes measure functions of truncate($μ, $a_b)" for (μ, a_b, (a, b)) in cases
+        t = truncate(μ, a_b)
+        n = normalize(t)
+        m = float(massof(t))
+        lo, hi = float.(endpoints(a_b))
+        for F⁻¹ in (invsmf, invcsmf)
+            # NaN outside of the range of the Stieltjes measure functions:
+            @test all(isnan, F⁻¹.(Ref(t), [-0.1 * m, prevfloat(0.0), nextfloat(m), 1.1 * m, NaN]))
+            @test all(isnan, F⁻¹.(Ref(n), [-0.1, -eps(), nextfloat(1.0), 1.1, NaN]))
+            # Within it, also at its ends, variates within the truncation:
+            for p in (0.0, nextfloat(0.0), 0.5, prevfloat(1.0), 1.0)
+                @test lo <= F⁻¹(n, p) <= hi && lo <= F⁻¹(t, p * m) <= hi
+            end
+        end
+        @test smf(n, hi) == 1 && csmf(n, lo) == 1
+    end
+
+    @testset "normalized truncations reach the ends of their range" begin
+        # Also where the mass doesn't survive a round trip through its
+        # logarithm:
+        t = truncate(StdNormal(), -1.0 .. 0.1)
+        @test 1 / exp(-log(massof(t))) > massof(t)
+        @test invsmf(normalize(t), 1.0) == 0.1 && smf(normalize(t), 0.1) == 1
+        @test invcsmf(normalize(t), 1.0) == -1.0 && csmf(normalize(t), -1.0) == 1
     end
 
     @testset "random variates of truncate($μ, $a_b)" for (μ, a_b, (a, b)) in cases
