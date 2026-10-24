@@ -252,6 +252,9 @@ its normalized law, the uniform distribution on the simplex. It is its
 own base measure and the root measure of Dirichlet distributions.
 Measures on the simplex are singular relative to measures with density
 on `ℝⁿ`, relative densities between them throw an `ArgumentError`.
+Pushforwards of measures on the simplex push this root measure forward,
+without a volume element (see [`PushfwdRootMeasure`](@ref)), except for
+pushforwards by transports, which have the root measure of their target.
 """
 struct StdSimplex{N<:IntegerLike} <: ValueSet
     n::N

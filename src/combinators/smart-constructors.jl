@@ -168,24 +168,31 @@ end
 _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 
 # Injective maps push counting measure forward to counting measure on the
-# image, atoms keep their masses. Measures with counting root measures push
-# their root measure forward instead of adapting it with a volume element:
-@inline _pushfwd_style(style::PushFwdStyle, μ) = _style_for_root(style, _counting_root(μ))
+# image, atoms keep their masses. The coordinate measure on the simplex
+# (see `StdSimplex`) is the image of Lebesgue measure under a chart, maps of
+# the ambient space have no volume element for it. Measures with such root
+# measures push their root measure forward instead of adapting it with a
+# volume element. Transports adapt the root measure to the one of their
+# target, whatever the origin's (see `basemeasure` of pushforwards):
+@inline _pushfwd_style(style::PushFwdStyle, f, μ) = _style_for_root(style, _pushfwd_root(μ))
+@inline _pushfwd_style(style::PushFwdStyle, ::TransportFunction, μ) = style
 @inline _style_for_root(::AdaptRootMeasure, ::True) = PushfwdRootMeasure()
 @inline _style_for_root(style::PushFwdStyle, ::Any) = style
 
-# Whether the root measure of a measure is a counting measure, along the
-# chain of base measures and structurally for combinators:
-@inline _counting_root(μ) = _counting_root_of(basemeasure(μ), μ)
-@inline _counting_root_of(::M, ::M) where {M} = static(false)
-@inline _counting_root_of(β, ::Any) = _counting_root(β)
-@inline _counting_root(::Union{Counting,CountingBase,Dirac}) = static(true)
-@inline _counting_root(μ::PowerMeasure) = _counting_root(μ.parent)
-@inline _counting_root(μ::WeightedMeasure) = _counting_root(μ.base)
-@inline _counting_root(ν::PushforwardMeasure) = _counting_root(ν.origin)
-@inline _counting_root(μ::AbstractProductMeasure) = _all_counting_root(marginals(μ))
-@inline _counting_root(μ::SuperpositionMeasure) = _all_counting_root(μ.components)
-@inline _all_counting_root(μs) = mapreduce(_counting_root, &, values(μs); init = static(true))
+# Whether pushforwards push the root measure of a measure forward, along
+# the chain of base measures and structurally for combinators:
+@inline _pushfwd_root(μ) = _pushfwd_root_of(basemeasure(μ), μ)
+@inline _pushfwd_root_of(::M, ::M) where {M} = static(false)
+@inline _pushfwd_root_of(β, ::Any) = _pushfwd_root(β)
+@inline _pushfwd_root(::Union{Counting,CountingBase,Dirac,_SimplexLebesgue}) = static(true)
+@inline _pushfwd_root(μ::PowerMeasure) = _pushfwd_root(μ.parent)
+@inline _pushfwd_root(μ::WeightedMeasure) = _pushfwd_root(μ.base)
+@inline _pushfwd_root(ν::PushforwardMeasure) = _pushfwd_root(ν.origin)
+# Pushforwards by transports have the root measure of the target:
+@inline _pushfwd_root(ν::PushforwardMeasure{<:TransportFunction,<:Any,<:Any,AdaptRootMeasure}) = _pushfwd_root(ν.f.ν)
+@inline _pushfwd_root(μ::AbstractProductMeasure) = _all_pushfwd_root(marginals(μ))
+@inline _pushfwd_root(μ::SuperpositionMeasure) = _all_pushfwd_root(μ.components)
+@inline _all_pushfwd_root(μs) = mapreduce(_pushfwd_root, &, values(μs); init = static(true))
 
 # Pushforward and weighting commute:
 function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle, varsize)

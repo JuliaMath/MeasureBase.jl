@@ -5,6 +5,7 @@ using Test
 import Distributions
 using Distributions: Distribution
 import MeasureBase
+import AffineMaps
 using MeasureBase: AbstractMeasure
 
 @testset "Measure interface" begin
@@ -68,6 +69,26 @@ end
         @test_throws ArgumentError MeasureBase.logdensity_rel(d1, ν, x)
         @test_throws ArgumentError MeasureBase.logdensity_rel(ν, d1, x)
     end
+
+    # Maps of the ambient space push the simplex reference forward, they
+    # have no volume element for it:
+    p = MeasureBase.pushfwd(AffineMaps.Mul(2I), d2)
+    @test MeasureBase.rootmeasure(p) == MeasureBase.pushfwd(AffineMaps.Mul(2I), L)
+    @test MeasureBase.logdensityof(p, 2x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x)
+    @test MeasureBase.logdensityof(p, 3x) == -Inf
+    @test MeasureBase.logdensity_rel(p, MeasureBase.pushfwd(AffineMaps.Mul(2I), d1), 2x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x) - log(2)
+    @test sum(rand(p)) ≈ 2
+    # Pushforwards by transports have the root measure of the target:
+    U2 = MeasureBase.StdUniform()^2
+    q = MeasureBase.pushfwd(MeasureBase.transport_to(d2, U2), U2)
+    @test MeasureBase.rootmeasure(q) == L
+    @test MeasureBase.logdensityof(q, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x)
+    @test MeasureBase.logdensity_rel(q, d2, x) ≈ 0 atol = 1e-12
+    @test MeasureBase.logdensity_rel(q, d1, x) ≈ logpdf(Dirichlet([2.0, 3.0, 4.0]), x) - log(2)
+    r = MeasureBase.pushfwd(MeasureBase.transport_to(U2, d2), d2)
+    u = MeasureBase.transport_to(U2, d2)(x)
+    @test MeasureBase.rootmeasure(r) == MeasureBase.rootmeasure(U2)
+    @test MeasureBase.logdensity_rel(r, U2, u) ≈ 0 atol = 1e-12
 end
 
 @testset "fast DOF of wrapped distributions" begin

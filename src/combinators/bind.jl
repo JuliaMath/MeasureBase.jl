@@ -323,7 +323,7 @@ _bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), 
 
 rootmeasure(::Bind) =
     throw(ArgumentError("root measure is implicit, but can't be instantiated, for Bind"))
-@inline _counting_root(::Bind) = static(false)
+@inline _pushfwd_root(::Bind) = static(false)
 
 basemeasure(::Bind) = throw(ArgumentError("basemeasure is not available for Bind"))
 

@@ -26,7 +26,11 @@ account.
 Measures with counting root measures (e.g. point masses and discrete
 distributions) are always pushed forward with
 [`PushfwdRootMeasure()`](@ref): injective maps push counting measure
-forward to counting measure on the image, without a volume element.
+forward to counting measure on the image, without a volume element. The
+same holds for measures on the standard simplex, like Dirichlet
+distributions, whose root measure is a coordinate measure on a chart (see
+[`MeasureBase.StdSimplex`](@ref)). Pushforwards by transports
+([`transport_to`](@ref)) have the root measure of the transport's target.
 """
 struct AdaptRootMeasure <: PushFwdStyle end
 export AdaptRootMeasure
@@ -321,6 +325,15 @@ end
 end
 @inline _reshape_root(root, ::PushforwardMeasure) = root
 
+# The volume element of a transport is the ratio of the densities of its
+# source and target relative to their root measures, so pushforwards by
+# transports (of measures with the root measure of the source) have the
+# root measure of the target, e.g. the simplex reference for transports to
+# Dirichlet distributions:
+@inline function basemeasure(ν::PushforwardMeasure{<:TransportFunction,I,M,AdaptRootMeasure}) where {I,M}
+    rootmeasure(ν.f.ν)
+end
+
 @inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
 @inline getdof(m::_NonBijectivePusfwdMeasure) = MeasureBase.NoDOF{typeof(m)}()
 
@@ -422,7 +435,7 @@ export pushfwd
 @inline pushfwd(::typeof(identity), μ; varsize = nothing) = μ
 @inline pushfwd(::typeof(identity), μ, ::PushFwdStyle; varsize = nothing) = μ
 
-_pushfwd_impl(f, μ, style, varsize) = _pushfwd_with_style(f, μ, _pushfwd_style(style, μ), varsize)
+_pushfwd_impl(f, μ, style, varsize) = _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
 
 _pushfwd_with_style(f, μ, style, varsize) = PushforwardMeasure(f, inverse(f), μ, style, varsize)
 
@@ -432,8 +445,16 @@ function _pushfwd_with_style(
     style::S,
     varsize,
 ) where {F,I,M,S<:PushFwdStyle}
+    _composed_pushfwd(f, μ, style, varsize, _root_preserving(f, style) & _root_preserving(μ.f, style))
+end
+function _composed_pushfwd(f, μ::PushforwardMeasure, style, varsize, ::True)
     PushforwardMeasure(fcomp(f, μ.f), fcomp(μ.finv, inverse(f)), μ.origin, style, varsize)
 end
+_composed_pushfwd(f, μ::PushforwardMeasure, style, varsize, ::False) = PushforwardMeasure(f, inverse(f), μ, style, varsize)
+
+# Transports change the root measure they adapt, so they don't compose:
+@inline _root_preserving(::Any, ::PushFwdStyle) = static(true)
+@inline _root_preserving(::TransportFunction, ::AdaptRootMeasure) = static(false)
 
 # Simplifications for Dirac and WeightedMeasure origins are defined in
 # smart-constructors.jl.
