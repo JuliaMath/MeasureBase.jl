@@ -196,6 +196,15 @@ using JLArrays
         @test flatview(f.(nestedview(X) .+ Ref(v))) ≈ cdf.(Normal(), X .+ v)
         @test flatview(f.(X .+ 1)) ≈ cdf.(Normal(), X .+ 1)
 
+        # Tuples and named tuples of batches are batches of tuple variates:
+        Pt = productmeasure((StdNormal(), StdExponential()^2))
+        Xt = (randn(4), rand(2, 4))
+        ht = transport_to(StdUniform()^3, Pt)
+        @test flatview(transports(ht, Xt)) ≈ stack([ht((Xt[1][j], Xt[2][:, j])) for j in 1:4])
+        @test transports(ht, (Xt[1][1], Xt[2][:, 1])) ≈ ht((Xt[1][1], Xt[2][:, 1]))
+        hn = transport_to(StdUniform()^3, productmeasure((a = StdNormal(), b = StdExponential()^2)))
+        @test transports(hn, (a = Xt[1], b = Xt[2])) ≈ transports(ht, Xt)
+
         # Batches that don't fit the variate rank or size throw:
         @test_throws ArgumentError transports(f, randn(2, 5))
         @test_throws ArgumentError transports(f, nestedview(randn(3, 2, 4), 2))

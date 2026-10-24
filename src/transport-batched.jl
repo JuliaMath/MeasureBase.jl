@@ -251,6 +251,7 @@ export transports
 
 @inline transports(f::TransportFunction, X) = _transports(f, X, _flat_storage(X), _stream_ndims(f.μ), _stream_ndims(f.ν))
 @inline transports(f::TransportFunction, x::Number) = f(x)
+@inline transports(f::TransportFunction, X::Union{Tuple,NamedTuple}) = _transported_batch(f, X, X)
 # Static arrays of scalar variates are transported point by point:
 @inline transports(f::TransportFunction, X::StaticArray) = _transports_static(f, X, _stream_ndims(f.μ))
 @inline _transports_static(f::TransportFunction, X::StaticArray, ::StaticInteger{0}) = map(_Pointwise(f), X)
