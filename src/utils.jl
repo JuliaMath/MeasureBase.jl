@@ -153,13 +153,17 @@ convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
 # in the autodiff extensions (see also `_gamma_cdf_dshape` and
 # `_beta_cdf_dshape`):
 function _gamma_cdf end
+function _gamma_ccdf end
 function _gamma_quantile end
+function _gamma_cquantile end
 function _beta_cdf end
 function _beta_quantile end
 function _gamma_logpdf end
 function _beta_logpdf end
 function _gamma_cdf_impl end
+function _gamma_ccdf_impl end
 function _gamma_quantile_impl end
+function _gamma_cquantile_impl end
 function _beta_cdf_impl end
 function _beta_quantile_impl end
 

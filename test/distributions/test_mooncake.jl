@@ -59,7 +59,9 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
         rng = Random.Xoshiro(468128163)
         for (f, args) in [
             (MeasureBase._gamma_cdf, (2.5, 1.3)),
+            (MeasureBase._gamma_ccdf, (2.5, 1.3)),
             (MeasureBase._gamma_quantile, (0.7, 0.3)),
+            (MeasureBase._gamma_cquantile, (0.7, 0.3)),
             (MeasureBase._beta_cdf, (2.0, 3.0, 0.3)),
             (MeasureBase._beta_quantile, (0.6, 30.0, 0.8)),
         ]

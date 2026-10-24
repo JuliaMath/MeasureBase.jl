@@ -94,16 +94,24 @@ end
 # (from SpecialFunctions), differentiable with respect to all arguments via
 # the autodiff extensions.
 @inline MeasureBase._gamma_cdf(α, x) = MeasureBase._gamma_cdf_impl(MeasureBase._dualtag(α, x), α, x)
+@inline MeasureBase._gamma_ccdf(α, x) = MeasureBase._gamma_ccdf_impl(MeasureBase._dualtag(α, x), α, x)
 @inline MeasureBase._gamma_quantile(α, p) = MeasureBase._gamma_quantile_impl(MeasureBase._dualtag(α, p), α, p)
+@inline MeasureBase._gamma_cquantile(α, q) = MeasureBase._gamma_cquantile_impl(MeasureBase._dualtag(α, q), α, q)
 @inline MeasureBase._beta_cdf(α, β, x) = MeasureBase._beta_cdf_impl(MeasureBase._dualtag(α, β, x), α, β, x)
 @inline MeasureBase._beta_quantile(α, β, p) = MeasureBase._beta_quantile_impl(MeasureBase._dualtag(α, β, p), α, β, p)
 @inline MeasureBase._gamma_cdf_impl(::Type{Nothing}, α, x) = first(gamma_inc(α, x))
+@inline MeasureBase._gamma_ccdf_impl(::Type{Nothing}, α, x) = last(gamma_inc(α, x))
 # The complementary probability is formed in the common float type, as
 # `gamma_inc_inv` requires `p + q == 1` exactly:
 @inline function MeasureBase._gamma_quantile_impl(::Type{Nothing}, α, p)
     T = float(promote_type(typeof(α), typeof(p)))
     pp = convert(T, p)
     gamma_inc_inv(convert(T, α), pp, one(T) - pp)
+end
+@inline function MeasureBase._gamma_cquantile_impl(::Type{Nothing}, α, q)
+    T = float(promote_type(typeof(α), typeof(q)))
+    qq = convert(T, q)
+    gamma_inc_inv(convert(T, α), one(T) - qq, qq)
 end
 @inline MeasureBase._beta_cdf_impl(::Type{Nothing}, α, β, x) = first(beta_inc(α, β, x))
 @inline MeasureBase._beta_quantile_impl(::Type{Nothing}, α, β, p) = first(beta_inc_inv(α, β, p))
@@ -162,3 +170,37 @@ end
 @inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _quantile_arg(p)))
 
 @inline _unit_clamp(x) = clamp(x, zero(x), one(x))
+
+# The Stieltjes measure functions of the gamma and beta families and their
+# inverses go through the kernels, so that they are differentiable with
+# respect to the shapes (e.g. in truncations). The complements use the
+# complementary gamma kernels resp. the mirrored beta family to keep the
+# precision of the upper tail. The kernels only see arguments inside the
+# support, the values outside are exact:
+@inline function MeasureBase.smf(d::Gamma, x::Real)
+    z = x / d.θ
+    _nan_or(x, _support_select(z > 0, z < Inf, _gamma_cdf(d.α, _gamma_arg(z)), false))
+end
+@inline function MeasureBase.csmf(d::Gamma, x::Real)
+    z = x / d.θ
+    _nan_or(x, _support_select(z > 0, z < Inf, _gamma_ccdf(d.α, _gamma_arg(z)), true))
+end
+@inline MeasureBase.invsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _quantile_arg(p)))
+@inline MeasureBase.invcsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_cquantile(d.α, _quantile_arg(p)))
+
+@inline function MeasureBase.smf(d::Beta, x::Real)
+    _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.α, d.β, _beta_arg(x)), false))
+end
+@inline function MeasureBase.csmf(d::Beta, x::Real)
+    _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.β, d.α, 1 - _beta_arg(x)), true))
+end
+@inline MeasureBase.invsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _quantile_arg(p)))
+@inline MeasureBase.invcsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, 1 - _beta_quantile(d.β, d.α, _quantile_arg(p)))
+
+@inline _gamma_arg(z) = (u = float(z); ifelse((u > 0) & (u < Inf), u, one(u)))
+@inline _beta_arg(x) = (u = float(x); ifelse((u > 0) & (u < 1), u, oftype(u, 1 // 2)))
+# `y` inside the support, below and above it the limits of the Stieltjes
+# measure function, resp. of its complement if `compl`:
+@inline _support_select(above_lo, below_hi, y, compl::Bool) =
+    ifelse(above_lo, ifelse(below_hi, y, oftype(y, !compl)), oftype(y, compl))
+@inline _nan_or(x, y) = ifelse(isnan(x), oftype(y, NaN), y)

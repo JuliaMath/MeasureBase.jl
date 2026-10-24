@@ -63,7 +63,7 @@ end
 # parameters from `_gamma_cdf_dshape` and `_beta_cdf_dshape` (by the
 # implicit function theorem for the quantiles). The latter are only
 # computed for shape parameters with partials of the tag.
-using MeasureBase: _gamma_cdf, _gamma_quantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf
+using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf
 using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape
 
 const _Dual = ForwardDiff.Dual
@@ -101,6 +101,18 @@ end
     ∂p = exp(-_gamma_logpdf(αv, xv))
     ∂α = _isdual(D, α) ? -_gamma_cdf_dshape(αv, xv) * ∂p : nothing
     _chain(D, xv, (∂α, ∂p), (α, p))
+end
+@inline function MeasureBase._gamma_ccdf_impl(::Type{D}, α, x) where {D<:_Dual}
+    αv, xv = _value(D, α), _value(D, x)
+    ∂α = _isdual(D, α) ? -_gamma_cdf_dshape(αv, xv) : nothing
+    _chain(D, _gamma_ccdf(αv, xv), (∂α, -exp(_gamma_logpdf(αv, xv))), (α, x))
+end
+@inline function MeasureBase._gamma_cquantile_impl(::Type{D}, α, q) where {D<:_Dual}
+    αv, qv = _value(D, α), _value(D, q)
+    xv = _gamma_cquantile(αv, qv)
+    ∂q = -exp(-_gamma_logpdf(αv, xv))
+    ∂α = _isdual(D, α) ? _gamma_cdf_dshape(αv, xv) * ∂q : nothing
+    _chain(D, xv, (∂α, ∂q), (α, q))
 end
 @inline function MeasureBase._beta_cdf_impl(::Type{D}, α, β, x) where {D<:_Dual}
     αv, βv, xv = _value(D, α), _value(D, β), _value(D, x)

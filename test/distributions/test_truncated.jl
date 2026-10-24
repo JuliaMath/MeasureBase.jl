@@ -9,7 +9,7 @@ using Distributions
 using IntervalSets
 using InverseFunctions: inverse
 using StableRNGs: StableRNG
-import ForwardDiff
+import ForwardDiff, Zygote, Mooncake
 
 @testset "Stieltjes measure functions of distributions" begin
     for d in [Normal(0.3, 1.7), Gamma(2.0, 1.5), Beta(2.0, 3.0), Weibull(0.7, 1.3)]
@@ -90,6 +90,31 @@ end
     @test rand(StableRNG(1), Float32, truncate(asmeasure(Normal(1.0, 2.0)), 0.0 .. Inf)) isa Float32
     @test_throws ArgumentError truncate(asmeasure(Poisson(2.0)), 0 .. 3)
     @test_throws ArgumentError truncate(asmeasure(MvNormal([1.0 0.0; 0.0 1.0])), 0 .. 3)
+end
+
+@testset "derivatives of truncated gamma and beta distributions" begin
+    # Via the differentiable incomplete gamma and beta functions, in the
+    # upper tails via their complements; dx/du = mass / pdf(x):
+    for (d, a, b) in [(Beta(2.0, 3.0), 0.1, 0.8), (Gamma(2.0, 1.5), 1.0, 4.0), (Gamma(2.0, 1.5), 40.0, Inf)]
+        f = transport_to(truncate(asmeasure(d), a .. b), StdUniform())
+        @test ForwardDiff.derivative(f, 0.4) ≈ (ccdf(d, a) - ccdf(d, b)) / pdf(d, f(0.4)) rtol = 1e-8
+    end
+    @test ForwardDiff.derivative(transport_to(truncate(asmeasure(Beta(2.0, 3.0)), 0.1 .. 0.8), StdUniform()), 0.4) ≈ 0.5179695278
+
+    # With respect to the shapes, against central differences:
+    mooncake_derivative(f, x) = Mooncake.value_and_gradient!!(Mooncake.prepare_gradient_cache(f, x), f, x)[2][2]
+    for (f, x, backends) in [
+        (α -> massof(truncate(asmeasure(Gamma(α, 1.5)), 1.0 .. 4.0)), 2.0, (:ForwardDiff,)),
+        (α -> massof(truncate(asmeasure(Gamma(α, 1.5)), 40.0 .. Inf)), 2.0, (:ForwardDiff, :Zygote, :Mooncake)),
+        (α -> massof(truncate(asmeasure(Beta(α, 3.0)), 0.995 .. 1.0)), 2.0, (:ForwardDiff,)),
+        (α -> transport_to(truncate(asmeasure(Gamma(α, 1.5)), 40.0 .. Inf), StdUniform())(0.4), 2.0, (:ForwardDiff,)),
+        (α -> transport_to(truncate(asmeasure(Beta(α, 3.0)), 0.1 .. 0.8), StdUniform())(0.4), 2.0, (:ForwardDiff, :Zygote, :Mooncake)),
+    ]
+        ∂f_ref = (f(x + 1e-6) - f(x - 1e-6)) / 2e-6
+        :ForwardDiff in backends && @test ForwardDiff.derivative(f, x) ≈ ∂f_ref rtol = 1e-6
+        :Zygote in backends && @test only(Zygote.gradient(f, x)) ≈ ∂f_ref rtol = 1e-6
+        :Mooncake in backends && @test mooncake_derivative(f, x) ≈ ∂f_ref rtol = 1e-6
+    end
 end
 
 @testset "truncations to tails" begin
