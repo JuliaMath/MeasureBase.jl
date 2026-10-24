@@ -15,6 +15,7 @@ using LogExpFunctions
 using SpecialFunctions: erfc, erfcinv
 import InverseFunctions: inverse, FunctionWithInverse, setinverse
 using IrrationalConstants: invsqrt2, sqrt2
+using IntervalSets
 import ChangesOfVariables: with_logabsdet_jacobian
 using MeasureBase.Interface: transport_to, test_transport
 
@@ -116,6 +117,21 @@ using IrrationalConstants: loghalf
     φ(x) = exp(logdensityof(StdNormal(), x))
     mix = superpose(0.5 * pushfwd(AffineMaps.Add(-1.0), StdNormal()), 0.5 * pushfwd(AffineMaps.Add(1.0), StdNormal()))
     @test logdensityof(Half(mix), 0.7) ≈ log(φ(1.7) + φ(-0.3))
+
+    # Half of a weighted parent has its mass, its transports map the
+    # normalized law (Φ⁻¹(3/4) and 2Φ(1/2) - 1), also within truncations:
+    h = Half(2 * StdNormal())
+    @test massof(h) ≈ 2 && smf(h, 0.5) ≈ 2 * (2 * Φ(0.5) - 1) && smf(h, -1.0) == 0
+    @test transport_to(h, StdUniform())(0.5) ≈ Φinv(0.75)
+    @test transport_to(StdUniform(), h)(0.5) ≈ 2 * Φ(0.5) - 1
+    @test transport_to(h, StdUniform())(0.5f0) isa Float32
+    test_transport(h, StdUniform())
+    for (a, b) in ((0.2, 1.5), (3.0, Inf))
+        t, t1 = truncate(h, a .. b), truncate(Half(StdNormal()), a .. b)
+        @test massof(t) ≈ 2 * massof(t1)
+        @test transport_to(t, StdUniform())(0.3) ≈ transport_to(t1, StdUniform())(0.3)
+        @test transport_to(StdUniform(), t)(a + 0.1) ≈ transport_to(StdUniform(), t1)(a + 0.1)
+    end
 end
 
 using Test

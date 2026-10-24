@@ -70,16 +70,22 @@ testvalue(::Type{T}, ::Half) where {T} = one(T)
 
 massof(μ::Half) = massof(unhalf(μ))
 
-function smf(μ::Half, x)
-    2 * smf(μ.parent, max(x, zero(x))) - 1
-end
-
-function invsmf(μ::Half, p)
-    _nan_outside(StdUniform(), p, invsmf(μ.parent, _unit_interior((p + 1) / 2)))
-end
-
+# The fold doubles the upper half of the parent, the Stieltjes measure
+# functions scale with the mass of the parent (`smf(μ.parent, 0)` is half
+# of it):
+smf(μ::Half, x) = _half_smf(μ.parent, x)
 csmf(μ::Half, x) = 2 * csmf(μ.parent, max(x, zero(x)))
-invcsmf(μ::Half, p) = _nan_outside(StdUniform(), p, invcsmf(μ.parent, p / 2))
+invsmf(μ::Half, p) = _nan_outside_mass(μ, p, invsmf(μ.parent, _half_smf_arg(μ.parent, p)))
+invcsmf(μ::Half, p) = _nan_outside_mass(μ, p, invcsmf(μ.parent, p / 2))
 
-@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, smf(μ, x))
-@inline transport_from_std(::Type{StdUniform}, μ::Half, p) = invsmf(μ, p)
+@inline _half_smf(ν, x) = 2 * (smf(ν, max(x, zero(x))) - smf(ν, zero(x)))
+@inline _half_smf_arg(ν, p) = smf(ν, zero(p)) + p / 2
+
+@inline _nan_outside_mass(μ, p, x) = ifelse((zero(p) <= p) & (p <= massof(μ)), x, oftype(x, NaN))
+
+# Transports map the normalized law, the fold of the normalized parent:
+@inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, _half_smf(normalize(μ.parent), x))
+@inline function transport_from_std(::Type{StdUniform}, μ::Half, u)
+    ν = normalize(μ.parent)
+    _nan_outside(StdUniform(), u, invsmf(ν, _unit_interior(_half_smf_arg(ν, u))))
+end

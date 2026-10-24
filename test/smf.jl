@@ -8,6 +8,7 @@ smf_measures = [
     StdUniform()
     Half(StdNormal())
     Half(StdLogistic())
+    Half(2 * StdNormal())
 ]
 
 @testset "smf" begin
@@ -51,6 +52,12 @@ end
     @test invlogcsmf(w, log(3) - 40) ≈ invlogccdf(Normal(), -40.0)
     @test csmf(Half(StdNormal()), 9.0) ≈ 2 * ccdf(Normal(), 9.0)
     @test invcsmf(Half(StdNormal()), 2e-20) ≈ cquantile(Normal(), 1e-20)
+    # and has the mass of its parent:
+    h = Half(2 * StdNormal())
+    @test smf(h, 0.3) ≈ 2 * (2 * cdf(Normal(), 0.3) - 1) && smf(h, Inf) ≈ 2
+    @test csmf(h, 9.0) ≈ 4 * ccdf(Normal(), 9.0)
+    @test invsmf(h, 1.0) ≈ cquantile(Normal(), 0.25) && invcsmf(h, 4e-20) ≈ cquantile(Normal(), 1e-20)
+    @test isnan(invsmf(h, 2.5)) && isnan(invcsmf(h, -0.1))
     @test csmf(Lebesgue(0.0 .. 2.0), 0.5) == 1.5 && invcsmf(Lebesgue(0.0 .. 2.0), 1.5) == 0.5
     @test csmf(Lebesgue(), 0.5) isa MeasureBase.NoSMF
 
