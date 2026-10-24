@@ -123,4 +123,18 @@ invlogcsmf(μ::AbstractWeightedMeasure, logp) = invlogcsmf(basemeasure(μ), logp
 @inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
     batched_transport_from_std_with_rest(S, basemeasure(μ), Z, sz)
 
+# Weighted measures have the variate layout of their base, also as bases of
+# (nested) powers and as marginals of products:
+@inline _pwr_unwrap(μ::AbstractWeightedMeasure) = _pwr_unwrap(basemeasure(μ))
+@inline _pwr_dims(μ::AbstractWeightedMeasure) = _pwr_dims(basemeasure(μ))
+@inline _pwr_variate(μ::AbstractWeightedMeasure, A::AbstractArray) = _pwr_variate(basemeasure(μ), A)
+@inline _pwr_variate(μ::AbstractWeightedMeasure, A::Union{Tuple,NamedTuple}) = _pwr_variate(basemeasure(μ), A)
+@inline _pwr_nest(μ::AbstractWeightedMeasure, B::AbstractArray) = _pwr_nest(basemeasure(μ), B)
+@inline _check_pwr_components(X, μ::AbstractWeightedMeasure, dims::Dims) = _check_pwr_components(X, basemeasure(μ), dims)
+@inline _batch_variates(Y, μ::AbstractWeightedMeasure) = _batch_variates(Y, basemeasure(μ))
+@inline _as_stream_batch(X::Union{Tuple,NamedTuple}, μ::AbstractWeightedMeasure) = _as_stream_batch(X, basemeasure(μ))
+@inline _stream_batch(μ::AbstractWeightedMeasure, R::AbstractArray) = _stream_batch(basemeasure(μ), R)
+@inline _stream_variate(μ::AbstractWeightedMeasure, a) = _stream_variate(basemeasure(μ), a)
+@inline _fixed_stream_length(μ::AbstractWeightedMeasure) = _fixed_stream_length(basemeasure(μ))
+
 Adapt.adapt_structure(to, μ::WeightedMeasure) = WeightedMeasure(μ.logweight, Adapt.adapt(to, μ.base))

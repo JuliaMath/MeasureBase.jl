@@ -4,6 +4,7 @@ using Random: MersenneTwister
 using MeasureBase
 using MeasureBase: StdNormal, StdExponential, StdUniform, NormalizedMeasure, BoundedInts
 using MeasureBase: normalize, massof, isnormalized, UnknownMass, mbind, weightedmeasure, logdensities
+using MeasureBase: getdof, fast_dof, transports
 using MeasureBase.Interface: test_transport
 using ChangesOfVariables: with_logabsdet_jacobian
 using InverseFunctions: inverse
@@ -91,6 +92,37 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         Y = randn(2, 4)
         @test logdensities(normalize(P), Y) ≈ logdensities(P, Y) .- log(3)
         @test logdensities(normalize(Lebesgue(0 .. 2))^2, [0.5 1.0; 1.5 2.5]) ≈ [-2 * log(2), -Inf]
+    end
+
+    @testset "variate layout" begin
+        # Normalized and weighted measures have the variate layout of their
+        # base, also as bases of (nested) powers and marginals of products:
+        m = productmeasure((a = 2 * StdNormal(), c = Dirac(3.0)))
+        @test normalize(m) isa NormalizedMeasure && normalize(m^2) isa NormalizedMeasure
+        for (μ, ref, logw) in (
+            (normalize(m), m, -log(2)),
+            (normalize(m^2), m^2, -2 * log(2)),
+            (productmeasure((x = normalize(m), y = StdNormal())), productmeasure((x = m, y = StdNormal())), -log(2)),
+            (productmeasure((2 * m, StdNormal())), productmeasure((m, StdNormal())), log(2)),
+        )
+            for sz in (2, (2, 3))
+                X = rand(MersenneTwister(1), μ^sz)
+                X_ref = rand(MersenneTwister(1), ref^sz)
+                @test typeof(X) == typeof(X_ref) && X == X_ref
+                XX = rand(MersenneTwister(1), (μ^sz)^2)
+                @test typeof(XX) == typeof(rand(MersenneTwister(1), (ref^sz)^2))
+                @test logdensities(μ, X) ≈ logdensities(ref, X) .+ logw
+                @test logdensities(μ^sz, XX) ≈ logdensities(ref^sz, XX) .+ prod(sz) * logw
+                n = getdof(ref^sz)
+                @test getdof(μ^sz) == fast_dof(μ^sz) == n
+                z = randn(MersenneTwister(2), n)
+                @test transport_to(μ^sz, StdNormal()^n)(z) == transport_to(ref^sz, StdNormal()^n)(z)
+                n1 = getdof(ref)
+                Z = transports(transport_to(StdNormal()^n1, μ), X)
+                @test Z == transports(transport_to(StdNormal()^n1, ref), X)
+                @test transports(transport_to(μ, StdNormal()^n1), Z) == X
+            end
+        end
     end
 
     @testset "unknown mass" begin

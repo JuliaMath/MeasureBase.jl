@@ -4,6 +4,7 @@ export NormalizedMeasure
     struct NormalizedMeasure{M,L} <: AbstractWeightedMeasure
 
 The measure `base` divided by its mass, see [`normalize`](@ref).
+`basemeasure(μ)` returns `base`.
 
 `logmass::L` is the log of the mass of `base`, or an
 [`AbstractUnknownMass`](@ref) if it is unknown. Normalized measures of
