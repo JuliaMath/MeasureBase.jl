@@ -70,7 +70,9 @@ implementation per measure type for single variates and batches. See the
   with the batch conventions of `logdensities`. Broadcasting, `f.(X)`, is
   equivalent: it transports the batch as a whole, not variate by
   variate. Transport results share no memory with their input, also for
-  identity transports.
+  identity transports. `transports_with_ladj(f, X)` returns the
+  transported batch and the log-abs-det Jacobians of the transport over
+  the batch, the batched form of `with_logabsdet_jacobian`.
 - Random variates via HeterogeneousComputing: `rand(ctx::GenContext, μ)`
   with RNG, precision and compute unit, batches via `rand(ctx, μ^n)`.
 - Static variate sizes: statically sized measures give type stable,
@@ -91,14 +93,14 @@ implementation per measure type for single variates and batches. See the
 - Powers take integer-valued real counts (`StdNormal()^3.0`), so binds
   with counts drawn from discrete distributions work, e.g. the Poisson
   process `mbind(n -> μ^n, Poisson(λ), vcat)`.
-- New exports: `logdensities`, `transports`, `mcombine`, `mbind`, `mkernel`,
-  `bindkernel`, `boundmeasure`, `mintegrate`, `mintegrate_exp`,
-  `localmeasure`, `fast_dof`, `asmeasure`, `powermeasure`,
-  `weightedmeasure`, `superpose`, `half`, `as_likelihood`,
-  `likelihood_kernel`, `likelihood_obs`, `mdomain`, `valdomain`,
-  `combinesets`, `⋄` (pushforward) and `▷` (bind). `⊗`, `∫`, `∫exp`, `𝒹`
-  and `log𝒹` are still exported, all operators are defined in the
-  submodule `MeasureBase.MeasureOperators`.
+- New exports: `logdensities`, `transports`, `transports_with_ladj`,
+  `mcombine`, `mbind`, `mkernel`, `bindkernel`, `boundmeasure`,
+  `mintegrate`, `mintegrate_exp`, `localmeasure`, `fast_dof`,
+  `asmeasure`, `powermeasure`, `weightedmeasure`, `superpose`, `half`,
+  `as_likelihood`, `likelihood_kernel`, `likelihood_obs`, `mdomain`,
+  `valdomain`, `combinesets`, `⋄` (pushforward) and `▷` (bind). `⊗`,
+  `∫`, `∫exp`, `𝒹` and `log𝒹` are still exported, all operators are
+  defined in the submodule `MeasureBase.MeasureOperators`.
 - Extension points and internals for measure implementations are declared
   `public` (on Julia >= 1.11), e.g. `MeasureBase.logdensityof_impl`,
   `MeasureBase.batched_rand_impl`, `MeasureBase.transport_to_std` and

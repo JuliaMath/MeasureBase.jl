@@ -336,3 +336,27 @@ end
 @inline _nest_batch(Y::AbstractArray, ::Val{0}) = Y
 @inline _nest_batch(Y::AbstractArray{<:Any,K}, ::Val{K}) where {K} = Y
 @inline _nest_batch(Y::AbstractArray, ::Val{K}) where {K} = sliced(Y, Val(K))
+
+
+"""
+    transports_with_ladj(f::TransportFunction, X)
+
+Transport each variate in the batch `X` with `f = transport_to(ν, μ)`
+and compute the log-abs-det Jacobians of the transport, the batched form
+of `ChangesOfVariables.with_logabsdet_jacobian(f, x)`.
+
+Returns a tuple `(Y, ladjs)` of the transported batch `Y`, as returned by
+[`transports(f, X)`](@ref transports), and the array `ladjs` of the
+log-abs-det Jacobians over the batch dimensions of `X` (a number for a
+single variate), like the results of [`logdensities`](@ref). The
+Jacobians are the ratios of the normalized densities of `μ` and `ν` (see
+[`transport_to`](@ref)), evaluated in batched density evaluations.
+"""
+function transports_with_ladj end
+export transports_with_ladj
+
+function transports_with_ladj(f::TransportFunction, X)
+    Y = transports(f, X)
+    ladjs = broadcast(_transport_ladj, logdensities(_unweighted(f.μ), X), logdensities(_unweighted(f.ν), Y))
+    return Y, ladjs
+end

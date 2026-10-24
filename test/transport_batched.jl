@@ -14,6 +14,7 @@ using ArraysOfArrays: sliced, flatview, nestedview, ArrayOfSimilarArrays
 using StaticArrays: SVector, SMatrix, @SMatrix
 using MeasureBase: logdensities
 using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf
+using ChangesOfVariables: with_logabsdet_jacobian
 using StructArrays: StructArray, StructArrays
 using AffineMaps: Mul, MulAdd
 using JLArrays
@@ -249,6 +250,60 @@ using JLArrays
         y_ref = copy(y)
         x .= NaN
         @test y == y_ref
+    end
+
+    @testset "batched log-abs-det Jacobians" begin
+        # Against the point transports and against the density ratio (the
+        # densities of the standard uniform targets are one):
+        function test_ladjs(f, X, xs, ladjs_ref)
+            Y, ladjs = transports_with_ladj(f, X)
+            @test isequal(Y, transports(f, X))
+            @test size(ladjs) == size(ladjs_ref) && ladjs ≈ ladjs_ref
+            @test isapprox(vec(collect(ladjs)), [last(with_logabsdet_jacobian(f, x)) for x in xs], nans = true)
+        end
+        normal_logd(x) = sum(logpdf.(Normal(), x))
+        X = randn(3, 5)
+        test_ladjs(transport_to(StdUniform(), StdNormal()), X[1, :], X[1, :], logpdf.(Normal(), X[1, :]))
+        f = transport_to(StdUniform()^3, StdNormal()^3)
+        ref = map(normal_logd, eachcol(X))
+        test_ladjs(f, X, eachcol(X), ref)
+        test_ladjs(f, nestedview(X), eachcol(X), ref)
+        @test last(transports_with_ladj(f, X[:, 1])) ≈ normal_logd(X[:, 1])
+        @test last(transports_with_ladj(transport_to(StdUniform(), StdNormal()), 0.3)) ≈ logpdf(Normal(), 0.3)
+        test_ladjs(transport_to(StdUniform()^(3, 5), StdNormal()^(3, 5)), X, (X,), normal_logd(X))
+        # Weights don't change the Jacobians:
+        test_ladjs(transport_to(StdUniform(), weightedmeasure(0.7, StdNormal())), X[1, :], X[1, :], logpdf.(Normal(), X[1, :]))
+        test_ladjs(transport_to(weightedmeasure(0.7, StdUniform()^3), 2.5 * StdNormal()^3), X, eachcol(X), ref)
+        # Tuple products, as tuples of batches and as struct arrays:
+        P = productmeasure((a = StdNormal(), b = StdExponential()^2))
+        Xt = (a = X[1, :], b = abs.(X[2:3, :]))
+        xs = [(a = Xt.a[j], b = Xt.b[:, j]) for j in 1:5]
+        ref_t = [normal_logd(x.a) - sum(x.b) for x in xs]
+        test_ladjs(transport_to(StdUniform()^3, P), Xt, xs, ref_t)
+        test_ladjs(transport_to(StdUniform()^3, P), StructArray(xs), xs, ref_t)
+        # Measures containing binds:
+        b = mbind(a -> StdNormal()^2, StdNormal(), vcat)
+        test_ladjs(transport_to(StdUniform()^3, b), X, eachcol(X), ref)
+        test_ladjs(transport_to(StdUniform()^3, b), collect(eachcol(X)), eachcol(X), ref)
+        U = rand(4, 5)
+        hc = transport_to(mcombine(vcat, b, StdNormal()^1), StdUniform()^4)
+        test_ladjs(hc, U, eachcol(U), [-normal_logd(hc(u)) for u in eachcol(U)])
+        ht = transport_to(productmeasure((b, StdNormal())), StdUniform()^4)
+        test_ladjs(ht, U, eachcol(U), [-normal_logd(y[1]) - normal_logd(y[2]) for y in map(ht, eachcol(U))])
+        # Variates outside the support of the source:
+        g = transport_to(StdUniform(), StdExponential())
+        xe = [-1.0, 0.5, 2.0, NaN]
+        @test isequal(last(transports_with_ladj(g, xe)), [last(with_logabsdet_jacobian(g, x)) for x in xe])
+        # Static batches stay static, Float32 stays Float32:
+        Xs = SMatrix{3,5}(X)
+        Ys, ladjs_s = @inferred transports_with_ladj(f, Xs)
+        @test flatview(Ys) isa SMatrix{3,5} && ladjs_s isa SVector{5} && ladjs_s ≈ ref
+        _, ladjs_32 = transports_with_ladj(f, Float32.(X))
+        @test eltype(ladjs_32) == Float32 && isapprox(ladjs_32, ref, rtol = 1e-5)
+        # Device arrays:
+        JLArrays.allowscalar(false)
+        Yj, ladjs_j = transports_with_ladj(f, JLArray(X))
+        @test ladjs_j isa JLArray && Array(ladjs_j) ≈ ref && Array(flatview(Yj)) ≈ flatview(transports(f, X))
     end
 
     @testset "transported batches have the layout of rand" begin

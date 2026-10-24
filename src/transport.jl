@@ -138,12 +138,14 @@ end
 # Jacobian is the ratio of the normalized densities, see `_unweighted`:
 function ChangesOfVariables.with_logabsdet_jacobian(f::TransportFunction, x)
     y = f(x)
-    logd_src = logdensityof(_unweighted(f.μ), x)
-    logd_trg = logdensityof(_unweighted(f.ν), y)
+    return y, _transport_ladj(logdensityof(_unweighted(f.μ), x), logdensityof(_unweighted(f.ν), y))
+end
+
+# Both densities being -Inf leaves the Jacobian undefined, zero is a safe
+# choice then:
+@inline function _transport_ladj(logd_src, logd_trg)
     ladj = logd_src - logd_trg
-    # Both densities being -Inf leaves the Jacobian undefined, zero is a safe choice then:
-    fixed_ladj = ifelse(isneginf(logd_src) & isneginf(logd_trg), zero(ladj), ladj)
-    return y, fixed_ladj
+    ifelse(isneginf(logd_src) & isneginf(logd_trg), zero(ladj), ladj)
 end
 
 Base.:(∘)(::typeof(identity), f::TransportFunction) = f

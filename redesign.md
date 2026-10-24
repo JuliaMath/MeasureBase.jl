@@ -66,7 +66,9 @@ outermost combinator (binds never fuse). Scalar leaves consume
 element variates in vcat streams are flattened.
 
 **Transport.** `transport_to(ν, μ)` gives a `TransportFunction`; `f(x)`
-transports a variate, `f.(X)` a whole batch. Leaves implement
+transports a variate, `f.(X)` a whole batch, `transports_with_ladj(f, X)`
+also returns the log-abs-det Jacobians over the batch (density ratios
+via `logdensities`). Results never alias the input. Leaves implement
 `transport_to_std`/`transport_from_std` for their preferred standard
 measure (`preferred_stdmeasure`, `promote_stdmeasure`, `AnyStdMeasure`,
 `NoStdTransport`), array-variate leaves also the `batched_` forms.

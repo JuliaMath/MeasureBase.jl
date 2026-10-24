@@ -19,6 +19,7 @@ X = rand(μ^100)            # batch of 100 variates, nested view of a 3×100 mat
 logdensities(μ, X)         # 100 log-densities
 f = transport_to(StdUniform()^3, μ)
 transports(f, X)           # the batch transported to the unit cube, or f.(X)
+Y, ladjs = transports_with_ladj(f, X)   # and the 100 log-abs-det Jacobians
 ```
 
 **Variate rank.** [`MeasureBase.mspace_ndims`](@ref) gives the number of
@@ -59,7 +60,10 @@ arrays, and shares no memory with `X`, also for identity transports (as
 do the results of `f(x)` for array variates). Broadcasting `f.(X)` is the
 same operation, so `f.(x)` of a single vector variate `x` of a measure
 with vector variates is `f(x)`, and fused arguments (`f.(X .+ 1)`) are
-materialized once before the transport.
+materialized once before the transport. `transports_with_ladj(f, X)`
+returns the transported batch together with the log-abs-det Jacobians
+of the transport, an array over the batch dimensions like the results of
+`logdensities`, the batched form of `with_logabsdet_jacobian(f, x)`.
 
 **Static variates.** Sizes are `StaticThings.SizeLike` throughout. On the
 CPU, bulk draws of a fully static size are static arrays and stream splits
@@ -165,7 +169,8 @@ outermost stream combinator loops over the streams.
 `transport_to(ν, μ)` returns a [`MeasureBase.TransportFunction`](@ref).
 `f(x)` transports a variate, `transports(f, X)` (or `f.(X)`) a whole
 batch. Transports are invertible (`InverseFunctions.inverse`) and provide
-their log-abs-det Jacobian (`ChangesOfVariables.with_logabsdet_jacobian`).
+their log-abs-det Jacobian (`ChangesOfVariables.with_logabsdet_jacobian`,
+batched [`transports_with_ladj`](@ref)).
 
 Transport goes through standard measures (`StdUniform`, `StdNormal`,
 `StdExponential`, `StdLogistic` and their powers) as pivots. Each measure

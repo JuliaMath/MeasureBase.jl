@@ -110,6 +110,9 @@ _plain(x::Number) = Float64(x)
         test_traced(X -> flatview(transport_to(StdExponential()^3, StdNormal()^3).(sliced(X, Val(1)))), X)
         mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
         test_traced(X -> flatview(transport_to(StdLogistic()^3, mc).(sliced(X, Val(1)))), vcat(X[1:2, :], rand(1, 20)))
+        test_traced(X -> last(transports_with_ladj(transport_to(StdNormal(), StdUniform()), X)), rand(10))
+        test_traced(X -> last(transports_with_ladj(transport_to(StdExponential()^3, StdNormal()^3), X)), X)
+        test_traced(X -> last(transports_with_ladj(transport_to(StdLogistic()^3, mc), X)), vcat(X[1:2, :], rand(1, 20)))
     end
 
     @testset "transport" begin
