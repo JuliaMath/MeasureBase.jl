@@ -1,0 +1,144 @@
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
+
+
+const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} = AsMeasure{D}
+
+@inline MeasureBase.AbstractMeasure(obj::Distribution) = AsMeasure{typeof(obj)}(obj)
+@inline Base.convert(::Type{AbstractMeasure}, obj::Distribution) = AbstractMeasure(obj)
+
+@inline Distributions.Distribution(m::DistributionMeasure) = m.obj
+@inline Distributions.Distribution{F}(m::DistributionMeasure{F}) where {F<:VariateForm} = Distribution(m)
+@inline Distributions.Distribution{F,S}(m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
+
+@inline Base.convert(::Type{Distribution}, m::DistributionMeasure) = Distribution(m)
+@inline Base.convert(::Type{Distribution{F}}, m::DistributionMeasure{F}) where {F<:VariateForm} = Distribution(m)
+@inline Base.convert(::Type{Distribution{F,S}}, m::DistributionMeasure{F,S}) where {F<:VariateForm,S<:ValueSupport} = Distribution(m)
+
+
+# Distributions' samplers run on host compute units and draw in the
+# precision of the distribution parameters. Where that is lower than the
+# precision of the context, and on other compute units, variates are
+# generated from standard variates of the context precision via the
+# transports. Draws of distributions without standard transports are
+# converted to the context precision afterwards, only their type follows
+# the context then.
+function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
+    if _native_rand(ctx, m.obj)
+        convert_realtype(get_precision(ctx), _dist_rand(get_rng(ctx), m.obj))
+    else
+        MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
+    end
+end
+
+function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
+    if _native_rand(ctx, m.obj)
+        _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, asnonstatic(sz))
+    else
+        MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+    end
+end
+
+@inline function _native_rand(ctx::GenContext, d::Distribution)
+    MeasureBase._on_host(ctx) && (_native_precision_suffices(get_precision(ctx), d) || !_has_std_transport(d))
+end
+@inline function _native_precision_suffices(::Type{T}, d::Distribution) where {T<:Real}
+    P = float(Distributions.partype(d))
+    promote_type(P, T) == P
+end
+@inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
+
+# Constant RNGs (for test values) only draw floats, but Distributions'
+# samplers draw integer ranges and may reject constant draws forever, so
+# univariate distributions are sampled by inversion then (in the type of
+# their native draws):
+@inline _dist_rand(rng::AbstractRNG, d::Distribution) = rand(rng, d)
+@inline _dist_rand(rng::ConstantRNG, d::Distribution{Univariate}) = convert(eltype(d), Distributions.quantile(d, rand(rng)))
+
+# A single variate for zero batch dimensions, flat batches otherwise:
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, _dist_rand(rng, d))
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real} = _flat_powrand_batch(rng, T, d, sz)
+_flat_powrand(rng::ConstantRNG, ::Type{T}, d::Distribution{Univariate}, sz::Dims) where {T<:Real} =
+    fill(convert_realtype(T, _dist_rand(rng, d)), sz)
+
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
+    convert_realtype(T, reshape(rand(rng, d, prod(sz)), sz...))
+end
+
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{1}}, sz::Dims) where {T<:Real}
+    convert_realtype(T, reshape(rand(rng, d, prod(sz)), size(d)..., sz...))
+end
+
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::ReshapedDistribution{N,<:Any,<:Distribution{<:ArrayLikeVariate{1}}}, sz::Dims) where {T<:Real,N}
+    convert_realtype(T, reshape(rand(rng, d.dist, prod(sz)), d.dims..., sz...))
+end
+
+function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real}
+    flatview(ArrayOfSimilarArrays(convert_realtype(T, rand(rng, d, sz))))
+end
+
+
+
+@inline DensityInterface.densityof(m::DistributionMeasure) = densityof(m.obj)
+@inline DensityInterface.logdensityof(m::DistributionMeasure) = logdensityof(m.obj)
+
+@inline MeasureBase.logdensity_def(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
+
+# Distributions evaluate flat batches of array variates (the trailing
+# dimensions are batch dimensions) directly, univariate wrappers broadcast
+# their point kernels:
+for (bhead, phead) in ((:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def))
+    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{N}}, X::AbstractArray) where {N}
+        Distributions.logpdf(m.obj, X)
+    end
+    @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{0}}, X::AbstractArray)
+        MeasureBase._scalar_kernel_broadcast(MeasureBase.$phead, m, X)
+    end
+end
+@inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
+@inline MeasureBase.insupportof(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x) & _finite_variate(m.obj, x)
+# Infinite values lie outside the support of univariate distributions,
+# where Distributions may evaluate to NaN:
+@inline _finite_variate(::Distribution{Univariate}, x) = isfinite(x)
+@inline _finite_variate(::Distribution, x) = true
+
+@inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate{0},<:Continuous}) = Lebesgue()
+@inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate,<:Continuous}) = Lebesgue()^size(m.obj)
+@inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate{0},<:Discrete}) = Counting()
+@inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate,<:Discrete}) = Counting()^size(m.obj)
+
+@inline MeasureBase.basemeasure(m::DistributionMeasure) = rootmeasure(m)
+
+@inline MeasureBase.massof(::DistributionMeasure) = static(1.0)
+
+@inline MeasureBase.mspace_elsize(d::Distribution) = MeasureBase.NoMSpaceElementSize{typeof(d)}()
+@inline MeasureBase.mspace_flatsize(d::Distribution) = MeasureBase.NoMSpaceElementSize{typeof(d)}()
+@inline MeasureBase.mspace_elsize(d::Distribution{Univariate}) = ()
+@inline MeasureBase.mspace_elsize(d::Distribution{<:ArrayLikeVariate}) = size(d)
+@inline MeasureBase.mspace_flatsize(d::Distribution{Univariate}) = ()
+@inline MeasureBase.mspace_flatsize(d::Distribution{<:ArrayLikeVariate}) = size(d)
+@inline MeasureBase.mspace_elsize(m::DistributionMeasure) = MeasureBase.mspace_elsize(m.obj)
+@inline MeasureBase.mspace_flatsize(m::DistributionMeasure) = MeasureBase.mspace_flatsize(m.obj)
+@inline MeasureBase.mspace_flatsize(::Type{<:Distribution{Univariate}}) = ()
+@inline MeasureBase.mspace_ndims(::Type{<:Distribution{<:ArrayLikeVariate{N}}}) where {N} = N
+@inline MeasureBase.mspace_ndims(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.mspace_ndims(D)
+@inline MeasureBase.mspace_flatsize(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.mspace_flatsize(D)
+
+@inline MeasureBase.preferred_stdmeasure(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D)
+
+@inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
+@inline MeasureBase.fast_dof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
+
+# Delegate transport to the wrapped distribution:
+@inline MeasureBase.transport_to_std(::Type{S}, m::DistributionMeasure, x) where {S<:StdMeasure} =
+    MeasureBase.transport_to_std(S, m.obj, x)
+@inline MeasureBase.transport_from_std(::Type{S}, m::DistributionMeasure, z) where {S<:StdMeasure} =
+    MeasureBase.transport_from_std(S, m.obj, z)
+@inline MeasureBase.batched_transport_to_std(::Type{S}, m::DistributionMeasure, X::AbstractArray) where {S<:StdMeasure} =
+    MeasureBase.batched_transport_to_std(S, m.obj, X)
+@inline MeasureBase.batched_transport_from_std(::Type{S}, m::DistributionMeasure, Z::AbstractArray) where {S<:StdMeasure} =
+    MeasureBase.batched_transport_from_std(S, m.obj, Z)
+
+@inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
+@inline MeasureBase.paramsof(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))
+
+# @inline MeasureBase.testvalue(m::DistributionMeasure) = testvalue(basemeasure(d))
