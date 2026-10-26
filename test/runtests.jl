@@ -29,6 +29,8 @@ include("smf.jl")
 include("moments.jl")
 include("domains.jl")
 
+include("test_mooncake.jl")
+
 include("measure_operators.jl")
 include("public_api.jl")
 include("contracts.jl")
@@ -47,3 +49,14 @@ include("combinators/product.jl")
 
 include("rand.jl")
 include("rand_batched.jl")
+
+include("distributions/test_distributions.jl")
+
+# Reactant only supports 64-bit Linux and macOS, and some of its
+# dependencies break already during precompilation on other platforms,
+# so it can't be a static test dependency:
+if Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
+    import Pkg
+    Base.identify_package("Reactant") === nothing && Pkg.add("Reactant")
+    include("test_reactant.jl")
+end
