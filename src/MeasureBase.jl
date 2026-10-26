@@ -197,6 +197,7 @@ include("mass-interface.jl")
 
 include("density.jl")
 include("density-core.jl")
+include("density-batched.jl")
 
 #include("implicitmaps.jl")
 
