@@ -228,6 +228,8 @@ include("standard/stdlogistic.jl")
 include("standard/stdnormal.jl")
 include("standard/stdconvert.jl")
 include("standard/stdtraits.jl")
+include("combinators/combined.jl")
+include("combinators/bind.jl")
 include("combinators/half.jl")
 
 #include("implicitmaps.jl")

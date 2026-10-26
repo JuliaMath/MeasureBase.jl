@@ -1,36 +1,519 @@
-struct Bind{M,K} <: AbstractMeasure
-    μ::M
-    k::K
-end
+@doc raw"""
+    mkernel(f_β, f_c = OneTwoMany.secondarg)::Function
 
-export ↣
+Constructs a generalized monadic transition kernel from a primary transition
+kernel function `f_β` and a value combination function `f_c`.
 
-"""
-If 
-- μ is an `AbstractMeasure` or satisfies the Measure interface, and
-- k is a function taking values from the support of μ and returning a measure
+`f_β` must behave like `β = f_β(a)`, taking a value `a` from a primary
+measurable space and returning a measure-like object `β`.
 
-Then `μ ↣ k` is a measure, called a *monadic bind*. In a
-probabilistic programming language like Soss.jl, this could be expressed as
+`f_c` must behave like `c = f_c(a, b)`, taking a value `a` (like `f_β`) and
+a value `b` from the measurable space of `β` and returning a value `c`.
 
-Note that bind is usually written `>>=`, but this symbol is unavailable in Julia.
+`f_k = mkernel(f_β, f_c)` then acts like
 
-```
-bind = @model μ,k begin 
-    x ~ μ
-    y ~ k(x)
-    return y
-end
+```julia
+f_k(a) ≡ pushfwd(c -> f_c(c[1], c[2]), productmeasure((Dirac(a), f_β(a))))
 ```
 
-See also `bind` and `Bind`
+(`≡` denoting pseudocode-equivalency here). So with the default
+`f_c == OneTwoMany.secondarg`, we just have `f_k(a) ≡ f_β(a)`.
+
+Also,
+
+```julia
+mbind(mkernel(f_β, f_c), α) == mbind(f_β, α, f_c)
+```
+
+See also [`mbind`](@ref).
 """
-↣(μ, k) = bind(μ, k)
+function mkernel end
+export mkernel
 
-bind(μ, k) = Bind(μ, k)
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, d::Bind) where {T}
-    x = rand(rng, T, d.μ)
-    y = rand(rng, T, d.k(x))
-    return y
+"""
+    struct MeasureBase.MKernel <: Function
+
+Represents a generalized monadic transition kernel.
+
+User code should not create instances of `MKernel` directly, but should
+call [`mkernel`](@ref) instead.
+"""
+struct MKernel{FT,FC} <: Function
+    f_β::FT
+    f_c::FC
+end
+
+(f_k::MKernel)(a) = mbind(f_k, Dirac(a))
+
+@inline mkernel(f_β::MKernel) = f_β
+@inline mkernel(f_β, f_c = secondarg) = _generic_mkernel_impl(f_β, f_c)
+
+@inline _generic_mkernel_impl(f_β, f_c) = MKernel(f_β, f_c)
+@inline _generic_mkernel_impl(f_β::MKernel, ::typeof(secondarg)) = f_β
+
+
+@doc raw"""
+    mbind(f_β, α::AbstractMeasure, f_c = OneTwoMany.secondarg)
+    mbind(f_β::MeasureBase.MKernel, α::AbstractMeasure)
+
+Constructs a monadic bind, resp. a hierarchical measure, from a transition
+kernel function `f_β`, a primary measure `α` and a value combination
+function `f_c`.
+
+`f_β` must be a function that maps a point `a` from the space of the primary
+measure `α` to a dependent secondary measure `β_a = f_β(a)`.
+`ab = f_c(a, b)` must map such a point `a` and a point `b` from the
+space of measure `β_a` to a combined value `ab = f_c(a, b)`.
+
+The resulting measure
+
+```julia
+μ = mbind(f_β, α, f_c)
+```
+
+has the mathematical interpretation (on sets $$A$$ and $$B$$)
+
+```math
+\mu(f_c(A, B)) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a)
+```
+
+When using the default `f_c = OneTwoMany.secondarg` (so `ab == b`) this
+simplifies to
+
+```math
+\mu(B) = \int_A \beta_a(B)\, \mathrm{d}\, \alpha(a)
+```
+
+which is equivalent to a monadic bind, viewing measures as monads.
+
+`rand(μ)` samples ancestrally from the normalized laws of the components,
+it is equivalent to
+
+```julia
+a = rand(α)
+β_a = f_β(a)
+b = rand(β_a)
+ab = f_c(a, b)
+```
+
+This is the normalized law of `μ` if the mass of `β_a` doesn't depend on
+`a`, as for kernels that return probability measures. Otherwise, the
+normalized law of `μ` reweights `α` by the mass of `β_a`, which `rand`
+does not do.
+
+The mass of `μ` integrates the masses of the `β_a` over `α`. It is known
+where `α` is a weighted or superposed combination of point masses, and
+unknown otherwise. With `f_c = OneTwoMany.firstarg`, `μ` is `α` reweighted
+by the mass of `β_a`, its density is that of `α` plus the log-mass of
+`β_a`.
+
+The measure `α` that went into the bind can be retrieved via
+`boundmeasure(mbind(f_β, α, f_c)) == α` and the kernel via
+`bindkernel(mbind(f_β, α, f_c)) == mkernel(f_β, f_c)`, its parts via
+[`MeasureBase.kernelmeasure`](@ref) and [`MeasureBase.valuecombinator`](@ref).
+
+Densities on hierarchical measures can only be evaluated if `ab = f_c(a, b)`
+can be unambiguously split into `a` and `b` again, knowing `α`. This is
+currently implemented for `f_c` that is either `tuple` or `=>`/`Pair` (these
+work for any combination of variate types), `vcat` (for tuple- or
+vector-like variates) and `merge` (`NamedTuple` variates).
+[`MeasureBase.tpmeasure_split_combined`](@ref) can be specialized to
+support other choices for `f_c`.
+
+Densities are `-Inf` where `a` lies outside of the support of `α`, `f_β` is
+not evaluated there. Traced and device evaluation, and binds whose variates
+are part of the streams of enclosing combinators (`mcombine`, nested binds,
+powers) do evaluate `f_β` at such `a`, the kernel must not throw for them.
+
+# Extended help
+
+Bayesian example with a correlated prior: Mathematically, let
+
+    position = a1 ~ StdNormal()
+    noise = a2 ~ pushforward(h(a1, ·), StdExponential())
+
+where `h(a1, a2) = √(abs(a1) * a2)`. Because this prior on the space of
+`A = A1 × A2 = (position, noise)` is a hierarchical measure (`a2` depends
+on `a1`), we can construct it using `mbind` with `merge` as `f_c`:
+
+```julia
+using MeasureBase, AffineMaps
+
+prior = mbind(
+    productmeasure((
+        position = StdNormal(),
+    )), merge
+) do a
+    productmeasure((
+        noise = pushfwd(setinverse(sqrt, setladj(x -> x^2, x -> log(2))) ∘ Mul(abs(a.position)), StdExponential()),
+    ))
+end
+
+model = θ -> pushfwd(MulAdd(θ.noise, θ.position), StdNormal())^10
+
+joint_θ_obs = mbind(model, prior, tuple)
+prior_predictive = mbind(model, prior)
+
+observation = rand(prior_predictive)
+likelihood = likelihoodof(model, observation)
+
+posterior = mintegrate(likelihood, prior)
+
+θ = rand(prior)
+logdensityof(posterior, θ)
+```
+"""
+function mbind end
+export mbind
+
+@inline mbind(f_β) = Base.Fix1(mbind, f_β)
+
+@inline function mbind(f_β, α::AbstractMeasure, f_c = secondarg)
+    _generic_mbind_impl(f_β, asmeasure(α), f_c)
+end
+
+@inline function _generic_mbind_impl(f_β, α::AbstractMeasure, f_c)
+    F, M, G = Core.Typeof(f_β), Core.Typeof(α), Core.Typeof(f_c)
+    Bind{F,M,G}(f_β, α, f_c)
+end
+
+@inline _generic_mbind_impl(f_β, α::Dirac, f_c) = mcombine(f_c, α, asmeasure(f_β(α.x)))
+
+@inline _generic_mbind_impl(f_k::MKernel, α::AbstractMeasure, ::typeof(secondarg)) =
+    mbind(f_k.f_β, α, f_k.f_c)
+@inline _generic_mbind_impl(f_k::MKernel, α::Dirac, ::typeof(secondarg)) =
+    mbind(f_k.f_β, α, f_k.f_c)
+
+
+"""
+    struct MeasureBase.Bind <: AbstractMeasure
+
+Represents a monadic bind resp. a hierarchical measure in general.
+
+User code should not create instances of `Bind` directly, but should call
+[`mbind`](@ref) instead.
+"""
+struct Bind{FT,M<:AbstractMeasure,FC} <: AbstractMeasure
+    f_β::FT
+    α::M
+    f_c::FC
+end
+
+# ToDo: Store MKernel in Bind instead of separate fields f_β and f_c?
+
+
+"""
+    bindkernel(μ::Bind)::MKernel
+
+Returns the monadic transition kernel of a monadic bind, so that
+`bindkernel(mbind(f_k::MKernel, α)) == f_k`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function bindkernel end
+export bindkernel
+
+bindkernel(μ::Bind) = mkernel(μ.f_β, μ.f_c)
+
+
+"""
+    boundmeasure(μ::Bind)::AbstractMeasure
+
+Returns the measure that went into a monadic bind, so that
+`boundmeasure(mbind(f_k, α)) == α`.
+
+See [`mbind`](@ref) and [`mkernel`](@ref) for details.
+"""
+function boundmeasure end
+export boundmeasure
+
+boundmeasure(μ::Bind) = μ.α
+
+
+"""
+    MeasureBase.kernelmeasure(f_k, a)::AbstractMeasure
+
+Returns the secondary measure `β_a` of the transition kernel `f_k` at the
+primary value `a`, without the value combination: `asmeasure(f_β(a))` for
+`f_k = mkernel(f_β, f_c)` and `asmeasure(f_k(a))` for kernels given as
+plain functions. `kernelmeasure(bindkernel(μ), a)` is the secondary measure
+of the bind `μ` at `a`.
+
+See [`mkernel`](@ref), [`mbind`](@ref) and [`MeasureBase.valuecombinator`](@ref).
+"""
+function kernelmeasure end
+
+kernelmeasure(f_k, a) = asmeasure(f_k(a))
+kernelmeasure(f_k::MKernel, a) = asmeasure(f_k.f_β(a))
+
+valuecombinator(f_k::MKernel) = f_k.f_c
+valuecombinator(μ::Bind) = μ.f_c
+
+
+_get_β_a(μ::Bind, a) = asmeasure(μ.f_β(a))
+
+function transportmeasure(μ::Bind, x)
+    tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, x)
+    tpm_β_a = transportmeasure(_get_β_a(μ, a), b)
+    mcombine(μ.f_c, tpm_α, tpm_β_a)
+end
+
+localmeasure(μ::Bind, x) = transportmeasure(μ, x)
+
+tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tpm_sc(f_c, μ, xy)
+
+function _bind_tpm_sc(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
+    x, y = xy[1], xy[2]
+    tpm_μ = transportmeasure(μ, x)
+    return tpm_μ, x, y
+end
+
+function _bind_tpm_sc(::Type{Pair}, μ::Bind, xy::Pair)
+    x, y = xy.first, xy.second
+    tpm_μ = transportmeasure(μ, x)
+    return tpm_μ, x, y
+end
+
+const _BindBy{FC} = Bind{<:Any,<:AbstractMeasure,FC}
+
+@inline preferred_stdmeasure(::Type{<:Bind{<:Any,M}}) where {M} = preferred_stdmeasure(M)
+_bind_tpm_sc(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector) =
+    _bind_tpm_sc_cat(f_c, μ, xy)
+_bind_tpm_sc(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple) =
+    _bind_tpm_sc_cat(f_c, μ, xy)
+
+function _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
+    β_a = _get_β_a(μ, a)
+    tpm_β_a, b, y = tpmeasure_split_combined(f_c, β_a, by)
+    tpm_μ = mcombine(μ.f_c, tpm_α, tpm_β_a)
+    return tpm_μ, a, b, y, xy
+end
+
+function _bind_tpm_sc_cat(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector)
+    tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
+    x, y = maybestatic_split(xy, maybestatic_length(a) + maybestatic_length(b))
+    return tpm_μ, x, y
+end
+
+function _bind_tpm_sc_cat(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple)
+    tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
+    return tpm_μ, f_c(a, b), y
+end
+
+
+@inline insupportof(μ::Bind, ::Any) = NoFastInsupport{typeof(μ)}()
+
+@inline _unweighted(μ::Bind) = mbind(_unweighted ∘ μ.f_β, _unweighted(μ.α), μ.f_c)
+
+# The mass of a bind is linear in the primary measure:
+massof(μ::Bind) = _bind_mass(μ, μ.α)
+_bind_mass(::Bind, ::AbstractMeasure) = UnknownMass()
+_bind_mass(μ::Bind, α::Dirac) = massof(_get_β_a(μ, α.x))
+_bind_mass(μ::Bind, α::WeightedMeasure) = exp(α.logweight) * _bind_mass(μ, α.base)
+_bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), α.components)
+
+@inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
+@inline fast_dof(μ::Bind) = NoDOF{typeof(μ)}()
+
+# Bypass `checked_arg`, would require potentially costly evaluation of f_β:
+@inline checked_arg(::Bind, x) = x
+
+rootmeasure(::Bind) =
+    throw(ArgumentError("root measure is implicit, but can't be instantiated, for Bind"))
+@inline _pushfwd_root(::Bind) = static(false)
+
+basemeasure(::Bind) = throw(ArgumentError("basemeasure is not available for Bind"))
+
+# Test values follow the primary test value through the secondary measure:
+function testvalue(::Type{T}, μ::Bind) where {T}
+    a = testvalue(T, μ.α)
+    _combine_variates(μ.f_c, a, testvalue(T, _get_β_a(μ, a)))
+end
+
+logdensity_def(::Bind, x) =
+    throw(ArgumentError("logdensity_def is not available for Bind"))
+
+# Density evaluation consumes the variate parts of the primary and secondary
+# measure in a single pass, using the with-rest protocol for value-dependent
+# variate sizes:
+
+logdensityof_impl(μ::Bind, x) = _bind_ld_impl(μ.f_c, μ, x)
+
+unsafe_logdensityof(μ::Bind, x) = logdensityof_impl(μ, x)
+
+# The kernel is not evaluated outside of the support of the primary measure,
+# where it may be undefined, except for traced or device conditions:
+@inline function _bind_ld(ℓ_a, ℓ_b::F) where {F}
+    ℓ = dynamic(ℓ_a)
+    _select(isneginf(ℓ), () -> ℓ, () -> ℓ + ℓ_b())
+end
+
+function _bind_ld_impl(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
+    a, b = xy[1], xy[2]
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
+end
+
+function _bind_ld_impl(::Type{Pair}, μ::Bind, xy::Pair)
+    a, b = xy.first, xy.second
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
+end
+
+function _bind_ld_impl(::typeof(vcat), μ::Bind, x::AbstractVector)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    _bind_ld(ℓ_a, () -> _ld_whole_stream(_get_β_a_consumed(μ, a), x2))
+end
+
+function _bind_ld_impl(::typeof(merge), μ::Bind, x::NamedTuple)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    _bind_ld(ℓ_a, () -> _ld_whole_stream(_get_β_a(μ, a), x2))
+end
+
+function _ld_whole_stream(μ, x)
+    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
+    isempty(x_rest) || _throw_stream_too_long()
+    return ℓ
+end
+
+# Projections onto the primary variate weight it with the mass of the
+# secondary measure:
+function _bind_ld_impl(::typeof(firstarg), μ::Bind, a)
+    _bind_ld(logdensityof(μ.α, a), () -> _logmass(massof(_get_β_a(μ, a))))
+end
+
+# Other value combination functions split via `tpmeasure_split_combined`:
+function _bind_ld_impl(f_c, μ::Bind, ab)
+    _, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
+    _bind_ld(logdensityof(μ.α, a), () -> logdensityof(_get_β_a(μ, a), b))
+end
+
+# The secondary measure depends on the primary variate, so streams are
+# consumed one by one:
+@inline fixed_stream_size(::Type{<:Bind}) = static(false)
+@inline mspace_ndims(::Type{<:_BindBy{typeof(vcat)}}) = 1
+
+# The kernel sees the primary variate in the layout of `rand(μ.α)` on all
+# paths:
+_get_β_a_consumed(μ::Bind, a) = _get_β_a(μ, _stream_variate(μ.α, a))
+
+# Inside the streams of enclosing combinators, the rest of the stream
+# depends on the secondary measure, so the kernel is evaluated also outside
+# of the support of the primary measure:
+
+function logdensityof_with_rest(μ::_BindBy{typeof(vcat)}, x::AbstractVector)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a_consumed(μ, a), x2)
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return ℓ_a + ℓ_b, x_μ, x_rest
+end
+
+function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
+    ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
+    ℓ_b, b, x_rest = logdensityof_with_rest(_get_β_a(μ, a), x2)
+    return ℓ_a + ℓ_b, merge(a, b), x_rest
+end
+
+# Batches of merge-bind variates are named tuples of batches: the primary
+# part is evaluated as a batch, the secondary part variate by variate.
+function batched_logdensityof_impl(μ::_BindBy{typeof(merge)}, X::NamedTuple)
+    X_α, X_β = _split_after(X, Val(_mspace_names(μ.α)))
+    _merge_bind_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
+end
+_merge_bind_ld(μ::Bind, ℓ_α::Number, a, b) = _bind_ld(ℓ_α, () -> logdensityof(_get_β_a(μ, a), b))
+function _merge_bind_ld(μ::Bind, ℓ_α::AbstractArray, X_α, X_β)
+    B = ndims(ℓ_α)
+    map(CartesianIndices(ℓ_α)) do i
+        _merge_bind_ld(μ, ℓ_α[i], _batch_row(X_α, i, B), _batch_row(X_β, i, B))
+    end
+end
+
+# The variate at index `i` of a batch with `B` batch dimensions:
+_batch_row(X::Union{Tuple,NamedTuple}, i::CartesianIndex, B::Integer) = map(Xc -> _batch_row(Xc, i, B), X)
+function _batch_row(X::AbstractArray, i::CartesianIndex, B::Integer)
+    ndims(X) == B ? X[i] : view(X, ntuple(_ -> Colon(), ndims(X) - B)..., Tuple(i)...)
+end
+
+function batched_logdensityof_with_rest(μ::Bind, x::AbstractVector, ::Tuple{})
+    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
+    return ℓ, x_rest
+end
+
+batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, X::AbstractArray) = map(Base.Fix1(logdensityof_impl, μ), sliced(X, Val(1)))
+
+# Batches of streams containing binds are consumed stream by stream (by
+# the outermost stream combinator, see `fixed_stream_size`):
+@noinline function batched_logdensityof_with_rest(::Bind, ::AbstractArray, ::SizeLike)
+    throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
+end
+batched_logdensityof_impl(μ::_BindBy{typeof(vcat)}, x::AbstractVector) = _bind_ld_impl(vcat, μ, x)
+
+
+function rand_impl(ctx::GenContext, μ::Bind)
+    a = rand_impl(ctx, μ.α)
+    b = rand_impl(ctx, _get_β_a(μ, a))
+    return _combine_variates(μ.f_c, a, b)
+end
+
+# The secondary measure depends on the primary variate, so batches are
+# generated variate by variate:
+batched_rand_impl(ctx::GenContext, μ::Bind, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
+
+
+# Transport consumes the variate parts of the primary and secondary
+# measure in a single pass, analogous to density evaluation:
+
+transport_to_std(::Type{S}, μ::Bind, ab) where {S<:StdMeasure} = _bind_to_std(S, μ.f_c, μ, ab)
+
+function _bind_to_std(::Type{S}, f_c, μ::Bind, ab) where {S}
+    tpm_α, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
+    vcat(_as_stdstream(transport_to_std(S, tpm_α, a)), _as_stdstream(transport_to_std(S, _get_β_a(μ, a), b)))
+end
+
+function _bind_to_std(::Type{S}, ::Union{typeof(vcat),typeof(merge)}, μ::Bind, ab) where {S}
+    z, _, x_rest = transport_to_std_with_rest(S, μ, ab)
+    if !isempty(x_rest)
+        throw(ArgumentError("Variate too long during transport of a bind"))
+    end
+    return z
+end
+
+function transport_to_std_with_rest(::Type{S}, μ::_BindBy{typeof(vcat)}, x::AbstractVector) where {S<:StdMeasure}
+    z_a, a, x2 = transport_to_std_with_rest(S, μ.α, x)
+    z_b, _, x_rest = transport_to_std_with_rest(S, _get_β_a_consumed(μ, a), x2)
+    x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
+    return vcat(z_a, z_b), x_μ, x_rest
+end
+
+function transport_to_std_with_rest(::Type{S}, μ::_BindBy{typeof(merge)}, x::NamedTuple) where {S<:StdMeasure}
+    z_a, a, x2 = transport_to_std_with_rest(S, μ.α, x)
+    z_b, b, x_rest = transport_to_std_with_rest(S, _get_β_a(μ, a), x2)
+    return vcat(z_a, z_b), merge(a, b), x_rest
+end
+
+function transport_from_std_with_rest(::Type{S}, μ::Bind, z::AbstractVector) where {S<:StdMeasure}
+    a, z2 = transport_from_std_with_rest(S, μ.α, z)
+    b, z_rest = transport_from_std_with_rest(S, _get_β_a(μ, a), z2)
+    return _combine_variates(μ.f_c, a, b), z_rest
+end
+
+function transport_from_std(::Type{S}, μ::Bind, z::AbstractVector) where {S<:StdMeasure}
+    x, z_rest = transport_from_std_with_rest(S, μ, z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return x
+end
+
+# The secondary measure depends on the primary variate, so batches of
+# streams are consumed stream by stream (by the outermost stream
+# combinator, see `fixed_stream_size`):
+function batched_transport_to_std_with_rest(::Type{S}, μ::Bind, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
+    _bind_to_std_with_rest(S, μ, X, sz)
+end
+function _bind_to_std_with_rest(::Type{S}, μ::Bind, x::AbstractVector, ::Tuple{}) where {S}
+    z, _, x_rest = transport_to_std_with_rest(S, μ, x)
+    return z, x_rest
+end
+@noinline function _bind_to_std_with_rest(::Type{S}, ::Bind, ::AbstractArray, ::SizeLike) where {S}
+    throw(ArgumentError("Batches of variate streams containing binds must be consumed stream by stream"))
 end
