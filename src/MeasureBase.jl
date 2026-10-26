@@ -207,6 +207,9 @@ include("primitives/lebesgue.jl")
 include("primitives/dirac.jl")
 include("primitives/trivial.jl")
 
+include("combinators/transformedmeasure.jl")
+include("combinators/reshape.jl")
+
 include("standard/stduniform.jl")
 include("standard/stdexponential.jl")
 include("standard/stdlogistic.jl")
