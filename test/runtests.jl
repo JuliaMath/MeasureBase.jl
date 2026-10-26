@@ -9,6 +9,7 @@ using MeasureBase.Interface: test_interface, test_smf
 
 include("test_aqua.jl")
 
+
 include("test_primitive.jl")
 include("test_standard.jl")
 include("test_basics.jl")
@@ -60,3 +61,5 @@ if Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.pr
     Base.identify_package("Reactant") === nothing && Pkg.add("Reactant")
     include("test_reactant.jl")
 end
+
+include("test_docs.jl")
