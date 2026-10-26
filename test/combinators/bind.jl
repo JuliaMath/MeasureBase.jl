@@ -1,0 +1,274 @@
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
+
+using Test
+
+using Random
+using StableRNGs: StableRNG
+using AffineMaps: Mul
+
+using MeasureBase
+using MeasureBase: StdExponential, StdNormal, StdUniform
+using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
+using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
+using MeasureBase: superpose, massof, mcombine
+import OneTwoMany
+
+# A value combination function with a specialized split:
+struct _SwapCombine <: Function end
+(::_SwapCombine)(a, b) = (b, a)
+MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tuple{Any,Any}) =
+    (MeasureBase.transportmeasure(α, ba[2]), ba[2], ba[1])
+
+@testset "bind" begin
+    stblrng() = StableRNG(789990641)
+
+    f_β(σ) = pushfwd(Mul(σ + 0.5), StdNormal())
+    α = StdExponential()
+
+    @testset "monadic bind" begin
+        μ = mbind(f_β, α)
+        @test μ isa MeasureBase.Bind
+        @test boundmeasure(μ) === α
+        @test bindkernel(μ) isa MeasureBase.MKernel
+        @test mbind(bindkernel(μ), α) == μ
+        @test mbind(f_β)(α) == μ
+
+        a = rand(stblrng(), Float64, α)
+        b = rand(copy(stblrng()), Float64, μ)  # not comparable directly, just smoke:
+        @test rand(stblrng(), Float64, μ) isa Real
+
+        @test MeasureBase.insupportof(μ, 0.4) isa MeasureBase.NoFastInsupport
+        @test MeasureBase.getdof(μ) isa MeasureBase.NoDOF
+        @test_throws ArgumentError basemeasure(μ)
+        @test_throws ArgumentError MeasureBase.rootmeasure(μ)
+    end
+
+    @testset "mbind with tuple and Pair" begin
+        for f_c in (tuple, Pair)
+            μ = mbind(f_β, α, f_c)
+            ab = rand(stblrng(), Float64, μ)
+            a, b = f_c === tuple ? ab : (ab.first, ab.second)
+            @test logdensityof(μ, ab) ≈ logdensityof(α, a) + logdensityof(f_β(a), b)
+
+            tpm = transportmeasure(μ, ab)
+            @test logdensityof(tpm, ab) ≈ logdensityof(μ, ab)
+            @test localmeasure(μ, ab) == tpm
+        end
+    end
+
+    @testset "mbind with vcat" begin
+        αv = StdExponential()^1
+        f_βv(a) = pushfwd(Mul(a[1] + 0.5), StdNormal())^2
+        μ = mbind(f_βv, αv, vcat)
+
+        xy = rand(stblrng(), Float64, μ)
+        @test xy isa AbstractVector{<:Real} && length(xy) == 3
+        a, b = xy[1:1], xy[2:3]
+        @test logdensityof(μ, xy) ≈ logdensityof(αv, a) + logdensityof(f_βv(a), b)
+
+        # Transport to and from a standard measure, dof of μ is not fast-computable:
+        y = transport_to(StdUniform()^3, μ)(xy)
+        @test y isa AbstractVector{<:Real} && length(y) == 3
+        @test all(u -> 0 <= u <= 1, y)
+        xy_reco = transport_to(μ, StdUniform()^3)(y)
+        @test xy_reco ≈ xy
+
+        # Streams too short for the primary variate:
+        μs = mbind(x -> StdNormal()^2, StdNormal(), vcat)
+        @test_throws ArgumentError logdensityof(μs, Float64[])
+        @test_throws ArgumentError transport_to(StdUniform()^3, μs)(Float64[])
+
+        # Transport between two measures of unknown DOF (standard pivot):
+        μ2 = mbind(f_βv, StdUniform()^1, vcat)
+        xy2 = transport_to(μ2, μ)(xy)
+        @test xy2 isa AbstractVector{<:Real} && length(xy2) == 3
+        @test transport_to(μ, μ2)(xy2) ≈ xy
+        @test logdensityof(μ2, xy2) isa Real
+
+        # Transport between known-DOF and unknown-DOF measures (standard pivot):
+        ν_known = productmeasure((StdNormal(), StdNormal(), StdNormal()))
+        z = transport_to(ν_known, μ)(xy)
+        @test z isa Tuple{Vararg{Real,3}}
+        @test collect(transport_to(μ, ν_known)(z)) ≈ xy
+
+        # DOF mismatches must not go unnoticed:
+        @test_throws ArgumentError transport_to(StdUniform()^5, μ)(xy)
+        @test_throws ArgumentError transport_to(StdUniform()^2, μ)(xy)
+
+        # Scalar-variate primary measures work in vcat streams:
+        f_βs(a) = pushfwd(Mul(abs(a) + 0.5), StdNormal())^2
+        μsc = mbind(f_βs, StdExponential(), vcat)
+        xys = rand(stblrng(), Float64, μsc)
+        @test xys isa AbstractVector{<:Real} && length(xys) == 3
+        @test logdensityof(μsc, xys) ≈
+              logdensityof(StdExponential(), xys[1]) + logdensityof(f_βs(xys[1]), xys[2:3])
+        ysc = transport_to(StdUniform()^3, μsc)(xys)
+        @test transport_to(μsc, StdUniform()^3)(ysc) ≈ xys
+
+        # Nested binds evaluate in a single with-rest pass:
+        μnest = mbind(f_βv, μ, vcat)
+        xyz = rand(stblrng(), Float64, μnest)
+        @test length(xyz) == 5
+        an, bn = xyz[1:3], xyz[4:5]
+        @test logdensityof(μnest, xyz) ≈ logdensityof(μ, an) + logdensityof(f_βv(an), bn)
+
+        # Variates that are too long must not go unnoticed:
+        @test_throws ArgumentError logdensityof(μ, vcat(xy, [0.5]))
+
+        # Products of same-typed unknown-DOF marginals transport type-stably:
+        P = productmeasure([μ, μ])
+        yP = rand(stblrng(), Float64, P)
+        z = transport_to(StdUniform()^6, P)(yP)
+        @test z isa AbstractVector{<:Real} && length(z) == 6
+        yP_reco, rest = MeasureBase.transport_from_std_with_rest(StdUniform, P, z)
+        @test yP_reco isa Vector{<:AbstractVector{Float64}}
+        @test yP_reco ≈ yP && isempty(rest)
+        @test logdensityof(P, yP) ≈ logdensityof(μ, yP[1]) + logdensityof(μ, yP[2])
+
+        # Products with value-dependent marginal sizes, in all marginal
+        # container flavors:
+        Pt = productmeasure((μ, μ))
+        yt = rand(stblrng(), Float64, Pt)
+        @test logdensityof(Pt, yt) ≈ logdensityof(μ, yt[1]) + logdensityof(μ, yt[2])
+        zt = transport_to(StdUniform()^6, Pt)(yt)
+        yt_reco = transport_to(Pt, StdUniform()^6)(zt)
+        @test all(map(≈, yt_reco, yt))
+
+        Pnt = productmeasure((a = StdNormal(), b = μ))
+        ynt = rand(stblrng(), Float64, Pnt)
+        @test logdensityof(Pnt, ynt) ≈
+              logdensityof(StdNormal(), ynt.a) + logdensityof(μ, ynt.b)
+        znt = transport_to(StdUniform()^4, Pnt)(ynt)
+        ynt_reco = transport_to(Pnt, StdUniform()^4)(znt)
+        @test ynt_reco.a ≈ ynt.a && ynt_reco.b ≈ ynt.b
+    end
+
+    @testset "primary variate layout in vcat streams" begin
+        N, E = StdNormal(), StdExponential()
+        U(n) = StdUniform()^n
+        # The kernel records the primary variates it sees:
+        function check_layout(α, f, n, a_ref)
+            seen = Any[]
+            B = mbind(a -> (push!(seen, a); f(a)), α, vcat)
+            x = rand(stblrng(), B)
+            ℓ_ref = logdensityof(α, a_ref(x)) + logdensityof(f(a_ref(x)), x[(n + 1):end])
+            @test logdensityof(B, x) ≈ ℓ_ref
+            u = transport_to(U(length(x)), B)(x)
+            @test transport_to(B, U(length(x)))(u) ≈ x
+            flat(a::Number) = [a]
+            flat(a) = reduce(vcat, [flat(ai) for ai in a])
+            @test all(a -> flat(a) ≈ flat(first(seen)), seen)
+            @test all(a -> typeof(a).name === typeof(first(seen)).name, seen)
+        end
+        # Nested powers give arrays of arrays:
+        check_layout((N^2)^3, a -> N^length(a), 6, x -> [x[1:2], x[3:4], x[5:6]])
+        # Tuple products give tuples:
+        check_layout(productmeasure((N, E^2)), a -> N^(length(a[2]) + 1), 3, x -> (x[1], x[2:3]))
+        # Powers of tuple products give struct arrays of tuples:
+        P3 = productmeasure((N, E))^3
+        check_layout(P3, a -> N^length(a), 6, x -> rand(stblrng(), P3))
+    end
+
+    @testset "mbind with merge" begin
+        αnt = productmeasure((position = StdNormal(),))
+        f_βnt(a) = productmeasure((
+            noise = pushfwd(Mul(abs(a.position) + 0.5), StdExponential()),
+        ))
+        μ = mbind(f_βnt, αnt, merge)
+
+        x = rand(stblrng(), Float64, μ)
+        @test x isa NamedTuple{(:position, :noise)}
+        @test logdensityof(μ, x) ≈
+              logdensityof(αnt, (position = x.position,)) +
+              logdensityof(f_βnt(x), (noise = x.noise,))
+
+        y = transport_to(StdUniform()^2, μ)(x)
+        @test y isa AbstractVector{<:Real} && length(y) == 2
+        x_reco = transport_to(μ, StdUniform()^2)(y)
+        @test x_reco.position ≈ x.position && x_reco.noise ≈ x.noise
+
+        # Stream names come from the measures where they are declared, so
+        # primary measures without random variates are fine:
+        αr = productmeasure((position = MeasureBase.restrict(x -> x > 0, StdNormal()),))
+        μr = mbind(f_βnt, αr, merge)
+        @test logdensityof(μr, (position = 0.3, noise = 0.2)) ≈
+              logdensityof(StdNormal(), 0.3) + logdensityof(f_βnt((position = 0.3,)), (noise = 0.2,))
+        @test logdensityof(μr, (position = -0.3, noise = 0.2)) == -Inf
+        @test logdensities(μr, (position = [0.3, -0.3], noise = [0.2, 0.2])) ≈
+              [logdensityof(μr, (position = 0.3, noise = 0.2)), -Inf]
+    end
+
+    @testset "densities outside of the primary support" begin
+        # `log` throws for negative primary variates, the kernel must not be
+        # evaluated there:
+        k(a) = weightedmeasure(log(a), StdNormal())
+        ℓ(a, b) = -a + log(a) + logdensityof(StdNormal(), b)
+        for f_c in (tuple, Pair)
+            μ = mbind(k, α, f_c)
+            @test logdensityof(μ, f_c(-1.0, 0.0)) == -Inf
+            @test logdensityof(μ, f_c(2.0, 0.5)) ≈ ℓ(2.0, 0.5)
+        end
+        μ_v = mbind(k, α, vcat)
+        @test logdensityof(μ_v, [-1.0, 0.0]) == -Inf
+        @test logdensities(μ_v, [-1.0 2.0; 0.0 0.5]) ≈ [-Inf, ℓ(2.0, 0.5)]
+        μ_m = mbind(a -> productmeasure((b = k(a.a),)), productmeasure((a = α,)), merge)
+        @test logdensityof(μ_m, (a = -1.0, b = 0.0)) == -Inf
+        @test logdensities(μ_m, (a = [-1.0, 2.0], b = [0.0, 0.5])) ≈ [-Inf, ℓ(2.0, 0.5)]
+    end
+
+    @testset "custom value combination functions" begin
+        μ = mbind(f_β, α, _SwapCombine())
+        ba = rand(stblrng(), μ)
+        @test logdensityof(μ, ba) ≈ logdensityof(mbind(f_β, α, tuple), (ba[2], ba[1]))
+        f = transport_to(StdUniform()^2, μ)
+        @test f(ba) ≈ transport_to(StdUniform()^2, mbind(f_β, α, tuple))((ba[2], ba[1]))
+        @test_throws ArgumentError logdensityof(mbind(f_β, α, (a, b) -> a + b), 1.0)
+    end
+
+    @testset "kernel accessors" begin
+        kernelmeasure, valuecombinator = MeasureBase.kernelmeasure, MeasureBase.valuecombinator
+        μ = mbind(f_β, α, tuple)
+        f_k = bindkernel(μ)
+        @test kernelmeasure(f_k, 0.7) == f_β(0.7)
+        @test kernelmeasure(f_β, 0.7) == f_β(0.7)
+        @test kernelmeasure(mkernel(f_β), 0.7) == f_β(0.7)
+        # The kernel itself returns the combined measure, `kernelmeasure` not:
+        @test f_k(0.7) == mcombine(tuple, MeasureBase.Dirac(0.7), f_β(0.7))
+        @test kernelmeasure(a -> StdNormal(), 0.7) === StdNormal()
+        @test valuecombinator(μ) === tuple
+        @test valuecombinator(f_k) === tuple
+        @test valuecombinator(mkernel(f_β)) === OneTwoMany.secondarg
+        @test valuecombinator(mbind(f_β, α, vcat)) === vcat
+
+        ab = rand(stblrng(), Float64, μ)
+        @test logdensityof(μ, ab) ≈
+              logdensityof(boundmeasure(μ), ab[1]) + logdensityof(kernelmeasure(f_k, ab[1]), ab[2])
+    end
+
+    @testset "mbind with Dirac" begin
+        @test mbind(f_β, MeasureBase.Dirac(1.5)) == asmeasure(f_β(1.5))
+        μ = mbind(f_β, MeasureBase.Dirac(1.5), tuple)
+        ab = rand(stblrng(), Float64, μ)
+        @test ab[1] == 1.5
+    end
+
+    @testset "masses of binds and projections" begin
+        D = MeasureBase.Dirac
+        k(x) = (1 + 8x) * D(x)
+        # On finite spaces, the mass is the sum of the densities over the atoms:
+        a = superpose(2D(0.0), 3D(1.0))
+        μ = mbind(k, a, tuple)
+        @test massof(μ) ≈ 2 * 1 + 3 * 9
+        @test sum(x -> exp(logdensityof(μ, (x, x))), (0.0, 1.0)) ≈ massof(μ)
+        μ1 = mbind(k, a, OneTwoMany.firstarg)
+        @test massof(μ1) ≈ massof(μ)
+        @test sum(x -> exp(logdensityof(μ1, x)), (0.0, 1.0)) ≈ massof(μ1)
+        @test massof(mbind(x -> 3D(1.0), 2D(0.0), OneTwoMany.firstarg)) ≈ 6
+        @test logdensityof(mbind(x -> 2 * StdNormal(), α, OneTwoMany.firstarg), 0.3) ≈ log(2) + logdensityof(α, 0.3)
+        @test massof(mbind(f_β, α)) isa MeasureBase.UnknownMass
+        # Ancestral sampling of the normalized laws of the components, the
+        # primary variates follow the normalized law of `a`:
+        rng = stblrng()
+        @test count(_ -> rand(rng, μ)[1] == 1, 1:2000) / 2000 ≈ 3 / 5 atol = 0.05
+    end
+end
