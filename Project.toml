@@ -1,6 +1,6 @@
 name = "MeasureBase"
 uuid = "fa1605e6-acd5-459c-a1e6-7e635759db14"
-version = "0.14.12"
+version = "0.15.0"
 authors = ["Chad Scherrer <chad.scherrer@gmail.com>", "Oliver Schulz <oschulz@mpp.mpg.de>", "contributors"]
 
 [deps]
