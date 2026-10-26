@@ -2,27 +2,40 @@ import LinearAlgebra: normalize
 
 import Base
 
+"""
+    abstract type MeasureBase.AbstractUnknownMass <: Number
+
+Supertype of [`UnknownFiniteMass`](@ref) and [`UnknownMass`](@ref), the
+results of [`massof`](@ref) when the mass of a measure is not known.
+"""
 abstract type AbstractUnknownMass <: Number end
 
 """
-    struct UnknownFiniteMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownFiniteMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is finite but unknown. See [`massof`](@ref).
 """
 struct UnknownFiniteMass <: AbstractUnknownMass end
 
 """
-    struct UnknownMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is unknown, possibly infinite. See [`massof`](@ref).
 """
 struct UnknownMass <: AbstractUnknownMass end
 
 for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
+        Base.:+(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:+(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
         Base.:*(::$T, ::$T) = $T()
-        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+        Base.:*(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:*(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
+        # Disambiguation:
+        Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Rational) = isfinite(k) ? $T() : UnknownMass()
     end
 end
 
@@ -44,8 +57,6 @@ export massof
 
 Get the _mass_ of a measure - that is, integrate the measure over its support.
 
-`massof` 
-
 ----------
 
     massof(m, dom)
@@ -62,26 +73,20 @@ LebesgueBase()`, users can call `massof(m, a_b)` where
 
 `massof` often returns a `Real`. But in many cases we may only know the mass is
 finite, or we may know nothing at all about it. For these cases, it will return
-`UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
-exists, it defaults to `UnknownMass`.
+[`UnknownFiniteMass()`](@ref UnknownFiniteMass) or [`UnknownMass()`](@ref UnknownMass),
+respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
+
+`massof` must be type stable. Types of normalized measures should return
+`static(1.0)`, [`normalize`](@ref) then returns them as they are. Transport
+Jacobians are density ratios of normalized measures, they require known
+masses.
 """
-massof(m::AbstractMeasure) = UnknownMass(m)
+massof(::AbstractMeasure) = UnknownMass()
 
-struct NormalizedMeasure{P,M} <: AbstractMeasure
-    parent::P
-    parent_mass::M
-end
-
-massof(m::NormalizedMeasure) = static(1.0)
-
-normalize(m::AbstractMeasure) = _normalize(m, massof(m))
-
-_normalize(m::AbstractMeasure, mass::AbstractUnknownMass) = NormalizedMeasure(m, mass)
-
-function _normalize(m::AbstractMeasure, mass)
-    isinf(mass) && error("Measure cannot be normalized: $m")
-    inv(mass) * m
-end
+# The log of a known mass, densities that involve unknown masses are unknown:
+@inline _logmass(mass::Real) = log(dynamic(mass))
+@noinline _logmass(::AbstractUnknownMass) =
+    throw(ArgumentError("Density depends on a measure of unknown mass"))
 
 export isnormalized
 
@@ -102,10 +107,10 @@ Check whether `norm(x, p) == 1`.
 """
 isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
-isone(::AbstractUnknownMass) = false
+Base.isone(::AbstractUnknownMass) = false
 
 function massof(m, s)
-    _massof(m, s, rootmeasure(m))
+    _default_massof_impl(m, s, rootmeasure(m))
 end
 
 """
@@ -116,4 +121,20 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+function massof(μ, a_b::AbstractInterval)
+    lo, hi = endpoints(a_b)
+    _smf_interval_massof(μ, smf(μ, lo), smf(μ, hi), csmf(μ, lo), csmf(μ, hi))
+end
+
+# Via the complementary Stieltjes measure function in the upper tail:
+function _smf_interval_massof(μ, smf_lo, smf_hi, csmf_lo, csmf_hi)
+    _select(_upper_side(smf_hi, csmf_lo), () -> csmf_lo - csmf_hi, () -> smf_hi - smf_lo)
+end
+
+function _smf_interval_massof(μ, ::NoSMF, ::NoSMF, ::Any, ::Any)
+    throw(
+        ArgumentError(
+            "Can't compute the mass over an interval for a measure of type $(nameof(typeof(μ))), no statistical measure function available",
+        ),
+    )
+end

@@ -1,5 +1,15 @@
 export ParameterizedMeasure
 
+"""
+    abstract type ParameterizedMeasure{N} <: AbstractMeasure
+
+Supertype of measures with named parameters `N`, stored as a `NamedTuple`
+in a field `par`.
+
+Subtypes `M{N,T} <: ParameterizedMeasure{N}` can be constructed as `M(nt)`
+or with positional parameters `M{N}(args...)`, and support `paramsof`,
+[`paramnames`](@ref) and property access to the parameters.
+"""
 abstract type ParameterizedMeasure{N} <: AbstractMeasure end
 
 function Base.getproperty(μ::ParameterizedMeasure{N}, prop::Symbol) where {N}
@@ -24,27 +34,6 @@ function Pretty.tile(d::ParameterizedMeasure{()})
     result
 end
 
-# Allow things like
-#
-# julia> Normal{(:μ,)}(2)
-# Normal(μ = 2,)
-function kernel(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    C = constructorof(P)
-    _kernel(C, Val(N))
-end
-
-@inline function _kernel(::Type{C}, ::Val{N}) where {C,N}
-    @inline function f(args::T) where {T<:Tuple}
-        C(NamedTuple{N,T}(args))::C{N,T}
-    end
-
-    @inline function f(arg::T) where {T}
-        C(NamedTuple{N,Tuple{T}}((arg,)))::C{N,Tuple{T}}
-    end
-
-    kernel(f)
-end
-
 function (::Type{P})(nt::NamedTuple{K,T}) where {K,T,N,P<:ParameterizedMeasure{N}}
     C = constructorof(P)
     arg = NamedTuple{N}(nt)
@@ -64,32 +53,35 @@ function ConstructionBase.setproperties(
     d::P,
     nt::NamedTuple,
 ) where {P<:ParameterizedMeasure}
-    return constructorof(P)(merge(params(d), nt))
+    return constructorof(P)(merge(paramsof(d), nt))
 end
 
 ###############################################################################
-# params
+# paramsof
 
-export params
+export paramsof
 
 """
-`params(μ)` returns the parameters of a measure `μ`, as a `NamedTuple`. The
+`paramsof(μ)` returns the parameters of a measure `μ`, as a `NamedTuple`. The
 default method is
 ```
-params(μ) = NamedTuple()
+paramsof(μ) = NamedTuple()
 ```
 
 See also `paramnames`
 """
-function params end
+function paramsof end
 
-params(μ::ParameterizedMeasure) = getfield(μ, :par)
+@deprecate params(μ) paramsof(μ)
+@deprecate params(μ, constraints) paramsof(μ, constraints)
 
-function params(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C}
-    NamedTuple{paramnames(μ, constraints)}(params(μ))
+paramsof(μ::ParameterizedMeasure) = getfield(μ, :par)
+
+function paramsof(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C}
+    NamedTuple{paramnames(μ, constraints)}(paramsof(μ))
 end
 
-params(μ) = NamedTuple()
+paramsof(μ) = NamedTuple()
 
 ###############################################################################
 # paramnames
@@ -99,7 +91,7 @@ export paramnames
 """
 `paramnames(μ)` returns the names of the parameters of `μ`. This is equivalent to 
 ```
-paramnames(μ) == (keys ∘ params)(μ)
+paramnames(μ) == (keys ∘ paramsof)(μ)
 ```
 but depends only on the type. In particular, the default implementation is
 ```
@@ -112,7 +104,7 @@ other measures, this method is optional, but can be added by defining
 paramnames(::Type{M}) where {M} = ...
 ```
 
-See also `params`
+See also `paramsof`
 """
 function paramnames end
 
@@ -122,19 +114,6 @@ paramnames(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
 
 paramnames(μ::AbstractMeasure) = propertynames(μ)
 
-params(::Type{PM}) where {N,PM<:ParameterizedMeasure{N}} = N
-
 function paramnames(μ, constraints::NamedTuple{N}) where {N}
     tuple((k for k in paramnames(μ) if k ∉ N)...)
-end
-
-###############################################################################
-# kernelfactor
-
-function kernelfactor(::Type{P}) where {N,P<:ParameterizedMeasure{N}}
-    (constructorof(P), N)
-end
-
-function kernelfactor(::P) where {N,P<:ParameterizedMeasure{N}}
-    (constructorof(P), N)
 end

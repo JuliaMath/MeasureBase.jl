@@ -185,9 +185,13 @@ using IrrationalConstants
 using IrrationalConstants: loghalf
 
 include("collection_utils.jl")
+include("smf.jl")
 include("mspace.jl")
 include("getdof.jl")
+include("proxies.jl")
+include("parameterized.jl")
 include("domains.jl")
+include("mass-interface.jl")
 
 #include("implicitmaps.jl")
 
