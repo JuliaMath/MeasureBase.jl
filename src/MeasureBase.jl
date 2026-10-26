@@ -148,6 +148,7 @@ using LogExpFunctions: logsumexp, logistic, logit
 
 @deprecate instance_type(x) Core.Typeof(x) false
 
+
 """
 `logdensity_def` is the standard way to define a log-density for a new measure.
 Note that this definition does not include checking for membership in the
@@ -196,6 +197,7 @@ include("parameterized.jl")
 include("domains.jl")
 include("primitive.jl")
 include("utils.jl")
+include("special-derivatives.jl")
 include("mass-interface.jl")
 
 include("density.jl")
