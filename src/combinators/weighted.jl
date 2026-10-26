@@ -1,37 +1,73 @@
 export WeightedMeasure, AbstractWeightedMeasure
 
 """
-    struct WeightedMeasure{R,M} <: AbstractMeasure
-        logweight :: R
-        base :: M
-    end
-"""
+    abstract type AbstractWeightedMeasure <: AbstractMeasure
 
+Supertype of measures that are constant multiples of their base measure,
+like [`WeightedMeasure`](@ref) and [`NormalizedMeasure`](@ref). They
+sample and transport like their base measure.
+"""
 abstract type AbstractWeightedMeasure <: AbstractMeasure end
 
 # By default the weight for all measure is 1
 _logweight(::AbstractMeasure) = 0
+_logweight(μ::AbstractWeightedMeasure) = μ.logweight
 
-@inline function logdensity_def(d::AbstractWeightedMeasure, _)
-    d.logweight
+@inline logdensity_def(d::AbstractWeightedMeasure, x) = _logweight_for(_logweight(d), x)
+
+# Plain floating-point log-weights adopt the number type of the variate,
+# log-weights that carry more information (dual numbers, traced values)
+# promote as usual:
+@inline _logweight_for(w, x) = w
+@inline _logweight_for(w::Union{AbstractFloat,StaticFloat64}, x) = _logd_numtype(x)(dynamic(w))
+
+# The weight-shifted density of a support-safe base density is support-safe,
+# no explicit support check required:
+@inline function logdensityof_impl(d::AbstractWeightedMeasure, x)
+    _add_logweight(_logweight_for(_logweight(d), x), logdensityof_impl(basemeasure(d), x))
 end
 
-function Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractWeightedMeasure) where {T}
-    rand(rng, T, basemeasure(μ))
+@inline function batched_logdensityof_impl(d::AbstractWeightedMeasure, X)
+    _lazy_add_logweight(_logweight_for(_logweight(d), X), batched_logdensityof_impl(basemeasure(d), X))
 end
+
+# A zero weight gives zero densities, also where the base density is
+# infinite:
+@inline _add_logweight(ℓ_w, ℓ) = (y = ℓ_w + ℓ; ifelse(isneginf(ℓ_w), oftype(y, ℓ_w), y))
+@inline _lazy_add_logweight(ℓ_w, ℓ::Number) = _add_logweight(ℓ_w, ℓ)
+@inline _lazy_add_logweight(ℓ_w, ℓ) = Broadcast.instantiate(Broadcast.broadcasted(_add_logweight, ℓ_w, ℓ))
+@inline function batched_logdensity_def(d::AbstractWeightedMeasure, X)
+    _lazy_add(_logweight_for(_logweight(d), X), _zero_logd_batch(X, _stream_ndims(basemeasure(d))))
+end
+
+@inline rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure) = rand_impl(ctx, basemeasure(μ))
+@inline batched_rand_impl(ctx::GenContext, μ::AbstractWeightedMeasure, sz::SizeLike) =
+    batched_rand_impl(ctx, basemeasure(μ), sz)
 
 testvalue(::Type{T}, μ::AbstractWeightedMeasure) where {T} = testvalue(T, basemeasure(μ))
 
 ###############################################################################
 
+"""
+    struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
+        logweight :: R
+        base :: M
+    end
+"""
 struct WeightedMeasure{R,M} <: AbstractWeightedMeasure
     logweight::R
     base::M
 end
 
+@inline mspace_elsize(μ::WeightedMeasure) = mspace_elsize(μ.base)
+@inline mspace_flatsize(μ::WeightedMeasure) = mspace_flatsize(μ.base)
+@inline mspace_flatsize(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_flatsize(M)
+@inline mspace_ndims(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = mspace_ndims(M)
+@inline stream_ndims(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = stream_ndims(M)
+@inline fixed_stream_size(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = fixed_stream_size(M)
+
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
-_logweight(μ::WeightedMeasure) = μ.logweight
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
 function Pretty.tile(d::WeightedMeasure)
@@ -44,14 +80,61 @@ function Base.:*(k::T, m::AbstractMeasure) where {T<:Number}
     return weightedmeasure(logk, m)
 end
 
-Base.:*(m::AbstractMeasure, k::Real) = k * m
+Base.:*(m::AbstractMeasure, k::Number) = k * m
 
 gentype(μ::WeightedMeasure) = gentype(μ.base)
 
-insupport(μ::WeightedMeasure, x) = insupport(μ.base, x)
+insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 
-# TODO: Transports must preserve mass
-transport_origin(ν::WeightedMeasure) = ν.base
+# The Stieltjes measure function scales with the weight:
+smf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), smf(basemeasure(μ), x))
+invsmf(μ::AbstractWeightedMeasure, p) = invsmf(basemeasure(μ), p / exp(_logweight(μ)))
+csmf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), csmf(basemeasure(μ), x))
+invcsmf(μ::AbstractWeightedMeasure, p) = invcsmf(basemeasure(μ), p / exp(_logweight(μ)))
+logsmf(μ::AbstractWeightedMeasure, x) = _shifted_logsmf(_logweight(μ), logsmf(basemeasure(μ), x))
+logcsmf(μ::AbstractWeightedMeasure, x) = _shifted_logsmf(_logweight(μ), logcsmf(basemeasure(μ), x))
+invlogsmf(μ::AbstractWeightedMeasure, logp) = invlogsmf(basemeasure(μ), logp - _logweight(μ))
+invlogcsmf(μ::AbstractWeightedMeasure, logp) = invlogcsmf(basemeasure(μ), logp - _logweight(μ))
 
-to_origin(w::WeightedMeasure, y) = y
-from_origin(w::WeightedMeasure, x) = x
+@inline _scaled_smf(w, F) = w * F
+@inline _scaled_smf(w, F::NoSMF) = F
+@inline _shifted_logsmf(logw, logF) = logw + logF
+@inline _shifted_logsmf(logw, logF::NoSMF) = logF
+
+# Weighted measures transport like their base:
+@inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))
+@inline transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, x) where {S<:StdMeasure} =
+    transport_to_std(S, basemeasure(μ), x)
+@inline transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, z) where {S<:StdMeasure} =
+    transport_from_std(S, basemeasure(μ), z)
+@inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::AbstractVector) where {S<:StdMeasure} =
+    transport_to_std_with_rest(S, basemeasure(μ), x)
+@inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::NamedTuple) where {S<:StdMeasure} =
+    transport_to_std_with_rest(S, basemeasure(μ), x)
+@inline transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, z::AbstractVector) where {S<:StdMeasure} =
+    transport_from_std_with_rest(S, basemeasure(μ), z)
+
+@inline batched_transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, X) where {S<:StdMeasure} =
+    batched_transport_to_std(S, basemeasure(μ), X)
+@inline batched_transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
+    batched_transport_from_std(S, basemeasure(μ), Z)
+@inline batched_transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
+    batched_transport_to_std_with_rest(S, basemeasure(μ), X, sz)
+@inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
+    batched_transport_from_std_with_rest(S, basemeasure(μ), Z, sz)
+
+# Weighted measures have the variate layout of their base, also as bases of
+# (nested) powers and as marginals of products:
+@inline _pwr_unwrap(μ::AbstractWeightedMeasure) = _pwr_unwrap(basemeasure(μ))
+@inline _pwr_dims(μ::AbstractWeightedMeasure) = _pwr_dims(basemeasure(μ))
+@inline _pwr_variate(μ::AbstractWeightedMeasure, A::AbstractArray) = _pwr_variate(basemeasure(μ), A)
+@inline _pwr_variate(μ::AbstractWeightedMeasure, A::Union{Tuple,NamedTuple}) = _pwr_variate(basemeasure(μ), A)
+@inline _pwr_nest(μ::AbstractWeightedMeasure, B::AbstractArray) = _pwr_nest(basemeasure(μ), B)
+@inline _check_pwr_components(X, μ::AbstractWeightedMeasure, dims::Dims) = _check_pwr_components(X, basemeasure(μ), dims)
+@inline _batch_variates(Y, μ::AbstractWeightedMeasure) = _batch_variates(Y, basemeasure(μ))
+@inline _as_stream_batch(X::Union{Tuple,NamedTuple}, μ::AbstractWeightedMeasure) = _as_stream_batch(X, basemeasure(μ))
+@inline _stream_batch(μ::AbstractWeightedMeasure, R::AbstractArray) = _stream_batch(basemeasure(μ), R)
+@inline _stream_variate(μ::AbstractWeightedMeasure, a) = _stream_variate(basemeasure(μ), a)
+@inline _fixed_stream_length(μ::AbstractWeightedMeasure) = _fixed_stream_length(basemeasure(μ))
+
+Adapt.adapt_structure(to, μ::WeightedMeasure) = WeightedMeasure(μ.logweight, Adapt.adapt(to, μ.base))

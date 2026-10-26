@@ -1,13 +1,7 @@
-const EmptyNamedTuple = NamedTuple{(),Tuple{}}
-const NonEmptyTuple = Tuple{Any,Vararg{Any}}
-
 function Base.show(io::IO, μ::AbstractMeasure)
     io = IOContext(io, :compact => true)
     Pretty.pprint(io, μ)
 end
-
-showparams(io::IO, ::EmptyNamedTuple) = print(io, "()")
-showparams(io::IO, nt::NamedTuple) = print(io, nt)
 
 export testvalue
 
@@ -18,8 +12,6 @@ export testvalue
 testvalue(::Type{T}) where {T} = zero(T)
 
 export rootmeasure
-
-basemeasure(μ, x) = basemeasure(μ)
 
 """
     rootmeasure(μ::AbstractMeasure)
@@ -38,22 +30,9 @@ end
     foreach(1:n) do _
         push!(q.args, :(μ = basemeasure(μ)))
     end
+    push!(q.args, :(return μ))
     return q
 end
-
-# Base on the Tricks.jl README
-using Tricks
-struct Iterable end
-struct NonIterable end
-function isiterable(::Type{T}) where {T}
-    static_hasmethod(iterate, Tuple{T}) ? Iterable() : NonIterable()
-end
-
-# issingletontype(@nospecialize(t)) = (@_pure_meta; isa(t, DataType) && isdefined(t, :instance))
-
-# @generated function instance(::Type{T}) where {T}
-#     return getfield(T, :instance)::T
-# end
 
 function instance(::Type{T}) where {T}
     return getfield(T, :instance)::T
@@ -95,54 +74,6 @@ measure of the previous term, and with no repeated entries.
     return filter(!isnothing, Base.Cartesian.@ntuple 10 b)
 end
 
-commonbase(μ, ν) = commonbase(μ, ν, Any)
-
-"""
-    commonbase(μ, ν, T) -> Tuple{StaticInt{i}, StaticInt{j}}
-
-Find minimal (with respect to their sum) `i` and `j` such that there is a method
-
-    logdensity_def(basemeasure_sequence(μ)[i], basemeasure_sequence(ν)[j], ::T)
-
-This is used in `logdensity_rel` to help make that function efficient.
-"""
-@inline function commonbase(μ, ν, ::Type{T}) where {T}
-    return commonbase(basemeasure_sequence(μ), basemeasure_sequence(ν), T)
-end
-
-@generated function commonbase(μ::M, ν::N, ::Type{T}) where {M<:Tuple,N<:Tuple,T}
-    m = schema(M)
-    n = schema(N)
-
-    sols = Iterators.filter(
-        ((i, j),) -> static_hasmethod(logdensity_def, Tuple{m[i],n[j],T}),
-        Iterators.product(1:length(m), 1:length(n)),
-    )
-    isempty(sols) && return :(nothing)
-    minsol = static.(argmin(((i, j),) -> i + j, sols))
-    quote
-        $minsol
-    end
-end
-
-mymap(f, gen::Base.Generator) = mymap(f ∘ gen.f, gen.iter)
-mymap(f, inds...) = Iterators.map(f, inds...)
-
-function infer_zero(f, args...)
-    inferred_type = Core.Compiler.return_type(f, typeof.(args))
-    zero(typeintersect(AbstractFloat, inferred_type))
-end
-
-@inline function allequal(f, x::AbstractArray)
-    val = f(first(x))
-    @simd for xj in x
-        f(xj) == val || return false
-    end
-    return true
-end
-
-allequal(x::AbstractArray) = allequal(identity, x)
-
 rmap(f, x) = f(x)
 
 function rmap(f, t::Tuple)
@@ -153,12 +84,7 @@ function rmap(f, nt::NamedTuple{N,T}) where {N,T}
     NamedTuple{N}(map(x -> rmap(f, x), values(nt)))
 end
 
-insupport(m::AbstractMeasure) = Base.Fix1(insupport, m)
-
-@inline return_type(f, args::Tuple) = Core.Compiler.return_type(f, Tuple{typeof.(args)...})
-
-unstatic(::Type{T}) where {T} = T
-unstatic(::Type{StaticFloat64{X}}) where {X} = Float64
+insupportof(m::AbstractMeasure) = Base.Fix1(insupportof, m)
 
 using InverseFunctions: FunctionWithInverse
 
@@ -170,13 +96,88 @@ fcomp(::typeof(identity), g) = g
 fcomp(f, ::typeof(identity)) = f
 fcomp(::typeof(identity), ::typeof(identity)) = identity
 
-near_neg_inf(::Type{T}) where {T<:Real} = T(-1E38) # Still fits into Float32
+isneginf(x) = isinf(x) & (x < zero(x))
+isposinf(x) = isinf(x) & (x > zero(x))
 
-isneginf(x) = isinf(x) && x < zero(x)
-isposinf(x) = isinf(x) && x > zero(x)
+# `cond ? f_true() : f_false()` for plain booleans, so the value not selected
+# is never computed. Other conditions (traced or on devices) select
+# branch-free between both values:
+@inline _select(cond::Bool, f_true::F, f_false::G) where {F,G} = cond ? f_true() : f_false()
+@inline function _select(cond, f_true::F, f_false::G) where {F,G}
+    y = f_true()
+    ifelse(cond, y, oftype(y, f_false()))
+end
+@inline _select(::True, f_true::F, ::Any) where {F} = f_true()
+@inline _select(::False, ::Any, f_false::G) where {G} = f_false()
 
-isapproxzero(x::T) where {T<:Real} = x ≈ zero(T)
-isapproxzero(A::AbstractArray) = all(isapproxzero, A)
+containsnan(x::Number) = isnan(x)
+containsnan(x) = any(containsnan, x)
 
-isapproxone(x::T) where {T<:Real} = x ≈ one(T)
-isapproxone(A::AbstractArray) = all(isapproxone, A)
+
+# ForwardDiffPullbacks dummy `fwddiff`, overloaded by
+# ForwardDiffPullbacks extension when loaded:
+@inline _fwddiff(f) = f
+
+
+# Autodiff ignore:
+
+@inline _adignore_call(f) = f()
+
+macro _adignore(expr)
+    :(_adignore_call(() -> $(esc(expr))))
+end
+
+
+"""
+    MeasureBase.convert_realtype(::Type{T}, x) where {T<:Real}
+
+Convert the floating-point numbers in `x` to `T`. Other numbers, like
+integers and dual numbers, are kept as they are.
+"""
+function convert_realtype end
+
+@inline convert_realtype(::Type{T}, x::T) where {T<:Real} = x
+@inline convert_realtype(::Type{T}, x::AbstractFloat) where {T<:Real} = T(x)
+@inline convert_realtype(::Type{T}, x::Number) where {T<:Real} = x
+@inline convert_realtype(::Type{T}, x::AbstractArray{T}) where {T<:Real} = x
+convert_realtype(::Type{T}, x::AbstractArray{<:AbstractFloat}) where {T<:Real} = T.(x)
+@inline convert_realtype(::Type{T}, x::AbstractArray{<:Number}) where {T<:Real} = x
+convert_realtype(::Type{T}, x::Union{Tuple,NamedTuple}) where {T<:Real} =
+    map(Base.Fix1(convert_realtype, T), x)
+convert_realtype(::Type{T}, x::AbstractArray) where {T<:Real} =
+    map(Base.Fix1(convert_realtype, T), x)
+
+# Regularized incomplete gamma and beta functions and their inverses, with
+# the log-densities of the standard gamma and beta distributions for their
+# derivatives. Implemented in the Distributions extension, differentiated
+# in the autodiff extensions (see also `_gamma_cdf_dshape` and
+# `_beta_cdf_dshape`):
+function _gamma_cdf end
+function _gamma_ccdf end
+function _gamma_quantile end
+function _gamma_cquantile end
+function _beta_cdf end
+function _beta_quantile end
+function _gamma_logpdf end
+function _beta_logpdf end
+function _gamma_cdf_impl end
+function _gamma_ccdf_impl end
+function _gamma_quantile_impl end
+function _gamma_cquantile_impl end
+function _beta_cdf_impl end
+function _beta_quantile_impl end
+
+# The dual number type among the arguments of such a function, `Nothing`
+# for plain numbers (the ForwardDiff extension adds dual numbers):
+@inline _dualtag() = Nothing
+@inline _dualtag(::Number, rest::Number...) = _dualtag(rest...)
+
+# Distributions implementation hooks, specialized for dual numbers in the
+# ForwardDiff extension:
+function _trafo_logcdf_impl end
+function _trafo_logccdf_impl end
+function _trafo_quantile_impl end
+function _trafo_cquantile_impl end
+function _dist_quantile end
+function _dist_cquantile end
+function _dist_params_numtype end

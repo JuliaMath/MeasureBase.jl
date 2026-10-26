@@ -1,7 +1,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: insupport as measure_insupport
+using MeasureBase: insupportof as measure_insupport
 
 using DensityInterface: logdensityof
 
@@ -36,4 +36,41 @@ using DensityInterface: logdensityof
             end
         end
     end
+end
+
+using IntervalSets: (..)
+struct ProxiedUnitInterval <: MeasureBase.AbstractMeasure end
+MeasureBase.proxy(::ProxiedUnitInterval) = Lebesgue(0.0 .. 1.0)
+MeasureBase.@useproxy ProxiedUnitInterval
+
+@testset "Lebesgue measure on intervals and proxies" begin
+    L = Lebesgue(0.0 .. 2.0)
+    @test measure_insupport(L, 0.5) == true && measure_insupport(L, 2.5) == false
+    @test measure_insupport(L)(0.5) == true && measure_insupport(L)(-0.5) == false
+    @test logdensityof(L, 0.5) == 0 && logdensityof(L, -0.5) == -Inf
+    p = ProxiedUnitInterval()
+    @test measure_insupport(p, 0.5) == true && measure_insupport(p, 1.5) == false
+    @test measure_insupport(p)(0.5) == true && measure_insupport(p)(1.5) == false
+end
+
+@testset "Lebesgue measure on the standard simplex" begin
+    using Random: Xoshiro
+    using Statistics: mean, var
+    using MeasureBase: StdSimplex, getdof
+    @test [0.2, 0.3, 0.5] ∈ StdSimplex(3)
+    @test [0.2, 0.3, 0.6] ∉ StdSimplex(3) && [-0.2, 0.7, 0.5] ∉ StdSimplex(3) && [0.5, 0.5] ∉ StdSimplex(3)
+    L = Lebesgue(StdSimplex(3))
+    @test basemeasure(L) === L && rootmeasure(L) === L
+    @test getdof(L) == 2
+    # The coordinate measure of the triangle with unit legs, 1/(n - 1)! in general:
+    @test massof(L) == 1 / 2 && massof(Lebesgue(StdSimplex(5))) ≈ 1 / 24
+    @test logdensityof(L, [0.2, 0.3, 0.5]) == 0 && logdensityof(L, [0.2, 0.3, 0.6]) == -Inf
+    @test logdensities(L, [0.2 0.5 -0.1; 0.3 0.6 0.6; 0.5 0.1 0.5]) == [0, -Inf, -Inf]
+    @test_throws ArgumentError logdensityof(L, [0.5, 0.5])
+    # The normalized law is uniform on the simplex, Dirichlet(1, 1, 1):
+    X = MeasureBase.batched_rand_impl(MeasureBase.GenContext{Float64}(Xoshiro(42)), L, (10^4,))
+    @test size(X) == (3, 10^4) && all(x -> x ∈ StdSimplex(3), eachcol(X))
+    @test vec(mean(X; dims = 2)) ≈ fill(1 / 3, 3) atol = 0.01
+    @test vec(var(X; dims = 2)) ≈ fill(1 / 18, 3) atol = 0.005
+    @test testvalue(L) ≈ fill(1 / 3, 3)
 end
