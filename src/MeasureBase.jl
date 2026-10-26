@@ -202,6 +202,16 @@ include("density.jl")
 include("density-core.jl")
 include("density-batched.jl")
 
+include("primitives/counting.jl")
+include("primitives/lebesgue.jl")
+include("primitives/dirac.jl")
+include("primitives/trivial.jl")
+
+include("standard/stduniform.jl")
+include("standard/stdexponential.jl")
+include("standard/stdlogistic.jl")
+include("standard/stdnormal.jl")
+
 #include("implicitmaps.jl")
 
 end # module MeasureBase
