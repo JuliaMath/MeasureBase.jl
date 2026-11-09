@@ -281,7 +281,7 @@ using .Interface
     # Masses:
     AbstractUnknownMass, UnknownMass, UnknownFiniteMass,
     # Measure types and accessors:
-    pwr_base, pwr_axes, pwr_size, DensityMeasure, AsMeasure, StdSimplex,
+    pwr_base, pwr_axes, pwr_size, atomof, DensityMeasure, AsMeasure, StdSimplex,
     transportmeasure, tpmeasure_split_combined,
     Bind, MKernel, kernelmeasure, valuecombinator, combinedmeasures,
     gettransform, TransformVolCorr, NoVolCorr, WithVolCorr,
