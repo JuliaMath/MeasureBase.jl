@@ -70,6 +70,28 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
         end
     end
 
+    @testset "mixed precision" begin
+        # Float32 shape parameters with Float64 variates and vice versa,
+        # against closed forms: the Gamma(2) density is x e^(-x), the Beta(2, 3)
+        # density 12 x (1 - x)^2, and the cdf of Beta(a, 2) is x^a (a + 1 - a x):
+        @test _mooncake_gradient(x -> transport_to(StdUniform(), asmeasure(Gamma(2f0, 1f0)))(x), 0.7) ≈ 0.7 * exp(-0.7)
+        q = quantile(Gamma(2.0), 0.3)
+        @test _mooncake_gradient(u -> transport_to(asmeasure(Gamma(2f0, 1f0)), StdUniform())(u), 0.3) ≈ inv(q * exp(-q)) rtol = 1e-6
+        @test _mooncake_gradient(x -> transport_to(StdUniform(), asmeasure(Beta(2f0, 3f0)))(x), 0.3) ≈ 12 * 0.3 * 0.7^2 rtol = 1e-6
+        q = quantile(Beta(2.0, 3.0), 0.3)
+        @test _mooncake_gradient(u -> transport_to(asmeasure(Beta(2f0, 3f0)), StdUniform())(u), 0.3) ≈ inv(12 * q * (1 - q)^2) rtol = 1e-6
+
+        q = quantile(Beta(2.0, 2.0), 0.3)
+        dF_da = q^2 * log(q) * (3 - 2q) + q^2 * (1 - q)
+        dF_dq = 6 * q * (1 - q)
+        ∂a = _mooncake_gradient(a -> transport_to(asmeasure(Beta(a, 2f0)), StdUniform())(0.3), 2f0)
+        @test ∂a isa Float32
+        @test ∂a ≈ -dF_da / dF_dq rtol = 1e-5
+        P = a -> cdf(Gamma(a), 0.7)
+        @test _mooncake_gradient(a -> transport_to(StdUniform(), asmeasure(Gamma(a, 1.0)))(0.7f0), 2.0) ≈
+            (P(2.0 + 1e-5) - P(2.0 - 1e-5)) / 2e-5 rtol = 1e-6
+    end
+
     @testset "logdensityof gradients" begin
         for d in [
             Weibull(0.7, 1.3),
