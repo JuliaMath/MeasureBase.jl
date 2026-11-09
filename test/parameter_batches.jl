@@ -66,6 +66,21 @@ using JLArrays: JLArray
         @test logdensities(StructArray(pws), X) ≈ ref_batch
         @test logdensityof.(pws, VectorOfSimilarVectors(X[:, :, 1])) ≈ ref_batch[:, 1]
         @test_throws Exception logdensities(pws, X[1:3, :, :])
+        # Powers of tuple products take numeric batches of concatenated
+        # streams:
+        T = productmeasure((normal(0.5, 1.0), StdExponential()))
+        Tld(x) = normal_ld(x[1], 0.5, 1.0) - x[2]
+        Xt = reshape(collect(range(0.1, 2, length = 12)), 6, 2)
+        ref_t = [sum(Tld, eachcol(reshape(Xt[:, j], 2, 3))) for j in 1:2]
+        for (pt, Xp) in ((fill(T^3, 2), Xt), (fill((T^3)^1, 2), reshape(Xt, 6, 1, 2)), (fill(productmeasure((StdExponential(),))^6, 2), Xt))
+            ref = [logdensityof(pt[j], selectdim(Xp, ndims(Xp), j)) for j in 1:2]
+            @test logdensities(pt, Xp) ≈ ref
+            @test logdensityof.(pt, Ref(selectdim(Xp, ndims(Xp), 1))) ≈ fill(ref[1], 2)
+        end
+        @test logdensities(fill(T^3, 2), Xt) ≈ ref_t
+        ℒp = likelihoodof(θ -> productmeasure((a = normal(θ.μ, 1.0), b = StdExponential()))^3, Xt[:, 1])
+        @test logdensityof.(Ref(ℒp), StructArray((μ = μs, σ = σs))) ≈
+            [sum(x -> normal_ld(x[1], μ, 1.0) - x[2], eachcol(reshape(Xt[:, 1], 2, 3))) for μ in μs]
         # Powers of different shapes don't fuse, measure by measure:
         mixed = [ms[1]^2, ms[2]^3]
         @test logdensityof.(mixed, [[0.1, 0.2], [0.3, 0.4, 0.5]]) ≈

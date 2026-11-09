@@ -542,13 +542,22 @@ end
 @inline _pwr_nest(ν, B::AbstractArray) = B
 
 # Arrays of powers of one shape broadcast their base measures over the
-# power dimensions of the batch:
-function _measures_array_ld(ms::AbstractArray{<:PowerMeasure{<:Any,<:NTuple{P,Any}}}, X::AbstractArray, ::StaticInteger{K}) where {P,K}
-    k_base = K - P
+# power dimensions of the batch, where these follow the stream dimensions
+# of the base (not for bases with concatenated streams, like tuple
+# products):
+function _measures_array_ld(ms::AbstractArray{<:PowerMeasure{B,<:NTuple{P,Any}}}, X::AbstractArray, k::StaticInteger{K}) where {B,P,K}
+    k_base = _static_ndims_of(stream_ndims(B))
+    if k_base isa StaticInteger && k_base + static(P) == k
+        _pwr_measures_array_ld(ms, X, k_base, Val(P))
+    else
+        _measures_bc(ms, _variates_arg(X, Val(K)))
+    end
+end
+function _pwr_measures_array_ld(ms::AbstractArray, X::AbstractArray, k_base::StaticInteger, ::Val{P}) where {P}
     pwr_dims = ntuple(i -> size(X, k_base + i), Val(P))
     all(Base.Fix2(_has_axes_size, pwr_dims), _pwr_axes_of(ms)) || _throw_size_mismatch()
     bases = reshape(_pwr_bases_of(ms), (ntuple(_ -> 1, Val(P))..., size(ms)...))
-    _sum_leading_logd(_measures_ld(bases, X, static(k_base)), static(P); init = zero(_logd_numtype(X)))
+    _sum_leading_logd(_measures_ld(bases, X, k_base), static(P); init = zero(_logd_numtype(X)))
 end
 @inline _has_axes_size(axs::Tuple, sz::Tuple) = map(length, axs) == sz
 @inline _pwr_bases_of(ms::StructArray) = StructArrays.component(ms, :parent)
