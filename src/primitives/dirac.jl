@@ -19,8 +19,6 @@ Base.:(==)(a::Dirac, b::Dirac) = a.x == b.x
 Base.hash(a::Dirac, h::UInt) = hash(a.x, hash(:Dirac, h))
 Base.isapprox(a::Dirac, b::Dirac; kwargs...) = isapprox(a.x, b.x; kwargs...)
 
-gentype(μ::Dirac{X}) where {X} = X
-
 function (μ::Dirac{X})(s) where {X}
     μ.x ∈ s && return 1
     return 0
