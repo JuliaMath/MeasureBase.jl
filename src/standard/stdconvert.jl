@@ -1,6 +1,7 @@
 # Direct transports between standard measures, tail-accurate in both
 # directions. Transports via StdUniform lose the upper tail of unbounded
-# measures, since the uniform variate saturates at one.
+# measures, since the uniform variate saturates at one. The branches not
+# taken stay finite, so that reverse-mode derivatives don't become NaN.
 
 # Standard normal log-cdf and log-ccdf:
 @inline _normlogcdf(z) = _logerfc(-z * invsqrt2) - logtwo
@@ -12,17 +13,17 @@
 # In the upper tails via the log-ccdf and its inverse, the square of `z`
 # must not overflow:
 @inline function transport_def(::StdExponential, ::StdNormal, z)
-    ifelse(z < zero(z), -log1p(-Φ(z)), -_normlogccdf(min(z, sqrt(floatmax(float(real_numtype(typeof(z))))))))
+    ifelse(z < zero(z), -log1p(-Φ(min(z, zero(z)))), -_normlogccdf(min(z, sqrt(floatmax(float(real_numtype(typeof(z))))))))
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
-    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_positive_prob(-expm1(-x))), -_norminvlogcdf(-x)))
+    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_unit_interior(-expm1(-x))), -_norminvlogcdf(-max(x, oftype(float(x), logtwo)))))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
 
 @inline function transport_def(::StdNormal, ::StdLogistic, l)
-    ifelse(l < zero(l), Φinv(_positive_prob(logistic(l))), -Φinv(_positive_prob(logistic(-l))))
+    ifelse(l < zero(l), Φinv(_unit_interior(logistic(l))), -Φinv(_unit_interior(logistic(-l))))
 end
 
 @inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(_positive_prob(abs(expm1(-x)))) + x)
