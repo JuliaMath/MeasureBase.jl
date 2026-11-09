@@ -275,7 +275,7 @@ derived.
 | Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize` | derived, `mspace_ndims` for value-dependent sizes |
 | Degrees of freedom | `getdof` and `fast_dof` where they differ from those of the base measure (e.g. over counting measures) | the same | derived, `NoDOF` for value-dependent sizes |
 
-All of these are declared `public` (see the [API](@ref) page) and
+All of these are declared `public` (see the [Extension API](@ref) page) and
 must be qualified with `MeasureBase.` when extended. Methods for new
 measure types keep the argument annotations of the generic methods, such
 as `sz::MeasureBase.SizeLike` for batch sizes and multiplicities and

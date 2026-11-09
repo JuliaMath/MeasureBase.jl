@@ -38,6 +38,7 @@ makedocs(
         "Home" => "index.md",
         "Concepts" => "concepts.md",
         "API" => "api.md",
+        "Extension API" => "extensions.md",
         "Internals" => "internals.md",
         "LICENSE" => "LICENSE.md",
     ],
