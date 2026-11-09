@@ -8,6 +8,7 @@ using Static: static
 using ArraysOfArrays: flatview
 using AffineMaps: Add, Mul
 using StaticArrays: SVector
+import ForwardDiff
 
 using MeasureBase
 using MeasureBase: GenContext
@@ -31,6 +32,17 @@ struct _NoSampler <: AbstractMeasure end
 
 @testset "rand" begin
     stblrng() = StableRNG(789990641)
+
+    @testset "convert_realtype" begin
+        # Floats convert, integers and dual numbers pass through, the
+        # structure is kept:
+        y = MeasureBase.convert_realtype(Float32, (a = 1.5, b = [2.5, 3.5], c = 4, d = (2, 0.5)))
+        @test y isa NamedTuple{(:a, :b, :c, :d),Tuple{Float32,Vector{Float32},Int,Tuple{Int,Float32}}}
+        @test y == (a = 1.5, b = [2.5, 3.5], c = 4, d = (2, 0.5))
+        @test MeasureBase.convert_realtype(Float32, [1, 2]) isa Vector{Int}
+        d = ForwardDiff.Dual(1.5, 1.0)
+        @test MeasureBase.convert_realtype(Float32, d) === d
+    end
 
     @testset "generative contexts" begin
         @test rand(stblrng(), StdNormal()) == rand(stblrng(), StdNormal())

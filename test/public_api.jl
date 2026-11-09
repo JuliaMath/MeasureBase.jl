@@ -14,7 +14,7 @@ import Distributions
             :transport_to_std, :transport_from_std, :preferred_stdmeasure, :mspace_ndims,
             :mspace_flatsize, :stream_ndims, :SizeLike, :size_tuple, :static, :checked_arg, :NoDOF,
             :UnknownMass, :DensityMeasure, :TransportFunction, :GenContext, :Bind, :MKernel,
-            :kernelmeasure, :valuecombinator, :combinedmeasures, :Interface,
+            :kernelmeasure, :valuecombinator, :combinedmeasures, :Interface, :convert_realtype,
         )
             @test Base.ispublic(MeasureBase, n) && !Base.isexported(MeasureBase, n)
         end

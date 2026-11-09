@@ -151,8 +151,9 @@ end
 """
     MeasureBase.convert_realtype(::Type{T}, x) where {T<:Real}
 
-Convert the floating-point numbers in `x` to `T`. Other numbers, like
-integers and dual numbers, are kept as they are.
+Convert the floating-point numbers in `x` to `T`. Integers and dual numbers
+pass through, and the structure of `x` (arrays, tuples, named tuples) is
+preserved.
 """
 function convert_realtype end
 

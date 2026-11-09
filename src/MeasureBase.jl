@@ -266,7 +266,7 @@ using .Interface
     logdensityof_with_rest, batched_logdensityof_with_rest,
     logdensity_rel_def, as_integrand, as_integrand_exp,
     # Random variates:
-    GenContext, rand_impl, batched_rand_impl,
+    GenContext, rand_impl, batched_rand_impl, convert_realtype,
     # Transport:
     transport_def, batched_transport_def,
     transport_to_std, transport_from_std,
