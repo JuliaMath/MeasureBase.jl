@@ -98,33 +98,38 @@ MeasureBase.unsafe_logdensityof(m::DirichletMeasure, x::AbstractVector) = Measur
 # The Beta parameters of the break fractions of the first `K - 1` components:
 @inline _stick_breaking_params(d::Dirichlet) = (_dropback(d.alpha), _dropfront(_rev_cumsum(d.alpha)))
 
-function MeasureBase.batched_transport_to_std(::Type{StdUniform}, d::Dirichlet, X::AbstractArray)
+# The break fractions `z` and their complements `c = 1 - z` are the shares
+# of a component and of the following ones in the remaining stick, both
+# from the suffix sums, so that they stay exact also for small components.
+# Their incomplete beta functions give the logistic variates of both tails:
+function MeasureBase.batched_transport_to_std(::Type{StdLogistic}, d::Dirichlet, X::AbstractArray)
     K = length(d)
     αs, βs = _stick_breaking_params(d)
     Xc = _as_columns(X)
-    # The break fractions are the shares of the components in the remaining
-    # stick, given by the suffix sums (exact also for small trailing
-    # components):
     S = _suffix_sums(Xc)
-    z = _ratio_or_zero.(_rows(Xc, 1:(K - 1)), _rows(S, 1:(K - 1)))
-    U = _beta_cdf.(αs, βs, _nonnan.(_unit_clamp.(z), 1 // 2))
-    _from_columns(_nan_columns(U, _simplex_mask(Xc)), X)
+    Sk = _rows(S, 1:(K - 1))
+    z = _unit_clamp.(_ratio_or_zero.(_rows(Xc, 1:(K - 1)), Sk))
+    c = _unit_clamp.(_ratio_or_zero.(_rows(S, 2:K), Sk))
+    L = _beta_logit.(αs, βs, _nonnan.(z, 1 // 2), _nonnan.(c, 1 // 2))
+    _from_columns(_nan_columns(L, _simplex_mask(Xc)), X)
 end
 
-function MeasureBase.batched_transport_from_std(::Type{StdUniform}, d::Dirichlet, U::AbstractArray)
+@inline _beta_logit(α, β, z, c) = _logit_of_tails(_beta_tails(α, β, z, c)...)
+
+function MeasureBase.batched_transport_from_std(::Type{StdLogistic}, d::Dirichlet, L::AbstractArray)
     αs, βs = _stick_breaking_params(d)
-    Uc = _as_columns(U)
-    P = _quantile_arg.(Uc)
-    # The break fractions `z` and their complements `1 - z`, both from the
-    # lower tail like `beta_inc_inv` does, exact also for `z` close to one:
-    lo = P .<= 1 // 2
-    y = _beta_quantile.(ifelse.(lo, αs, βs), ifelse.(lo, βs, αs), ifelse.(lo, P, 1 .- P))
-    z = ifelse.(lo, y, 1 .- y)
-    r = ifelse.(lo, 1 .- y, y)
+    Lc = _as_columns(L)
+    # The break fractions and their complements, the smaller one of them
+    # from the quantile of its tail (see `_beta_quantiles`):
+    Y1 = _beta_quantile.(αs, βs, _quantile_arg.(logistic.(Lc)))
+    Y2 = _beta_quantile.(βs, αs, _quantile_arg.(logistic.(.-Lc)))
+    small = Y1 .<= Y2
+    z = ifelse.(small, Y1, 1 .- Y2)
+    r = ifelse.(small, 1 .- Y1, Y2)
     # Each component takes its fraction of the remaining stick, the last one
     # all of it:
     X = vcat(z, _ones_row(z)) .* vcat(_ones_row(r), cumprod(r; dims = 1))
-    _from_columns(_nan_columns(X, _column_all((Uc .>= 0) .& (Uc .<= 1))), U)
+    _from_columns(_nan_columns(X, _column_all(.!isnan.(Lc))), L)
 end
 
 @inline _suffix_sums(X::AbstractArray) = reverse(cumsum(reverse(X; dims = 1); dims = 1); dims = 1)
@@ -132,7 +137,7 @@ end
 @inline _ones_row(X::AbstractMatrix) = @_adignore fill!(similar(X, 1, size(X, 2)), 1)
 @inline _ratio_or_zero(a, b) = ifelse(iszero(b), zero(a), a) / ifelse(iszero(b), one(b), b)
 
-MeasureBase.transport_to_std(::Type{StdUniform}, d::Dirichlet, x) = MeasureBase.batched_transport_to_std(StdUniform, d, x)
-MeasureBase.transport_from_std(::Type{StdUniform}, d::Dirichlet, z) = MeasureBase.batched_transport_from_std(StdUniform, d, z)
+MeasureBase.transport_to_std(::Type{StdLogistic}, d::Dirichlet, x) = MeasureBase.batched_transport_to_std(StdLogistic, d, x)
+MeasureBase.transport_from_std(::Type{StdLogistic}, d::Dirichlet, l) = MeasureBase.batched_transport_from_std(StdLogistic, d, l)
 
 Adapt.adapt_structure(to, m::DirichletMeasure) = asmeasure(Dirichlet(Adapt.adapt(to, m.obj.alpha)))

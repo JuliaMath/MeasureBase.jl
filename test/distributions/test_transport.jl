@@ -252,18 +252,37 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         for x in ([1e-10, 1e-10, 1 - 2e-10], [1e-12, 0.8 - 1e-12, 0.2], [0.2, 0.3, 0.5])
             @test all(isapprox.(inverse(f)(f(x)), x, rtol = 1e-8))
         end
-        # Break fractions close to one saturate the uniform variates, which
-        # limits the resolution of the components after a dominant one to
-        # about `eps()^(1 / sum(α[i+1:end]))`:
+        # Break fractions close to one saturate uniform variates, which limits
+        # the resolution of the components after a dominant one to about
+        # `eps()^(1 / sum(α[i+1:end]))` through StdUniform:
         for (x, atol) in (([0.0, 0.0, 1.0], 1e-12), ([0.0, 1.0, 0.0], 1e-3), ([1.0, 0.0, 0.0], 1e-2))
             @test all(isfinite, f(x))
             @test inverse(f)(f(x)) ≈ x atol = atol
         end
+        # Small trailing components, from the exact complements of the break
+        # fractions (Dirichlet([0.1, 0.1, 0.1]) at the second break: u = 0.99946):
+        f_n = transport_to(StdNormal()^2, Dirichlet([0.5, 0.5, 0.5]))
+        for e in (1e-9, 1e-12, 1e-15, 1e-18)
+            x = [0.3, 0.7 - e, e]
+            @test inverse(f_n)(f_n(x)) ≈ x rtol = 1e-12
+        end
+        f_u = transport_to(StdUniform()^2, Dirichlet([0.1, 0.1, 0.1]))
+        x = [0.5, 0.5 - 1e-30, 1e-30]
+        @test f_u(x)[2] ≈ 0.9994563565500999 rtol = 1e-12
+        @test inverse(f_u)(f_u(x)) ≈ x rtol = 1e-10
+        d01 = Dirichlet(fill(0.1, 3))
+        f01 = transport_to(StdNormal()^2, d01)
+        X = filter(x -> all(>(0), x), collect(eachcol(rand(StableRNG(789990641), d01, 10^4))))
+        @test all(x -> isapprox(inverse(f01)(f01(x)), x, rtol = 1e-10), X)
+        # Both tails of the break fractions:
+        f3 = transport_to(StdNormal()^2, Dirichlet([1.0, 2.0, 3.0]))
+        @test f3(inverse(f3)([30.0, 0.5])) ≈ [30.0, 0.5]
+        @test f3(inverse(f3)([-30.0, -20.0])) ≈ [-30.0, -20.0]
         # A single component, without degrees of freedom:
         d1 = asmeasure(Dirichlet([1.0]))
         @test transport_to(d1, StdUniform()^0)(Float64[]) == [1.0]
         @test transport_to(StdUniform()^0, d1)([1.0]) == Float64[]
-        @test MeasureBase.batched_transport_from_std(StdUniform, Dirichlet([1.0]), zeros(0, 3)) == ones(1, 3)
+        @test MeasureBase.batched_transport_from_std(StdLogistic, Dirichlet([1.0]), zeros(0, 3)) == ones(1, 3)
     end
 
     @testset "Dirichlet stick-breaking orientation" begin

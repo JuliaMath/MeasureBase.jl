@@ -22,7 +22,7 @@ using LinearAlgebra: I
     @test @inferred(preferred_stdmeasure(Beta(2, 3))) === StdLogistic
     @test @inferred(preferred_stdmeasure(truncated(Normal(), 0, 1))) === StdLogistic
     @test @inferred(preferred_stdmeasure(MvNormal(zeros(2), I(2)))) === StdNormal
-    @test @inferred(preferred_stdmeasure(Dirichlet([1.0, 2.0]))) === StdUniform
+    @test @inferred(preferred_stdmeasure(Dirichlet([1.0, 2.0]))) === StdLogistic
     @test @inferred(preferred_stdmeasure(Poisson(3))) <: NoStdTransport
 
     @test @inferred(preferred_stdmeasure(productmeasure((asmeasure(Beta(2, 3)), asmeasure(Normal()))))) === StdNormal
