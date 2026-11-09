@@ -166,6 +166,11 @@ end
 for f in (:invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
     @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.$f(m.obj, p)
 end
+# The interval forms of the families that specialize them:
+const _IntervalFamilies = Union{Normal,Logistic,Gamma,Beta,Distributions.Chisq,Distributions.Erlang,
+    Distributions.InverseGamma,Distributions.BetaPrime,Distributions.FDist}
+@inline MeasureBase.smf(m::AsMeasure{<:_IntervalFamilies}, a::Real, x::Real) = MeasureBase.smf(m.obj, a, x)
+@inline MeasureBase.invsmf(m::AsMeasure{<:_IntervalFamilies}, a::Real, p::Real) = MeasureBase.invsmf(m.obj, a, p)
 
 # Infinite arguments give exact values, also for derivatives with respect to
 # the parameters. The foreign functions only see finite arguments, since
@@ -228,6 +233,9 @@ end
 @inline _logquantile_arg(logp) = _nonnan(min(logp, zero(logp)), -log(oftype(float(logp), 2)))
 @inline _nan_above_zero(logp, y) = ifelse(logp <= zero(logp), y, oftype(y, NaN))
 
+# The normal and logistic families transport by their affine maps, their
+# interval masses `μ((a, x])` and the inverses (see `MeasureBase.smf(μ, a,
+# x)`) are those of the standard measures:
 for (D, S) in [
     (Logistic, StdLogistic),
     (Normal, StdNormal)
@@ -236,6 +244,8 @@ for (D, S) in [
         @inline MeasureBase.preferred_stdmeasure(::Type{<:$D}) = $S
         @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _nan_outside(d, x, _affine_to_std(d, x))
         @inline MeasureBase.transport_from_std(::Type{$S}, d::$D, z) = _std_to_affine(d, z)
+        @inline MeasureBase.smf(d::$D, a::Real, x::Real) = MeasureBase.smf($S(), _affine_to_std(d, a), _affine_to_std(d, x))
+        @inline MeasureBase.invsmf(d::$D, a::Real, p::Real) = _std_to_affine(d, MeasureBase.invsmf($S(), _affine_to_std(d, a), p))
     end
 end
 

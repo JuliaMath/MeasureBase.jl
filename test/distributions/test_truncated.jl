@@ -9,6 +9,7 @@ using Distributions
 using IntervalSets
 using InverseFunctions: inverse
 using StableRNGs: StableRNG
+using SpecialFunctions: erf, erfc
 import ForwardDiff, Zygote, Mooncake
 
 @testset "Stieltjes measure functions of distributions" begin
@@ -99,6 +100,41 @@ end
         @test smf(m, 0.0) == smf(m, -1.0) == csmf(m, Inf) == 0 && csmf(m, 0.0) == smf(m, Inf) == 1
         @test logsmf(m, 0.0) == -Inf && logcsmf(m, 0.0) == 0
         @test isnan(smf(m, NaN)) && isnan(logcsmf(m, NaN)) && isnan(invsmf(m, 1.5)) && isnan(invlogcsmf(m, 0.5))
+    end
+end
+
+@testset "interval masses of distributions" begin
+    # μ((a, x]) against references at 256 bits, just above the lower end in
+    # the bulk (normal and logistic families via the standard measures) and
+    # in the tails, where the Stieltjes measure functions round to one (the
+    # gamma and beta families via the complementary forms):
+    ref(f, args...) = setprecision(() -> Float64(f(big.(args)...)), BigFloat, 256)
+    Φ(z) = erfc(-z / sqrt(big(2))) / 2
+    Φ₀(z) = erf(z / sqrt(big(2))) / 2
+    σ(z) = 1 / (1 + exp(-z))
+    Q2(y) = (1 + y) * exp(-y)
+    beta23_ccdf(c) = c^3 * (4 - 3c)
+    for (d, a, x, mass) in [
+        (Normal(1.0, 2.0), 1.0, 1.0 + 1e-12, (a, x) -> Φ₀((x - 1) / 2) - Φ₀((a - 1) / 2)),
+        (Normal(0.0, 2.0), 0.0, 1e-300, (a, x) -> Φ₀(x / 2) - Φ₀(a / 2)),
+        (Normal(0.3, 1.7), 15.0, 16.0, (a, x) -> Φ((big(0.3) - a) / big(1.7)) - Φ((big(0.3) - x) / big(1.7))),
+        (Normal(0.3, 1.7), -16.0, -15.0, (a, x) -> Φ((x - big(0.3)) / big(1.7)) - Φ((a - big(0.3)) / big(1.7))),
+        (Logistic(1.0, 2.0), 1.0, 1.0 + 1e-12, (a, x) -> σ((x - 1) / 2) - σ((a - 1) / 2)),
+        (Logistic(0.5, 2.0), 80.0, 90.0, (a, x) -> σ((big(0.5) - a) / 2) - σ((big(0.5) - x) / 2)),
+        (Gamma(2.0, 1.5), 60.0, 63.0, (a, x) -> Q2(a / big(1.5)) - Q2(x / big(1.5))),
+        (Chisq(4.0), 80.0, 85.0, (a, x) -> Q2(a / 2) - Q2(x / 2)),
+        (Erlang(2, 1.5), 60.0, 63.0, (a, x) -> Q2(a / big(1.5)) - Q2(x / big(1.5))),
+        (Beta(2.0, 3.0), 0.999, 0.9999, (a, x) -> beta23_ccdf(1 - a) - beta23_ccdf(1 - x)),
+        (InverseGamma(2.0, 1.3), 1e3, 1e4, (a, x) -> Q2(big(1.3) / x) - Q2(big(1.3) / a)),
+        (FDist(4.0, 6.0), 1e4, 1e5, (a, x) -> beta23_ccdf(6 / (4a + 6)) - beta23_ccdf(6 / (4x + 6))),
+        (BetaPrime(2.0, 3.0), 1e3, 1e4, (a, x) -> beta23_ccdf(1 / (1 + a)) - beta23_ccdf(1 / (1 + x))),
+    ]
+        m = asmeasure(d)
+        p = smf(m, a, x)
+        @test p ≈ ref(mass, a, x) rtol = 1e-13
+        @test smf(d, a, x) == p
+        @test invsmf(m, a, p) ≈ x rtol = 1e-13
+        @test smf(m, a, a) == 0
     end
 end
 

@@ -485,3 +485,19 @@ end
     _nan_outside(d, x, _logit_of_tails(_beta_ratio_tails(d, x)...))
 @inline MeasureBase.transport_from_std(::Type{StdLogistic}, d::_BetaRatio, l) =
     _nan_or(l, _beta_ratio_quantile(d, logistic(l), logistic(-l)))
+
+
+# Interval masses `μ((a, x])` and their inverses (see `MeasureBase.smf(μ,
+# a, x)`) of the gamma and beta families, from the tail that resolves them:
+# the complementary one for intervals in the upper tail.
+const _TailFamilies = Union{Gamma,Beta,_GammaReparam,Distributions.InverseGamma,_BetaRatio}
+
+@inline function MeasureBase.smf(d::_TailFamilies, a::Real, x::Real)
+    G_a, G_x = MeasureBase.csmf(d, a), MeasureBase.csmf(d, x)
+    F_a, F_x = MeasureBase.smf(d, a), MeasureBase.smf(d, x)
+    ifelse(G_a < F_x, G_a - G_x, F_x - F_a)
+end
+@inline function MeasureBase.invsmf(d::_TailFamilies, a::Real, p::Real)
+    F_a, G_a = MeasureBase.smf(d, a), MeasureBase.csmf(d, a)
+    ifelse(G_a < F_a, MeasureBase.invcsmf(d, G_a - p), MeasureBase.invsmf(d, F_a + p))
+end
