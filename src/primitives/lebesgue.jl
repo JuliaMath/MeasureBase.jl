@@ -39,6 +39,13 @@ function _default_massof_impl(m, s::AbstractInterval, ::LebesgueBase)
 end
 
 ##########################################################
+"""
+    Lebesgue(S = ℝ)
+
+Lebesgue measure on the set `S`, e.g. an interval.
+`Lebesgue(MeasureBase.StdSimplex(n))` is the coordinate measure of the
+standard simplex.
+"""
 struct Lebesgue{T} <: AbstractMeasure
     support::T
 end

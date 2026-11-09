@@ -212,6 +212,15 @@ end
 # RestrictedMeasure
 export restrict
 
+"""
+    restrict(f, μ)
+    restrict(f)
+
+The measure `μ` restricted to the variates `x` for which `f(x)` is true.
+`restrict(f)` is the function `μ -> restrict(f, μ)`.
+"""
+function restrict end
+
 @inline restrict(f) = Base.Fix1(restrict, f)
 
 restrict(f, μ) = RestrictedMeasure(f, asmeasure(μ))

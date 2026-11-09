@@ -120,9 +120,9 @@ struct arrays, their rank is the number of power dimensions.
 Batched kernels rely on it to tell the variate dimensions of a flat batch
 from its batch dimensions. It follows from
 [`MeasureBase.mspace_flatsize`](@ref) where that is known, measure types
-with array variates of dynamic size declare it directly.
-
-See also [`MeasureBase.stream_ndims`](@ref).
+with array variates of dynamic size declare it directly. Measure types that
+forward `mspace_ndims` to a wrapped measure forward
+[`MeasureBase.stream_ndims`](@ref) as well.
 """
 function mspace_ndims end
 

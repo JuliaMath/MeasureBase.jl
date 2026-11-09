@@ -2,6 +2,13 @@
 
 export Counting, CountingBase
 
+"""
+    CountingBase()
+
+Counting measure on all of the real numbers, the primitive measure behind
+[`Counting`](@ref). It isn't σ-finite, so measures over counting measures
+use `Counting(S)` as their base measure.
+"""
 struct CountingBase <: PrimitiveMeasure end
 
 @inline mspace_elsize(::CountingBase) = ()
@@ -10,6 +17,12 @@ struct CountingBase <: PrimitiveMeasure end
 
 insupportof(::CountingBase, x) = true
 
+"""
+    Counting(S = ℤ)
+
+Counting measure on the set `S`, e.g. a range, or on the values of `S` if
+`S` is a type. `Counting(S)` is its own base measure.
+"""
 struct Counting{T} <: AbstractMeasure
     support::T
 

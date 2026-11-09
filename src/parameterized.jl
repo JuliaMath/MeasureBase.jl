@@ -75,6 +75,14 @@ function paramsof end
 @deprecate params(μ) paramsof(μ)
 @deprecate params(μ, constraints) paramsof(μ, constraints)
 
+"""
+    params(μ)
+    params(μ, constraints)
+
+Deprecated, use [`paramsof`](@ref).
+"""
+params
+
 paramsof(μ::ParameterizedMeasure) = getfield(μ, :par)
 
 function paramsof(μ::AbstractMeasure, constraints::NamedTuple{C}) where {C}

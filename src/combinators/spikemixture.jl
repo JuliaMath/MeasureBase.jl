@@ -2,6 +2,11 @@ export SpikeMixture
 
 # TODO: Add `AbstractSuperposition <: AbstractMeasure`, and make SpikeMixture a
 # subtype of this 
+"""
+    SpikeMixture(μ, w, s = 1 - w)
+
+The mixture `w * μ + s * Dirac(0)` of `μ` and a spike at zero.
+"""
 struct SpikeMixture{M,W,S} <: AbstractMeasure
     m::M   # parent
     w::W   # parent weight

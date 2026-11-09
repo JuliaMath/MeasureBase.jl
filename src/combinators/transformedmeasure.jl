@@ -523,6 +523,13 @@ end
 
 @deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
 
+"""
+    pullback(f, μ, style = AdaptRootMeasure())
+
+Deprecated, use [`pullbck`](@ref).
+"""
+pullback
+
 function Adapt.adapt_structure(to, ν::PushforwardMeasure)
     PushforwardMeasure(Adapt.adapt(to, ν.f), Adapt.adapt(to, ν.finv), Adapt.adapt(to, ν.origin), ν.style, ν.varsize)
 end

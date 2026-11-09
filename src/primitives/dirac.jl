@@ -1,6 +1,12 @@
 
 export Dirac
 
+"""
+    Dirac(x)
+
+The point mass at `x`, its own base measure. Its log-density is zero at `x`
+and `-Inf` elsewhere.
+"""
 struct Dirac{X} <: AbstractMeasure
     x::X
 end
@@ -40,6 +46,13 @@ logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
 @inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::SizeLike) = _const_batch(ctx, μ.x, sz)
 
 export dirac
+
+"""
+    dirac(μ)
+
+The point mass at a random variate of `μ`, `Dirac(rand(μ))`.
+"""
+function dirac end
 
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 

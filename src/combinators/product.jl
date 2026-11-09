@@ -8,6 +8,12 @@ using FillArrays
 
 export AbstractProductMeasure
 
+"""
+    abstract type AbstractProductMeasure <: AbstractMeasure
+
+Supertype of product measures of independent marginals, see
+[`marginals`](@ref).
+"""
 abstract type AbstractProductMeasure <: AbstractMeasure end
 
 function Pretty.tile(μ::AbstractProductMeasure)
@@ -19,6 +25,13 @@ end
 massof(m::AbstractProductMeasure) = prod(massof, marginals(m))
 
 export marginals
+
+"""
+    marginals(μ::AbstractProductMeasure)
+
+The marginal measures of the product `μ`, an array, tuple or named tuple.
+"""
+function marginals end
 
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
     marginals(a) == marginals(b)
@@ -66,6 +79,13 @@ end
 @noinline _throw_marginal_mismatch() =
     throw(ArgumentError("Variate doesn't match the structure of the marginals of a product measure"))
 
+"""
+    ProductMeasure(marginals)
+
+The product of the measures in `marginals`, an array, tuple or named tuple
+of measures. Its variates have the structure of `marginals`. Construct
+products with [`productmeasure`](@ref).
+"""
 struct ProductMeasure{M} <: AbstractProductMeasure
     marginals::M
 end

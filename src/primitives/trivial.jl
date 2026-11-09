@@ -1,5 +1,10 @@
 export TrivialMeasure
 
+"""
+    TrivialMeasure()
+
+The zero measure, its log-density is `-Inf` everywhere.
+"""
 struct TrivialMeasure <: PrimitiveMeasure end
 
 gentype(::TrivialMeasure) = Nothing

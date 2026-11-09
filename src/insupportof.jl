@@ -24,6 +24,14 @@ function insupportof end
 @deprecate insupport(m) insupportof(m)
 
 """
+    insupport(m, x)
+    insupport(m)
+
+Deprecated, use [`insupportof`](@ref).
+"""
+insupport
+
+"""
     MeasureBase.require_insupport(μ, x)::Nothing
 
 Checks if `x` is in the support of distribution/measure `μ`, throws an
