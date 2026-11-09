@@ -53,9 +53,13 @@ The default implementation checks `insupportof(μ, x)` (unless the result is
 a [`MeasureBase.NoFastInsupport`](@ref)) and computes the density via
 [`unsafe_logdensityof`](@ref).
 """
-@inline function logdensityof_impl(μ::AbstractMeasure, x)
-    result = _dynamic_logd(unsafe_logdensityof(μ, x), x)
-    _checksupport(insupportof(μ, x), result)
+@inline function logdensityof_impl(μ::MU, x) where {MU<:AbstractMeasure}
+    if _has_basemeasure(MU)
+        result = _dynamic_logd(unsafe_logdensityof(μ, x), x)
+        _checksupport(insupportof(μ, x), result)
+    else
+        _ld_without_basemeasure(μ, x)
+    end
 end
 
 # Log-density kernels return dynamic numbers, never static ones, so that
