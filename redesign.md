@@ -380,10 +380,12 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
 - Relative densities between unequal roots of the "other" kind (simplex
   coordinate measures of different charts, products of mixed kinds) throw
   instead of relating them.
-- Wrapped distributions without standard transports (Poisson, Bernoulli,
-  Categorical, ...) draw only with Distributions' samplers, on host
-  compute units; on others they throw an `ArgumentError` naming the
-  limit.
+- Bernoulli draws on all compute units (`rand(ctx, sz) .< p`, exact
+  `Bool`s). Poisson, Categorical, Binomial and other discrete distributions
+  without standard transports draw only with Distributions' samplers, on
+  host compute units; on others they throw an `ArgumentError` naming the
+  limit. Poisson on devices later (trigger: splittable RNGs in
+  HeterogeneousComputing).
 - Distributions without family kernels (TDist, Gumbel, Frechet, ...) go
   through Distributions' cdfs and quantiles (Chisq, Erlang, InverseGamma,
   FDist and BetaPrime go through the gamma and beta kernels). Under Zygote
@@ -393,6 +395,20 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   derivatives with respect to variates of TDist need ForwardDiffPullbacks
   (`setindex!` inside `beta_inc`). Quantiles of continuous univariate
   mixtures are differentiated as roots in all backends.
+- Manifold-valued distributions (LKJ, Wishart, InverseWishart,
+  MatrixBeta, MatrixFDist, VonMisesFisher) have opaque root measures (one
+  per manifold: correlation matrices, PSD matrices of a given rank, the
+  unit sphere; Wishart, InverseWishart, MatrixBeta and MatrixFDist of
+  equal size share one). Relative densities between distributions on the
+  same manifold work, others and pushforward Jacobians in the ambient
+  space throw an `ArgumentError`. `getdof`/`fast_dof` are the manifold
+  dimensions (`n(n-1)/2` for LKJ, `n r - r(r-1)/2` for Wishart of rank
+  `r`, `n(n+1)/2` for the other matrix distributions, `n-1` for
+  VonMisesFisher). Chart roots later (decided 2026-11-09, review B4).
+- Interval masses of Gamma and Beta (and the families routed through
+  them) still cancel for short intervals in the bulk (`smf(Gamma(2), a, a
+  + 1e-12)` has a relative error of about 1e-4); a short-interval
+  quadrature of the density would fix it.
 - JLArrays give wrong results for triangular matrix products (GPUArrays
   #850, #851), so the device tests of dense `MvNormal` covariances run on
   CUDA only.
@@ -439,8 +455,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   (`csmf(μ, a) < smf(μ, a)`, branch-free for traced bounds). Stable
   forms for `StdNormal` (reflected `erfc` differences, a Taylor series of
   the density for short intervals, a Newton step for the inverse),
-  `StdLogistic` and `StdExponential` (factored forms), wrapped
-  distributions via the standard ones and the gamma and beta kernels.
+  `StdLogistic` and `StdExponential` (factored forms), wrapped Normal and
+  Logistic via the standard ones; Gamma and Beta (and the families routed
+  through them) use the side that resolves the interval.
   Weights and normalization forward them. `TruncatedMeasure` (only its
   mass is stored), `Half` and `massof(μ, a..b)` build on them.
 - Constant batches (2026-10-23): batches of point masses with numeric atoms

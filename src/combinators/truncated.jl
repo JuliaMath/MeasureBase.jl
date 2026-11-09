@@ -33,8 +33,8 @@ and their inverse `invsmf(μ, a, p)` (see [`smf`](@ref) and
 [`invsmf`](@ref)), with `StdUniform` as standard measure. Truncations to
 either tail keep their precision (`truncate(StdNormal(), 9..Inf)` has the
 mass `1.1e-19`), and so do variates close to the lower end, if `μ` has
-accurate interval masses (standard measures and the common wrapped
-distributions do). Transports don't resolve the variates within a
+accurate interval masses (standard measures and wrapped normal and
+logistic distributions do). Transports don't resolve the variates within a
 truncation whose uniform variates round to one. See `restrict` for
 restrictions to sets given by predicates.
 """

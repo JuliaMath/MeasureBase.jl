@@ -284,9 +284,9 @@ gives zeros for them. Mooncake is recommended for these distributions.
   differences of `smf`, or of the complementary [`csmf`](@ref) (the
   generalization of the ccdf, with the inverse [`invcsmf`](@ref)) in the
   upper tail, so truncations to either tail keep their precision. The
-  standard measures and the common wrapped distributions also resolve
-  variates close to an interior bound. `normalize(truncate(μ, a..b))` is the
-  conditional law. [`logsmf`](@ref) and [`logcsmf`](@ref) (with their
+  standard measures and wrapped normal and logistic distributions also
+  resolve variates close to an interior bound. `normalize(truncate(μ,
+  a..b))` is the conditional law. [`logsmf`](@ref) and [`logcsmf`](@ref) (with their
   inverses) resolve tails beyond floating-point underflow.
 
 The operators `⋄` (pushforward), `⊙` (pullback), `▷` (bind), `⊗`

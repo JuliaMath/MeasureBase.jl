@@ -25,7 +25,8 @@ without the cancellation of the difference where `x` is close to `a`. This
 is the extension point for accurate masses of short intervals, which
 truncations and [`Half`](@ref) build on. The default is the difference of
 `smf` (of `csmf` if `a` is in the upper tail, see [`csmf`](@ref)).
-Standard measures specialize it.
+Standard measures and wrapped normal and logistic distributions specialize
+it.
 
 Users who pronounce `sinh` as "sinch" are advised to pronounce `smf` as "smurf".
 """
