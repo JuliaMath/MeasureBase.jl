@@ -32,6 +32,7 @@ include("moments.jl")
 include("domains.jl")
 
 include("test_mooncake.jl")
+include("test_zygote.jl")
 
 include("measure_operators.jl")
 include("public_api.jl")
