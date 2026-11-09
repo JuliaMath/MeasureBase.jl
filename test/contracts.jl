@@ -32,6 +32,15 @@ MeasureBase.transport_to_std(::Type{StdUniform}, ::_DirectLaplace, x) = x < 0 ? 
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_DirectLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
 MeasureBase.transport_def(::StdExponential, ::_DirectLaplace, x) = x > 0 ? x + log(2.0) : -log1p(-exp(x) / 2)
 
+# The Laplace leaf without a declared variate rank:
+struct _RanklessLaplace <: AbstractMeasure end
+MeasureBase.logdensity_def(::_RanklessLaplace, x) = -abs(x)
+MeasureBase.basemeasure(::_RanklessLaplace) = weightedmeasure(-log(2.0), LebesgueBase())
+MeasureBase.insupportof(::_RanklessLaplace, x) = true
+MeasureBase.preferred_stdmeasure(::Type{<:_RanklessLaplace}) = StdUniform
+MeasureBase.transport_to_std(::Type{StdUniform}, ::_RanklessLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
+MeasureBase.transport_from_std(::Type{StdUniform}, ::_RanklessLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
+
 # Variates of `μ^2` from two variates of `μ`, and batches of two of those:
 _pwr2(x1::Real, x2::Real) = [x1, x2]
 _pwr2(x1::AbstractVector, x2::AbstractVector) = hcat(x1, x2)
@@ -156,6 +165,17 @@ test_measure_contracts(μ, x_out; kwargs...) =
         f = transport_to(StdNormal(), L)
         @test inverse(f)(f(0.3)) ≈ 0.3
         @test f.(xs) ≈ map(f, xs)
+    end
+
+    @testset "leaves without a declared variate rank" begin
+        L = _RanklessLaplace()
+        @test logdensityof(L, 0.3) ≈ _laplace_ld(0.3)
+        @test transport_to(StdUniform(), L)(0.3) ≈ 1 - exp(-0.3) / 2
+        # Draws and transports from standard measures need the rank:
+        @test_throws ArgumentError rand(L)
+        @test_throws ArgumentError testvalue(L)
+        @test_throws ArgumentError rand(L^2)
+        @test_throws ArgumentError transport_to(L, StdUniform())(0.3)
     end
 
     @testset "batches follow direct point transports" begin

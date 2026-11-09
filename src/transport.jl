@@ -331,17 +331,24 @@ function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, n::IntegerL
         throw(ArgumentError("Stream of standard variates too short during transport"))
     end
     z_μ, z_rest = maybestatic_split(z, n)
-    return transport_from_std(S, μ, _chunk_as_variate(μ, z_μ)), z_rest
+    return transport_from_std(S, μ, _chunk_as_variate(μ, z_μ, n)), z_rest
 end
 
 function _from_std_with_rest_bydof(::Type{S}, μ, z::AbstractVector, ::AbstractNoDOF) where {S}
     throw(ArgumentError("Transport from standard measures requires measures of type $(nameof(typeof(μ))) to implement MeasureBase.transport_from_std_with_rest"))
 end
 
-# Scalar-variate measures take their standard variate as a number:
-@inline _chunk_as_variate(μ, z) = _chunk_as_variate(z, _static_ndims(μ))
-@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}) = _single_std_element(z)
-@inline _chunk_as_variate(z::AbstractVector, ::Any) = z
+# Scalar-variate measures take their standard variate as a number. Without
+# a declared rank, a single static degree of freedom can't tell a scalar
+# leaf from a one-element array variate:
+@inline _chunk_as_variate(μ, z, n = maybestatic_length(z)) = _chunk_as_variate(z, _static_ndims(μ), n, μ)
+@inline _chunk_as_variate(z::AbstractVector, ::StaticInteger{0}, ::Any, ::Any) = _single_std_element(z)
+@inline _chunk_as_variate(z::AbstractVector, ::Any, ::Any, ::Any) = z
+@noinline _chunk_as_variate(::AbstractVector, ::NoMSpaceElementSize, ::StaticInteger{1}, μ) = _throw_undeclared_rank("Transport from standard measures", μ)
+
+@noinline function _throw_undeclared_rank(what, μ)
+    throw(ArgumentError("$what requires the variate rank of measures of type $(nameof(typeof(μ))) to be declared, e.g. MeasureBase.mspace_flatsize(::Type{<:$(nameof(typeof(μ)))}) = () for scalar variates"))
+end
 
 
 """

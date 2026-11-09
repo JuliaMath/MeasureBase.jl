@@ -95,6 +95,10 @@ end
 # standard variates can't be indexed on the host:
 @inline _transported_std_draw(ctx::GenContext, μ, ::Tuple{}, ::Type{S}, ::IntegerLike, ::StaticInteger{0}) where {S} =
     transport_from_std(S, μ, _rand_std(ctx, S, ()))
+# A single static degree of freedom without a declared rank may be a
+# scalar or a one-element array variate:
+@noinline _transported_std_draw(::GenContext, μ, ::SizeLike, ::Type, ::StaticInteger{1}, ::NoMSpaceElementSize) =
+    _throw_undeclared_rank("Random variate generation", μ)
 
 # Variates generated one by one in a host loop, stacked into a flat batch
 # and moved to the compute unit:
