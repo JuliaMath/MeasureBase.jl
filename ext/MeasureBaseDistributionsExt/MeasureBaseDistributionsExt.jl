@@ -5,7 +5,7 @@ module MeasureBaseDistributionsExt
 using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, cholesky, logdet
 import Adapt
 
-using Random: AbstractRNG
+using Random: AbstractRNG, Xoshiro
 
 import DensityInterface
 using DensityInterface: logdensityof, densityof

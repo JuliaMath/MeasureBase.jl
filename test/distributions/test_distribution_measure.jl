@@ -261,3 +261,23 @@ end
     end
     @test testvalue(AbstractMeasure(MvNormal([1.0, 2.0], Matrix(1.0I, 2, 2)))^2) == fill([1.0, 2.0], 2)
 end
+
+@testset "distributions of non-array variates and on the simplex" begin
+    using Distributions: LKJCholesky, MvLogitNormal, Dirichlet
+    using MeasureBase: rootmeasure, basemeasure, getdof, fast_dof, testvalue, logdensity_rel, NoDOF
+    using LinearAlgebra: Cholesky, I
+    m = AbstractMeasure(LKJCholesky(3, 1.0))
+    @test rand(m) isa Cholesky && testvalue(m) isa Cholesky
+    @test Distributions.insupport(LKJCholesky(3, 1.0), testvalue(m))
+    @test isfinite(logdensityof(m, testvalue(m)))
+    @test getdof(m) isa NoDOF && fast_dof(m) isa NoDOF
+    @test_throws ArgumentError rootmeasure(m)
+    @test_throws ArgumentError basemeasure(m)
+    # Logit-normal densities are in the coordinates of the Dirichlet ones:
+    d = MvLogitNormal([0.1, 0.2], Matrix(1.0I, 2, 2))
+    ml = AbstractMeasure(d)
+    x = [0.2, 0.3, 0.5]
+    @test rootmeasure(ml) == rootmeasure(AbstractMeasure(Dirichlet([1.0, 2.0, 3.0])))
+    @test getdof(ml) == fast_dof(ml) == 2
+    @test logdensity_rel(ml, AbstractMeasure(Dirichlet([1.0, 2.0, 3.0])), x) ≈ Distributions.logpdf(d, x) - Distributions.logpdf(Dirichlet([1.0, 2.0, 3.0]), x)
+end

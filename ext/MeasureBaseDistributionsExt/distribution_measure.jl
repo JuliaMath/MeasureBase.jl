@@ -66,6 +66,10 @@ end
 # binomial draws:
 @inline _dist_rand(rng::AbstractRNG, d) = rand(rng, d)
 @inline _dist_rand(rng::ConstantRNG, d::Distribution{Univariate}) = convert(eltype(d), Distributions.quantile(d, rand(rng)))
+# Samplers of non-array variates (e.g. LKJCholesky) fail with constant draws,
+# they draw a fixed variate:
+@inline _dist_rand(::ConstantRNG, d::Distribution{<:Union{Distributions.CholeskyVariate,Distributions.NamedTupleVariate}}) =
+    rand(Xoshiro(0), d)
 _dist_rand(rng::ConstantRNG, d::Distributions.Multinomial) = _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), Distributions.probs(d))
 function _dist_rand(rng::ConstantRNG, d::Distributions.DirichletMultinomial)
     _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), d.α ./ sum(d.α))
@@ -180,6 +184,17 @@ end
 @inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate{0},<:Discrete}) = Counting()
 @inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate,<:Discrete}) = Counting()^size(m.obj)
 
+# Distributions of non-array variates have no root measure (yet):
+@inline MeasureBase.rootmeasure(m::DistributionMeasure) = _throw_no_rootmeasure(m.obj)
+@noinline _throw_no_rootmeasure(d::Distribution) = throw(ArgumentError(
+    "Wrapped distributions of $(nameof(Distributions.variate_form(typeof(d)))) variates have no root measure"
+))
+
+# Logit-normal distributions on the simplex, like Dirichlet:
+@inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.MvLogitNormal}) = Lebesgue(MeasureBase.StdSimplex(length(m.obj)))
+@inline MeasureBase.getdof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
+@inline MeasureBase.fast_dof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
+
 # Discrete distributions over integers count on all integers, those over
 # other values on their atoms, so that the base measures of superpositions
 # see these:
@@ -207,6 +222,12 @@ end
 @inline MeasureBase.preferred_stdmeasure(::Type{AsMeasure{D}}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D)
 
 @inline MeasureBase.getdof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
+@inline MeasureBase.getdof(m::DistributionMeasure) = _dist_getdof(m, Distributions.variate_form(typeof(m.obj)))
+@inline _dist_getdof(m::DistributionMeasure, ::Type{<:ArrayLikeVariate}) = MeasureBase._default_getdof(typeof(m), basemeasure(m))
+@inline _dist_getdof(m::DistributionMeasure, ::Type) = MeasureBase.NoDOF{typeof(m)}()
+@inline MeasureBase.fast_dof(m::DistributionMeasure) = _dist_fast_dof(m, Distributions.variate_form(typeof(m.obj)))
+@inline _dist_fast_dof(m::DistributionMeasure, ::Type{<:ArrayLikeVariate}) = MeasureBase._default_fast_dof(typeof(m), basemeasure(m))
+@inline _dist_fast_dof(m::DistributionMeasure, ::Type) = MeasureBase.NoDOF{typeof(m)}()
 @inline MeasureBase.fast_dof(m::DistributionMeasure{<:ArrayLikeVariate{0}}) = static(1)
 
 # Delegate transport to the wrapped distribution:
