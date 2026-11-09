@@ -379,25 +379,20 @@ struct _DynamicPointLogd{F} <: Function
 end
 @inline (k::_DynamicPointLogd)(m, x) = _dynamic_logd(k.f(m, x), x)
 
+# The marginal densities are summed without mutation, so that automatic
+# differentiation works and the element type follows the densities:
 function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray, ::Val{K}, ::Val{B}) where {F,N,K,B}
     if ndims(A) != K + N + B || ntuple(i -> size(A, K + i), Val(N)) != size(mar)
         _throw_size_mismatch()
     end
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
-    acc = _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
-    for i in CartesianIndices(mar)
-        acc = _add_logd!(acc, _checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...)))
-    end
-    return acc
+    isempty(mar) && return _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
+    sum(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), CartesianIndices(mar))
 end
 
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
 @inline _zero_logd(A::AbstractArray, dims::Tuple) = fill!(similar(A, _logd_numtype(A), dims), 0)
-
-# Accumulates marginal densities in place:
-@inline _add_logd!(acc::Number, ℓ) = acc + _materialize(ℓ)
-@inline _add_logd!(acc::AbstractArray, ℓ) = acc .+= ℓ
 
 # Point densities of array products at numeric variates go through the
 # batched kernel where the variate rank of the marginals is known,
@@ -783,15 +778,40 @@ end
 end
 
 # The marginals consume the streams one after the other, their variates
-# fill the batch `(marginal variate dims..., product dims..., batch dims...)`:
+# form the batch `(marginal variate dims..., product dims..., batch
+# dims...)`. With known degrees of freedom the chunks of the marginals are
+# known up front, and the batch is stacked without mutation:
 function _marginals_from_std_loop(::Type{S}, mar::AbstractArray{<:Any,N}, Z::AbstractArray, ::Val{K}) where {S,N,K}
+    batch_dims = Base.tail(size(Z))
+    if isempty(mar)
+        return similar(Z, (ntuple(_ -> 0, Val(K))..., size(mar)..., batch_dims...)), Z
+    end
+    dofs = @_adignore map(_split_dof, mar)
+    if eltype(dofs) <: IntegerLike
+        _marginals_from_std_chunks(S, mar, Z, @_adignore(_stream_chunks(Z, vec(dofs))), Val(K))
+    else
+        _marginals_from_std_seq(S, mar, Z, Val(K))
+    end
+end
+function _marginals_from_std_chunks(::Type{S}, mar::AbstractArray, Z::AbstractArray, chunks::AbstractVector, ::Val{K}) where {S,K}
+    batch_axes = Base.tail(axes(Z))
+    Xs = map((i, rows) -> batched_transport_from_std(S, mar[i], view(Z, rows, batch_axes...)), vec(CartesianIndices(mar)), chunks)
+    X1 = first(Xs)
+    X = reshape(stack(Xs; dims = K + 1), (ntuple(i -> size(X1, i), Val(K))..., size(mar)..., Base.tail(size(Z))...))
+    return X, view(Z, (last(last(chunks)) + 1):lastindex(Z, 1), batch_axes...)
+end
+# The row ranges of consecutive chunks of the given lengths:
+function _stream_chunks(Z::AbstractArray, lengths::AbstractVector)
+    i0 = firstindex(Z, 1)
+    sum(dynamic, lengths) <= size(Z, 1) || throw(ArgumentError("Stream of standard variates too short during transport"))
+    ends = i0 .- 1 .+ cumsum(map(dynamic, lengths))
+    map((e, n) -> (e - dynamic(n) + 1):e, ends, lengths)
+end
+function _marginals_from_std_seq(::Type{S}, mar::AbstractArray, Z::AbstractArray, ::Val{K}) where {S,K}
     idxs = vec(CartesianIndices(mar))
     batch_dims = Base.tail(size(Z))
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(length(batch_dims)))
-    if isempty(idxs)
-        return similar(Z, (ntuple(_ -> 0, Val(K))..., size(mar)..., batch_dims...)), Z
-    end
     X1, Z_rest = batched_transport_from_std_with_rest(S, mar[idxs[1]], Z, ())
     X = similar(Z, eltype(X1), (ntuple(i -> size(X1, i), Val(K))..., size(mar)..., batch_dims...))
     X[lead..., Tuple(idxs[1])..., trail...] = X1

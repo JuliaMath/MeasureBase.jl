@@ -307,3 +307,33 @@ include("testutils.jl")
         @test logdensityof(StdNormal()^10, xj) ≈ logdensityof(StdNormal()^10, Array(xj))
     end
 end
+
+import Zygote, ForwardDiff
+using LinearAlgebra: I
+import Distributions
+using ArraysOfArrays: flatview
+
+@testset "automatic differentiation of batched kernels" begin
+    # Density measures with variates outside the base support:
+    post = mintegrate_exp(x -> -sum(abs2, x), StdExponential()^2)
+    X = [0.1 -0.5 1.0; 0.3 0.2 2.0]
+    @test only(Zygote.gradient(X -> sum(logdensities(post, X)[[1, 3]]), X)) ≈ [-1.2 0.0 -3.0; -1.6 0.0 -5.0]
+    @test logdensities(post, X) ≈ [logdensityof(post, x) for x in eachcol(X)]
+    f_a(a) = sum(logdensities(mintegrate_exp(x -> -a * x^2, StdUniform()), [0.5, 2.0]))
+    @test ForwardDiff.derivative(f_a, 1.0) ≈ -0.25
+
+    # Array products of array-variate marginals, through variates and parameters:
+    mvn(m) = asmeasure(Distributions.MvNormal(m, 1.0 * I(2)))
+    P = productmeasure([mvn([1.0, 1.0]), mvn([0.0, 0.0])])
+    m = cat([1.0, 1.0], [0.0, 0.0]; dims = 2)
+    XP = reshape(collect(range(-1, 2, length = 12)), 2, 2, 3)
+    @test only(Zygote.gradient(X -> sum(logdensities(P, X)), XP)) ≈ -(XP .- m)
+    ld_θ(θ) = sum(logdensities(productmeasure([mvn(fill(θ, 2)), mvn(fill(zero(θ), 2))]), XP))
+    @test ForwardDiff.derivative(ld_θ, 0.5) ≈ sum(XP[:, 1, :] .- 0.5)
+    @test eltype(logdensities(P, Float32.(XP))) == typeof(logdensityof(P, Float32.(XP[:, :, 1])))
+    f = transport_to(P, StdNormal()^4)
+    Z = reshape(collect(range(-1, 1, length = 12)), 4, 3)
+    @test only(Zygote.gradient(Z -> sum(flatview(transports(f, Z))), Z)) ≈ ones(4, 3)
+    @test only(Zygote.gradient(z -> sum(flatview(f(z))), Z[:, 1])) ≈ ones(4)
+    @test ForwardDiff.gradient(θ -> sum(transport_to(productmeasure([mvn(θ), mvn(θ)]), StdNormal()^4)(Z[:, 1]) |> flatview), [0.5, 0.3]) ≈ [2.0, 2.0]
+end
