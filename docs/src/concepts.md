@@ -293,6 +293,38 @@ The operators `⋄` (pushforward), `⊙` (pullback), `▷` (bind), `⊗`
 (product), `∫`, `∫exp`, `𝒹` and `log𝒹` are shorthands for these, see
 [`MeasureBase.MeasureOperators`](@ref).
 
+**Pushforward functions.** The function `f` of `pushfwd(f, μ)` takes
+single variates of `μ` as `rand(μ)` returns them (nested arrays for
+powers of array-variate measures, tuples for tuple products) and returns
+the variates of the pushforward. Batched kernels (`rand(ν^n)`,
+`logdensities`, `transports`) apply `f` and its inverse to batches of
+variates with [`MeasureBase.batched_apply(f, X)`](@ref MeasureBase.batched_apply),
+variate by variate by default. `Base.BroadcastFunction(g)` applies `g` to
+each number of the flat storage of a batch, its variates keep the layout
+of those of `μ`, and the AffineMaps extension applies affine maps to
+batches of vectors as matrices of columns. Functions with a fused
+implementation over whole batches specialize `batched_apply`:
+
+```julia
+using MeasureBase, InverseFunctions, ChangesOfVariables
+using ArraysOfArrays: flatview
+
+struct Rotation
+    θ::Float64
+end
+rotmatrix(f::Rotation) = [cos(f.θ) -sin(f.θ); sin(f.θ) cos(f.θ)]
+(f::Rotation)(x) = rotmatrix(f) * x
+InverseFunctions.inverse(f::Rotation) = Rotation(-f.θ)
+ChangesOfVariables.with_logabsdet_jacobian(f::Rotation, x) = (f(x), zero(eltype(x)))
+
+# A batch of vectors is a vector of views into the columns of a matrix:
+MeasureBase.batched_apply(f::Rotation, X) = rotmatrix(f) * flatview(X)
+
+ν = pushfwd(Rotation(0.3), StdNormal()^2; varsize = (2,))
+X = rand(ν^1000)   # a single matrix product
+logdensities(ν, X)
+```
+
 ## Extension points
 
 Measure types implement the following, all other functionality is
