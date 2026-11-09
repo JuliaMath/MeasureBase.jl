@@ -251,7 +251,10 @@ implements the recipes of docs/src/concepts.md.
   below the context precision. Distributions without standard transports
   convert their draws afterwards (the context then sets the type, not the
   resolution). Remaining array-variate distributions batch via
-  `logpdf(d, X)` on the host.
+  `logpdf(d, X)` on the host. Densities of generic distributions are
+  evaluated only inside the support, at all finite variates for
+  distributions without an `insupport` method (whose `insupportof` is
+  `NoFastInsupport`).
 
 ## Changes relative to `main`
 

@@ -151,12 +151,15 @@ end
 
 # Distributions' densities may throw outside of the support (e.g.
 # InverseGamma below zero, Wishart at matrices that aren't positive
-# definite), so they are only evaluated inside of it. Plain conditions
-# branch, traced or device ones select (see `MeasureBase._select`). The
-# family kernels don't throw and keep their branch-free masks:
+# definite), so they are only evaluated inside of it. Distributions without
+# an `insupport` method (Distributions' interface doesn't require one for
+# multivariate and matrix-variate distributions) are evaluated at all finite
+# variates. Plain conditions branch, traced or device ones select (see
+# `MeasureBase._select`). The family kernels don't throw and keep their
+# branch-free masks:
 @inline function MeasureBase.logdensityof_impl(m::DistributionMeasure, x)
     R = _logd_type(m.obj, x)
-    MeasureBase._select(MeasureBase.insupportof(m, x), () -> convert(R, MeasureBase.unsafe_logdensityof(m, x)), () -> R(-Inf))
+    MeasureBase._select(_logpdf_domain(m, x), () -> convert(R, MeasureBase.unsafe_logdensityof(m, x)), () -> R(-Inf))
 end
 @inline _logd_type(d::Distribution, x) = float(promote_type(_real_eltype(x), Distributions.partype(d)))
 @inline _real_eltype(x) = (T = eltype(x); T <: Real ? T : Bool)
@@ -176,7 +179,7 @@ end
 function _masked_batch_logpdf(m::DistributionMeasure, X::AbstractArray, ::Val{N}) where {N}
     ndims(X) == N && return MeasureBase.logdensityof_impl(m, X)
     xs = eachslice(X; dims = ntuple(i -> N + i, ndims(X) - N))
-    ins = map(x -> MeasureBase.insupportof(m, x), xs)
+    ins = map(x -> _logpdf_domain(m, x), xs)
     if all(ins)
         Distributions.logpdf(m.obj, X)
     else
@@ -186,7 +189,24 @@ function _masked_batch_logpdf(m::DistributionMeasure, X::AbstractArray, ::Val{N}
 end
 
 @inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
-@inline MeasureBase.insupportof(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x) & _finite_variate(m.obj, x)
+@inline MeasureBase.insupportof(m::DistributionMeasure, x) = _dist_insupportof(m, m.obj, x)
+
+# The support is unknown for distributions without an `insupport` method,
+# decided at compile time (see `MeasureBase._has_batched_logdensity_def`):
+@inline function _dist_insupportof(μ, d::D, x::X) where {D<:Distribution,X}
+    if _has_insupport(D, X)
+        Distributions.insupport(d, x) & _finite_variate(d, x)
+    else
+        NoFastInsupport{typeof(μ)}()
+    end
+end
+@inline _has_insupport(::Type{D}, ::Type{X}) where {D,X} = @_adignore Core._hasmethod(Distributions.insupport, Tuple{D,X})
+
+# Where densities are evaluated:
+@inline _logpdf_domain(m::DistributionMeasure, x) = _known_or_finite(MeasureBase.insupportof(m, x), m.obj, x)
+@inline _known_or_finite(ins, ::Distribution, x) = ins
+@inline _known_or_finite(::NoFastInsupport, d::Distribution, x) = _finite_variate(d, x)
+
 # Infinite values lie outside the support, where Distributions may evaluate
 # to NaN:
 @inline _finite_variate(::Distribution{Univariate}, x) = isfinite(x)

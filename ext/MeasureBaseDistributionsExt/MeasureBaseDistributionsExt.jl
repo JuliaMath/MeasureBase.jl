@@ -18,7 +18,7 @@ using MeasureBase: StdMeasure, StdUniform, StdExponential, StdLogistic, StdNorma
 using MeasureBase: _unit_interior
 using MeasureBase: WeightedMeasure, SuperpositionMeasure, PushforwardMeasure
 using MeasureBase: basemeasure, rootmeasure, testvalue, productmeasure, pushfwd, superpose
-using MeasureBase: getdof, massof
+using MeasureBase: getdof, massof, NoFastInsupport
 using MeasureBase: transport_to, transport_def, transport_to_std, transport_from_std
 using MeasureBase: batched_transport_to_std, batched_transport_from_std
 using MeasureBase: Reshape

@@ -215,6 +215,26 @@ end
     @test logdensities(AbstractMeasure(DirichletMultinomial(3, [1.0, 2.0])), [1 1.5; 2 1.5]) ≈ [Distributions.logpdf(DirichletMultinomial(3, [1.0, 2.0]), [1, 2]), -Inf]
 end
 
+# Distributions' interface doesn't require `insupport` of multivariate
+# distributions:
+struct _NoInsupportMvDist <: Distributions.ContinuousMultivariateDistribution end
+Base.length(::_NoInsupportMvDist) = 2
+Distributions._logpdf(::_NoInsupportMvDist, x::AbstractVector{<:Real}) = -sum(abs2, x) / 2 - log(2π)
+Distributions._rand!(rng::MeasureBase.Random.AbstractRNG, ::_NoInsupportMvDist, x::AbstractVector{<:Real}) = MeasureBase.Random.randn!(rng, x)
+
+@testset "densities of distributions without insupport" begin
+    using MeasureBase: asmeasure, logdensities, NoFastInsupport
+    d = _NoInsupportMvDist()
+    m = asmeasure(d)
+    x = [0.3, -0.7]
+    @test MeasureBase.insupportof(m, x) isa NoFastInsupport && MeasureBase.insupportof(d, x) isa NoFastInsupport
+    @test logdensityof(m, x) ≈ Distributions.logpdf(d, x)
+    @test logdensityof(m, [Inf, 0.0]) == -Inf
+    X = [0.3 Inf 1.2; -0.7 0.0 0.4]
+    @test logdensities(m, X) ≈ [Distributions.logpdf(d, X[:, 1]), -Inf, Distributions.logpdf(d, X[:, 3])]
+    @test logdensities(m, X[:, [1, 3]]) ≈ Distributions.logpdf(d, X[:, [1, 3]])
+end
+
 @testset "root measures of discrete distributions over non-integers" begin
     using Distributions: DiscreteNonParametric, Categorical, Normal
     using MeasureBase: logdensity_rel, rootmeasure, logdensities, Counting
