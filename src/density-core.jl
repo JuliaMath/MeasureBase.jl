@@ -372,14 +372,15 @@ end
 
 
 """
-    MeasureBase.OpaqueRoot(space, sz, dof)
+    MeasureBase.OpaqueRoot(space, sz, dof = nothing)
 
 A root measure on a variate space without a chart known to MeasureBase,
 for measures (like wrapped manifold-valued distributions) whose densities
 refer to a reference measure on a submanifold of the space of arrays of
 size `sz`. `space` identifies the reference measure, opaque roots with
 equal `space` and `sz` are equal. `dof` is the number of degrees of
-freedom of the variates, or a [`MeasureBase.NoDOF`](@ref).
+freedom of the variates, `nothing` if not known
+([`MeasureBase.NoDOF`](@ref)).
 
 Measures with an opaque root measure relate only to measures with an
 equal root measure, other relative densities throw an `ArgumentError`.
@@ -393,6 +394,8 @@ struct OpaqueRoot{S,SZ<:Tuple,D} <: AbstractMeasure
     dof::D
 end
 
+OpaqueRoot(space, sz::Tuple) = OpaqueRoot(space, sz, nothing)
+
 Base.:(==)(a::OpaqueRoot, b::OpaqueRoot) = a.space == b.space && a.size == b.size
 Base.isequal(a::OpaqueRoot, b::OpaqueRoot) = isequal(a.space, b.space) && isequal(a.size, b.size)
 Base.hash(a::OpaqueRoot, h::UInt) = hash(a.space, hash(a.size, hash(:OpaqueRoot, h)))
@@ -403,8 +406,10 @@ basemeasure(μ::OpaqueRoot) = μ
 logdensity_def(::OpaqueRoot, x) = zero(_logd_numtype(x))
 @inline insupportof(μ::OpaqueRoot, ::Any) = NoFastInsupport{typeof(μ)}()
 
-@inline getdof(μ::OpaqueRoot) = μ.dof
-@inline fast_dof(μ::OpaqueRoot) = μ.dof
+@inline getdof(μ::OpaqueRoot) = _opaque_dof(μ, μ.dof)
+@inline fast_dof(μ::OpaqueRoot) = getdof(μ)
+@inline _opaque_dof(::OpaqueRoot, n::IntegerLike) = n
+@inline _opaque_dof(μ::OpaqueRoot, ::Nothing) = NoDOF{typeof(μ)}()
 
 @inline mspace_flatsize(μ::OpaqueRoot) = μ.size
 @inline mspace_ndims(::Type{<:OpaqueRoot{<:Any,<:NTuple{N,Any}}}) where {N} = N

@@ -134,6 +134,7 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
         @test logdensityof(m1 + m2, x) ≈ log(vm(1.0, 0.3) + vm(2.5, 0.3))
         @test getdof(m1) == 1 && MeasureBase.fast_dof(m1) == 1 && getdof(m1^3) == 3
         @test getdof(_OnSphere()) == 2
+        @test getdof(MeasureBase.OpaqueRoot(:unknown, (3, 3))) isa MeasureBase.NoDOF
 
         # Other roots don't relate:
         @test_throws ArgumentError logdensity_rel(m1, StdNormal()^2, x)
