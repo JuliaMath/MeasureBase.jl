@@ -14,7 +14,7 @@ MeasureBase.logdensity_def(::_MinimalLaplace, x) = -abs(x)
 MeasureBase.basemeasure(::_MinimalLaplace) = weightedmeasure(-log(2.0), LebesgueBase())
 MeasureBase.insupportof(::_MinimalLaplace, x) = true
 MeasureBase.mspace_flatsize(::Type{<:_MinimalLaplace}) = ()
-MeasureBase.mspace_flatsize(::_MinimalLaplace) = ()
+MeasureBase.massof(::_MinimalLaplace) = MeasureBase.static(1.0)
 MeasureBase.preferred_stdmeasure(::Type{<:_MinimalLaplace}) = StdUniform
 MeasureBase.transport_to_std(::Type{StdUniform}, ::_MinimalLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_MinimalLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
@@ -202,6 +202,7 @@ test_measure_contracts(μ, x_out; kwargs...) =
         f = transport_to(StdNormal(), L)
         @test inverse(f)(f(0.3)) ≈ 0.3
         @test f.(xs) ≈ map(f, xs)
+        @test MeasureBase.with_logabsdet_jacobian(f, 0.3)[2] ≈ _laplace_ld(0.3) - logdensityof(StdNormal(), f(0.3))
     end
 
     @testset "array leaves with only a batched base density" begin
