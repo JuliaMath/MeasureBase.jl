@@ -10,7 +10,7 @@ using Distributions
 import AffineMaps
 using ArraysOfArrays: nestedview, flatview
 import ForwardDiff, Zygote, Mooncake
-using SpecialFunctions: digamma
+using SpecialFunctions: digamma, loggamma, logbeta
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, transport_to, logdensities, pushfwd
@@ -154,6 +154,37 @@ const _derivatives = (
             α = [0.7, 2.0, 3.0]
             ℓ_dirichlet(α) = logdensityof(pushfwd(transport_to(Dirichlet(α), StdNormal()^2), StdNormal()^2), x)
             @test ∂(ℓ_dirichlet, α) ≈ log.(x) .- digamma.(α) .+ digamma(sum(α))
+        end
+    end
+
+    @testset "densities of concentrated families" begin
+        # The terms of the direct formulas cancel for large shapes, the
+        # references are evaluated at 256 bits. Rounding the variate alone
+        # changes the densities by about `sqrt(shape) * eps` near the mode:
+        ref(f, args...) = setprecision(() -> f(big.(args)...), BigFloat, 256)
+        gamma_ref(α, θ, x) = (α - 1) * log(x / θ) - x / θ - loggamma(α) - log(θ)
+        beta_ref(α, β, x) = (α - 1) * log(x) + (β - 1) * log1p(-x) - logbeta(α, β)
+        poisson_ref(λ, k) = k * log(λ) - λ - loggamma(k + 1)
+        for T in (Float32, Float64), s in (10, 1e3, 1e5, 1e7), z in (-3, 0, 2)
+            tol = 16 * sqrt(s) * eps(T)
+            α, θ = T(s), T(1.5)
+            x = T(s * θ * (1 + z / sqrt(s)))
+            @test logdensityof(asmeasure(Gamma(α, θ)), x) ≈ ref(gamma_ref, α, θ, x) atol = tol
+            α, β = T(s), T(2s / 3)
+            x = T(0.6 + z * sqrt(0.24 / (5s / 3)))
+            @test logdensityof(asmeasure(Beta(α, β)), x) ≈ ref(beta_ref, α, β, x) atol = tol
+            x = T(2 / s * (1 + z / 4))
+            @test logdensityof(asmeasure(Beta(T(2), α)), x) ≈ ref(beta_ref, T(2), α, x) atol = tol
+            k = round(Int, s + z * sqrt(s))
+            @test logdensityof(asmeasure(Poisson(α)), k) ≈ ref(poisson_ref, α, k) atol = tol
+        end
+        @test logdensityof(asmeasure(Gamma(1f7, 1f0)), 1f7) ≈ -8.977986f0
+        @test logdensityof(asmeasure(Beta(1f5, 1f5)), 0.5f0) ≈ 5.8772435f0
+        # Shape derivatives across the switch to the expanded forms:
+        for a in (prevfloat(10.0), 10.0, 20.0)
+            @test ForwardDiff.derivative(a -> logdensityof(asmeasure(Gamma(a, 1.5)), 14.0), a) ≈ log(14.0 / 1.5) - digamma(a)
+            @test ForwardDiff.derivative(a -> logdensityof(asmeasure(Beta(a, 12.0)), 0.4), a) ≈ log(0.4) - digamma(a) + digamma(a + 12)
+            @test ForwardDiff.derivative(λ -> logdensityof(asmeasure(Poisson(λ)), 12), a) ≈ 12 / a - 1
         end
     end
 

@@ -24,8 +24,71 @@ const _Families = Union{Normal,Uniform,Exponential,Logistic,Cauchy,Laplace,LogNo
 # guarded, so that the derivative with respect to `c` survives at `c == 0`.
 # Integer `y` take the float type of `c`:
 @inline function _clog(c, y)
-    u = convert(float(promote_type(typeof(c), typeof(y))), y)
+    u = y + zero(c)
     c * log(ifelse(_iszero_value(c) & _iszero_value(u), one(u), u))
+end
+# `c * log(1 - x)` for `x <= 1`, zero for `c == 0, x == 1`:
+@inline function _clog1m(c, x)
+    u = x + zero(c)
+    c * log1p(-ifelse(_iszero_value(c) & (u == 1), zero(u), u))
+end
+
+# For large shape parameters the terms of the direct density formulas of
+# the gamma, beta and Poisson families are large and cancel to a small
+# fraction of their size. Above `_concentrated` the densities expand
+# around the mode instead, with Stirling's series for `loggamma`: with
+# `y = a (1 + t)`, `(a - 1) log(y / a) - (y - a) = a (log1p(t) - t) - log1p(t)`.
+const _concentrated = 10
+@inline _atleast_concentrated(a) = ifelse(a >= _concentrated, a, _concentrated * one(a))
+
+# `loggamma(a) - ((a - 1/2) log(a) - a + log(2π) / 2)` for `a >= 10`:
+const _stirling_coeffs = (1 / 12, -1 / 360, 1 / 1260, -1 / 1680, 1 / 1188, -691 / 360360, 1 / 156)
+@inline function _stirling_err(a)
+    b = inv(a)
+    b2 = b * b
+    b * evalpoly(b2, map(c -> oftype(b2, c), _stirling_coeffs))
+end
+
+# `log1p(t)` for `t = r - 1`, from `r` where `1 + t` would lose its
+# relative precision:
+@inline _log1p_of(t, r) = ifelse(t < -one(t) / 2, log(r), log1p(t))
+
+# Log-density of the gamma distribution with unit scale at `y >= 0`:
+@inline function _gamma_logd(α, y)
+    direct = _clog(α - 1, y) - y - loggamma(α)
+    a = _atleast_concentrated(α)
+    inside = (y > 0) & (y < Inf)
+    yc = ifelse(inside, y, a)
+    t = (yc - a) / a
+    lt = _log1p_of(t, yc / a)
+    expanded = a * (lt - t) - lt - (log(a) + log2π) / 2 - _stirling_err(a)
+    ifelse(α >= _concentrated, ifelse(inside, expanded, oftype(expanded, -Inf)), direct)
+end
+
+# Log-density of the beta distribution at `0 <= x <= 1`:
+@inline function _beta_logd(α, β, x)
+    direct = _clog(α - 1, x) + _clog1m(β - 1, x) - logbeta(α, β)
+    a, b = _atleast_concentrated(α), _atleast_concentrated(β)
+    n = a + b
+    inside = (x > 0) & (x < 1)
+    xc = ifelse(inside, x, one(x) / 2)
+    nx, ny = n * xc, n * (1 - xc)
+    u, v = (nx - a) / a, (ny - b) / b
+    lu, lv = _log1p_of(u, nx / a), _log1p_of(v, ny / b)
+    expanded = a * (lu - u) + b * (lv - v) - log(xc) - log1p(-xc) +
+        (log(a) + log(b) - log(n) - log2π) / 2 - (_stirling_err(a) + _stirling_err(b) - _stirling_err(n))
+    ifelse(min(α, β) >= _concentrated, ifelse(inside, expanded, oftype(expanded, -Inf)), direct)
+end
+
+# Log-probability of the Poisson distribution at `|k|`:
+@inline function _poisson_logd(λ, k)
+    kf = abs(k) + zero(float(λ))
+    direct = _clog(kf, λ) - λ - loggamma(kf + 1)
+    kc, λc = _atleast_concentrated(kf), _atleast_concentrated(λ)
+    t = (kc - λc) / λc
+    lt = _log1p_of(t, kc / λc)
+    expanded = (kc - λc) - kc * lt - (log(kc) + log2π) / 2 - _stirling_err(kc)
+    ifelse((kf >= _concentrated) & (λ >= _concentrated), expanded, direct)
 end
 
 # Constants stay irrational, so that they take the precision of the variates
@@ -75,17 +138,15 @@ end
 @inline _family_insupport(::Weibull, x) = x >= 0
 
 @inline function _family_logd(d::Gamma, x)
-    ℓ = _clog(d.α - 1, abs(x)) - x / d.θ - loggamma(d.α) - d.α * log(d.θ)
+    ℓ = _gamma_logd(d.α, abs(x) / d.θ) - log(d.θ)
     ifelse(isinf(x), oftype(ℓ, -Inf), ℓ)
 end
 @inline _family_insupport(::Gamma, x) = x >= 0
 
-@inline function _family_logd(d::Beta, x)
-    _clog(d.α - 1, abs(x)) + _clog(d.β - 1, abs(1 - x)) - logbeta(d.α, d.β)
-end
+@inline _family_logd(d::Beta, x) = _beta_logd(d.α, d.β, _unit_clamp(x))
 @inline _family_insupport(::Beta, x) = (0 <= x) & (x <= 1)
 
-@inline _family_logd(d::Poisson, x) = _clog(x, d.λ) - d.λ - loggamma(abs(x) + one(float(typeof(d.λ))))
+@inline _family_logd(d::Poisson, x) = _poisson_logd(d.λ, x)
 @inline _family_insupport(::Poisson, x) = (x >= 0) & (x == floor(x))
 
 @inline _family_logd(d::Bernoulli, x) = ifelse(x == 1, log(d.p), log1p(-d.p))
@@ -121,8 +182,8 @@ end
 end
 @inline MeasureBase._beta_cdf_impl(::Type{Nothing}, α, β, x) = first(beta_inc(α, β, x))
 @inline MeasureBase._beta_quantile_impl(::Type{Nothing}, α, β, p) = first(beta_inc_inv(α, β, p))
-@inline MeasureBase._gamma_logpdf(α, x) = _clog(α - 1, x) - x - loggamma(α)
-@inline MeasureBase._beta_logpdf(α, β, x) = _clog(α - 1, x) + _clog(β - 1, 1 - x) - logbeta(α, β)
+@inline MeasureBase._gamma_logpdf(α, x) = _gamma_logd(α, x)
+@inline MeasureBase._beta_logpdf(α, β, x) = _beta_logd(α, β, x)
 
 # Branch-free formulas evaluate all branches, also in AD pullbacks, so
 # unselected branches must stay finite with finite derivatives. Tails are
