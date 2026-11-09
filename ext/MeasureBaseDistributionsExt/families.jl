@@ -43,14 +43,6 @@ end
 const _concentrated = 10
 @inline _atleast_concentrated(a) = ifelse(a >= _concentrated, a, _concentrated * one(a))
 
-# `loggamma(a) - ((a - 1/2) log(a) - a + log(2π) / 2)` for `a >= 10`:
-const _stirling_coeffs = (1 / 12, -1 / 360, 1 / 1260, -1 / 1680, 1 / 1188, -691 / 360360, 1 / 156)
-@inline function _stirling_err(a)
-    b = inv(a)
-    b2 = b * b
-    b * evalpoly(b2, map(c -> oftype(b2, c), _stirling_coeffs))
-end
-
 # `log1p(t)` for `t = r - 1`, from `r` where `1 + t` would lose its
 # relative precision:
 @inline _log1p_of(t, r) = ifelse(t < -one(t) / 2, log(r), log1p(t))

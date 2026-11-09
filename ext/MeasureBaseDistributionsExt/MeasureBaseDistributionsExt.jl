@@ -29,6 +29,7 @@ import MeasureBase:
     _to_logistic_via, _from_logistic_via
 using MeasureBase: _pushfront, _pushback, _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
 using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf, _dualtag
+using MeasureBase: _stirling_err
 
 import Distributions
 using Distributions: Distribution, VariateForm, ValueSupport, ContinuousDistribution

@@ -29,14 +29,17 @@ _special_budget(shape::Real) = trunc(Int, min(100_000 + 20 * sqrt(shape), _speci
 _log1p_or_log(d::Real, r::Real) = d < -one(d) / 2 ? log(r) : log1p(d)
 
 # Asymptotic expansions of log(z) - ψ(z) and of the Stirling error
-# log Γ(z) - ((z - 1/2) log(z) - z + log(2π) / 2), for z ≥ 10:
+# log Γ(z) - ((z - 1/2) log(z) - z + log(2π) / 2), for z ≥ 10. The latter
+# also serves the density kernels of the Distributions extension, on any
+# compute unit and traced:
 function _log_minus_digamma(z::T) where {T<:Real}
     u = inv(z)^2
     inv(2z) + u * evalpoly(u, map(T, (1//12, -1//120, 1//252, -1//240, 1//132, -691//32760, 1//12)))
 end
-function _stirling_err(z::T) where {T<:Real}
-    u = inv(z)^2
-    evalpoly(u, map(T, (1//12, -1//360, 1//1260, -1//1680, 1//1188, -691//360360, 1//156))) / z
+const _stirling_coeffs = (1 / 12, -1 / 360, 1 / 1260, -1 / 1680, 1 / 1188, -691 / 360360, 1 / 156)
+@inline function _stirling_err(z)
+    u = inv(z)
+    u * evalpoly(u * u, map(c -> oftype(u, c), _stirling_coeffs))
 end
 
 # The derivative ∂P(α, x)/∂α of the regularized lower incomplete gamma
