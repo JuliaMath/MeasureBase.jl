@@ -121,11 +121,11 @@ isposinf(x) = isinf(x) & (x > zero(x))
 
 # `cond ? f_true() : f_false()` for plain booleans, so the value not selected
 # is never computed. Other conditions (traced or on devices) select
-# branch-free between both values:
+# branch-free between both values, promoted to a common type (one may be a
+# constant, the other traced):
 @inline _select(cond::Bool, f_true::F, f_false::G) where {F,G} = cond ? f_true() : f_false()
 @inline function _select(cond, f_true::F, f_false::G) where {F,G}
-    y = f_true()
-    ifelse(cond, y, oftype(y, f_false()))
+    ifelse(cond, promote(f_true(), f_false())...)
 end
 @inline _select(::True, f_true::F, ::Any) where {F} = f_true()
 @inline _select(::False, ::Any, f_false::G) where {G} = f_false()
