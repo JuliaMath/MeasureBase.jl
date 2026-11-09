@@ -42,7 +42,7 @@ removed before the merge.
 Derived from `mspace_flatsize(::Type{M})` where known, declared by
 array-variate leaves, derived by structural measures. Without a rank the
 batched defaults throw with a message naming the declaration; point
-kernels keep working.
+densities and point transports to standard measures keep working.
 
 **Flat batches.** Kernels return arrays over the batch dimensions, a
 number for a single variate, possibly lazily. ArraysOfArrays containers
@@ -73,7 +73,9 @@ via `logdensities`). Results never alias the input. Leaves implement
 measure (`preferred_stdmeasure`, `promote_stdmeasure`, `AnyStdMeasure`,
 `NoStdTransport`), array-variate leaves also the `batched_` forms.
 `stdconvert` converts between standard measures in log form,
-`transport_def` may be specialized for direct pairs. Transports map
+`transport_def` may be specialized for direct pairs, together with
+`batched_transport_def`, which batched transports and broadcasting use (as
+with `rand_impl` and `batched_rand_impl`). Transports map
 normalized laws: weighted measures transport like their base, and the
 log-abs-det Jacobian is the density ratio of the normalized measures, with
 weights stripped structurally (through weighted measures, tuple products,
@@ -163,10 +165,20 @@ pushforwards.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |---|---|---|---|
-| Density | `logdensity_def` | `mspace_ndims`, `batched_logdensityof_impl` (+`_def`) | kernels via components, with-rest forms |
+| Density | `logdensity_def`, `basemeasure`, `insupportof` | + `batched_logdensityof_impl` (`batched_logdensity_def` optional, used by composed kernels) | kernels via components, with-rest forms |
+| Mass | `massof` (transport Jacobians, densities of `normalize`) | the same | derived |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | + `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
-| Random | `batched_rand_impl` (default via transport), optionally `rand_impl` | `batched_rand_impl` | derived |
-| Declarations | none | `mspace_ndims`, optionally `mspace_flatsize`, `getdof` | derived |
+| Random | `batched_rand_impl` (default via transport), optionally `rand_impl` | `batched_rand_impl` (default via transport) | derived |
+| Declarations | `mspace_flatsize(::Type)` | `mspace_ndims`, optionally `mspace_flatsize` | derived |
+
+Measures of value-dependent size have no base measure: besides the
+with-rest forms and `fixed_stream_size` they implement the point density,
+`insupportof`, point transports, `rand_impl`, `massof`, `getdof`/`fast_dof`
+(`NoDOF`), `checked_arg` and `mspace_ndims`. Extension methods keep the
+argument annotations of the generic methods (`sz::SizeLike`,
+`Z::AbstractArray`), otherwise they are ambiguous with them; `SizeLike`,
+`size_tuple` and `static` are public for that. `test/extension_recipes.jl`
+implements the recipes of docs/src/concepts.md.
 
 ## Layouts per combinator
 
