@@ -26,7 +26,6 @@ end
 
 # Whether a root measure has no atoms, true unless known otherwise:
 _atom_free(ρ) = !(_root_kind(ρ) isa _AtomicRoot)
-_atom_free(::SpikeMixture) = false
 _atom_free(μ::SuperpositionMeasure) = all(_atom_free, μ.components)
 
 # Whether a measure is symmetric about zero, `nothing` if not known:

@@ -88,7 +88,7 @@ struct _NoSampler <: AbstractMeasure end
         for μ in (
             p, p^3, p^static(3), pushfwd(Mul(2.0), StdNormal()^static(3)),
             StdNormal()^3, StdNormal()^static(3), weightedmeasure(0.3, p), MeasureBase.Half(StdNormal()),
-            superpose(StdNormal(), p), SpikeMixture(p, 0.5), mcombine(vcat, StdNormal()^2, p^2),
+            superpose(StdNormal(), p), mcombine(vcat, StdNormal()^2, p^2),
             productmeasure((a = p, b = StdNormal())), mbind(a -> pushfwd(Mul(abs(a) + 1), StdNormal()), StdNormal(), tuple),
         ), T in (Float32, Float64)
             @test _numtype(rand(stblrng(), T, μ)) == T
@@ -150,7 +150,7 @@ struct _NoSampler <: AbstractMeasure end
             (weightedmeasure(0.3, StdNormal()), 0.0, 1.0),
             (pushfwd(exp, StdNormal()), exp(0.5), (exp(1) - 1) * exp(1)),
             (MeasureBase.Half(StdNormal()), sqrt(2 / π), 1 - 2 / π),
-            (SpikeMixture(Dirac(1.0), 0.25), 0.25, 0.25 * 0.75),
+            (0.25 * Dirac(1.0) + 0.75 * Dirac(0.0), 0.25, 0.25 * 0.75),
         ]
             X = rand(stblrng(), μ^n)
             @test isapprox(mean(X), m, atol = 5 * sqrt(v / n) + 1e-3)
@@ -197,7 +197,7 @@ struct _NoSampler <: AbstractMeasure end
         spd = superpose(weightedmeasure(log(0.5), Dirac([1.0, 2.0])), weightedmeasure(log(0.5), Dirac([3.0, 4.0])))
         Xspd = batched_rand_impl(ctx, spd, (6,))
         @test size(Xspd) == (2, 6) && all(c -> c == [1.0, 2.0] || c == [3.0, 4.0], eachcol(Xspd))
-        Xsm = batched_rand_impl(ctx, SpikeMixture(StdNormal()^3, 0.5), (4,))
+        Xsm = batched_rand_impl(ctx, 0.5 * StdNormal()^3 + 0.5 * Dirac(zeros(3)), (4,))
         @test size(Xsm) == (3, 4) && all(c -> all(iszero, c) || !any(iszero, c), eachcol(Xsm))
         @test massof(StdNormal()) == 1 && massof(StdUniform()^3) == 1 && massof(weightedmeasure(log(2.0), StdNormal()^2)) ≈ 2
         @test isnormalized(StdNormal()) && isnormalized(StdExponential()^(2, 2)) && !isnormalized(2.0 * StdNormal())
