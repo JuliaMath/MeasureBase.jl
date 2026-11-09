@@ -316,8 +316,23 @@ end
     z = x / d.θ
     _nan_or(x, _support_select(z > 0, z < Inf, _gamma_ccdf(d.α, _gamma_arg(z)), true))
 end
+@inline function MeasureBase.logsmf(d::Gamma, x::Real)
+    z = x / d.θ
+    u = _gamma_arg(z)
+    _nan_or(x, _log_support_select(z > 0, z < Inf, _log_tail(_gamma_cdf(d.α, u), _gamma_ccdf(d.α, u)), false))
+end
+@inline function MeasureBase.logcsmf(d::Gamma, x::Real)
+    z = x / d.θ
+    u = _gamma_arg(z)
+    _nan_or(x, _log_support_select(z > 0, z < Inf, _log_tail(_gamma_ccdf(d.α, u), _gamma_cdf(d.α, u)), true))
+end
 @inline MeasureBase.invsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _quantile_arg(p)))
 @inline MeasureBase.invcsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_cquantile(d.α, _quantile_arg(p)))
+@inline MeasureBase.invlogsmf(d::Gamma, logp::Real) = _nan_above_zero(logp, d.θ * _gamma_tail_quantile(d.α, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogcsmf(d::Gamma, logq::Real)
+    q, p = _probs_of_logp(logq)
+    _nan_above_zero(logq, d.θ * _gamma_tail_quantile(d.α, p, q))
+end
 
 @inline function MeasureBase.smf(d::Beta, x::Real)
     _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.α, d.β, _beta_arg(x)), false))
@@ -325,13 +340,28 @@ end
 @inline function MeasureBase.csmf(d::Beta, x::Real)
     _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.β, d.α, 1 - _beta_arg(x)), true))
 end
-@inline MeasureBase.invsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _quantile_arg(p)))
-@inline MeasureBase.invcsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, 1 - _beta_quantile(d.β, d.α, _quantile_arg(p)))
+@inline function MeasureBase.logsmf(d::Beta, x::Real)
+    u = _beta_arg(x)
+    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_cdf(d.α, d.β, u), _beta_cdf(d.β, d.α, 1 - u)), false))
+end
+@inline function MeasureBase.logcsmf(d::Beta, x::Real)
+    u = _beta_arg(x)
+    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_cdf(d.β, d.α, 1 - u), _beta_cdf(d.α, d.β, u)), true))
+end
+@inline MeasureBase.invsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, _beta_tail_quantile(d.α, d.β, p, 1 - p))
+@inline MeasureBase.invcsmf(d::Beta, q::Real) = _nan_outside(StdUniform, q, _beta_tail_quantile(d.α, d.β, 1 - q, q))
+@inline MeasureBase.invlogsmf(d::Beta, logp::Real) = _nan_above_zero(logp, _beta_tail_quantile(d.α, d.β, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogcsmf(d::Beta, logq::Real)
+    q, p = _probs_of_logp(logq)
+    _nan_above_zero(logq, _beta_tail_quantile(d.α, d.β, p, q))
+end
 
 @inline _gamma_arg(z) = (u = float(z); ifelse((u > 0) & (u < Inf), u, one(u)))
 @inline _beta_arg(x) = (u = float(x); ifelse((u > 0) & (u < 1), u, oftype(u, 1 // 2)))
 # `y` inside the support, below and above it the limits of the Stieltjes
-# measure function, resp. of its complement if `compl`:
+# measure function, resp. of its complement if `compl`, and of their logs:
 @inline _support_select(above_lo, below_hi, y, compl::Bool) =
     ifelse(above_lo, ifelse(below_hi, y, oftype(y, !compl)), oftype(y, compl))
+@inline _log_support_select(above_lo, below_hi, y, compl::Bool) =
+    ifelse(above_lo, ifelse(below_hi, y, oftype(y, compl ? -Inf : 0)), oftype(y, compl ? 0 : -Inf))
 @inline _nan_or(x, y) = ifelse(isnan(x), oftype(y, NaN), y)

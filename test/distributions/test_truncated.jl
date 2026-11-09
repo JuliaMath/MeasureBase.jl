@@ -71,6 +71,15 @@ end
     end
 end
 
+@testset "shape derivatives of log Stieltjes measure functions" begin
+    fd(f, a) = (f(a + 1e-6) - f(a - 1e-6)) / 2e-6
+    for D in (a -> Gamma(a, 1.5), a -> Beta(a, 2.0), b -> Beta(1.5, b)), (g, x) in ((logsmf, 0.4), (logcsmf, 0.4), (invlogsmf, -1.2), (invlogcsmf, -1.2), (invlogsmf, -40.0))
+        f = a -> g(asmeasure(D(a)), x)
+        @test ForwardDiff.derivative(f, 2.5) ≈ fd(f, 2.5) rtol = 1e-6
+        @test only(Zygote.gradient(f, 2.5)) ≈ fd(f, 2.5) rtol = 1e-6
+    end
+end
+
 @testset "truncated distributions" begin
     for (d, a, b) in [
         (Normal(1.0, 2.0), -0.5, 2.5),
