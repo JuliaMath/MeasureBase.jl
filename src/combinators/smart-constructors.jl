@@ -321,11 +321,8 @@ additively.
 function weightedmeasure end
 export weightedmeasure
 
-function weightedmeasure(ℓ::R, b::M) where {R,M}
-    WeightedMeasure{R,M}(ℓ, b)
-end
+weightedmeasure(ℓ, b) = _weightedmeasure(ℓ, asmeasure(b))
 
-function weightedmeasure(ℓ, b::WeightedMeasure)
-    weightedmeasure(ℓ + _logweight(b), b.base)
-end
+_weightedmeasure(ℓ::R, b::M) where {R,M} = WeightedMeasure{R,M}(ℓ, b)
+_weightedmeasure(ℓ, b::WeightedMeasure) = _weightedmeasure(ℓ + _logweight(b), b.base)
 

@@ -462,11 +462,11 @@ function pushfwd end
 export pushfwd
 
 @inline pushfwd(f) = Base.Fix1(pushfwd, f)
-@inline pushfwd(f, μ; varsize = nothing) = _pushfwd_impl(f, μ, AdaptRootMeasure(), _declared_varsize(varsize))
-@inline pushfwd(f, μ, style::PushFwdStyle; varsize = nothing) = _pushfwd_impl(f, μ, style, _declared_varsize(varsize))
+@inline pushfwd(f, μ; varsize = nothing) = _pushfwd_impl(f, asmeasure(μ), AdaptRootMeasure(), _declared_varsize(varsize))
+@inline pushfwd(f, μ, style::PushFwdStyle; varsize = nothing) = _pushfwd_impl(f, asmeasure(μ), style, _declared_varsize(varsize))
 
-@inline pushfwd(::typeof(identity), μ; varsize = nothing) = μ
-@inline pushfwd(::typeof(identity), μ, ::PushFwdStyle; varsize = nothing) = μ
+@inline pushfwd(::typeof(identity), μ; varsize = nothing) = asmeasure(μ)
+@inline pushfwd(::typeof(identity), μ, ::PushFwdStyle; varsize = nothing) = asmeasure(μ)
 
 _pushfwd_impl(f, μ, style, varsize) = _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
 
