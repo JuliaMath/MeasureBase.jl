@@ -212,11 +212,11 @@ end
 @inline _probs_of_logp(logp) = (lp = _logquantile_arg(logp); (exp(lp), -expm1(lp)))
 
 # Cauchy: `atan(z) / π + 1/2` cancels in the tails, the angles
-# `atan(σ, μ - x)` and `atan(σ, x - μ)` don't. `tan(π(p - 1/2))` loses
-# small probabilities in `p - 1/2`, the cotangent of the smaller tail
-# probability doesn't.
-@inline _cauchy_cdf(d::Cauchy, x) = atan(d.σ, d.μ - x) / π
-@inline _cauchy_ccdf(d::Cauchy, x) = atan(d.σ, x - d.μ) / π
+# `atan(1, -z)` and `atan(1, z)` don't. `tan(π(p - 1/2))` loses small
+# probabilities in `p - 1/2`, the cotangent of the smaller tail probability
+# doesn't.
+@inline _cauchy_cdf(d::Cauchy, x) = (z = (x - d.μ) / d.σ; atan(one(z), -z) / π)
+@inline _cauchy_ccdf(d::Cauchy, x) = (z = (x - d.μ) / d.σ; atan(one(z), z) / π)
 @inline function _cauchy_tail_quantile(d::Cauchy, p, q)
     lower = p < q
     r = _unit_interior(ifelse(lower, p, q))
