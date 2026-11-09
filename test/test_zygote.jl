@@ -23,7 +23,7 @@ _ref_logpdf(::StdLogistic, x) = -abs(x) - 2 * log1p(exp(-abs(x)))
         # singular:
         for (ν, μ, xs) in [
             (StdExponential(), StdNormal(), [-40.0, -8.5, -1.0, -0.0, 0.0, 1.0, 8.5, 9.0, 20.0, 37.0]),
-            (StdNormal(), StdExponential(), [1e-20, 1e-5, 0.5, prevfloat(log(2.0)), log(2.0), 1.0, 9.0, 40.0, 700.0]),
+            (StdNormal(), StdExponential(), [1e-20, 1e-5, 0.5, prevfloat(log(2.0)), log(2.0), 1.0, 9.0, 40.0, 700.0, 800.0]),
             (StdNormal(), StdLogistic(), [-700.0, -40.0, -1.0, -0.0, 0.0, 1.0, 40.0, 700.0]),
         ]
             f = transport_to(ν, μ)
@@ -34,9 +34,7 @@ _ref_logpdf(::StdLogistic, x) = -abs(x) - 2 * log1p(exp(-abs(x)))
             end
         end
         # Saturated beyond floatmin tail probabilities:
-        for (ν, μ, x) in [(StdNormal(), StdExponential(), 800.0), (StdNormal(), StdLogistic(), 800.0)]
-            @test Zygote.gradient(transport_to(ν, μ), x)[1] == 0
-        end
+        @test Zygote.gradient(transport_to(StdNormal(), StdLogistic()), 800.0)[1] == 0
         L = [-9.0, 0.0, 9.0, 40.0]
         f = transport_to(StdNormal()^4, StdLogistic()^4)
         @test Zygote.gradient(L -> sum(f(L)), L)[1] ≈ exp.(_ref_logpdf.(StdLogistic(), L) .- _ref_logpdf.(StdNormal(), f(L)))

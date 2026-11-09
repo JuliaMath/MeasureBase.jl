@@ -17,7 +17,9 @@
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
-    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_unit_interior(-expm1(-x))), -_norminvlogcdf(-max(x, oftype(float(x), logtwo)))))
+    l2 = oftype(float(x), logtwo)
+    lower = x < l2
+    _nan_outside(μ, x, ifelse(lower, Φinv(_unit_interior(-expm1(-x))), -_norminvlogcdf(-ifelse(lower, l2, float(x)))))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
