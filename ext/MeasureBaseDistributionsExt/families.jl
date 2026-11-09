@@ -274,10 +274,28 @@ end
     h = one(r) / 2
     ifelse(lower, _gamma_quantile(α, ifelse(lower, r, h)), _gamma_cquantile(α, ifelse(lower, h, r)))
 end
-@inline function _beta_tail_quantile(α, β, p, q)
-    lower = p < q
-    y = _beta_quantile(ifelse(lower, α, β), ifelse(lower, β, α), _quantile_arg(ifelse(lower, p, q)))
-    ifelse(lower, y, 1 - y)
+# Beta quantiles from both tail probabilities, the variate `x` from the
+# lower and its complement `1 - x` from the mirrored one, the smaller one
+# of them is accurate:
+@inline function _beta_quantiles(α, β, p, q)
+    x, y = _beta_quantile(α, β, _quantile_arg(p)), _beta_quantile(β, α, _quantile_arg(q))
+    small_x = x <= y
+    (ifelse(small_x, x, 1 - y), ifelse(small_x, 1 - x, y))
+end
+@inline _beta_tail_quantile(α, β, p, q) = first(_beta_quantiles(α, β, p, q))
+
+# Both tail probabilities of Beta(α, β) at `z` with the complement
+# `c = 1 - z`, each given to relative precision. The incomplete beta
+# function of the smaller one of `z` and `c` is accurate, the other tail
+# probability comes from the mirrored function where the rounding of its
+# argument costs less than forming the complement (the density times the
+# argument below one):
+@inline function _beta_tails(α, β, z, c)
+    p_direct, q_direct = _beta_cdf(α, β, z), _beta_cdf(β, α, c)
+    ℓ = _beta_logd(α, β, z)
+    p = ifelse((z > c) & !(ℓ + log(z) < 0), 1 - q_direct, p_direct)
+    q = ifelse((z <= c) & !(ℓ + log(c) < 0), 1 - p_direct, q_direct)
+    (p, q)
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Gamma}) = StdLogistic
@@ -292,7 +310,7 @@ end
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Beta}) = StdLogistic
 @inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Beta, x)
     u = _nonnan(_unit_clamp(x), 1 // 2)
-    _nan_outside(d, x, _logit_of_tails(_beta_cdf(d.α, d.β, u), _beta_cdf(d.β, d.α, 1 - u)))
+    _nan_outside(d, x, _logit_of_tails(_beta_tails(d.α, d.β, u, 1 - u)...))
 end
 @inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Beta, l)
     _nan_or(l, _beta_tail_quantile(d.α, d.β, logistic(l), logistic(-l)))
@@ -338,15 +356,17 @@ end
     _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.α, d.β, _beta_arg(x)), false))
 end
 @inline function MeasureBase.csmf(d::Beta, x::Real)
-    _nan_or(x, _support_select(x > 0, x < 1, _beta_cdf(d.β, d.α, 1 - _beta_arg(x)), true))
+    u = _beta_arg(x)
+    _nan_or(x, _support_select(x > 0, x < 1, last(_beta_tails(d.α, d.β, u, 1 - u)), true))
 end
 @inline function MeasureBase.logsmf(d::Beta, x::Real)
     u = _beta_arg(x)
-    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_cdf(d.α, d.β, u), _beta_cdf(d.β, d.α, 1 - u)), false))
+    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_tails(d.α, d.β, u, 1 - u)...), false))
 end
 @inline function MeasureBase.logcsmf(d::Beta, x::Real)
     u = _beta_arg(x)
-    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_cdf(d.β, d.α, 1 - u), _beta_cdf(d.α, d.β, u)), true))
+    p, q = _beta_tails(d.α, d.β, u, 1 - u)
+    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(q, p), true))
 end
 @inline MeasureBase.invsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, _beta_tail_quantile(d.α, d.β, p, 1 - p))
 @inline MeasureBase.invcsmf(d::Beta, q::Real) = _nan_outside(StdUniform, q, _beta_tail_quantile(d.α, d.β, 1 - q, q))

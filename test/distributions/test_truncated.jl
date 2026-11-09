@@ -3,7 +3,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: smf, invsmf, massof, normalize, transport_to, logdensities
+using MeasureBase: smf, invsmf, massof, normalize, transport_to, logdensities, StdLogistic
 using MeasureBase: csmf, invcsmf, logsmf, logcsmf, invlogsmf, invlogcsmf
 using Distributions
 using IntervalSets
@@ -69,6 +69,17 @@ end
         @test count(x -> abs(x) > 2e17, X) / length(X) ≈ 0.5 atol = 0.03
         @test all(x -> abs(x) >= 1e17, X)
     end
+end
+
+@testset "beta tail probabilities at small shapes" begin
+    # Beta(a, 1) has the cdf x^a, its upper tail at tiny x isn't small:
+    m = asmeasure(Beta(0.01, 1.0))
+    x = 1e-20
+    p = x^0.01
+    @test csmf(m, x) ≈ 1 - p && logcsmf(m, x) ≈ log1p(-p) && logsmf(m, x) ≈ log(p)
+    @test transport_to(StdLogistic(), m)(x) ≈ log(p) - log1p(-p)
+    q = (2.0^-40)^0.01
+    @test transport_to(StdLogistic(), asmeasure(Beta(1.0, 0.01)))(1 - 2.0^-40) ≈ log1p(-q) - log(q)
 end
 
 @testset "shape derivatives of log Stieltjes measure functions" begin
