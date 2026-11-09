@@ -89,6 +89,10 @@ end
     @test logcsmf(Half(StdNormal()), 40.0) ≈ log(2) + logccdf(Normal(), 40.0)
     @test invlogcsmf(Half(StdNormal()), log(2) - 800) ≈ invlogccdf(Normal(), -800.0)
     @test isnan(invlogcsmf(Half(StdNormal()), 0.1))
+    # Conversions between standard measures in the upper tails:
+    @test MeasureBase.stdconvert(StdExponential, StdNormal, 13.0f0) ≈ -logccdf(Normal(), 13.0)
+    @test MeasureBase.stdconvert(StdNormal, StdExponential, 800.0) ≈ invlogccdf(Normal(), -800.0)
+    @test isfinite(MeasureBase.stdconvert(StdExponential, StdNormal, 1e200))
 end
 
 @testset "interval masses of measures with atoms" begin
