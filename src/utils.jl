@@ -181,3 +181,10 @@ function _trafo_cquantile_impl end
 function _dist_quantile end
 function _dist_cquantile end
 function _dist_params_numtype end
+
+# Transports of univariate distributions to and from StdLogistic via their
+# preferred standard measure, implemented in the Distributions extension
+# (with ForwardDiff rules for reverse-mode AD in the ForwardDiffPullbacks
+# extension):
+function _to_logistic_via end
+function _from_logistic_via end
