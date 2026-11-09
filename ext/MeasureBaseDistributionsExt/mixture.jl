@@ -8,6 +8,35 @@ end
 MeasureBase.AbstractMeasure(d::Distributions.AbstractMixtureModel{Univariate,Continuous}) = AsMeasure{typeof(d)}(d)
 
 
+# The tails of continuous univariate mixtures are sums over the tails of
+# the components, in log space (Distributions' complements cancel), their
+# quantiles the roots of these, between the quantiles of the components:
+@inline _trafo_logcdf(d::_ContinuousMixture, x::Number) = _mixture_logtail(_trafo_logcdf, d, x)
+@inline _trafo_logccdf(d::_ContinuousMixture, x::Number) = _mixture_logtail(_trafo_logccdf, d, x)
+function _mixture_logtail(f::F, d::_ContinuousMixture, x) where {F}
+    logsumexp(map((w, c) -> log(w) + f(c, x), Distributions.probs(d), Distributions.components(d)))
+end
+
+_dist_quantile(d::_ContinuousMixture, p::Real) = _mixture_quantile(_trafo_logcdf, _dist_quantile, d, p)
+_dist_cquantile(d::_ContinuousMixture, q::Real) = _mixture_quantile(_trafo_logccdf, _dist_cquantile, d, q)
+
+function _mixture_quantile(logtail::F, quantile::G, d::_ContinuousMixture, p::Real) where {F,G}
+    lo, hi = extrema(c -> quantile(c, p), Distributions.components(d))
+    lp = log(p)
+    # The tail is monotonic, bisection keeps the bracket:
+    for _ in 1:200
+        mid = lo / 2 + hi / 2
+        (mid == lo || mid == hi) && break
+        if (logtail(d, mid) < lp) == (logtail === _trafo_logcdf)
+            lo = mid
+        else
+            hi = mid
+        end
+    end
+    lo / 2 + hi / 2
+end
+
+
 const _MixtureMeasure = SuperpositionMeasure{
     <:Union{Tuple{Vararg{WeightedMeasure}},AbstractVector{<:WeightedMeasure}},
 }

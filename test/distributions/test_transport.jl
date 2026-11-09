@@ -12,7 +12,7 @@ using SpecialFunctions: digamma
 import PDMats
 
 using MeasureBase: transport_to
-using MeasureBase: StdUniform, StdNormal, StdExponential, StdLogistic
+using MeasureBase: StdUniform, StdNormal, StdExponential, StdLogistic, csmf
 using .MeasureBaseDistributionsExt: _trafo_logcdf, _trafo_logccdf, _trafo_quantile, _trafo_cquantile
 
 include("getjacobian.jl")
@@ -242,6 +242,42 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         @test transport_to(StdNormal(), asmeasure(Beta(2.0, 2.0)))(1 - 1e-9) ≈ 8.632548295388746 rtol = 1e-7
         f = transport_to(asmeasure(Gamma(2.0)), StdNormal())
         @test last(with_logabsdet_jacobian(f, 9.0)) ≈ log(ForwardDiff.derivative(f, 9.0))
+    end
+
+    @testset "tails of the generic logistic path" begin
+        # Half-normal: P(X > x) = 2 P(Z > x):
+        f = transport_to(truncated(Normal(), 0.0, Inf), StdNormal())
+        for z in (8.2, 9.0, 30.0)
+            @test f(z) ≈ cquantile(Normal(), ccdf(Normal(), z) / 2)
+            @test inverse(f)(f(z)) ≈ z
+            @test all(isfinite, with_logabsdet_jacobian(f, z))
+        end
+        # Truncations to far tails, also when drawn through the transport:
+        t10 = truncated(Normal(), 10.0, Inf)
+        g = transport_to(t10, StdNormal())
+        @test g(inverse(g)(10.5)) ≈ 10.5
+        X = g.(randn(StableRNG(789990641), 10^4))
+        @test all(isfinite, X) && allunique(X) && minimum(X) >= 10
+        @test mean(X) ≈ pdf(Normal(), 10.0) / ccdf(Normal(), 10.0) rtol = 1e-3
+        @test csmf(asmeasure(t10), 12.0) ≈ ccdf(Normal(), 12.0) / ccdf(Normal(), 10.0)
+        # Mixture tails are sums over the component tails:
+        mm = MixtureModel([Normal(-1.0, 1.0), Normal(1.0, 1.0)])
+        p_mm(x) = (ccdf(Normal(-1.0, 1.0), x) + ccdf(Normal(1.0, 1.0), x)) / 2
+        h = transport_to(StdNormal(), mm)
+        for x in (10.0, -10.0, 3.0)
+            @test h(x) ≈ (x > 0 ? cquantile(Normal(), p_mm(x)) : -cquantile(Normal(), p_mm(-x)))
+            @test inverse(h)(h(x)) ≈ x
+        end
+        @test csmf(asmeasure(mm), 10.0) ≈ p_mm(10.0)
+        # Lower-precision parameters, evaluated in double precision:
+        @test transport_to(TDist(3f0), StdUniform())(1f-12) ≈ quantile(TDist(3.0), 1e-12) rtol = 1e-5
+        @test transport_to(StdNormal(), TDist(3f0))(-1f4) ≈ quantile(Normal(), cdf(TDist(3.0), -1e4)) rtol = 1e-5
+        # Finite variates give finite standard variates, also at the ends of
+        # the support and beyond the range of Distributions' quantiles:
+        for (d, x) in ((Chisq(3), 0.0), (truncated(Normal(), 0, 1), 0.0), (truncated(Normal(), 0, 1), 1.0), (Arcsine(), 0.0), (Arcsine(), 1.0), (LogNormal(), 0.0))
+            @test isfinite(transport_to(StdLogistic(), d)(x)) && isfinite(transport_to(StdNormal(), d)(x))
+        end
+        @test isfinite(transport_to(TDist(3.0), StdNormal())(10.5))
     end
 
     @testset "Dirichlet precision and boundary" begin

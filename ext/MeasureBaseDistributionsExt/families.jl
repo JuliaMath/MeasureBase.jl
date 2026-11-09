@@ -259,7 +259,9 @@ end
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:LogNormal}) = StdNormal
-@inline MeasureBase.transport_to_std(::Type{StdNormal}, d::LogNormal, x) = _nan_outside(d, x, (log(abs(x)) - d.μ) / d.σ)
+# The lower end of the support maps to a finite standard variate:
+@inline MeasureBase.transport_to_std(::Type{StdNormal}, d::LogNormal, x) =
+    _nan_outside(d, x, (log(MeasureBase._positive_prob(abs(x))) - d.μ) / d.σ)
 @inline MeasureBase.transport_from_std(::Type{StdNormal}, d::LogNormal, z) = exp(muladd(d.σ, z, d.μ))
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Weibull}) = StdExponential
