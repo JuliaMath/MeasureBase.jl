@@ -20,7 +20,16 @@ end
 _dist_quantile(d::_ContinuousMixture, p::Real) = _mixture_quantile(_trafo_logcdf, _dist_quantile, d, p)
 _dist_cquantile(d::_ContinuousMixture, q::Real) = _mixture_quantile(_trafo_logccdf, _dist_cquantile, d, q)
 
+# The bisection isn't differentiated, a Newton step on the log tail from
+# its result gives the derivatives of the root (by the implicit function
+# theorem), with respect to the probability and the mixture parameters:
 function _mixture_quantile(logtail::F, quantile::G, d::_ContinuousMixture, p::Real) where {F,G}
+    x0 = @_adignore _mixture_bisection(logtail, quantile, d, p)
+    slope = @_adignore (logtail === _trafo_logcdf ? 1 : -1) * exp(Distributions.logpdf(d, x0) - logtail(d, x0))
+    isfinite(slope) && !iszero(slope) ? x0 - (logtail(d, x0) - log(p)) / slope : x0
+end
+
+function _mixture_bisection(logtail::F, quantile::G, d::_ContinuousMixture, p::Real) where {F,G}
     lo, hi = extrema(c -> quantile(c, p), Distributions.components(d))
     lp = log(p)
     # The tail is monotonic, bisection keeps the bracket:

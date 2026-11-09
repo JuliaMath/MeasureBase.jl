@@ -65,7 +65,7 @@ end
 # differentiated functions, against central differences of Distributions'
 # own functions:
 import Distributions
-using Distributions: Chisq, FDist, InverseGamma, BetaPrime, Normal
+using Distributions: Chisq, FDist, InverseGamma, BetaPrime, Normal, MixtureModel
 using IntervalSets
 using MeasureBase: asmeasure, normalize
 
@@ -74,6 +74,7 @@ using MeasureBase: asmeasure, normalize
     fd(f, a) = (h = 1e-4 * a; (8 * (f(a + h) - f(a - h)) - (f(a + 2h) - f(a - 2h))) / (12 * h))
     to_normal(d, x) = Distributions.quantile(Normal(), Distributions.cdf(d, x))
     from_normal(d, z) = Distributions.quantile(d, Distributions.cdf(Normal(), z))
+    mix(w) = MixtureModel([Normal(-1.0, 1.0), Normal(2.0, 3.0)], [w, 1 - w])
     for (f, f_ref, a) in [
         (ν -> transport_to(StdNormal(), asmeasure(Chisq(ν)))(0.7), ν -> to_normal(Chisq(ν), 0.7), 2.3),
         (x -> transport_to(StdNormal(), asmeasure(Chisq(2.3)))(x), x -> to_normal(Chisq(2.3), x), 0.7),
@@ -83,6 +84,9 @@ using MeasureBase: asmeasure, normalize
         (β -> transport_to(asmeasure(BetaPrime(2.0, β)), StdNormal())(0.3), β -> from_normal(BetaPrime(2.0, β), 0.3), 3.0),
         (ν -> logdensityof(normalize(truncate(asmeasure(Chisq(ν)), 0.5 .. 3.0)), 1.0),
             ν -> Distributions.logpdf(Distributions.truncated(Chisq(ν), 0.5, 3.0), 1.0), 2.3),
+        # Mixture quantiles are roots, their bisection isn't differentiated:
+        (z -> transport_to(asmeasure(mix(0.3)), StdNormal())(z), z -> from_normal(mix(0.3), z), 0.4),
+        (w -> transport_to(asmeasure(mix(w)), StdNormal())(0.4), w -> from_normal(mix(w), 0.4), 0.3),
     ]
         @test Zygote.gradient(f, a)[1] ≈ fd(f_ref, a) rtol = 1e-8
     end
