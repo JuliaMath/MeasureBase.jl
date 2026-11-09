@@ -116,10 +116,6 @@ const _derivatives = (
         # Fourth-order central differences as references:
         fd(f, a::Real) = (h = 1e-4 * a; (8 * (f(a + h) - f(a - h)) - (f(a + 2h) - f(a - 2h))) / (12 * h))
         fd(f, a::AbstractVector) = [fd(t -> f(setindex!(copy(a), t, i)), a[i]) for i in eachindex(a)]
-        # With ForwardDiffPullbacks loaded, Zygote fails to pass the thunked
-        # distribution tangents of its univariate transport rules to the
-        # distribution constructors (for all distributions):
-        fdpullbacks = !isnothing(Base.get_extension(MeasureBase, :MeasureBaseDistributionsForwardDiffPullbacksExt))
         @testset "$backend" for (backend, ∂) in pairs(_derivatives)
             for shape in [0.05, 0.8, 3.0, 50.0, 2000.0]
                 x_gamma = quantile(Gamma(shape, 1.5), 0.3)
@@ -134,7 +130,7 @@ const _derivatives = (
                 ]
                     # (Below the resolution of the variates near one, where the
                     # finite differences vanish:)
-                    @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 atol = 1e-15 broken = backend == :Zygote && fdpullbacks
+                    @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 atol = 1e-15
                 end
             end
             # Dirichlet transports, also with a concentration that depends on
