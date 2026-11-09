@@ -150,3 +150,34 @@ end
     x = x_of_z2(z)
     @test H ≈ Diagonal(2 .* ((φ.(z) ./ f_t.(x)).^2 .+ x .* d2x_dz2.(f_t, g_t, z, x)))
 end
+
+
+@testset "shape derivatives for large shapes" begin
+    # ∂P(α, x)/∂α of the regularized lower incomplete gamma function near the
+    # median, references from the power series in 160-bit arithmetic:
+    for (α, x, ref) in [
+        (1e8, 9.997e7, -4.4285249615234345e-7),
+        (1e8, 1.0e8, -3.989422807338846e-5),
+        (1e8, 1.0003e8, -4.4351727339494425e-7),
+        (1e9, 9.99905131670195e8, -1.4011411477882818e-7),
+        (1e9, 1.0e9, -1.2615662611152106e-5),
+        (1e9, 1.000094868329805e9, -1.401805925048155e-7),
+        (1e10, 9.9997e9, -4.431516027665192e-8),
+        (1e10, 1.0e10, -3.989422804047572e-6),
+        (1e10, 1.00003e10, -4.4321808049267906e-8),
+    ]
+        @test MeasureBase._gamma_cdf_dshape(α, x) ≈ ref rtol = 1e-10
+    end
+    # NaN where the series would need more terms than the budget, and for
+    # infinite shapes:
+    @test isnan(MeasureBase._gamma_cdf_dshape(1e13, 1e13))
+    @test isnan(MeasureBase._gamma_cdf_dshape(Inf, 1.0))
+    @test all(isnan, MeasureBase._beta_cdf_dshape(Inf, 2.0, 0.5))
+    # ∂I_x(α, α)/∂α = -∂I_x(α, α)/∂β at x = 1/2, references from the
+    # continued fraction in 160-bit arithmetic:
+    for (α, ref) in [(1e4, -0.002821006688412662), (1e6, -0.00028209485054363567), (1e8, -2.8209479236157564e-5)]
+        ∂α, ∂β = MeasureBase._beta_cdf_dshape(α, α, 0.5)
+        @test ∂α ≈ ref rtol = 1e-9
+        @test ∂β ≈ -ref rtol = 1e-9
+    end
+end
