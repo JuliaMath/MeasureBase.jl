@@ -1,3 +1,11 @@
+"""
+    MeasureBase
+
+Core definitions for (probability and non-probability) measures: primitive
+and standard measures, measure combinators, log-densities, transports
+between measures and random variate generation, for single variates and
+batches of variates.
+"""
 module MeasureBase
 
 using Base: @propagate_inbounds
@@ -140,6 +148,12 @@ end
 
 Broadcast.broadcastable(m::AbstractMeasure) = Ref(m)
 
+"""
+    gentype(μ::AbstractMeasure)
+
+`Random.gentype` for measures, by default the type of the test value of `μ`
+(see [`testvalue`](@ref)).
+"""
 gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
 
 # gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
@@ -179,6 +193,16 @@ measure types, add methods to [`MeasureBase.logdensity_rel_def`](@ref),
 not to `logdensity_def` itself.
 """
 function logdensity_def end
+
+"""
+    basemeasure(μ)
+
+The base measure of `μ`, relative to which
+[`logdensity_def(μ, x)`](@ref logdensity_def) is the log-density of `μ`.
+Applied repeatedly, `basemeasure` reaches a fixed point, the root measure
+([`rootmeasure`](@ref)) that [`logdensityof`](@ref) refers to.
+"""
+function basemeasure end
 
 using Compat
 

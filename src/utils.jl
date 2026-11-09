@@ -5,6 +5,15 @@ end
 
 export testvalue
 
+"""
+    testvalue([T::Type{<:AbstractFloat},] μ)
+
+A deterministic variate in the support of `μ`, used for type and size
+inference. Floating-point variates have the precision `T`, `Float64` by
+default.
+"""
+function testvalue end
+
 @inline testvalue(μ) = testvalue(Float64, μ)
 
 @inline testvalue(::Type{T}, μ) where {T} = rand(ConstantRNG(), T, μ)
@@ -39,6 +48,14 @@ function instance(::Type{T}) where {T}
 end
 
 export basemeasure_depth
+
+"""
+    basemeasure_depth(μ)
+
+The number of times that `basemeasure` is applied to `μ` to reach its root
+measure ([`rootmeasure`](@ref)), as a static integer.
+"""
+function basemeasure_depth end
 
 @inline function basemeasure_depth(μ::M) where {M}
     b_0 = μ
