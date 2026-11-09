@@ -59,6 +59,27 @@ import Distributions
         end
     end
 
+    @testset "support and relative densities of array-variate marginals" begin
+        U(a, b) = asmeasure(Distributions.Uniform(a, b))
+        P = productmeasure([U(0, 1)^2, U(5, 6)^2])
+        Q = productmeasure([U(0, 2)^2, U(4, 6)^2])
+        x = [0.5 5.5; 0.5 5.5]
+        @test insupportof(P, x) == true
+        @test insupportof(P, [0.5 0.5; 0.5 5.5]) == false
+        @test_throws ArgumentError insupportof(P, [0.5, 0.5])
+        @test logdensity_rel(P, rootmeasure(P), x) ≈ logdensityof(P, x) ≈ 0
+        @test logdensity_rel(P, P, x) == 0
+        @test logdensity_rel(P, Q, x) ≈ 4 * log(2)
+        @test logdensity_rel(P, Q, [0.5 4.5; 0.5 5.5]) == -Inf
+
+        N(m, s) = Distributions.MvNormal(fill(m, 2), s * [1.0 0.0; 0.0 1.0])
+        d1 = Distributions.product_distribution([N(0.0, 1.0), N(1.0, 1.0)])
+        d2 = Distributions.product_distribution([N(0.0, 2.0), N(1.0, 1.0)])
+        y = rand(stblrng(), d1)
+        @test insupportof(asmeasure(d1), y) == true
+        @test logdensity_rel(asmeasure(d1), asmeasure(d2), y) ≈ Distributions.logpdf(d1, y) - Distributions.logpdf(d2, y)
+    end
+
     @testset "draws over mapped arrays are eager" begin
         mapped = MeasureBase.MappedArrays.mappedarray(n -> StdNormal()^n, [1, 2])
         x = rand(stblrng(), MeasureBase.ProductMeasure(mapped))

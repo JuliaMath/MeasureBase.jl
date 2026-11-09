@@ -129,6 +129,14 @@ end
 @inline function logdensity_rel_def(μ::ProductMeasure, ν::ProductMeasure, x)
     mapreduce(unsafe_logdensity_rel, +, marginals(μ), marginals(ν), x)
 end
+@inline function logdensity_rel_def(μ::ProductMeasure{<:AbstractArray{M}}, ν::ProductMeasure{<:AbstractArray}, x::AbstractArray{<:Number}) where {M}
+    mapreduce(unsafe_logdensity_rel, +, marginals(μ), marginals(ν), _marginal_variates(x, _static_ndims_of(stream_ndims(M))))
+end
+
+# The marginal variates of flat variates of array products, sliced by the
+# stream rank of the marginals:
+@inline _marginal_variates(x::AbstractArray, ::StaticInteger{K}) where {K} = sliced(x, Val(K))
+@inline _marginal_variates(x::AbstractArray, ::Union{StaticInteger{0},NoMSpaceElementSize}) = x
 
 # For tuples, `mapreduce` has trouble with type inference:
 @inline function logdensity_rel_def(
@@ -405,6 +413,14 @@ end
 
 @inline function insupportof(d::AbstractProductMeasure, x::AbstractArray)
     _all_insupport(broadcast(_insupport_bool ∘ insupportof, marginals(d), x))
+end
+
+# Flat variates of array products pair the marginals with their variate
+# slices:
+@inline function insupportof(d::ProductMeasure{<:AbstractArray{M}}, x::AbstractArray{<:Number}) where {M}
+    k = _static_ndims_of(stream_ndims(M))
+    _check_product_arg(marginals(d), x, k)
+    _all_insupport(broadcast(_insupport_bool ∘ insupportof, marginals(d), _marginal_variates(x, k)))
 end
 
 @inline function insupportof(d::AbstractProductMeasure, x)
