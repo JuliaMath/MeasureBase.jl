@@ -180,7 +180,10 @@ Transport a variate `x` of `μ` to a variate of `ν`.
 
 The default implementation transports `x` via the standard measure type the
 preferences of `ν` and `μ` promote to. Specialize `transport_def` for pairs
-of measure types with a direct transport.
+of measure types with a direct transport. Batches are then transported
+variate by variate with it, specialize
+[`MeasureBase.batched_transport_def`](@ref) as well for a fused batched
+transport.
 """
 function transport_def end
 

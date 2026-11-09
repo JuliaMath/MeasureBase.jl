@@ -19,6 +19,19 @@ MeasureBase.transport_to_std(::Type{StdUniform}, ::_MinimalLaplace, x) = x < 0 ?
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_MinimalLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
 _laplace_ld(x) = -abs(x) - log(2.0)
 
+# A Laplace leaf with a direct, tail-accurate transport to StdExponential
+# that only specializes the point form `transport_def`:
+struct _DirectLaplace <: AbstractMeasure end
+MeasureBase.logdensity_def(::_DirectLaplace, x) = -abs(x)
+MeasureBase.basemeasure(::_DirectLaplace) = weightedmeasure(-log(2.0), LebesgueBase())
+MeasureBase.insupportof(::_DirectLaplace, x) = true
+MeasureBase.mspace_flatsize(::Type{<:_DirectLaplace}) = ()
+MeasureBase.massof(::_DirectLaplace) = MeasureBase.static(1.0)
+MeasureBase.preferred_stdmeasure(::Type{<:_DirectLaplace}) = StdUniform
+MeasureBase.transport_to_std(::Type{StdUniform}, ::_DirectLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
+MeasureBase.transport_from_std(::Type{StdUniform}, ::_DirectLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
+MeasureBase.transport_def(::StdExponential, ::_DirectLaplace, x) = x > 0 ? x + log(2.0) : -log1p(-exp(x) / 2)
+
 # Variates of `μ^2` from two variates of `μ`, and batches of two of those:
 _pwr2(x1::Real, x2::Real) = [x1, x2]
 _pwr2(x1::AbstractVector, x2::AbstractVector) = hcat(x1, x2)
@@ -143,6 +156,18 @@ test_measure_contracts(μ, x_out; kwargs...) =
         f = transport_to(StdNormal(), L)
         @test inverse(f)(f(0.3)) ≈ 0.3
         @test f.(xs) ≈ map(f, xs)
+    end
+
+    @testset "batches follow direct point transports" begin
+        f = transport_to(StdExponential(), _DirectLaplace())
+        X = [-0.7, 0.5, 40.0, 100.0]
+        # The exponential quantile of the Laplace cdf, exact in the upper tail:
+        @test map(f, X) ≈ [-log1p(-exp(-0.7) / 2), 0.5 + log(2), 40 + log(2), 100 + log(2)]
+        @test transports(f, X) == f.(X) == map(f, X)
+        Y, ladjs = transports_with_ladj(f, X)
+        @test Y == map(f, X)
+        @test ladjs ≈ map(x -> MeasureBase.with_logabsdet_jacobian(f, x)[2], X)
+        @test ladjs ≈ logdensityof.(_DirectLaplace(), X) .- logdensityof.(StdExponential(), Y)
     end
 
     # Pushforwards are only defined on the image of their map, the inverse

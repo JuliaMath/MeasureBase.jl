@@ -1,5 +1,7 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
+using Tricks: static_methods
+
 # Batched-first transport over flat batches of variates `(variate dims...,
 # batch dims...)`, zero batch dims meaning a single variate. Streams of
 # standard variates are batches `(dof, batch dims...)`, consumed along their
@@ -212,10 +214,23 @@ Transport the flat batch `X` of variates of `μ` to a flat batch of
 variates of `ν`, via the standard measure type the preferences of `ν` and
 `μ` promote to. Specialize for pairs of measure types with a direct
 batched transport.
+
+Pairs of measure types that specialize only
+[`MeasureBase.transport_def`](@ref) are transported variate by variate
+with it (for a declared variate rank of `μ`), so that batched and single
+transports agree.
 """
 function batched_transport_def end
 
 function batched_transport_def(ν, μ, X)
+    if _direct_point_transport(ν, μ, X)
+        _point_transports(ν, μ, X, _stream_ndims(μ))
+    else
+        _transport_batch_via_std(ν, μ, X)
+    end
+end
+
+function _transport_batch_via_std(ν, μ, X)
     S = _transport_pivot(ν, μ)
     Z = batched_transport_to_std(S, μ, X)
     Y, Z_rest = batched_transport_from_std_with_rest(S, ν, Z, ())
@@ -224,6 +239,25 @@ function batched_transport_def(ν, μ, X)
     end
     return Y
 end
+
+# Whether the method of `transport_def` for the pair and the variate type
+# is a specialization rather than its generic default (looked up via
+# Tricks, so that new method definitions take effect):
+@inline _direct_point_transport(ν, μ, X) = false
+@inline function _direct_point_transport(ν::NU, μ::MU, X::AbstractArray{<:Number}) where {NU,MU}
+    _direct_point_transport(NU, MU, _variate_type(X, _stream_ndims(μ)))
+end
+@inline function _direct_point_transport(::Type{NU}, ::Type{MU}, ::Type{X}) where {NU,MU,X}
+    @_adignore !all(m -> m.sig === Tuple{typeof(transport_def),Any,Any,Any}, static_methods(transport_def, Tuple{NU,MU,X}))
+end
+@inline _direct_point_transport(::Type, ::Type, ::Nothing) = false
+@inline _variate_type(X::AbstractArray, ::StaticInteger{0}) = eltype(X)
+@inline _variate_type(X::AbstractArray, ::StaticInteger{K}) where {K} = eltype(_nest_batch(X, Val(K)))
+@inline _variate_type(::AbstractArray{<:Any,K}, ::StaticInteger{K}) where {K} = nothing
+@inline _variate_type(::AbstractArray, ::NoMSpaceElementSize) = nothing
+
+@inline _point_transports(ν, μ, X::AbstractArray, ::StaticInteger{0}) = broadcast(x -> transport_def(ν, μ, x), X)
+_point_transports(ν, μ, X::AbstractArray, ::StaticInteger{K}) where {K} = stacked(map(x -> transport_def(ν, μ, x), sliced(X, Val(K))))
 
 
 """
