@@ -267,7 +267,7 @@ end
 function _density_measure_ld(μ::DensityMeasure, X, ℓ_base::AbstractArray)
     Θ = _variates_of_batch(μ.base, X)
     size(Θ) == size(ℓ_base) || _throw_batch_shape(size(ℓ_base), size(Θ))
-    broadcast(_add_unless_neginf, ℓ_base, _integrand_lds_insupport(μ.f, Θ, ℓ_base))
+    broadcast(_add_unless_neginf, ℓ_base, _integrand_lds_insupport(μ.f, X, Θ, ℓ_base))
 end
 
 @inline function _add_unless_neginf(ℓ_base, ℓ_f)
@@ -275,9 +275,9 @@ end
     ifelse(isneginf(ℓ_base), oftype(ℓ, ℓ_base), ℓ)
 end
 
-@inline _integrand_lds_insupport(f, Θ, ℓ_base) = _integrand_lds_insupport(f, Θ, ℓ_base, _is_host_array(ℓ_base))
-function _integrand_lds_insupport(f, Θ, ℓ_base, on_host::Bool)
-    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, Θ, ℓ_base) : _integrand_lds(f, Θ)
+@inline _integrand_lds_insupport(f, X, Θ, ℓ_base) = _integrand_lds_insupport(f, X, Θ, ℓ_base, _is_host_array(ℓ_base))
+function _integrand_lds_insupport(f, X, Θ, ℓ_base, on_host::Bool)
+    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, X, Θ, ℓ_base) : _integrand_lds(f, Θ)
 end
 
 @inline _is_host_array(A) = _is_host_unit(get_compute_unit(A))
@@ -285,11 +285,25 @@ end
 @inline _is_host_unit(::HeterogeneousComputing.ComputeUnitIndependent) = true
 @inline _is_host_unit(::HeterogeneousComputing.UnknownComputeUnitOf) = false
 
-function _integrand_lds_at(f, Θ, ℓ_base)
-    idxs = findall(!isneginf, ℓ_base)
-    ℓ_f = fill!(similar(ℓ_base), 0)
-    ℓ_f[idxs] = _integrand_lds(f, Θ[idxs])
-    return ℓ_f
+# The integrand is evaluated at a variate inside the support in place of
+# those outside, the caller masks the results there. No mutation, so that
+# automatic differentiation works and the element type follows the
+# integrand. Flat batches replace the variates elementwise:
+function _integrand_lds_at(f, X::AbstractArray{<:Number}, ::AbstractArray, ℓ_base)
+    outside = map(isneginf, ℓ_base)
+    i = findfirst(!, vec(outside))
+    isnothing(i) && return zero(ℓ_base)
+    K = ndims(X) - ndims(ℓ_base)
+    x_in = view(X, ntuple(_ -> Colon(), K)..., Tuple(CartesianIndices(ℓ_base)[i])...)
+    X_in = ifelse.(reshape(outside, (ntuple(_ -> 1, K)..., size(outside)...)), x_in, X)
+    _integrand_lds(f, _nest_batch(X_in, Val(K)))
+end
+function _integrand_lds_at(f, ::Any, Θ, ℓ_base)
+    outside = map(isneginf, ℓ_base)
+    i = findfirst(!, vec(outside))
+    isnothing(i) && return zero(ℓ_base)
+    θ_in = @_adignore Θ[i]
+    broadcast((θ, out) -> logdensityof(f, out ? θ_in : θ), Θ, outside)
 end
 
 _integrand_lds(f, Θ::AbstractArray) = broadcast(Base.Fix1(logdensityof, f), Θ)
