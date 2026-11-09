@@ -10,11 +10,13 @@ using ChangesOfVariables: with_logabsdet_jacobian
 using LinearAlgebra: diag
 import Statistics
 
-# Affine maps treat matrices as batches of column vectors, so flat batches
-# of vector variates are applied as `(n, :)` matrices:
-function MeasureBase._apply_generic(f::AbstractAffineMap, X::AbstractArray, ::StaticInteger{1})
-    _columns_back(f(_as_columns(X)), X)
+# Affine maps treat matrices as batches of column vectors, so batches of
+# vector variates are applied to their flat storage as `(n, :)` matrices:
+function MeasureBase.batched_apply(f::AbstractAffineMap, X::AbstractArray{<:AbstractVector{<:Number}})
+    _affine_on_columns(f, X, MeasureBase._flat_storage(X))
 end
+_affine_on_columns(f, ::AbstractArray, X::AbstractArray{<:Number}) = _columns_back(f(_as_columns(X)), X)
+_affine_on_columns(f, X::AbstractArray, ::Any) = MeasureBase._stack_variates(map(f, X))
 
 @inline _as_columns(x::AbstractVector) = x
 @inline _as_columns(X::AbstractArray) = reshape(X, (size(X, 1), :))
@@ -34,7 +36,7 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
 end
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:PushfwdRootMeasure}, Y::AbstractArray) where {M}
-        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, MeasureBase._stream_ndims(ν)))
+        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, ν))
     end
 end
 

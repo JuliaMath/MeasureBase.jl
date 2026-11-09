@@ -430,3 +430,60 @@ function transports_with_ladj(f::TransportFunction, X)
     ladjs = broadcast(_transport_ladj, logdensities(_unweighted(f.μ), X), logdensities(_unweighted(f.ν), Y))
     return Y, ladjs
 end
+
+
+"""
+    MeasureBase.batched_apply(f, X)
+
+Apply `f` to each variate of the batch `X`, the batched form of `f(x)`.
+
+`X` is a batch of variates with at least one batch dimension, as
+`rand(μ^n)` returns it and [`logdensities`](@ref) takes it:
+an array of numbers for scalar variates, nested arrays (over flat storage)
+for array variates, a struct array for tuple variates. Returns the batch
+of the results, as an array of numbers, an array of the dimensions
+`(result dims..., batch dims...)` (or nested arrays over one) for array
+results, or a tuple of batches for tuple results.
+
+Pushforwards ([`pushfwd`](@ref)) apply their function and its inverse to
+batches of variates with `batched_apply`. The default applies `f` to the
+variates of `X` one by one and stacks the results. For
+`Base.BroadcastFunction`s it applies the broadcast function to the flat
+storage of `X`, number by number. Specialize `batched_apply(::typeof(f), X)`
+(keeping the annotation-free `X`, or `X::AbstractArray`) for a fused
+implementation over the whole batch.
+"""
+function batched_apply end
+
+batched_apply(f, X) = _stack_variates(map(_Pointwise(f), X))
+batched_apply(f::Base.BroadcastFunction, X) = broadcast(f.f, _flat_batch(X))
+
+# The flat storage of a batch of variates, stacked where it has none:
+@inline _flat_batch(X::AbstractArray{<:Number}) = X
+@inline _flat_batch(X::AbstractArray) = _flat_or_stacked(X, _flat_storage(X))
+@inline _flat_batch(X) = X
+@inline _flat_or_stacked(::AbstractArray, X_flat::Union{AbstractArray,Tuple,NamedTuple}) = X_flat
+@inline _flat_or_stacked(X::AbstractArray, ::NoFlatStorage) = _stack_variates(X)
+
+# Apply `f` to the flat batch `X` of variates of `μ`, to a flat batch of
+# the results. The variates are passed to `f` in their structured form,
+# single variates (no batch dimensions) as they are, `Base.BroadcastFunction`s
+# work on the flat storage directly:
+@inline _apply_batched(f, X, μ) = _apply_unwrapped(unwrap(f), X, μ)
+@inline _apply_unwrapped(f::Base.BroadcastFunction, X, ::Any) = broadcast(f.f, X)
+@inline _apply_unwrapped(f, X, μ) = _apply_to_variates(f, X, μ)
+@inline _apply_to_variates(f, x::Number, ::Any) = f(x)
+@inline _apply_to_variates(f, X::AbstractArray, μ) = _apply_to_variates(f, X, μ, _stream_ndims(μ))
+@inline function _apply_to_variates(f, X::AbstractArray{<:Any,K}, μ, ::StaticInteger{K}) where {K}
+    _flat_variate(f(_batch_variates(X, μ)))
+end
+@inline _apply_to_variates(f, X::AbstractArray, μ, ::StaticInteger) = _flat_batch(batched_apply(f, _batch_variates(X, μ)))
+@noinline function _apply_to_variates(f, ::AbstractArray, ::Any, ::NoMSpaceElementSize{MU}) where {MU}
+    throw(ArgumentError("Applying functions of type $(nameof(typeof(f))) to batches of variates requires MeasureBase.mspace_ndims to be declared for measures of type $(nameof(MU))"))
+end
+@inline _apply_to_variates(f, X::Union{Tuple,NamedTuple}, μ) = _apply_to_tuple_variates(f, _batch_variates(X, μ))
+@inline _apply_to_tuple_variates(f, x::Union{Tuple,NamedTuple}) = f(x)
+@inline _apply_to_tuple_variates(f, X::AbstractArray) = _flat_batch(batched_apply(f, X))
+
+@inline _flat_variate(y::Union{Number,AbstractArray{<:Number}}) = y
+@inline _flat_variate(y) = _flat_batch(y)

@@ -215,6 +215,11 @@ end
 @inline _pushfwd_root(μ::SuperpositionMeasure) = _any_pushfwd_root(μ.components)
 @inline _any_pushfwd_root(μs) = mapreduce(_pushfwd_root, |, values(μs); init = static(false))
 
+# Powers of array-variate measures have nested variates (see
+# `_nested_variates`):
+@inline _nested_variates(::Type{<:PowerMeasure{B}}) where {B} = _nested_variates(B) || !(_static_ndims_of(stream_ndims(B)) isa StaticInteger{0})
+@inline _nested_variates(::Type{<:WeightedMeasure{<:Any,M}}) where {M} = _nested_variates(M)
+
 # Pushforward and weighting commute:
 function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle, varsize)
     weightedmeasure(μ.logweight, _pushfwd_impl(f, μ.base, style, varsize))

@@ -18,6 +18,8 @@ using IrrationalConstants: invsqrt2, sqrt2
 using IntervalSets
 import ChangesOfVariables: with_logabsdet_jacobian
 using MeasureBase.Interface: transport_to, test_transport
+using ArraysOfArrays: flatview
+using Random: Xoshiro
 
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2
@@ -331,4 +333,57 @@ ChangesOfVariables.with_logabsdet_jacobian(f::CountedHalving, y) = (f(y), -lengt
     @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), μ3; varsize = (static(3),))))) === Size(3)
     @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), StdNormal()^static(3))))) === Size(3)
     @test _doubling_calls[] == n_calls
+end
+
+# A rotation of the plane with a fused batched implementation, counting
+# the calls of the single-variate form:
+const _rotation_calls = Ref(0)
+struct Rotation2D
+    θ::Float64
+end
+_rotmatrix(f::Rotation2D) = [cos(f.θ) -sin(f.θ); sin(f.θ) cos(f.θ)]
+(f::Rotation2D)(x) = (_rotation_calls[] += 1; _rotmatrix(f) * x)
+InverseFunctions.inverse(f::Rotation2D) = Rotation2D(-f.θ)
+ChangesOfVariables.with_logabsdet_jacobian(f::Rotation2D, x) = (f(x), 0.0)
+MeasureBase.batched_apply(f::Rotation2D, X) = _rotmatrix(f) * flatview(X)
+
+@testset "variates passed to pushforward functions" begin
+    # Functions receive the variates as `rand` returns them, single variates
+    # and batches alike:
+    o = (StdNormal()^2)^3
+    s = pushfwd(x -> sum(x), o; varsize = (2,))
+    x = rand(o)
+    @test MeasureBase.batched_apply(x -> sum(x), [x, x]) ≈ [sum(x) sum(x)]
+    @test rand(Xoshiro(1), s) ≈ sum(rand(Xoshiro(1), o))
+    Y = rand(Xoshiro(2), s^5)
+    @test size(Y) == (5,) && Y ≈ [sum(x) for x in rand(Xoshiro(2), o^5)]
+
+    # Elementwise functions apply to the numbers of nested variates, which
+    # keep their layout:
+    p = pushfwd(Base.BroadcastFunction(exp), o)
+    y = rand(Xoshiro(3), p)
+    @test y ≈ [exp.(v) for v in rand(Xoshiro(3), o)]
+    @test rand(Xoshiro(4), p^4) ≈ [[exp.(v) for v in x] for x in rand(Xoshiro(4), o^4)]
+    @test logdensityof(p, y) ≈ logdensityof(o, [log.(v) for v in y]) - sum(v -> sum(log, v), y)
+    Yp = rand(p^4)
+    @test size(Yp) == (4,) && all(v -> length(v) == 3 && length(v[1]) == 2, Yp)
+    @test logdensities(p, Yp) ≈ [logdensityof(p, Yp[i]) for i in 1:4]
+    f = transport_to(StdUniform()^6, p)
+    @test inverse(f)(f(y)) ≈ y
+    U = rand((StdUniform()^6)^3)
+    @test MeasureBase.transports(f, MeasureBase.transports(inverse(f), U)) ≈ U
+    @test MeasureBase.batched_apply(Base.BroadcastFunction(exp), [[0.0, 1.0], [2.0, 3.0]]) ≈ exp.([0.0 2.0; 1.0 3.0])
+
+    # Specializations of `batched_apply` are used for batches:
+    r = Rotation2D(0.3)
+    ν = pushfwd(r, StdNormal()^2; varsize = (2,))
+    _rotation_calls[] = 0
+    V = rand(ν^1000)
+    @test _rotation_calls[] == 0
+    @test size(flatview(V)) == (2, 1000)
+    @test isapprox(sum(flatview(V); dims = 2) / 1000, zeros(2), atol = 0.15)
+    Z = MeasureBase.transports(transport_to(StdNormal()^2, ν), V)
+    @test Z ≈ [_rotmatrix(inverse(r)) * v for v in V]
+    @test _rotation_calls[] == 0
+    @test rand(ν) isa Vector{Float64} && _rotation_calls[] == 1
 end

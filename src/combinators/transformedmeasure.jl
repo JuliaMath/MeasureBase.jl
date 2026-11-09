@@ -140,13 +140,14 @@ end
 
 # The type `f` returns for variates of origins of type `M` with a fixed
 # variate size, inferred for numbers resp. arrays of the variate rank (or
-# static size) of `M`, `Union{}` where it isn't known:
+# static size) of `M`, `Union{}` where it isn't known (also for origins
+# with nested variates, whose types don't follow from their size):
 @inline _image_type(::Type{F}, ::Type{M}) where {F,M} = _applied_type(F, _variate_standin(M, fixed_stream_size(M)))
 @inline _applied_type(::Type{F}, ::Type{X}) where {F,X} = Core.Compiler.return_type(_apply_f, Tuple{F,X})
 @inline _applied_type(::Type, ::Nothing) = Union{}
 @inline _apply_f(f, x) = f(x)
 
-@inline _variate_standin(::Type{M}, ::True) where {M} = _variate_standin(mspace_flatsize(M), mspace_ndims(M))
+@inline _variate_standin(::Type{M}, ::True) where {M} = _nested_variates(M) ? nothing : _variate_standin(mspace_flatsize(M), mspace_ndims(M))
 @inline _variate_standin(::Type, ::False) = nothing
 @inline _variate_standin(::Tuple{}, ::Any) = Float64
 @inline _variate_standin(::StaticArrays.Size{S}, ::Any) where {S} = StaticArrays.SArray{Tuple{S...},Float64,length(S),prod(S)}
@@ -154,6 +155,10 @@ end
 @inline _rank_standin(::StaticInteger{0}) = Float64
 @inline _rank_standin(::StaticInteger{N}) where {N} = Array{Float64,N}
 @inline _rank_standin(::NoMSpaceElementSize) = nothing
+
+# Whether single variates of measures of type `M` are nested arrays:
+@inline _nested_variates(::Type) = false
+@inline _nested_variates(::Type{<:_ElementwisePushfwd{M}}) where {M} = _nested_variates(M)
 
 @inline function _type_flatsize(::Type{T}, ::Type{MU}) where {T,MU}
     if T !== Union{} && T <: Number
@@ -214,6 +219,8 @@ end
 end
 @inline _pushfwd_point_ld(f::F, ν, x, ::SizeLike) where {F} = _point_ld_byrank(f, ν, x, _stream_ndims(ν))
 @inline _pushfwd_point_ld(f::F, ν, x, ::NoMSpaceElementSize) where {F} = f(ν, x)
+# Nested variates of elementwise pushforwards via their flat storage:
+@inline _point_ld(f::F, ν::_ElementwisePushfwd, y::AbstractArray{<:AbstractArray}) where {F} = _point_ld(f, ν, _flat_batch(y))
 
 const _NonBijectivePusfwdMeasure{M,S<:PushFwdStyle} = Union{
     PushforwardMeasure{<:Any,<:NoInverse,M,S},
@@ -366,52 +373,52 @@ end
 # Bypass `checked_arg`, would require potentially costly transformation:
 @inline checked_arg(::PushforwardMeasure, x) = x
 
+# Pushforward functions take and return single variates in their
+# structured form, as `rand` returns them. `Base.BroadcastFunction`s apply
+# to the numbers of the variates, nested arrays keep their layout:
+@inline _apply_to_variate(f, x) = f(x)
+@inline _apply_to_variate(f::Base.BroadcastFunction, x::AbstractArray{<:AbstractArray}) = _numberwise(f.f, x)
+@inline _numberwise(g, x::AbstractArray{<:Number}) = broadcast(g, x)
+@inline _numberwise(g, x::AbstractArray) = map(Base.Fix1(_numberwise, g), x)
+
 # Pushforwards transport via their origin:
 @inline transport_to_std(::Type{S}, ν::PushforwardMeasure, y) where {S<:StdMeasure} =
-    transport_to_std(S, ν.origin, ν.finv(y))
+    transport_to_std(S, ν.origin, _apply_to_variate(unwrap(ν.finv), y))
 @inline transport_from_std(::Type{S}, ν::PushforwardMeasure, z) where {S<:StdMeasure} =
-    ν.f(transport_from_std(S, ν.origin, z))
+    _apply_to_variate(unwrap(ν.f), transport_from_std(S, ν.origin, z))
 @inline function transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, z::AbstractVector) where {S<:StdMeasure}
     x, z_rest = transport_from_std_with_rest(S, ν.origin, z)
-    return ν.f(x), z_rest
+    return _apply_to_variate(unwrap(ν.f), x), z_rest
 end
 
-# Batches of pushforwards apply the functions to flat batches of the
-# origin, elementwise for `Base.BroadcastFunction`s and variate by variate
-# (in a host loop) otherwise. The AffineMaps extension adds affine maps.
+# Batches of pushforwards apply the functions to the variates of batches
+# of the origin via `batched_apply` (see `_apply_batched`):
 function batched_transport_to_std(::Type{S}, ν::PushforwardMeasure, Y) where {S<:StdMeasure}
-    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, _stream_ndims(ν)))
+    batched_transport_to_std(S, ν.origin, _apply_batched(ν.finv, Y, ν))
 end
 function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
-    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _stream_ndims(ν.origin))
+    _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), ν.origin)
 end
 # Streams are consumed by the origin, also where the pushforward has no
 # degrees of freedom of its own (without an inverse):
 function batched_transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
     X, Z_rest = batched_transport_from_std_with_rest(S, ν.origin, Z, sz)
-    return _apply_batched(ν.f, X, _stream_ndims(ν.origin)), Z_rest
+    return _apply_batched(ν.f, X, ν.origin), Z_rest
 end
 function batched_transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, z::AbstractVector, ::Tuple{}) where {S<:StdMeasure}
     transport_from_std_with_rest(S, ν, z)
 end
 
-# Apply `f` to a flat batch of variates of rank `k`:
-@inline _apply_batched(f, X, k) = _apply_generic(unwrap(f), X, k)
-@inline _apply_generic(f, X, k) = _apply_by_rank(f, X, k)
-@inline _apply_generic(f::Base.BroadcastFunction, X, k) = broadcast(f.f, X)
-@inline _apply_by_rank(f, X, ::StaticInteger{0}) = broadcast(f, X)
-@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{0}) = broadcast(f, X)
-@inline _apply_by_rank(f, X::AbstractArray, ::StaticInteger{K}) where {K} = _apply_to_slices(f, X, Val(K))
-@inline _apply_to_slices(f, X::AbstractArray{<:Any,K}, ::Val{K}) where {K} = f(X)
-@inline _apply_to_slices(f, X::AbstractArray, ::Val{K}) where {K} = stacked(map(f, sliced(X, Val(K))))
-@noinline function _apply_by_rank(f, X, ::NoMSpaceElementSize)
-    throw(ArgumentError("Applying functions of type $(nameof(typeof(f))) to batches of variates requires MeasureBase.mspace_ndims to be declared for the measure"))
-end
+# Variates of pushforwards by elementwise functions have the layout of the
+# variates of their origin:
+@inline _batch_variates(Y, ν::_ElementwisePushfwd) = _batch_variates(Y, ν.origin)
+@inline _pwr_variate(ν::_ElementwisePushfwd, A::AbstractArray) = _pwr_variate(ν.origin, A)
+@inline _pwr_nest(ν::_ElementwisePushfwd, B::AbstractArray) = _pwr_nest(ν.origin, B)
 
 massof(m::PushforwardMeasure) = massof(m.origin)
 @inline _unweighted(ν::PushforwardMeasure) = PushforwardMeasure(ν.f, ν.finv, _unweighted(ν.origin), ν.style, ν.varsize)
 
-rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origin, ν.f(rand_impl(ctx, ν.origin)))
+rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origin, _apply_to_variate(unwrap(ν.f), rand_impl(ctx, ν.origin)))
 
 # Transformed draws have the precision of the context, transformed atoms
 # stay exact:
@@ -423,8 +430,8 @@ rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origi
 function batched_rand_impl(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike)
     _pushfwd_batched_rand(ctx, ν, sz, _stream_ndims(ν.origin))
 end
-@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, k::StaticInteger)
-    _pushfwd_draw(ctx, ν.origin, _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), k))
+@inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, ::StaticInteger)
+    _pushfwd_draw(ctx, ν.origin, _apply_batched(ν.f, batched_rand_impl(ctx, ν.origin, sz), ν.origin))
 end
 @inline function _pushfwd_batched_rand(ctx::GenContext, ν::PushforwardMeasure, sz::SizeLike, ::NoMSpaceElementSize)
     _batched_rand_pointwise(ctx, ν, sz)
@@ -442,6 +449,15 @@ measure](https://en.wikipedia.org/wiki/Pushforward_measure) of `μ` under the
 
 To manually specify an inverse, call
 `pushfwd(InverseFunctions.setinverse(f, finv), μ, style)`.
+
+`f` takes single variates of `μ` as `rand(μ)` returns them
+(numbers, arrays, nested arrays for powers of array-variate measures,
+tuples for tuple products) and returns the variates of the pushforward.
+Batches of variates are passed through
+[`MeasureBase.batched_apply(f, X)`](@ref MeasureBase.batched_apply),
+which applies `f` variate by variate unless specialized for `f`.
+`Base.BroadcastFunction(g)` applies `g` to each number of the variates,
+which keep the layout of the variates of `μ`.
 
 Pushforwards are only defined on the image of `f`. Kernels of measures
 never throw for values in their variate space, but the inverse of `f` may
