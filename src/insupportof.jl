@@ -20,8 +20,8 @@ returns either a `Bool` (possibly a static one) or an instance of
 """
 function insupportof end
 
-@deprecate insupport(m, x) insupportof(m, x)
-@deprecate insupport(m) insupportof(m)
+@deprecate insupport(m, x) insupportof(m, x) false
+@deprecate insupport(m) insupportof(m) false
 
 """
     insupport(m, x)

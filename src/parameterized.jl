@@ -72,8 +72,8 @@ See also `paramnames`
 """
 function paramsof end
 
-@deprecate params(μ) paramsof(μ)
-@deprecate params(μ, constraints) paramsof(μ, constraints)
+@deprecate params(μ) paramsof(μ) false
+@deprecate params(μ, constraints) paramsof(μ, constraints) false
 
 """
     params(μ)

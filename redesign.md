@@ -433,6 +433,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   on devices.
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
-  exported as deprecations for one release.
+  as deprecations for one release. Deprecated names (also `pullback` and
+  `density_def`) aren't exported (decided 2026-11-09, review B13), so
+  `using MeasureBase, Distributions` has no clashes.
 - Polish before merge: final docs and release notes pass, history curation,
   version bump, remove this file.

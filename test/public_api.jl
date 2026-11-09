@@ -2,6 +2,7 @@ using Test
 using Random
 using MeasureBase
 using MeasureBase.Interface: test_interface, test_transport
+import Distributions
 
 @testset "public API" begin
     @static if VERSION >= v"1.11"
@@ -21,11 +22,20 @@ using MeasureBase.Interface: test_interface, test_transport
 end
 
 @testset "deprecated names" begin
-    @test Base.isexported(MeasureBase, :insupport)
+    # Deprecated names are reachable, but not exported:
+    for n in (:insupport, :params, :pullback, :density_def)
+        @test isdefined(MeasureBase, n) && !Base.isexported(MeasureBase, n)
+    end
     @test (@test_deprecated MeasureBase.insupport(StdUniform(), 1.5)) == false
     @test (@test_deprecated MeasureBase.insupport(StdUniform())(0.5)) == true
-    @test Base.isexported(MeasureBase, :params)
     @test (@test_deprecated MeasureBase.params(StdNormal())) == NamedTuple()
+    @test (@test_deprecated MeasureBase.pullback(exp, StdNormal())) == pullbck(exp, StdNormal())
+    @test (@test_deprecated MeasureBase.density_def(StdNormal(), 0.3)) ≈ exp(logdensity_def(StdNormal(), 0.3))
+    # so that they don't clash with the names of Distributions:
+    m = Module()
+    @eval m using MeasureBase, Distributions
+    @test (@eval m insupport) === Distributions.insupport
+    @test (@eval m params) === Distributions.params
 end
 
 @testset "gentype" begin
