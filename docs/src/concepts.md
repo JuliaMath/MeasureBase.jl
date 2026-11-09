@@ -265,10 +265,13 @@ estimate moments by sampling.
 - `truncate(μ, a..b)` for measures with scalar variates and a Stieltjes
   measure function ([`smf`](@ref), the generalization of the cdf to
   measures): densities of `μ` inside the interval, the mass of `μ` on it,
-  transports and draws via `smf` and [`invsmf`](@ref), or via the
-  complementary [`csmf`](@ref) (the generalization of the ccdf) and
-  [`invcsmf`](@ref) for intervals in the upper tail, so truncations to
-  either tail keep their precision. `normalize(truncate(μ, a..b))` is the
+  transports and draws via the interval masses `smf(μ, a, x)` and their
+  inverse `invsmf(μ, a, p)` (see [`invsmf`](@ref)). These default to
+  differences of `smf`, or of the complementary [`csmf`](@ref) (the
+  generalization of the ccdf, with the inverse [`invcsmf`](@ref)) in the
+  upper tail, so truncations to either tail keep their precision. The
+  standard measures and the common wrapped distributions also resolve
+  variates close to an interior bound. `normalize(truncate(μ, a..b))` is the
   conditional law. [`logsmf`](@ref) and [`logcsmf`](@ref) (with their
   inverses) resolve tails beyond floating-point underflow.
 
@@ -342,7 +345,9 @@ an `ArgumentError` that names the declaration. Transport Jacobians
 `normalize` need its mass, `MeasureBase.massof(::M) = MeasureBase.static(1.0)`
 for a probability measure (static, so that `normalize` returns the
 measure itself). `truncate` needs `smf` and `invsmf`. `csmf` and
-`invcsmf` keep truncations to the upper tail accurate.
+`invcsmf` keep truncations to the upper tail accurate, the interval forms
+`smf(::M, a, x)` and `invsmf(::M, a, p)` truncations close to their
+bounds.
 
 An array-variate leaf implements the density, mass and transport methods
 of a scalar-variate leaf, typically with a power of Lebesgue measure
