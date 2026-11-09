@@ -23,7 +23,10 @@ using DensityInterface: logdensityof
     ]
         @testset "$(nameof(typeof(m)))" begin
             for x in [-Inf, -1.2, -1, 0, 0.0, 1 // 2, 0.5, 1, 1.0, 2, 2.3]
-                if measure_insupport(m, x)
+                if m isa Dirac{<:AbstractArray}
+                    # Numbers aren't variates of measures with array variates:
+                    @test_throws ArgumentError logdensityof(m, x)
+                elseif measure_insupport(m, x)
                     @test @inferred(logdensityof(m, x)) ≈ 0
                     if x isa Real
                         ld = logdensityof(m, x)

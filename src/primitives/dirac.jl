@@ -98,9 +98,12 @@ end
 
 # Batches of array variates: all elements of a variate must match.
 function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Number,N}}, X::AbstractArray) where {N}
-    matches = all_leading_dims(X .== μ.x, static(N))
+    matches = _all_leading(X .== μ.x, static(N))
     ifelse.(matches, zero(_logd_numtype(X)), _neg_inf_logd(X))
 end
+# Broadcasts over zero-dimensional arrays only give numbers:
+@inline _all_leading(A::AbstractArray, n::StaticInteger) = all_leading_dims(A, n)
+@inline _all_leading(b::Bool, ::StaticInteger{0}) = b
 function batched_logdensity_def(μ::Dirac{<:AbstractArray{<:Number}}, X::AbstractArray)
     _zero_logd_batch(X, static(ndims(μ.x)))
 end
