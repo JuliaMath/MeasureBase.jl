@@ -17,6 +17,7 @@ using ArraysOfArrays: sliced, flatview
 using AffineMaps: Mul, MulAdd
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
 using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
+import PDMats
 
 CUDA.allowscalar(false)
 
@@ -122,12 +123,17 @@ _plain(x::Tuple) = map(_plain, x)
         test_cuda(p -> transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform()).(p), Float32[1f-30, 1f-9, 0.3, 0.5, 0.7, 1 - 6f-8])
         test_cuda(x -> logdensities(asmeasure(Logistic(0f0, 1f0)), x), Float32[-floatmax(Float32), -80, 0, 80, floatmax(Float32)])
         test_cuda(x -> logdensities(asmeasure(Cauchy(0f0, 1f0)), x), Float32[-1f30, -3, 0, 1f20, floatmax(Float32)])
-        mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
-        mm = asmeasure(mvn)
-        Xm = rand(mvn, 20)
-        test_cuda((m, X) -> logdensities(m, X), mm, Xm)
-        test_cuda((m, X) -> flatview(transport_to(StdNormal()^2, m).(sliced(X, Val(1)))), mm, Xm)
-        test_cuda((m, Z) -> flatview(transport_to(m, StdNormal()^2).(sliced(Z, Val(1)))), mm, randn(2, 20))
+        for Σ in ([1.7 0.5; 0.5 2.3], PDMats.PDiagMat([0.5, 2.0]), PDMats.ScalMat(2, 1.5))
+            mvn = MvNormal([0.3, -2.9], Σ)
+            mm = asmeasure(mvn)
+            Xm = rand(mvn, 20)
+            test_cuda((m, X) -> logdensities(m, X), mm, Xm)
+            test_cuda((m, X) -> flatview(transport_to(StdNormal()^2, m).(sliced(X, Val(1)))), mm, Xm)
+            test_cuda((m, Z) -> flatview(transport_to(m, StdNormal()^2).(sliced(Z, Val(1)))), mm, randn(2, 20))
+        end
+        # Single-precision kernels stay in single precision on the device:
+        @test logdensities(asmeasure(Normal(0.3f0, 1.7f0)), CuArray(rand(Float32, 8))) isa CuArray{Float32}
+        @test logdensities(cu_copy(asmeasure(MvNormal(Float32[0.3, -2.9], PDMats.PDiagMat(Float32[0.5, 2.0])))), CuArray(rand(Float32, 2, 8))) isa CuArray{Float32}
         dir = Dirichlet([2.0, 3.0, 4.0, 1.5])
         md = asmeasure(dir)
         Xd = rand(dir, 20)
