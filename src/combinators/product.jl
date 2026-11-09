@@ -166,6 +166,13 @@ end
 
 _mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
 
+# Local measures of products are products of the local measures of the
+# marginals (e.g. of binds), see also binds:
+localmeasure(μ::ProductMeasure{<:Tuple}, x::Tuple) = ProductMeasure(map(localmeasure, marginals(μ), x))
+function localmeasure(μ::ProductMeasure{<:NamedTuple{names}}, x) where {names}
+    ProductMeasure(NamedTuple{names}(map(localmeasure, values(marginals(μ)), _named_values(μ, x))))
+end
+
 function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
     Pretty.list_layout(Pretty.tile.([marginals(d)...]), sep = " ⊗ ")
 end

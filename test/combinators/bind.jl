@@ -225,6 +225,34 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         end
     end
 
+    @testset "relative densities of measures composed of binds" begin
+        ℓN(x, m = 0.0, s = 1.0) = -((x - m) / s)^2 / 2 - log(s) - log(2π) / 2
+        k(s) = a -> pushfwd(Add(a), pushfwd(Mul(s), StdNormal()))
+        bt, bt2 = mbind(k(1.0), StdNormal(), tuple), mbind(k(2.0), StdNormal(), tuple)
+        x = (0.3, 1.0)
+        ℓ1, ℓ2 = ℓN(0.3) + ℓN(1.0, 0.3), ℓN(0.3) + ℓN(1.0, 0.3, 2.0)
+        @test logdensity_rel(MeasureBase.mintegrate_exp(x -> -x[2]^2, bt), bt, x) ≈ -1
+        @test logdensity_rel(weightedmeasure(log(2), bt), bt, x) ≈ log(2)
+        @test logdensity_rel(productmeasure((bt, StdNormal())), productmeasure((bt2, StdNormal())), (x, 0.1)) ≈ ℓ1 - ℓ2
+        @test logdensity_rel(productmeasure([bt, bt]), productmeasure([bt2, bt2]), [x, x]) ≈ 2 * (ℓ1 - ℓ2)
+        @test logdensityof(superpose(bt, bt2), x) ≈ log(exp(ℓ1) + exp(ℓ2))
+        @test logdensityof(superpose(bt, bt), x) ≈ ℓ1 + log(2)
+        @test logdensityof(MeasureBase.restrict(x -> x[1] > 0, bt), x) ≈ ℓ1
+        @test logdensityof(MeasureBase.restrict(x -> x[1] > 0, bt), (-0.3, 1.0)) == -Inf
+        m = mcombine(tuple, bt, StdNormal())
+        @test logdensity_rel(m, m, (x, 0.1)) == 0
+
+        bv = mbind(k(1.0), StdNormal(), vcat)
+        bm = mbind(a -> productmeasure((b = k(1.0)(a.a),)), productmeasure((a = StdNormal(),)), merge)
+        for (b, y) in ((bv, [0.3, 1.0]), (bm, (a = 0.3, b = 1.0)))
+            @test logdensity_rel(weightedmeasure(log(2), b), b, y) ≈ log(2)
+            @test logdensityof(superpose(b, b), y) ≈ ℓ1 + log(2)
+            @test logdensity_rel(MeasureBase.mintegrate_exp(_ -> -1.0, b), b, y) ≈ -1
+        end
+        bv2 = mbind(k(2.0), StdNormal(), vcat)
+        @test logdensity_rel(mcombine(vcat, bv, StdNormal()), mcombine(vcat, bv2, StdNormal()), [0.3, 1.0, 0.1]) ≈ ℓ1 - ℓ2
+    end
+
     @testset "densities outside of the primary support" begin
         # `log` throws for negative primary variates, the kernel must not be
         # evaluated there:

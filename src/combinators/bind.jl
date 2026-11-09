@@ -261,6 +261,10 @@ end
 
 localmeasure(μ::Bind, x) = transportmeasure(μ, x)
 
+# Arrays of binds as components are localized element by element:
+localmeasure(μ::ProductMeasure{<:AbstractArray{<:Bind}}, x::AbstractArray) = productmeasure(map(localmeasure, marginals(μ), x))
+localmeasure(μ::SuperpositionMeasure{<:AbstractArray{<:Bind}}, x) = SuperpositionMeasure(map(Base.Fix2(localmeasure, x), μ.components))
+
 tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tpm_sc(f_c, μ, xy)
 
 function _bind_tpm_sc(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})

@@ -219,6 +219,12 @@ rootmeasure(μ::CombinedMeasure) = mcombine(μ.f_c, rootmeasure(μ.α), rootmeas
 
 basemeasure(μ::CombinedMeasure) = mcombine(μ.f_c, basemeasure(μ.α), basemeasure(μ.β))
 
+# Combinations of the local measures of the components (e.g. of binds):
+function localmeasure(μ::CombinedMeasure, ab)
+    tpm_α, _, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
+    _generic_mcombine_impl_stage2(μ.f_c, tpm_α, localmeasure(μ.β, b))
+end
+
 function logdensity_def(μ::CombinedMeasure, ab)
     # Use tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
