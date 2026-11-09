@@ -85,7 +85,9 @@ function _std_normal_smf(a, x)
     lo, hi = ifelse(upper, -x, a), ifelse(upper, -a, x)
     tails = (erfc(-hi * invsqrt2) - erfc(-lo * invsqrt2)) / 2
     h, m = hi - lo, (lo + hi) / 2
-    short = abs(h) * max(abs(m), one(m)) <= oftype(h, 0.1)
+    # Not differentiated, reverse-mode AD would give infinite ends NaN
+    # derivatives from it:
+    short = @_adignore abs(h) * max(abs(m), one(m)) <= oftype(h, 0.1)
     # The series of a long interval stays finite, for the gradients:
     h_s, m_s = ifelse(short, h, zero(h)), ifelse(short, m, zero(m))
     ifelse(short, _normal_interval_series(m_s, h_s), tails)
