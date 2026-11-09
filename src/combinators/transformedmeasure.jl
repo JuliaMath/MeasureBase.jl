@@ -521,7 +521,7 @@ function _pullback_impl(f, μ, style = AdaptRootMeasure())
     pushfwd(inverse(f), μ, style)
 end
 
-@deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style)
+@deprecate pullback(f, μ, style::PushFwdStyle = AdaptRootMeasure()) pullbck(f, μ, style) false
 
 """
     pullback(f, μ, style = AdaptRootMeasure())

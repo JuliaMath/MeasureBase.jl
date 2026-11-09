@@ -13,7 +13,7 @@ using Random: Xoshiro
     μs = μ + ν
     @test μs isa SuperpositionMeasure{<:Tuple{Dirac,Dirac}}
     @test μs == SuperpositionMeasure((μ, ν)) == superpose(μ, ν)
-    @test density_def(μs, 0) == 1.0
+    @test exp(logdensity_def(μs, 0)) == 1.0
     @test basemeasure(μs) == μs
     @test densityof(μs, 0) == 1.0
     @test densityof(μs, 1) == 1.0
@@ -21,7 +21,7 @@ using Random: Xoshiro
 
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
-    @test density_def(μs, 0) == 1.0
+    @test exp(logdensity_def(μs, 0)) == 1.0
     @test collect(basemeasure(μs).components) == [μ, ν]
     @test densityof(μs, 0) == 1.0
     # Base measures of components count wherever they have mass, not only
@@ -68,7 +68,7 @@ using Random: Xoshiro
     μ2 = μ + μ
     @test μ2 isa SuperpositionMeasure
     @test μ2 == superpose(μ, μ)
-    @test density_def(μ2, 0) == 1.0
+    @test exp(logdensity_def(μ2, 0)) == 1.0
 
     # Relative densities of superpositions of equal type don't assume equal
     # components, the oracle is the mass of the atoms:

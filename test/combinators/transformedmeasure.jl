@@ -229,7 +229,7 @@ using ChangesOfVariables: setladj
     @test logdensityof(pb, y) ≈ logdensityof(μ, y)
 
     # Test deprecated pullback
-    @test_deprecated pullback(f, μ)
+    @test_deprecated MeasureBase.pullback(f, μ)
 end
 
 @testset "pushforwards of counting measures" begin

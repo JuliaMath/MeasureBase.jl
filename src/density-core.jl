@@ -7,7 +7,6 @@ export unsafe_logdensity_rel
 
 export densityof
 export density_rel
-export density_def
 
 """
     logdensityof(m::AbstractMeasure, x)
@@ -373,15 +372,14 @@ end
 
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
+@deprecate density_def(μ, ν::AbstractMeasure, x) exp(logdensity_def(μ, ν, x)) false
+@deprecate density_def(μ, x) exp(logdensity_def(μ, x)) false
+
 """
     density_def(μ, x)
     density_def(μ, ν, x)
 
-The density `exp(logdensity_def(μ, x))` resp. `exp(logdensity_def(μ, ν, x))`,
-see [`logdensity_def`](@ref).
+Deprecated, use `exp(logdensity_def(μ, x))` resp.
+`exp(logdensity_def(μ, ν, x))`.
 """
-function density_def end
-
-# TODO: Do we need this method?
-density_def(μ, ν::AbstractMeasure, x) = exp(logdensity_def(μ, ν, x))
-density_def(μ, x) = exp(logdensity_def(μ, x))
+density_def
