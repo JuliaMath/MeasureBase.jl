@@ -69,19 +69,28 @@ callers materialize them where necessary. The results must be `-Inf` for
 variates outside the support of `μ`.
 
 This is the primary density extension point. The default implementation
-broadcasts the point kernel [`MeasureBase.logdensityof_impl`](@ref) over
+adds the densities of [`MeasureBase.batched_logdensity_def`](@ref) and of
+the base measure for measure types that implement the former. Otherwise
+it broadcasts the point kernel [`MeasureBase.logdensityof_impl`](@ref) over
 `X` for measures with scalar variates and maps it over the variate slices
 of `X` (in a host loop) for measures with array variates of a declared
 number of dimensions (see [`MeasureBase.mspace_ndims`](@ref)). Measure
-types with array variates should implement `batched_logdensityof_impl`
-directly. Structural measures evaluate their components via
-`batched_logdensityof_impl` as well.
+types with array variates should implement `batched_logdensityof_impl` or
+`batched_logdensity_def` directly. Structural measures evaluate their
+components via `batched_logdensityof_impl` as well.
 """
 function batched_logdensityof_impl end
 
-@inline function batched_logdensityof_impl(μ::AbstractMeasure, X)
-    _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
+@inline function batched_logdensityof_impl(μ::MU, X::XT) where {MU<:AbstractMeasure,XT}
+    if _has_batched_logdensity_def(MU, XT)
+        _ld_from_batched_def(μ, X, basemeasure(μ))
+    else
+        _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
+    end
 end
+@inline _ld_from_batched_def(μ, X, β) = _lazy_add(batched_logdensity_def(μ, X), _batched_kernel(logdensityof_impl, β, X))
+# Root measures are their own base:
+@inline _ld_from_batched_def(μ::M, X, ::M) where {M} = _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
 
 # The variate rank (for the layout of variates) and the stream rank (for
 # the layout of numeric batches) as static integers, from the type where
@@ -99,13 +108,38 @@ end
     MeasureBase.batched_logdensity_def(μ::AbstractMeasure, X)
 
 Batched form of [`logdensity_def`](@ref): log-densities of `μ` relative to
-`basemeasure(μ)` at the variates of the flat batch `X`, with the same
-conventions and defaults as [`MeasureBase.batched_logdensityof_impl`](@ref).
+`basemeasure(μ)` at the variates of the flat batch `X`, with the
+conventions of [`MeasureBase.batched_logdensityof_impl`](@ref).
+
+Measure types may implement it in place of the point `logdensity_def`,
+which MeasureBase then derives from it, as well as the default
+`batched_logdensityof_impl`. Powers, products and weighted measures
+evaluate the base densities of their components with it where it is
+implemented, and with `logdensity_def` otherwise. There is no generic
+method, call it only for measure types that implement it.
 """
 function batched_logdensity_def end
 
-@inline function batched_logdensity_def(μ::AbstractMeasure, X)
-    _default_batched_kernel(logdensity_def, μ, X, _stream_ndims(μ))
+# Whether the batched form is implemented, decided at compile time (method
+# definitions invalidate it). `Core._hasmethod` is `hasmethod` without the
+# argument validation, which remains in compiled code:
+@inline _has_batched_logdensity_def(::Type{MU}, ::Type{X}) where {MU,X} = @_adignore Core._hasmethod(batched_logdensity_def, Tuple{MU,X})
+
+# The batched form where it is implemented, otherwise derived from the
+# point form:
+@inline function _batched_logdensity_def(μ::MU, X::XT) where {MU,XT}
+    if _has_batched_logdensity_def(MU, XT)
+        batched_logdensity_def(μ, X)
+    else
+        _default_batched_kernel(logdensity_def, μ, X, _stream_ndims(μ))
+    end
+end
+
+# Measure types that implement only the batched form get the point form
+# from it:
+function logdensity_def(μ::MU, x::X) where {MU<:AbstractMeasure,X}
+    _has_batched_logdensity_def(MU, X) || throw(MethodError(logdensity_def, (μ, x)))
+    _point_result(_materialize(batched_logdensity_def(μ, x)), μ)
 end
 
 @inline _default_batched_kernel(f::F, μ, X, n::Integer) where {F} = _default_batched_kernel(f, μ, X, static(n))
@@ -140,7 +174,7 @@ end
 
 # The batched kernel for a point-level density function:
 @inline _batched_kernel(::typeof(logdensityof_impl), μ, X) = batched_logdensityof_impl(μ, X)
-@inline _batched_kernel(::typeof(logdensity_def), μ, X) = batched_logdensity_def(μ, X)
+@inline _batched_kernel(::typeof(logdensity_def), μ, X) = _batched_logdensity_def(μ, X)
 
 # Flat storage of a (nested) batch: the underlying array of memory-ordered
 # split arrays, a stacked copy for other known split modes. Struct arrays

@@ -41,6 +41,18 @@ MeasureBase.preferred_stdmeasure(::Type{<:_RanklessLaplace}) = StdUniform
 MeasureBase.transport_to_std(::Type{StdUniform}, ::_RanklessLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_RanklessLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
 
+# An isotropic normal leaf with vector variates that implements only the
+# batched base density:
+struct _BatchedIsoNormal <: AbstractMeasure end
+MeasureBase.mspace_flatsize(::Type{<:_BatchedIsoNormal}) = (MeasureBase.static(2),)
+MeasureBase.basemeasure(::_BatchedIsoNormal) = Lebesgue()^2
+MeasureBase.insupportof(::_BatchedIsoNormal, x) = true
+function MeasureBase.batched_logdensity_def(::_BatchedIsoNormal, X)
+    r = sum(abs2, X; dims = 1) ./ -2 .- log(2π)
+    X isa AbstractVector ? only(r) : dropdims(r; dims = 1)
+end
+_iso_ld(x) = -sum(abs2, x) / 2 - log(2π)
+
 # Variates of `μ^2` from two variates of `μ`, and batches of two of those:
 _pwr2(x1::Real, x2::Real) = [x1, x2]
 _pwr2(x1::AbstractVector, x2::AbstractVector) = hcat(x1, x2)
@@ -165,6 +177,17 @@ test_measure_contracts(μ, x_out; kwargs...) =
         f = transport_to(StdNormal(), L)
         @test inverse(f)(f(0.3)) ≈ 0.3
         @test f.(xs) ≈ map(f, xs)
+    end
+
+    @testset "array leaves with only a batched base density" begin
+        d = _BatchedIsoNormal()
+        x, y = [0.1, 0.2], [-1.0, 0.5]
+        @test logdensityof(d, x) ≈ MeasureBase.logdensity_def(d, x) ≈ _iso_ld(x)
+        @test logdensities(d, hcat(x, y)) ≈ [_iso_ld(x), _iso_ld(y)]
+        @test logdensityof(d^2, hcat(x, y)) ≈ _iso_ld(x) + _iso_ld(y)
+        @test logdensity_rel(d, Lebesgue()^2, x) ≈ _iso_ld(x)
+        @test logdensityof(superpose(d, d), x) ≈ _iso_ld(x) + log(2)
+        test_composition_invariants(d, x, y)
     end
 
     @testset "leaves without a declared variate rank" begin
