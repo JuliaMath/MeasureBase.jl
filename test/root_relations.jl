@@ -2,11 +2,11 @@ using Test
 
 using MeasureBase
 using MeasureBase: StdNormal, Half, SpikeMixture, logdensities
-using MeasureBase: pushfwd, superpose, PushfwdRootMeasure
+using MeasureBase: pushfwd, superpose, productmeasure, PushfwdRootMeasure
 import MeasureBase
 using Distributions: Normal, Poisson, Binomial, Dirichlet, MvNormal, logpdf, pdf
 using AffineMaps: Mul, Add
-using InverseFunctions: InverseFunctions
+using InverseFunctions: InverseFunctions, setinverse
 using IntervalSets
 using LinearAlgebra: I
 using StaticArrays: SVector
@@ -116,5 +116,8 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         @test logdensityof(pushfwd(Mul(2.0), sm), 0.0) ≈ log(0.3)
         @test logdensityof(pushfwd(Add(1.0), sm), 1.0) ≈ log(0.3)
         @test logdensityof(pushfwd(Add(1.0), sm), 0.0) ≈ log(0.7) + logpdf(Normal(), -1.0)
+        f = setinverse(x -> (2 * x[1], x[2] + 1), y -> (y[1] / 2, y[2] - 1))
+        mp = pushfwd(f, productmeasure((StdNormal(), P)))
+        @test logdensityof(mp, (1.0, 3.0)) ≈ logpdf(Normal(), 0.5) + logpdf(Poisson(2.0), 2)
     end
 end
