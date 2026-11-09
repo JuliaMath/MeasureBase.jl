@@ -564,7 +564,7 @@ end
 @inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A
 @inline _nest_leaf(A::AbstractArray{<:Any,N}, ::StaticInteger{N}) where {N} = A
 @inline _nest_leaf(A::AbstractArray, ::StaticInteger{K}) where {K} = sliced(A, Val(K))
-@inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = sliced(B, Val(length(pwr_axes(ν))))
+@inline _pwr_nest(ν::PowerMeasure, B::AbstractArray) = _nested_slices(B, Val(length(pwr_axes(ν))))
 @inline _pwr_nest(ν, B::AbstractArray) = B
 
 # Arrays of powers of one shape broadcast their base measures over the

@@ -121,6 +121,29 @@ using MeasureBase: Dirac
         end
     end
 
+    @testset "nested powers of tuple products with array-valued fields" begin
+        p = productmeasure((a = StdNormal(), b = StdNormal()^2))
+        m = (p^2)^3
+        f = transport_to(m, StdNormal()^18)
+        Z = reshape(collect(range(-2, 2, length = 72)), 18, 4)
+        ℓN(z) = sum(zi -> -zi^2 / 2 - log(2π) / 2, z)
+        X = rand(m^4)
+        @test size(X) == (4,) && size(X[1]) == (3,) && size(X[1][1]) == (2,)
+        @test logdensityof(m^4, X) ≈ sum(x -> logdensityof(m, x), X)
+        Y = transports(f, Z)
+        @test size(Y) == (4,)
+        # The transport between standard normal and normal products only
+        # rearranges the variates:
+        @test [logdensityof(m, y) for y in Y] ≈ [ℓN(z) for z in eachcol(Z)]
+        @test all(i -> logdensityof(m, Y[i]) ≈ logdensityof(m, f(Z[:, i])), 1:4)
+        @test inverse(f).(Y) ≈ collect(eachcol(Z))
+        Y2, ladjs = transports_with_ladj(f, Z)
+        @test isapprox(ladjs, zeros(4), atol = 1e-12)
+        q = productmeasure((a = StdNormal(), c = Dirac([1.0, 2.0])))
+        Xq = rand(((q^2)^3)^2)
+        @test size(Xq) == (2,) && Xq[1][1][1].c == [1.0, 2.0]
+    end
+
     @testset "transports of powers of tuple products" begin
         flat(x) = reduce(vcat, [vcat(xi...) for xi in x])
         for P in (productmeasure((StdNormal(), StdExponential()))^3, productmeasure((a = StdNormal(), b = StdExponential()))^3)
