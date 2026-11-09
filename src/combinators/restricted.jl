@@ -15,6 +15,7 @@ end
 @inline logdensity_def(::RestrictedMeasure, x) = zero(_logd_numtype(x))
 
 basemeasure(μ::RestrictedMeasure) = μ.base
+localmeasure(μ::RestrictedMeasure, x) = RestrictedMeasure(μ.predicate, localmeasure(μ.base, x))
 
 insupportof(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupportof(μ.base, x))
 

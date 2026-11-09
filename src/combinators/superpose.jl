@@ -109,6 +109,9 @@ end
 
 basemeasure(μ::SuperpositionMeasure) = superpose(map(basemeasure, μ.components))
 
+# Superpositions of the local measures of the components (e.g. of binds):
+localmeasure(μ::SuperpositionMeasure{<:Union{Tuple,NamedTuple}}, x) = SuperpositionMeasure(map(Base.Fix2(localmeasure, x), μ.components))
+
 function _component_masses(μ::SuperpositionMeasure)
     masses = map(massof, values(μ.components))
     total = sum(masses)

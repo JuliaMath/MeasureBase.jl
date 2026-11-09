@@ -228,6 +228,9 @@ mintegrate_exp(log_f, μ::AbstractMeasure) = DensityMeasure(as_integrand_exp(log
 
 basemeasure(μ::DensityMeasure) = μ.base
 
+# Local measures of the base (e.g. of binds) carry the density:
+localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base, x))
+
 @inline mspace_elsize(μ::DensityMeasure) = mspace_elsize(μ.base)
 @inline mspace_flatsize(μ::DensityMeasure) = mspace_flatsize(μ.base)
 @inline mspace_flatsize(::Type{<:DensityMeasure{<:Any,B}}) where {B} = mspace_flatsize(B)

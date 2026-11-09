@@ -68,6 +68,8 @@ end
 
 massof(w::WeightedMeasure) = exp(w.logweight) * massof(w.base)
 
+localmeasure(μ::WeightedMeasure, x) = WeightedMeasure(μ.logweight, localmeasure(μ.base, x))
+
 basemeasure(μ::AbstractWeightedMeasure) = μ.base
 
 function Pretty.tile(d::WeightedMeasure)

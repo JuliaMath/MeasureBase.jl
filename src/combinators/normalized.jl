@@ -77,6 +77,7 @@ invcsmf(μ::NormalizedMeasure, p) = invcsmf(μ.base, p * _basemass(μ))
 @inline preferred_stdmeasure(::Type{<:NormalizedMeasure{M}}) where {M} = preferred_stdmeasure(M)
 
 insupportof(μ::NormalizedMeasure, x) = insupportof(μ.base, x)
+localmeasure(μ::NormalizedMeasure, x) = NormalizedMeasure(localmeasure(μ.base, x), μ.logmass)
 
 # Pushforwards preserve masses, normalization and pushforward commute
 # (except for transports, which map the normalized law already):
