@@ -186,9 +186,9 @@ end
 
 
 @testset "AD through batched kernels of array-variate products" begin
-    # The batched kernels accumulate into result buffers, which Zygote can't
-    # differentiate and which can't hold dual numbers of captured parameters
-    # (marked broken until the kernels allocate their results). Closed forms:
+    # The batched kernels must not accumulate into result buffers, which
+    # Zygote can't differentiate and which can't hold dual numbers of
+    # captured parameters. Closed forms:
     # ∇ₓ log N(x | μ, I) = μ - x, ∇_μ = x - μ.
     mvn_prod = θ -> productmeasure([asmeasure(MvNormal(θ[1:2], I)), asmeasure(MvNormal(θ[3:4], I))])
     θ = [1.0, 1.0, 0.0, 0.0]
@@ -196,19 +196,19 @@ end
     X = reshape(collect(0.1:0.1:1.2), 2, 2, 3)
     μ = reshape(θ, 2, 2)
     @test ForwardDiff.gradient(X -> sum(logdensities(P, X)), X) ≈ μ .- X
-    @test Zygote.gradient(X -> sum(logdensities(P, X)), X)[1] ≈ μ .- X broken = true
+    @test Zygote.gradient(X -> sum(logdensities(P, X)), X)[1] ≈ μ .- X
     ∇θ = vec(sum(X .- μ, dims = 3))
-    @test ForwardDiff.gradient(θ -> sum(logdensities(mvn_prod(θ), X)), θ) ≈ ∇θ broken = true
-    @test Zygote.gradient(θ -> sum(logdensities(mvn_prod(θ), X)), θ)[1] ≈ ∇θ broken = true
-    @test eltype(logdensities(P, Float32.(X))) == typeof(logdensityof(P, Float32.(X[:, :, 1]))) broken = true
+    @test ForwardDiff.gradient(θ -> sum(logdensities(mvn_prod(θ), X)), θ) ≈ ∇θ
+    @test Zygote.gradient(θ -> sum(logdensities(mvn_prod(θ), X)), θ)[1] ≈ ∇θ
+    @test eltype(logdensities(P, Float32.(X))) == typeof(logdensityof(P, Float32.(X[:, :, 1])))
 
     # Transports from StdNormal^4 shift by μ, so the pullback of P is StdNormal^4:
     f = transport_to(P, StdNormal()^4)
     Z = reshape(collect(0.1:0.1:1.2), 4, 3)
     @test ForwardDiff.gradient(Z -> sum(sum, transports(f, Z)), Z) ≈ ones(4, 3)
-    @test Zygote.gradient(Z -> sum(sum, transports(f, Z)), Z)[1] ≈ ones(4, 3) broken = true
-    @test Zygote.gradient(z -> sum(sum, f(z)), Z[:, 1])[1] ≈ ones(4) broken = true
-    @test Zygote.gradient(z -> logdensityof(pullbck(f, P), z), Z[:, 1])[1] ≈ -Z[:, 1] broken = true
+    @test Zygote.gradient(Z -> sum(sum, transports(f, Z)), Z)[1] ≈ ones(4, 3)
+    @test Zygote.gradient(z -> sum(sum, f(z)), Z[:, 1])[1] ≈ ones(4)
+    @test Zygote.gradient(z -> logdensityof(pullbck(f, P), z), Z[:, 1])[1] ≈ -Z[:, 1]
 
     # Dirichlet marginals: ∂/∂xᵢ = (αᵢ - 1) / xᵢ, ∂/∂αᵢ = log(xᵢ) + ψ(∑α) - ψ(αᵢ):
     dir_prod = α -> productmeasure([asmeasure(Dirichlet(α)), asmeasure(Dirichlet(2 .* α))])
@@ -216,8 +216,8 @@ end
     XD = cat([0.2 0.3; 0.3 0.3; 0.5 0.4], [0.1 0.6; 0.6 0.2; 0.3 0.2]; dims = 3)
     A = hcat(α, 2 .* α)
     @test ForwardDiff.gradient(X -> sum(logdensities(dir_prod(α), X)), XD) ≈ (A .- 1) ./ XD
-    @test Zygote.gradient(X -> sum(logdensities(dir_prod(α), X)), XD)[1] ≈ (A .- 1) ./ XD broken = true
+    @test Zygote.gradient(X -> sum(logdensities(dir_prod(α), X)), XD)[1] ≈ (A .- 1) ./ XD
     ∇α = vec(sum(log.(XD[:, 1, :]) .+ digamma(sum(α)) .- digamma.(α), dims = 2)) .+
         2 .* vec(sum(log.(XD[:, 2, :]) .+ digamma(2 * sum(α)) .- digamma.(2 .* α), dims = 2))
-    @test ForwardDiff.gradient(α -> sum(logdensities(dir_prod(α), XD)), α) ≈ ∇α broken = true
+    @test ForwardDiff.gradient(α -> sum(logdensities(dir_prod(α), XD)), α) ≈ ∇α
 end

@@ -40,9 +40,9 @@ _ref_logpdf(::StdLogistic, x) = -abs(x) - 2 * log1p(exp(-abs(x)))
         @test Zygote.gradient(L -> sum(f(L)), L)[1] ≈ exp.(_ref_logpdf.(StdLogistic(), L) .- _ref_logpdf.(StdNormal(), f(L)))
     end
 
-    # The batched kernels accumulate into result buffers, which Zygote can't
-    # differentiate and which can't hold dual numbers of captured parameters
-    # (marked broken until the kernels allocate their results):
+    # The batched kernels must not accumulate into result buffers, which
+    # Zygote can't differentiate and which can't hold dual numbers of
+    # captured parameters:
     @testset "batched densities with out-of-support variates" begin
         # log-density -|x|² - sum(x) inside the support, -Inf outside:
         post = mintegrate_exp(x -> -sum(abs2, x), StdExponential()^2)
@@ -50,11 +50,11 @@ _ref_logpdf(::StdLogistic, x) = -abs(x) - 2 * log1p(exp(-abs(x)))
         ref = [-1.2 0.0 -3.0; -1.6 0.0 -5.0]
         f = X -> sum(logdensities(post, X)[[1, 3]])
         @test ForwardDiff.gradient(f, X) ≈ ref
-        @test Zygote.gradient(f, X)[1] ≈ ref broken = true
+        @test Zygote.gradient(f, X)[1] ≈ ref
 
         # Of the variates 0.5 and 2.0 only the first is inside the support:
         g = a -> sum(logdensities(mintegrate_exp(x -> -a * x^2, StdUniform()), [0.5, 2.0]))
-        @test ForwardDiff.derivative(g, 1.0) ≈ -0.25 broken = true
-        @test Zygote.gradient(g, 1.0)[1] ≈ -0.25 broken = true
+        @test ForwardDiff.derivative(g, 1.0) ≈ -0.25
+        @test Zygote.gradient(g, 1.0)[1] ≈ -0.25
     end
 end
