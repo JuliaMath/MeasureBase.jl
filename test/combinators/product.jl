@@ -13,6 +13,7 @@ using InverseFunctions: inverse
 
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, productmeasure, pushfwd, marginals, transport_to, logdensities
+import Distributions
 
 @testset "products over arrays of marginals" begin
     stblrng() = StableRNG(789990641)
@@ -46,6 +47,16 @@ using MeasureBase: StdNormal, StdUniform, productmeasure, pushfwd, marginals, tr
         # Non-isbits marginals keep their container:
         Pv = productmeasure([pushfwd(Mul(randn(stblrng(), 2, 2)), StdNormal()^2) for _ in 1:2])
         @test !(marginals(Pv) isa StructArray)
+    end
+
+    @testset "marginals without a constructor from their fields" begin
+        # InverseGamma stores a Gamma but has no constructor taking one:
+        d = Distributions.InverseGamma(2.0, 1.0)
+        ld(x) = sum(xi -> Distributions.logpdf(d, xi), x)
+        for P in (productmeasure([asmeasure(d) for _ in 1:2]), asmeasure(Distributions.product_distribution(fill(d, 2))))
+            @test logdensityof(P, [1.0, 2.0]) ≈ ld([1.0, 2.0])
+            @test logdensities(P, [1.0 0.5; 2.0 3.0]) ≈ [ld([1.0, 2.0]), ld([0.5, 3.0])]
+        end
     end
 
     @testset "draws over mapped arrays are eager" begin

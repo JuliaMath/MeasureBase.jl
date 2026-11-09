@@ -133,9 +133,11 @@ end
 
 # Arrays of parameterized isbits marginals are stored as struct arrays, so
 # that batched kernels broadcast over the numeric parameter columns (also
-# on GPUs and in traced code):
+# on GPUs and in traced code). Kernels rebuild the marginals from their
+# fields via ConstructionBase, types without a matching constructor (e.g.
+# InverseGamma) are stored as they are:
 function _marginal_storage(mar::AbstractArray{T}) where {T}
-    if isconcretetype(T) && isbitstype(T) && !Base.issingletontype(T)
+    if isconcretetype(T) && isbitstype(T) && !Base.issingletontype(T) && _rebuilds_from_fields(T)
         StructArray(mar; unwrap = _unwrap_field)
     else
         mar
@@ -148,8 +150,10 @@ _marginal_storage(mar::StructArray) = mar
 @inline function _unwrap_field(::Type{T}) where {T}
     isstructtype(T) && !Base.issingletontype(T) && fieldcount(T) > 0 &&
         !(T <: Number) && !(T <: AbstractArray) && !(T <: Tuple) && !(T <: AbstractString) &&
-        !(T <: Symbol) && !(T <: Function)
+        !(T <: Symbol) && !(T <: Function) && _rebuilds_from_fields(T)
 end
+
+@inline _rebuilds_from_fields(::Type{T}) where {T} = @_adignore hasmethod(constructorof(T), Tuple{fieldtypes(T)...})
 
 @inline function _generic_productmeasure_impl(
     mar::ReadonlyMappedArray{T,N,A,Returns{M}},
