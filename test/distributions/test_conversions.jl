@@ -5,6 +5,7 @@ using Test
 using Random, Statistics, LinearAlgebra
 using Distributions
 using StableRNGs
+using IntervalSets: (..)
 
 import MeasureBase
 using MeasureBase: AbstractMeasure, AsMeasure, asmeasure
@@ -85,5 +86,33 @@ using MeasureBase: logdensityof, massof, insupportof
         for x in (rand(stblrng(), d) for _ in 1:10)
             @test logdensityof(m2, x) ≈ logpdf(d, x)
         end
+    end
+
+    @testset "censored" begin
+        using MeasureBase: logdensity_rel, transport_to
+        # Censored continuous distributions have atoms at their finite bounds:
+        for d in (censored(Normal(), -1.0, 1.0), censored(Gamma(2.0, 1.5), 0.5, 4.0), censored(Normal(0.3, 2.0); upper = 1.0),
+                  censored(Normal(), -Inf, 1.0), censored(Exponential(), 0.0, 2.0))
+            m = asmeasure(d)
+            @test m isa SuperpositionMeasure && massof(m) ≈ 1
+            for x in (-2.0, -1.0, 0.0, 0.5, 1.0, 2.0, 4.0, 5.0)
+                @test logdensityof(m, x) ≈ logpdf(d, x) || logdensityof(m, x) == logpdf(d, x) == -Inf
+            end
+            d2 = convert(Distribution, m)
+            @test d2 isa Distributions.Censored && all(x -> logpdf(d2, x) ≈ logpdf(d, x) || logpdf(d2, x) == logpdf(d, x), (-1.0, 0.5, 1.0, 2.0))
+            @test_throws ArgumentError transport_to(StdNormal(), m)(0.3)
+        end
+        d = censored(Normal(), -1.0, 1.0)
+        m = asmeasure(d)
+        @test convert(Distribution, m) == d
+        @test logdensity_rel(m, asmeasure(Normal()), 1.0) == Inf
+        @test logdensity_rel(m, asmeasure(Normal()), 0.5) ≈ 0
+        X = rand(stblrng(), m^10^4)
+        @test count(==(1.0), X) / 10^4 ≈ ccdf(Normal(), 1.0) atol = 0.02
+        @test count(==(-1.0), X) / 10^4 ≈ cdf(Normal(), -1.0) atol = 0.02
+        @test all(x -> -1 <= x <= 1, X)
+        @test count(==(1), rand(stblrng(), Float32, m^10^3)) > 0
+        # Superpositions with other atoms aren't censored distributions:
+        @test_throws ArgumentError convert(Distribution, MeasureBase.superpose(truncate(asmeasure(Normal()), -1.0 .. 1.0), 0.5 * MeasureBase.Dirac(-1.0)))
     end
 end

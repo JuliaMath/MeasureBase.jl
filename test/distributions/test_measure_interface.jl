@@ -70,12 +70,16 @@ end
         (Distributions.Wishart(3.0, I2), (:df, :S)), (Distributions.LKJ(2, 1.0), (:d, :η)),
         (Distributions.MvTDist(3.0, [0.0, 1.0], I2), (:df, :μ, :Σ)), (Distributions.MvNormal([0.0, 1.0], I2), (:μ, :Σ)),
         (Distributions.truncated(Distributions.Normal(), 0.0, 1.0), (:p1, :p2, :p3, :p4)),
-        (Distributions.censored(Distributions.Normal(), 0.0, 1.0), (:p1, :p2, :p3, :p4)),
     ]
         m = MeasureBase.asmeasure(d)
         @test MeasureBase.paramnames(d) == MeasureBase.paramnames(m) == names
         @test values(MeasureBase.paramsof(d)) == values(MeasureBase.paramsof(m)) == Distributions.params(d)
     end
+    # Censored distributions keep their parameters, their measures are
+    # superpositions:
+    dc = Distributions.censored(Distributions.Normal(), 0.0, 1.0)
+    @test MeasureBase.paramnames(dc) == (:p1, :p2, :p3, :p4)
+    @test values(MeasureBase.paramsof(dc)) == Distributions.params(dc)
     @test @inferred(MeasureBase.paramsof(Distributions.Dirichlet([1.0, 2.0]))) == (alpha = [1.0, 2.0],)
     @test MeasureBase.paramsof(MeasureBase.asmeasure(Distributions.Dirichlet([1.0, 2.0]))^3) == (alpha = [1.0, 2.0],)
 end
