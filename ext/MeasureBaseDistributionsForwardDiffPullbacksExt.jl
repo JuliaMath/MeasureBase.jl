@@ -3,20 +3,34 @@
 module MeasureBaseDistributionsForwardDiffPullbacksExt
 
 import MeasureBase
-using MeasureBase: StdMeasure, transport_to_std, transport_from_std
+using MeasureBase: StdLogistic, _to_logistic_via, _from_logistic_via
 
-import Distributions
-using Distributions: Distribution, Univariate
+using Distributions: Distribution, Univariate, Continuous
 
 import ChainRulesCore
+using ChainRulesCore: NoTangent, Tangent, @thunk, unthunk
 using ForwardDiffPullbacks: fwddiff
 
-# Use ForwardDiff for univariate transports:
-@inline function ChainRulesCore.rrule(::typeof(transport_to_std), ::Type{S}, d::Distribution{Univariate}, x::Any) where {S<:StdMeasure}
-    ChainRulesCore.rrule(fwddiff(transport_to_std), S, d, x)
+# The generic transports via Distributions' cdfs and quantiles (the families
+# with branch-free kernels differentiate natively) use ForwardDiff. The
+# cotangent of the distribution is computed lazily per field, so that
+# variate derivatives also work for distributions built inside the
+# differentiated function from constant parameters ForwardDiff can't
+# differentiate:
+for f in (:_to_logistic_via, :_from_logistic_via)
+    @eval function ChainRulesCore.rrule(::typeof($f), ::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x::Real)
+        y, fwddiff_pullback = ChainRulesCore.rrule(fwddiff($f), StdLogistic, d, x)
+        function $(Symbol(f, :_pullback))(Δy)
+            _, _, Δd, Δx = fwddiff_pullback(Δy)
+            return NoTangent(), NoTangent(), _lazy_field_tangents(d, Δd), Δx
+        end
+        return y, $(Symbol(f, :_pullback))
+    end
 end
-@inline function ChainRulesCore.rrule(::typeof(transport_from_std), ::Type{S}, d::Distribution{Univariate}, z::Any) where {S<:StdMeasure}
-    ChainRulesCore.rrule(fwddiff(transport_from_std), S, d, z)
+
+function _lazy_field_tangents(::D, Δd) where {D}
+    names = fieldnames(D)
+    Tangent{D}(; NamedTuple{names}(map(n -> @thunk(getproperty(unthunk(Δd), n)), names))...)
 end
 
 end # module MeasureBaseDistributionsForwardDiffPullbacksExt

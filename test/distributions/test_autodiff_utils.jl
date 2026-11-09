@@ -6,7 +6,7 @@ using LinearAlgebra
 using Distributions, ArraysOfArrays
 using FillArrays: Fill
 import ForwardDiff, Zygote
-using MeasureBase: StdNormal, StdUniform, StdLogistic, transport_to
+using MeasureBase: StdNormal, StdUniform, StdLogistic, transport_to, mbind
 
 
 @testset "trafo_utils" begin
@@ -90,4 +90,35 @@ end
     # Likelihoods with parameter-dependent marginals:
     ℒ = likelihoodof(μ -> productmeasure(asmeasure.(Normal.(μ, σ))), x)
     @test Zygote.gradient(μ -> logdensityof(ℒ, μ), μ)[1] ≈ (x .- μ) ./ σ.^2
+end
+
+
+@testset "Zygote gradients of distributions built inside" begin
+    # With ForwardDiffPullbacks loaded (as in this test set), the families
+    # with native rules and the generic cdf/quantile path. Derivatives of
+    # z = Φ⁻¹(F(x)): dz/dx = f(x) / φ(z), dz/dθ = ∂F(x)/∂θ / φ(z).
+    φ(z) = exp(-z^2 / 2) / sqrt(2π)
+    @test Zygote.gradient(x -> transport_to(StdNormal(), asmeasure(Normal(0.2, 1.3)))(x), 0.7)[1] ≈ 1 / 1.3
+    @test Zygote.gradient(a -> transport_to(Normal(a, 1.5), StdUniform())(0.3), 0.5)[1] ≈ 1
+    @test Zygote.gradient(θ -> transport_to(StdNormal(), asmeasure(Normal(θ[1], θ[2])))(0.7), [0.2, 1.3])[1] ≈ [-1, -0.5 / 1.3] ./ 1.3
+
+    t_inside = x -> transport_to(StdNormal(), asmeasure(TDist(3.0)))(x)
+    t_const = transport_to(StdNormal(), TDist(3.0))
+    for f in (t_inside, t_const)
+        @test Zygote.gradient(f, 0.7)[1] ≈ pdf(TDist(3.0), 0.7) / φ(f(0.7))
+    end
+    t_inv = z -> transport_to(asmeasure(TDist(3.0)), StdNormal())(z)
+    @test Zygote.gradient(t_inv, 0.7)[1] ≈ φ(0.7) / pdf(TDist(3.0), t_inv(0.7))
+    @test Zygote.gradient(x -> transport_to(StdNormal(), asmeasure(Chisq(3.0)))(x), 0.7)[1] ≈
+        pdf(Chisq(3.0), 0.7) / φ(transport_to(StdNormal(), Chisq(3.0))(0.7))
+    g = a -> transport_to(StdNormal(), asmeasure(Gumbel(a, 2.0)))(0.4)
+    @test Zygote.gradient(g, 0.3)[1] ≈ -pdf(Gumbel(0.3, 2.0), 0.4) / φ(g(0.3))
+
+    # Binds with univariate kernels, (a, x) = (z₁, F⁻¹(Φ(z₂))):
+    w(y) = y[1] + 2 * y[2]
+    bn = z -> w(transport_to(mbind(a -> asmeasure(Normal(a, 1.3)), StdNormal(), tuple), StdNormal()^2)(z))
+    @test Zygote.gradient(bn, [0.3, -0.4])[1] ≈ [3.0, 2.6]
+    bt = z -> w(transport_to(mbind(a -> asmeasure(TDist(3.0)), StdNormal(), tuple), StdNormal()^2)(z))
+    x_t = transport_to(TDist(3.0), StdNormal())(-0.4)
+    @test Zygote.gradient(bt, [0.3, -0.4])[1] ≈ [1.0, 2 * φ(-0.4) / pdf(TDist(3.0), x_t)]
 end
