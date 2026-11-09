@@ -10,6 +10,7 @@ using MeasureBase
 using MeasureBase: asmeasure, GenContext, StdUniform, StdNormal, StdExponential, StdLogistic
 using MeasureBase: batched_rand_impl, logdensities, insupportof
 using MeasureBase.InverseFunctions: inverse
+using MeasureBase.ChangesOfVariables: with_logabsdet_jacobian
 using ArraysOfArrays: sliced, flatview
 import Adapt
 using JLArrays
@@ -53,6 +54,24 @@ using StructArrays: StructArray
                 @test isapprox(mean(Xs), mean(d), atol = 5 * sqrt(var(d) / 2000) + 1e-3)
             end
         end
+    end
+
+    @testset "single precision kernels stay in single precision" begin
+        for d in (Normal(0.3f0, 1.7f0), LogNormal(0.2f0, 0.6f0), Gamma(2.3f0, 1.2f0), Beta(2.5f0, 3.5f0), Poisson(2.7f0))
+            m = asmeasure(d)
+            xs = d isa Poisson ? [0, 1, 3, 4] : Float32[0.1, 0.4, 0.5, 0.9]
+            @test logdensityof(m, xs[2]) isa Float32
+            @test eltype(logdensities(m, xs)) == Float32
+            @test eltype(logdensities(m, JLArray(xs))) == Float32
+            @test eltype(logdensities(m^2, reshape(xs, 2, 2))) == Float32
+        end
+        for Σ in (PDMats.PDMat(Float32[1.7 0.5; 0.5 2.3]), PDMats.PDiagMat(Float32[0.5, 2.0]), PDMats.ScalMat(2, 1.5f0))
+            m = asmeasure(MvNormal(Float32[0.3, -2.9], Σ))
+            @test eltype(logdensities(m, rand(stblrng(), Float32, 2, 3))) == Float32
+            @test eltype(logdensities(m, zeros(Float32, 2, 0))) == Float32
+        end
+        f = transport_to(StdNormal(), asmeasure(Normal(0.3f0, 1.7f0)))
+        @test with_logabsdet_jacobian(f, 1f0) isa Tuple{Float32,Float32}
     end
 
     @testset "discrete families" begin

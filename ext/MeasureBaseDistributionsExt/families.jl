@@ -21,12 +21,18 @@ const _Families = Union{Normal,Uniform,Exponential,Logistic,Cauchy,Laplace,LogNo
 @inline _iszero_value(x) = abs(x) < floatmin(float(typeof(x)))
 
 # `c * log(y)` for `y >= 0`, zero for `c == y == 0`. Only that endpoint is
-# guarded, so that the derivative with respect to `c` survives at `c == 0`:
-@inline _clog(c, y) = c * log(ifelse(_iszero_value(c) & _iszero_value(y), one(y), y))
+# guarded, so that the derivative with respect to `c` survives at `c == 0`.
+# Integer `y` take the float type of `c`:
+@inline function _clog(c, y)
+    u = convert(float(promote_type(typeof(c), typeof(y))), y)
+    c * log(ifelse(_iszero_value(c) & _iszero_value(u), one(u), u))
+end
 
+# Constants stay irrational, so that they take the precision of the variates
+# and parameters:
 @inline function _family_logd(d::Normal, x)
     z = (x - d.μ) / d.σ
-    -z * z / 2 - log(d.σ) - log2π / 2
+    -(z * z + log2π) / 2 - log(d.σ)
 end
 @inline _family_insupport(::Normal, x) = true
 
@@ -56,7 +62,7 @@ end
 @inline function _family_logd(d::LogNormal, x)
     lx = log(abs(x))
     z = (lx - d.μ) / d.σ
-    ℓ = -z * z / 2 - log(d.σ) - log2π / 2 - lx
+    ℓ = -(z * z + log2π) / 2 - log(d.σ) - lx
     ifelse(x > 0, ℓ, oftype(ℓ, -Inf))
 end
 @inline _family_insupport(::LogNormal, x) = x >= 0
@@ -79,7 +85,7 @@ end
 end
 @inline _family_insupport(::Beta, x) = (0 <= x) & (x <= 1)
 
-@inline _family_logd(d::Poisson, x) = _clog(x, d.λ) - d.λ - loggamma(abs(x) + 1)
+@inline _family_logd(d::Poisson, x) = _clog(x, d.λ) - d.λ - loggamma(abs(x) + one(float(typeof(d.λ))))
 @inline _family_insupport(::Poisson, x) = (x >= 0) & (x == floor(x))
 
 @inline _family_logd(d::Bernoulli, x) = ifelse(x == 1, log(d.p), log1p(-d.p))

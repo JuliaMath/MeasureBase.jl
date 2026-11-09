@@ -42,7 +42,8 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
         d = m.obj
         Xc = _as_columns(X)
         Z = _cholesky_L(d.Σ) \ (Xc .- d.μ)
-        ℓ = -_column_sums(abs2, Z) ./ 2 .- (_logdet_cov(d.Σ) + length(d) * log2π) / 2
+        ld = _logdet_cov(d.Σ)
+        ℓ = -_column_sums(abs2, Z) ./ 2 .- (ld + log2π * oftype(ld, length(d))) / 2
         _batch_results(_masked(ℓ, _column_all(isfinite.(Xc))), X)
     end
 end
