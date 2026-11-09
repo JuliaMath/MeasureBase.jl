@@ -5,7 +5,7 @@ using MeasureBase: mspace_elsize, mspace_flatsize, NoMSpaceElementSize
 using MeasureBase: preferred_stdmeasure, promote_stdmeasure, AnyStdMeasure, NoStdTransport
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic
 using MeasureBase: Dirac, Lebesgue, Counting, LebesgueBase, CountingBase
-using MeasureBase: mreshape, productmeasure, weightedmeasure, pushfwd, mbind, restrict
+using MeasureBase: mreshape, productmeasure, weightedmeasure, pushfwd, mbind, restrict, superpose
 using IntervalSets: (..)
 using StaticArrays: SVector, Size
 using Static: static
@@ -142,6 +142,15 @@ end
         @test logdensities(Dirac([0.0, 0.0]), [0.0 1.0; 0.0 0.0]) == [0.0, -Inf]
         @test_throws ArgumentError logdensityof(Dirac([0.0, 0.0])^3, zeros(1, 3))
         @test logdensityof(Dirac([0.0, 0.0])^3, zeros(2, 3)) == 0
+
+        # Numbers aren't variates of measures with array variates:
+        for m in (Dirac([1.0, 2.0]), Lebesgue(MeasureBase.StdSimplex(3)), MeasureBase.normalize(Lebesgue(MeasureBase.StdSimplex(3))),
+                  superpose(Dirac([1.0, 2.0]), Dirac([1.0, 3.0])), weightedmeasure(0.5, Dirac([1.0, 2.0])),
+                  asmeasure(Distributions.MvNormal(zeros(2), I)), asmeasure(Distributions.Dirichlet(ones(3))))
+            @test_throws ArgumentError logdensityof(m, 0.5)
+        end
+        @test logdensityof(Dirac(fill(1.0)), fill(1.0)) == 0
+        @test logdensityof(Dirac(fill(1.0)), fill(2.0)) == -Inf
 
         # The type form of the flat size checks instances, also in powers:
         iso = _TypeSizedIso3()

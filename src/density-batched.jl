@@ -228,6 +228,11 @@ end
 # variates.
 @inline _point_ld(f::F, μ, x::AbstractArray{<:Number}) where {F} = _point_ld_byrank(f, μ, x, _stream_ndims(μ))
 @inline _point_ld(f::F, μ, x) where {F} = f(μ, x)
+# Numbers are variates only of measures of scalar (or unknown) rank, the
+# rank is taken from the type, so the check costs nothing at run time:
+@inline _point_ld(f::F, μ, x::Number) where {F} = _point_ld_scalar(f, μ, x, _static_ndims_of(stream_ndims(typeof(μ))))
+@inline _point_ld_scalar(f::F, μ, x, ::Union{StaticInteger{0},NoMSpaceElementSize}) where {F} = f(μ, x)
+@noinline _point_ld_scalar(::F, ::Any, ::Any, ::StaticInteger) where {F} = _throw_size_mismatch()
 @inline _point_ld_byrank(f::F, μ, x, ::StaticInteger) where {F} = _point_result(_materialize(_checked_batched_kernel(f, μ, x)), μ)
 @inline _point_ld_byrank(f::F, μ, x, ::NoMSpaceElementSize) where {F} = f(μ, x)
 @inline _point_ld(f::F, μ::PrimitiveMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
