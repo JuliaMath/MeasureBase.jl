@@ -5,6 +5,7 @@ using InverseFunctions: inverse
 using LinearAlgebra: I
 using Statistics: mean, var
 import AffineMaps
+import Distributions
 
 # A scalar-variate leaf with exactly the declarations the concepts page asks
 # for, the Laplace distribution with its standard transport:
@@ -52,6 +53,30 @@ function MeasureBase.batched_logdensity_def(::_BatchedIsoNormal, X)
     X isa AbstractVector ? only(r) : dropdims(r; dims = 1)
 end
 _iso_ld(x) = -sum(abs2, x) / 2 - log(2π)
+
+# A measure of value-dependent variate size that implements only the
+# with-rest hooks: `x = [a; b]` with `a ~ StdExponential()` and
+# `b ~ StdNormal()^k(a)`:
+struct _ExpChain <: AbstractMeasure end
+_chain_k(a) = max(1, ceil(Int, a))
+MeasureBase.fixed_stream_size(::Type{<:_ExpChain}) = MeasureBase.static(false)
+MeasureBase.preferred_stdmeasure(::Type{<:_ExpChain}) = StdNormal
+function MeasureBase.logdensityof_with_rest(::_ExpChain, x::AbstractVector)
+    ℓa, a, x2 = MeasureBase.logdensityof_with_rest(StdExponential(), x)
+    ℓb, _, x_rest = MeasureBase.logdensityof_with_rest(StdNormal()^_chain_k(a), x2)
+    return ℓa + ℓb, view(x, firstindex(x):(firstindex(x) + _chain_k(a))), x_rest
+end
+function MeasureBase.transport_to_std_with_rest(::Type{StdNormal}, ::_ExpChain, x::AbstractVector)
+    za, a, x2 = MeasureBase.transport_to_std_with_rest(StdNormal, StdExponential(), x)
+    zb, _, x_rest = MeasureBase.transport_to_std_with_rest(StdNormal, StdNormal()^_chain_k(a), x2)
+    return vcat(za, zb), view(x, firstindex(x):(firstindex(x) + _chain_k(a))), x_rest
+end
+function MeasureBase.transport_from_std_with_rest(::Type{StdNormal}, ::_ExpChain, z::AbstractVector)
+    a, z2 = MeasureBase.transport_from_std_with_rest(StdNormal, StdExponential(), z)
+    b, z_rest = MeasureBase.transport_from_std_with_rest(StdNormal, StdNormal()^_chain_k(a), z2)
+    return vcat(a, b), z_rest
+end
+_chain_ld(x) = -x[1] + sum(xi -> -xi^2 / 2 - log(2π) / 2, x[2:end])
 
 # Variates of `μ^2` from two variates of `μ`, and batches of two of those:
 _pwr2(x1::Real, x2::Real) = [x1, x2]
@@ -188,6 +213,25 @@ test_measure_contracts(μ, x_out; kwargs...) =
         @test logdensity_rel(d, Lebesgue()^2, x) ≈ _iso_ld(x)
         @test logdensityof(superpose(d, d), x) ≈ _iso_ld(x) + log(2)
         test_composition_invariants(d, x, y)
+    end
+
+    @testset "measures that implement only the stream protocol" begin
+        μ = _ExpChain()
+        x1, x2 = [0.5, 0.3], [1.5, 0.3, -0.2]
+        @test logdensityof(μ, x1) ≈ _chain_ld(x1)
+        @test logdensityof(μ, x2) ≈ _chain_ld(x2)
+        @test_throws ArgumentError logdensityof(μ, [0.5, 0.3, 0.1])
+        @test logdensities(μ, [x1, x2]) ≈ _chain_ld.([x1, x2])
+        @test logdensities(μ, hcat(x1, [0.7, -0.3])) ≈ [_chain_ld(x1), _chain_ld([0.7, -0.3])]
+        @test logdensityof(mcombine(vcat, μ, StdNormal()), vcat(x2, 0.4)) ≈ _chain_ld(x2) + logdensityof(StdNormal(), 0.4)
+        @test logdensityof(MeasureBase.mbind(_ -> μ, StdNormal(), vcat), vcat(0.1, x2)) ≈ logdensityof(StdNormal(), 0.1) + _chain_ld(x2)
+        @test logdensityof(μ^2, [x1, x2]) ≈ _chain_ld(x1) + _chain_ld(x2)
+        @test MeasureBase.getdof(μ) isa MeasureBase.NoDOF && MeasureBase.fast_dof(μ) isa MeasureBase.NoDOF
+        # The first standard variate is the normal quantile of the exponential cdf:
+        f = transport_to(StdNormal()^3, μ)
+        z = f(x2)
+        @test z[1] ≈ Distributions.quantile(Distributions.Normal(), 1 - exp(-1.5)) && z[2:3] == x2[2:3]
+        @test inverse(f)(z) ≈ x2
     end
 
     @testset "leaves without a declared variate rank" begin

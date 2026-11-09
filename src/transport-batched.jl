@@ -1,7 +1,5 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
-using Tricks: static_methods
-
 # Batched-first transport over flat batches of variates `(variate dims...,
 # batch dims...)`, zero batch dims meaning a single variate. Streams of
 # standard variates are batches `(dof, batch dims...)`, consumed along their

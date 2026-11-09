@@ -375,12 +375,6 @@ function _bind_ld_impl(::typeof(merge), μ::Bind, x::NamedTuple)
     _bind_ld(ℓ_a, () -> _ld_whole_stream(_get_β_a(μ, a), x2))
 end
 
-function _ld_whole_stream(μ, x)
-    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
-    isempty(x_rest) || _throw_stream_too_long()
-    return ℓ
-end
-
 # Projections onto the primary variate weight it with the mass of the
 # secondary measure:
 function _bind_ld_impl(::typeof(firstarg), μ::Bind, a)

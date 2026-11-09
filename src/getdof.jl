@@ -48,7 +48,7 @@ function getdof end
 @inline _default_getdof(::Type{MU}, ::MU) where {MU} = NoDOF{MU}()
 @inline _default_getdof(::Type{MU}, mu_base) where {MU} = getdof(mu_base)
 
-@inline getdof(μ::MU) where {MU} = _default_getdof(MU, basemeasure(μ))
+@inline getdof(μ::MU) where {MU} = _has_basemeasure(MU) ? _default_getdof(MU, basemeasure(μ)) : NoDOF{MU}()
 
 
 """
@@ -86,7 +86,7 @@ Also see [`getdof`](@ref) and [`check_dof`](@ref).
 function fast_dof end
 export fast_dof
 
-@inline fast_dof(μ::MU) where {MU} = _default_fast_dof(MU, basemeasure(μ))
+@inline fast_dof(μ::MU) where {MU} = _has_basemeasure(MU) ? _default_fast_dof(MU, basemeasure(μ)) : NoDOF{MU}()
 
 # Primitive measures (their own base measure) have fast DOF if their DOF is
 # static:
@@ -206,5 +206,5 @@ end
 end
 
 @propagate_inbounds function checked_arg(mu::MU, x) where {MU}
-    _default_checked_arg(MU, basemeasure(mu), x)
+    _has_basemeasure(MU) ? _default_checked_arg(MU, basemeasure(mu), x) : NoArgCheck{MU,typeof(x)}()
 end

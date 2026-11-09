@@ -1,5 +1,7 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
+using Tricks: static_methods
+
 # Batched-first density evaluation.
 #
 # A flat batch of variates is an array `(variate dims..., batch dims...)`,
@@ -120,6 +122,31 @@ method, call it only for measure types that implement it.
 """
 function batched_logdensity_def end
 
+# Measures of value-dependent variate size (the with-rest tier) may have no
+# base measure. Their densities, degrees of freedom and transports then
+# follow from the stream protocol, where they implement it. Whether a
+# measure type has a base measure is decided at compile time. Whether it
+# implements a stream hook (which has generic methods for any measure,
+# argument `i` of the signature) is looked up at run time, only on paths
+# that would fail otherwise:
+@inline _has_basemeasure(::Type{MU}) where {MU} = @_adignore Core._hasmethod(basemeasure, Tuple{MU})
+function _implements_stream_hook(f, ::Type{T}, i::Int) where {T<:Tuple}
+    @_adignore any(m -> !(Base.unwrap_unionall(m.sig).parameters[i + 1] in (Any, AbstractMeasure)), static_methods(f, T))
+end
+
+# Densities of measures without a base measure come from the stream protocol:
+function _ld_without_basemeasure(μ::MU, x::X) where {MU,X}
+    _implements_stream_hook(logdensityof_with_rest, Tuple{MU,X}, 1) || throw(MethodError(basemeasure, (μ,)))
+    _ld_whole_stream(μ, x)
+end
+
+# The density of the variate of a whole stream:
+function _ld_whole_stream(μ, x)
+    ℓ, _, x_rest = logdensityof_with_rest(μ, x)
+    isempty(x_rest) || _throw_stream_too_long()
+    return ℓ
+end
+
 # Whether the batched form is implemented, decided at compile time (method
 # definitions invalidate it). `Core._hasmethod` is `hasmethod` without the
 # argument validation, which remains in compiled code:
@@ -150,6 +177,15 @@ end
 end
 @noinline function _default_batched_kernel(f::F, μ, X, ::NoMSpaceElementSize) where {F}
     throw(ArgumentError("Batched density evaluation for measures of type $(nameof(typeof(μ))) requires MeasureBase.mspace_ndims to be declared for the type or MeasureBase.batched_logdensityof_impl to be implemented"))
+end
+# Batches of streams of measures without a base measure (with-rest tier)
+# are evaluated stream by stream:
+function _default_batched_kernel(f::typeof(logdensityof_impl), μ::MU, X::AbstractArray{<:Number}, n::NoMSpaceElementSize) where {MU}
+    if _has_basemeasure(MU)
+        invoke(_default_batched_kernel, Tuple{Any,Any,Any,NoMSpaceElementSize}, f, μ, X, n)
+    else
+        X isa AbstractVector ? logdensityof_impl(μ, X) : _streamwise_ld(f, μ, X)
+    end
 end
 
 # Point kernels of scalar-variate measures broadcast over the batch. Static

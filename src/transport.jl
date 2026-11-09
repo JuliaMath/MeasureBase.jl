@@ -241,7 +241,13 @@ end
 @inline function _to_std_via(::Type{S}, ::Type{T}, μ, x) where {S<:StdMeasure,T<:StdMeasure}
     stdconvert(S, T, transport_to_std(T, μ, x))
 end
-function _to_std_via(::Type{S}, ::Type{S}, μ, x) where {S<:StdMeasure}
+function _to_std_via(::Type{S}, ::Type{S}, μ::MU, x::X) where {S<:StdMeasure,MU,X}
+    # Measures without a base measure (with-rest tier) transport whole streams:
+    if !_has_basemeasure(MU) && _implements_stream_hook(transport_to_std_with_rest, Tuple{Type{S},MU,X}, 2)
+        z, _, x_rest = transport_to_std_with_rest(S, μ, x)
+        isempty(x_rest) || throw(ArgumentError("Variate too long during transport"))
+        return z
+    end
     throw(ArgumentError("Transport to $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
 end
 function _to_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, x) where {S<:StdMeasure}
@@ -267,7 +273,12 @@ end
 @inline function _from_std_via(::Type{S}, ::Type{T}, μ, z) where {S<:StdMeasure,T<:StdMeasure}
     transport_from_std(T, μ, stdconvert(T, S, z))
 end
-function _from_std_via(::Type{S}, ::Type{S}, μ, z) where {S<:StdMeasure}
+function _from_std_via(::Type{S}, ::Type{S}, μ::MU, z::Z) where {S<:StdMeasure,MU,Z}
+    if !_has_basemeasure(MU) && _implements_stream_hook(transport_from_std_with_rest, Tuple{Type{S},MU,Z}, 2)
+        x, z_rest = transport_from_std_with_rest(S, μ, z)
+        isempty(z_rest) || _throw_std_length_mismatch()
+        return x
+    end
     throw(ArgumentError("Transport from $(nameof(S)) is not implemented for measures of type $(nameof(typeof(μ)))"))
 end
 function _from_std_via(::Type{S}, ::Type{AnyStdMeasure}, μ, z) where {S<:StdMeasure}
