@@ -213,3 +213,24 @@ end
     @test inverse(f32)(0.5f0) ≈ cquantile(Normal(), ccdf(Normal(), 9.0) / 2) rtol = 1e-5
     @test isfinite(inverse(f32)(1.0f0))
 end
+
+# An RNG whose uniform draws are all exactly zero:
+struct _AllZeroRNG <: MeasureBase.Random.AbstractRNG end
+MeasureBase.Random.rand(::_AllZeroRNG, ::MeasureBase.Random.SamplerTrivial{MeasureBase.Random.CloseOpen01{Float64}}) = 0.0
+MeasureBase.Random.rand(::_AllZeroRNG, ::MeasureBase.Random.SamplerTrivial{MeasureBase.Random.CloseOpen01{Float32}}) = 0.0f0
+
+@testset "transported draws of exact zero uniform draws" begin
+    using MeasureBase: GenContext, StdLogistic, StdNormal, StdUniform
+    # A uniform draw of zero stands for its grid cell (half the smallest
+    # nonzero draw), not for floatmin, also in batches:
+    for T in (Float32, Float64)
+        ctx = GenContext{T}(_AllZeroRNG())
+        @test rand(ctx, StdUniform()) == 0
+        u = eps(T) / 4
+        @test rand(ctx, StdLogistic()) ≈ log(u / (1 - u))
+        @test all(≈(log(u / (1 - u))), rand(ctx, StdLogistic()^3))
+        t = truncate(StdNormal(), -Inf .. 2.0)
+        @test rand(ctx, t) ≈ quantile(Normal(), u * cdf(Normal(), 2.0)) rtol = sqrt(eps(T))
+        @test all(isfinite, rand(ctx, t^3))
+    end
+end
