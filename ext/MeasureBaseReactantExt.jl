@@ -9,6 +9,12 @@ using MeasureBase: RealValues, IntegerValues
 Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
 
+# Traced floating-point numbers aren't `AbstractFloat`s, so the context
+# precision would pass them by. Traced integers stay as they are:
+MeasureBase.convert_realtype(::Type{T}, x::TracedRNumber{<:AbstractFloat}) where {T<:Real} =
+    Reactant.TracedUtils.promote_to(TracedRNumber{T}, x)
+MeasureBase.convert_realtype(::Type{T}, x::AbstractArray{<:TracedRNumber{<:AbstractFloat}}) where {T<:Real} = T.(x)
+
 # CHLO provides erf_inv but no erfc_inv, and `erf_inv(2p - 1)` saturates in
 # the tails, so traced code uses Wichura's rational approximation of the
 # standard normal quantile (algorithm AS 241, PPND16), branch-free and

@@ -11,7 +11,8 @@ using Reactant
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac, asmeasure
 using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
-using MeasureBase: mcombine, batched_rand_impl, GenContext, likelihoodof
+using MeasureBase: mcombine, batched_rand_impl, GenContext, likelihoodof, truncate
+using IntervalSets: (..)
 using StructArrays: StructArray
 using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
@@ -175,5 +176,14 @@ _plain(x::Number) = Float64(x)
         x = @jit draw(ctx)
         @test x isa Reactant.ConcreteRArray{Float32,1} && all(>=(0), Array(x))
         @test isapprox(mean(Array(x)), 1, atol = 0.05)
+        # Draws follow the precision of the context, also for Float64
+        # parameters and bounds:
+        for μ in (asmeasure(Normal(0.3, 1.7)), asmeasure(Exponential(0.7)), asmeasure(Normal(1.0, 2.0))^3,
+                  truncate(StdNormal(), 0.0 .. 3.0), asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])))
+            X = @jit (c -> MeasureBase.batched_rand_impl(c, μ, (4,)))(ctx)
+            @test Reactant.unwrapped_eltype(X) == Float32 && all(isfinite, Array(X))
+            y = @jit (c -> rand(c, μ))(ctx)
+            @test Reactant.unwrapped_eltype(y) == Float32
+        end
     end
 end
