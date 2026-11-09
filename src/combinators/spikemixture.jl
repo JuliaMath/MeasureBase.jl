@@ -31,6 +31,10 @@ end
 
 massof(μ::SpikeMixture) = μ.w * massof(μ.m) + μ.s
 
+# The root measure has an atom at zero, pushforwards push it forward
+# instead of adapting it with a volume element:
+@inline _pushfwd_root(::SpikeMixture) = static(true)
+
 function gentype(μ::SpikeMixture)
     gentype(μ.m)
 end

@@ -244,7 +244,7 @@ end
     D = MeasureBase.Dirac
     a = superpose(2D(1.0), 3D(2.0))
     p = pushfwd(AffineMaps.Mul(2.0), a)
-    @test p.style isa PushfwdRootMeasure
+    @test p == superpose(2D(2.0), 3D(4.0))
     @test logdensityof(p, 2.0) ≈ log(2) && logdensityof(p, 4.0) ≈ log(3)
     @test logdensityof(p, 3.0) == -Inf
     @test sum(y -> exp(logdensityof(p, y)), 0.0:0.5:6.0) ≈ massof(a)

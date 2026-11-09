@@ -1,7 +1,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: StdNormal, Half, logdensities
+using MeasureBase: StdNormal, Half, SpikeMixture, logdensities
 using MeasureBase: pushfwd, superpose, PushfwdRootMeasure
 import MeasureBase
 using Distributions: Normal, Poisson, Binomial, Dirichlet, MvNormal, logpdf, pdf
@@ -74,6 +74,7 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         @test logdensity_rel(pp, StdNormal(), 2.0) == Inf
         @test logdensity_rel(StdNormal(), pp, 2.0) == -Inf
         @test logdensity_rel(pp^3, StdNormal()^3, [2.0, 4.0, 6.0]) == Inf
+        @test logdensity_rel(pushfwd(Mul(2.0), Dirac(0.0) + Dirac(1.0)), Dirac(0.0) + Dirac(2.0), 2.0) == 0
 
         P3 = asmeasure(Poisson(3.0))
         q2, q3 = pushfwd(Mul(2.0), P), pushfwd(Mul(3.0), P3)
@@ -96,5 +97,24 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         b = pushfwd(Add(-1.0), asmeasure(Binomial(2, 0.5)))
         @test_throws ArgumentError Half(b)
         @test_throws ArgumentError truncate(b, 0.0 .. 1.0)
+    end
+
+    @testset "pushforwards of mixed measures" begin
+        ps = pushfwd(Mul(2.0), StdNormal() + Dirac(0.5))
+        @test rootmeasure(ps) == MeasureBase.LebesgueBase() + Dirac(1.0)
+        @test logdensityof(ps, 1.0) == 0
+        @test logdensityof(ps, 0.5) ≈ logpdf(Normal(0, 2), 0.5)
+        @test logdensity_rel(ps, pushfwd(Mul(2.0), StdNormal()) + Dirac(1.0), 1.0) == 0
+        @test logdensity_rel(ps, pushfwd(Mul(2.0), StdNormal()) + Dirac(1.0), 0.3) ≈ 0 atol = 1e-14
+
+        n = MeasureBase.normalize(0.25 * StdNormal() + 0.75 * Dirac(0.5))
+        @test logdensityof(pushfwd(Add(1.0), n), 1.5) ≈ log(0.75)
+        @test logdensityof(pushfwd(Add(1.0), n), 1.0) ≈ log(0.25) + logpdf(Normal(), 0.0)
+
+        # Mixed roots are pushed forward as a whole:
+        sm = SpikeMixture(StdNormal(), 0.7)
+        @test logdensityof(pushfwd(Mul(2.0), sm), 0.0) ≈ log(0.3)
+        @test logdensityof(pushfwd(Add(1.0), sm), 1.0) ≈ log(0.3)
+        @test logdensityof(pushfwd(Add(1.0), sm), 0.0) ≈ log(0.7) + logpdf(Normal(), -1.0)
     end
 end

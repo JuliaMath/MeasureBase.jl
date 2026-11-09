@@ -77,6 +77,15 @@ invcsmf(μ::NormalizedMeasure, p) = invcsmf(μ.base, p * _basemass(μ))
 @inline preferred_stdmeasure(::Type{<:NormalizedMeasure{M}}) where {M} = preferred_stdmeasure(M)
 
 insupportof(μ::NormalizedMeasure, x) = insupportof(μ.base, x)
+
+# Pushforwards preserve masses, normalization and pushforward commute
+# (except for transports, which map the normalized law already):
+function _pushfwd_impl(f, μ::NormalizedMeasure, style::PushFwdStyle, varsize)
+    NormalizedMeasure(_pushfwd_impl(f, μ.base, style, varsize), μ.logmass)
+end
+function _pushfwd_impl(f::TransportFunction, μ::NormalizedMeasure, style::PushFwdStyle, varsize)
+    _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
+end
 gentype(μ::NormalizedMeasure) = gentype(μ.base)
 
 Pretty.tile(μ::NormalizedMeasure) = Pretty.list_layout([Pretty.tile(μ.base)]; prefix = :normalize)

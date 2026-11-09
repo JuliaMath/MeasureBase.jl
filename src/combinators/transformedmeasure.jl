@@ -29,8 +29,12 @@ distributions) are always pushed forward with
 forward to counting measure on the image, without a volume element. The
 same holds for measures on the standard simplex, like Dirichlet
 distributions, whose root measure is a coordinate measure on a chart (see
-[`MeasureBase.StdSimplex`](@ref)). Pushforwards by transports
-([`transport_to`](@ref)) have the root measure of the transport's target.
+[`MeasureBase.StdSimplex`](@ref)). Superpositions are pushed forward
+component by component, other measures with roots that have atomic as well
+as continuous parts (spike mixtures, products of discrete and continuous
+measures) push their whole root measure forward. Pushforwards by
+transports ([`transport_to`](@ref)) have the root measure of the
+transport's target.
 """
 struct AdaptRootMeasure <: PushFwdStyle end
 export AdaptRootMeasure

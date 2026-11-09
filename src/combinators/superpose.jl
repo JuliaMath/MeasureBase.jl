@@ -88,6 +88,16 @@ end
 
 @inline density_def(s::SuperpositionMeasure, x) = exp(logdensity_def(s, x))
 
+# Pushforward is linear, superpositions push forward component by component,
+# so that each component keeps or adapts its own root measure. Pushforwards
+# by transports need the whole origin (see `basemeasure` of pushforwards):
+function _pushfwd_impl(f, μ::SuperpositionMeasure, style::PushFwdStyle, varsize)
+    superpose(map(c -> _pushfwd_impl(f, c, style, varsize), μ.components))
+end
+function _pushfwd_impl(f::TransportFunction, μ::SuperpositionMeasure, style::PushFwdStyle, varsize)
+    _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
+end
+
 function basemeasure(μ::SuperpositionMeasure{<:Tuple})
     superpose(map(basemeasure, μ.components)...)
 end
