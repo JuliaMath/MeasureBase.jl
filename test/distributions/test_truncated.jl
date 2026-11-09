@@ -82,6 +82,26 @@ end
     @test transport_to(StdLogistic(), asmeasure(Beta(1.0, 0.01)))(1 - 2.0^-40) ≈ log1p(-q) - log(q)
 end
 
+@testset "Stieltjes measure functions of gamma and beta variate families" begin
+    # Through the gamma and beta kernels, against Distributions in the bulk
+    # and by round trips in the tails:
+    for d in [Chisq(2.3), Erlang(3, 1.5), InverseGamma(2.5, 1.3), FDist(3.0, 5.0), BetaPrime(0.4, 0.6)]
+        m = asmeasure(d)
+        for x in quantile.(d, [0.01, 0.3, 0.7, 0.99])
+            @test smf(m, x) ≈ cdf(d, x) && csmf(m, x) ≈ ccdf(d, x)
+            @test logsmf(m, x) ≈ logcdf(d, x) && logcsmf(m, x) ≈ logccdf(d, x)
+            @test invsmf(m, cdf(d, x)) ≈ x && invcsmf(m, ccdf(d, x)) ≈ x
+        end
+        for p in [1e-30, 1e-8, 0.3]
+            @test smf(m, invsmf(m, p)) ≈ p && csmf(m, invcsmf(m, p)) ≈ p
+            @test logsmf(m, invlogsmf(m, log(p))) ≈ log(p) && logcsmf(m, invlogcsmf(m, log(p))) ≈ log(p)
+        end
+        @test smf(m, 0.0) == smf(m, -1.0) == csmf(m, Inf) == 0 && csmf(m, 0.0) == smf(m, Inf) == 1
+        @test logsmf(m, 0.0) == -Inf && logcsmf(m, 0.0) == 0
+        @test isnan(smf(m, NaN)) && isnan(logcsmf(m, NaN)) && isnan(invsmf(m, 1.5)) && isnan(invlogcsmf(m, 0.5))
+    end
+end
+
 @testset "shape derivatives of log Stieltjes measure functions" begin
     fd(f, a) = (f(a + 1e-6) - f(a - 1e-6)) / 2e-6
     for D in (a -> Gamma(a, 1.5), a -> Beta(a, 2.0), b -> Beta(1.5, b)), (g, x) in ((logsmf, 0.4), (logcsmf, 0.4), (invlogsmf, -1.2), (invlogcsmf, -1.2), (invlogsmf, -40.0))

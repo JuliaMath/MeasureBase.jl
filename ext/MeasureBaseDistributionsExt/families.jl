@@ -381,3 +381,107 @@ end
 @inline _log_support_select(above_lo, below_hi, y, compl::Bool) =
     ifelse(above_lo, ifelse(below_hi, y, oftype(y, compl ? -Inf : 0)), oftype(y, compl ? 0 : -Inf))
 @inline _nan_or(x, y) = ifelse(isnan(x), oftype(y, NaN), y)
+
+
+# Families of gamma and beta variates: chi-squared and Erlang distributions
+# are gamma distributions, inverse gamma variates are reciprocals of gamma
+# variates, beta prime and F variates are ratios `(b / a) y / (1 - y)` of
+# beta variates `y`. Their Stieltjes measure functions, quantiles and
+# standard transports go through the gamma and beta kernels, so that they
+# are differentiable with respect to the shapes in all AD backends:
+
+const _GammaReparam = Union{Distributions.Chisq,Distributions.Erlang}
+
+@inline _as_gamma(d::Distributions.Chisq) = Gamma(Distributions.dof(d) / 2, 2; check_args = false)
+@inline _as_gamma(d::Distributions.Erlang) = Gamma(Distributions.shape(d), Distributions.scale(d); check_args = false)
+
+for f in (:smf, :csmf, :logsmf, :logcsmf, :invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
+    @eval @inline MeasureBase.$f(d::_GammaReparam, x::Real) = MeasureBase.$f(_as_gamma(d), x)
+end
+@inline MeasureBase.transport_to_std(::Type{StdLogistic}, d::_GammaReparam, x) = transport_to_std(StdLogistic, _as_gamma(d), x)
+@inline MeasureBase.transport_from_std(::Type{StdLogistic}, d::_GammaReparam, l) = transport_from_std(StdLogistic, _as_gamma(d), l)
+
+# Quantiles that overflow stay at the largest finite value:
+@inline _capped(x) = min(x, floatmax(typeof(x)))
+
+# Inverse gamma variates `x = θ / z` of standard gamma variates `z`, the
+# lower tail of `x` is the upper one of `z`:
+@inline _std_gamma(d::Distributions.InverseGamma) = Gamma(Distributions.shape(d), 1; check_args = false)
+@inline _invgamma_arg(d::Distributions.InverseGamma, x) = Distributions.scale(d) / ifelse(x > 0, x, one(x))
+
+@inline function MeasureBase.smf(d::Distributions.InverseGamma, x::Real)
+    F = MeasureBase.csmf(_std_gamma(d), _invgamma_arg(d, x))
+    _nan_or(x, ifelse(x > 0, F, zero(F)))
+end
+@inline function MeasureBase.csmf(d::Distributions.InverseGamma, x::Real)
+    G = MeasureBase.smf(_std_gamma(d), _invgamma_arg(d, x))
+    _nan_or(x, ifelse(x > 0, G, one(G)))
+end
+@inline function MeasureBase.logsmf(d::Distributions.InverseGamma, x::Real)
+    ℓ = MeasureBase.logcsmf(_std_gamma(d), _invgamma_arg(d, x))
+    _nan_or(x, ifelse(x > 0, ℓ, oftype(ℓ, -Inf)))
+end
+@inline function MeasureBase.logcsmf(d::Distributions.InverseGamma, x::Real)
+    ℓ = MeasureBase.logsmf(_std_gamma(d), _invgamma_arg(d, x))
+    _nan_or(x, ifelse(x > 0, ℓ, zero(ℓ)))
+end
+for (f, f_gamma) in ((:invsmf, :invcsmf), (:invcsmf, :invsmf), (:invlogsmf, :invlogcsmf), (:invlogcsmf, :invlogsmf))
+    @eval @inline MeasureBase.$f(d::Distributions.InverseGamma, p::Real) =
+        _capped(Distributions.scale(d) / MeasureBase.$f_gamma(_std_gamma(d), p))
+end
+
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distributions.InverseGamma, x)
+    _nan_outside(d, x, _logit_of_tails(MeasureBase.smf(d, x), MeasureBase.csmf(d, x)))
+end
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distributions.InverseGamma, l)
+    z = _gamma_tail_quantile(Distributions.shape(d), logistic(-l), logistic(l))
+    _nan_or(l, _capped(Distributions.scale(d) / z))
+end
+
+# The beta shapes `(α, β)` and the weights `(a, b)` of the ratio:
+const _BetaRatio = Union{Distributions.BetaPrime,Distributions.FDist}
+@inline _beta_ratio_params(d::Distributions.BetaPrime) = (Distributions.params(d)..., 1, 1)
+@inline _beta_ratio_params(d::Distributions.FDist) = ((ν1, ν2) = Distributions.params(d); (ν1 / 2, ν2 / 2, ν1, ν2))
+
+# Both tail probabilities at `x`, from the beta variate `y = r / (1 + r)`
+# and its complement `1 / (1 + r)` for `r = a x / b`, each formed without
+# cancellation. Exact limits outside the support:
+@inline function _beta_ratio_tails(d::_BetaRatio, x)
+    α, β, a, b = _beta_ratio_params(d)
+    inside = (x > 0) & (x < Inf)
+    r = a * ifelse(inside, x, one(x)) / b
+    big = r > 1
+    t = ifelse(big, inv(ifelse(big, r, one(r))), r)
+    y, c = ifelse(big, one(t), t) / (1 + t), ifelse(big, t, one(t)) / (1 + t)
+    p, q = _beta_tails(α, β, y, c)
+    (_support_select(x > 0, x < Inf, p, false), _support_select(x > 0, x < Inf, q, true))
+end
+
+@inline function _beta_ratio_quantile(d::_BetaRatio, p, q)
+    α, β, a, b = _beta_ratio_params(d)
+    y, c = _beta_quantiles(α, β, p, q)
+    _capped(b * y / (a * c))
+end
+
+@inline MeasureBase.smf(d::_BetaRatio, x::Real) = _nan_or(x, first(_beta_ratio_tails(d, x)))
+@inline MeasureBase.csmf(d::_BetaRatio, x::Real) = _nan_or(x, last(_beta_ratio_tails(d, x)))
+@inline function MeasureBase.logsmf(d::_BetaRatio, x::Real)
+    p, q = _beta_ratio_tails(d, x)
+    _nan_or(x, _log_support_select(x > 0, x < Inf, _log_tail(p, q), false))
+end
+@inline function MeasureBase.logcsmf(d::_BetaRatio, x::Real)
+    p, q = _beta_ratio_tails(d, x)
+    _nan_or(x, _log_support_select(x > 0, x < Inf, _log_tail(q, p), true))
+end
+@inline MeasureBase.invsmf(d::_BetaRatio, p::Real) = _nan_outside(StdUniform, p, _beta_ratio_quantile(d, p, 1 - p))
+@inline MeasureBase.invcsmf(d::_BetaRatio, q::Real) = _nan_outside(StdUniform, q, _beta_ratio_quantile(d, 1 - q, q))
+@inline MeasureBase.invlogsmf(d::_BetaRatio, logp::Real) = _nan_above_zero(logp, _beta_ratio_quantile(d, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogcsmf(d::_BetaRatio, logq::Real)
+    q, p = _probs_of_logp(logq)
+    _nan_above_zero(logq, _beta_ratio_quantile(d, p, q))
+end
+
+@inline MeasureBase.transport_to_std(::Type{StdLogistic}, d::_BetaRatio, x) =
+    _nan_outside(d, x, _logit_of_tails(_beta_ratio_tails(d, x)...))
+@inline MeasureBase.transport_from_std(::Type{StdLogistic}, d::_BetaRatio, l) =
+    _nan_or(l, _beta_ratio_quantile(d, logistic(l), logistic(-l)))

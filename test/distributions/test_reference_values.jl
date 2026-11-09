@@ -133,6 +133,19 @@ const _derivatives = (
                     @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 atol = 1e-15
                 end
             end
+            # Families of gamma and beta variates:
+            for (f, a) in [
+                (ν -> transport_to(StdNormal(), Chisq(ν))(0.7), 2.3),
+                (θ -> transport_to(Erlang(3, θ), StdNormal())(0.4), 1.5),
+                (α -> transport_to(StdNormal(), InverseGamma(α, 1.3))(0.8), 2.5),
+                (θ -> transport_to(InverseGamma(2.5, θ), StdUniform())(0.3), 1.3),
+                (ν -> transport_to(StdNormal(), FDist(ν, 5.0))(0.8), 3.0),
+                (ν -> transport_to(FDist(3.0, ν), StdNormal())(0.3), 5.0),
+                (β -> transport_to(StdUniform(), BetaPrime(2.0, β))(0.8), 3.0),
+                (α -> transport_to(BetaPrime(α, 0.6), StdNormal())(1.2), 0.4),
+            ]
+                @test ∂(f, a) ≈ fd(f, a) rtol = 1e-7
+            end
             # Dirichlet transports, also with a concentration that depends on
             # another parameter:
             x, u, U = [0.2, 0.3, 0.5], [0.3, 0.8], [0.3 0.1 0.9; 0.8 0.5 0.2]

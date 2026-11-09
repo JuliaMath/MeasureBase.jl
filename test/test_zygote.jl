@@ -58,3 +58,32 @@ _ref_logpdf(::StdLogistic, x) = -abs(x) - 2 * log1p(exp(-abs(x)))
         @test Zygote.gradient(g, 1.0)[1] ≈ -0.25
     end
 end
+
+
+# Wrapped distributions under Zygote without ForwardDiffPullbacks (which the
+# Distributions tests load later), with the distributions built inside the
+# differentiated functions, against central differences of Distributions'
+# own functions:
+import Distributions
+using Distributions: Chisq, FDist, InverseGamma, BetaPrime, Normal
+using IntervalSets
+using MeasureBase: asmeasure, normalize
+
+@testset "Zygote with Distributions" begin
+    @test isnothing(Base.get_extension(MeasureBase, :MeasureBaseDistributionsForwardDiffPullbacksExt))
+    fd(f, a) = (h = 1e-4 * a; (8 * (f(a + h) - f(a - h)) - (f(a + 2h) - f(a - 2h))) / (12 * h))
+    to_normal(d, x) = Distributions.quantile(Normal(), Distributions.cdf(d, x))
+    from_normal(d, z) = Distributions.quantile(d, Distributions.cdf(Normal(), z))
+    for (f, f_ref, a) in [
+        (ν -> transport_to(StdNormal(), asmeasure(Chisq(ν)))(0.7), ν -> to_normal(Chisq(ν), 0.7), 2.3),
+        (x -> transport_to(StdNormal(), asmeasure(Chisq(2.3)))(x), x -> to_normal(Chisq(2.3), x), 0.7),
+        (ν -> transport_to(StdNormal(), asmeasure(FDist(ν, 5.0)))(0.8), ν -> to_normal(FDist(ν, 5.0), 0.8), 3.0),
+        (ν -> transport_to(asmeasure(FDist(ν, 5.0)), StdNormal())(0.3), ν -> from_normal(FDist(ν, 5.0), 0.3), 3.0),
+        (α -> transport_to(StdNormal(), asmeasure(InverseGamma(α, 1.3)))(0.8), α -> to_normal(InverseGamma(α, 1.3), 0.8), 2.5),
+        (β -> transport_to(asmeasure(BetaPrime(2.0, β)), StdNormal())(0.3), β -> from_normal(BetaPrime(2.0, β), 0.3), 3.0),
+        (ν -> logdensityof(normalize(truncate(asmeasure(Chisq(ν)), 0.5 .. 3.0)), 1.0),
+            ν -> Distributions.logpdf(Distributions.truncated(Chisq(ν), 0.5, 3.0), 1.0), 2.3),
+    ]
+        @test Zygote.gradient(f, a)[1] ≈ fd(f_ref, a) rtol = 1e-8
+    end
+end

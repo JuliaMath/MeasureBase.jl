@@ -222,6 +222,12 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
             (T -> Cauchy(T(0.2), T(1.3)), x -> log(atan(big(1.3), big(0.2) - x) / big(π)), x -> log(atan(big(1.3), x - big(0.2)) / big(π)), zs),
             (T -> Gamma(T(2), T(1.3)), x -> (y = x / big(1.3); log(-expm1(-y) - y * exp(-y))), x -> (y = x / big(1.3); log1p(y) - y), zs),
             (T -> Beta(T(2), T(2)), x -> log(x^2 * (3 - 2x)), x -> log((1 - x)^2 * (1 + 2x)), zs_beta),
+            # Through the gamma and beta kernels, with Beta(2, 3) tails of
+            # `y = a x / (a x + b)` and its complement:
+            (T -> Chisq(T(2)), x -> log(-expm1(-x / 2)), x -> -x / 2, zs),
+            (T -> InverseGamma(T(2), T(1.3)), x -> (y = big(1.3) / x; log1p(y) - y), x -> (y = big(1.3) / x; log(-expm1(-y) - y * exp(-y))), zs),
+            (T -> FDist(T(4), T(6)), x -> (y = 4x / (4x + 6); log(y^2 * (6 - 8y + 3y^2))), x -> (c = 6 / (4x + 6); log(c^3 * (4 - 3c))), zs),
+            (T -> BetaPrime(T(2), T(3)), x -> (y = x / (x + 1); log(y^2 * (6 - 8y + 3y^2))), x -> (c = 1 / (x + 1); log(c^3 * (4 - 3c))), zs),
         ]
         for (d, logcdf_ref, logccdf_ref, zs_d) in families, (T, zs_T, rtol) in ((Float64, zs_d[1], 1e-12), (Float32, zs_d[2], 1e-4))
             m = asmeasure(d(T))
