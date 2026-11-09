@@ -30,6 +30,14 @@ function _generic_split_combined(f_c::FC, α::AbstractMeasure, ab) where {FC}
     _split_variate_byvalue(f_c, testvalue(α), ab)
 end
 
+# Streams are split by the declared variate size of `α` where it is known,
+# `a` then has the layout of the variates of `α`:
+function _generic_split_combined(::typeof(vcat), α::AbstractMeasure, ab::AbstractVector)
+    _split_stream_byvalue(α, ab, mspace_flatsize(α))
+end
+@inline _split_stream_byvalue(::AbstractMeasure, ab::AbstractVector, sz::SizeLike) = _consume_from_stream(ab, sz)
+@inline _split_stream_byvalue(α::AbstractMeasure, ab::AbstractVector, ::NoMSpaceElementSize) = _split_variate_byvalue(vcat, testvalue(α), ab)
+
 _split_variate_byvalue(::typeof(vcat), test_a::AbstractVector, ab::AbstractVector) =
     maybestatic_split(ab, maybestatic_length(test_a))
 
@@ -215,6 +223,15 @@ function logdensity_def(μ::CombinedMeasure, ab)
     # Use tpmeasure_split_combined to avoid duplicate calculation of transportmeasure(α):
     tpm_α, a, b = tpmeasure_split_combined(μ.f_c, μ.α, ab)
     return logdensity_def(tpm_α, a) + logdensity_def(μ.β, b)
+end
+
+# Streams are split by the declared variate sizes of the components, also
+# for base measures without test values:
+function logdensity_def(μ::CombinedMeasure{typeof(vcat)}, ab::AbstractVector)
+    a, x2 = _consume_from_stream(ab, _stream_consume_size(μ.α))
+    b, x_rest = _consume_from_stream(x2, _stream_consume_size(μ.β))
+    isempty(x_rest) || _throw_stream_too_long()
+    return logdensity_def(μ.α, a) + logdensity_def(μ.β, b)
 end
 
 # Density evaluation consumes the variate parts of both component measures

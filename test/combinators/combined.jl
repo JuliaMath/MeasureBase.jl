@@ -128,6 +128,28 @@ using AffineMaps: Mul
         @test ab_reco.first ≈ ab.first && ab_reco.second ≈ ab.second
     end
 
+    @testset "relative densities of vcat combinations and binds" begin
+        ℓN(x, m = 0.0, s = 1.0) = -((x - m) / s)^2 / 2 - log(s) - log(2π) / 2
+        c1 = mcombine(vcat, StdNormal(), StdExponential()^2)
+        c2 = mcombine(vcat, pushfwd(Mul(2.0), StdNormal()), StdNormal()^2)
+        x = [0.3, 0.2, 0.1]
+        ℓ1, ℓ2 = ℓN(0.3) - 0.3, ℓN(0.3, 0.0, 2.0) + ℓN(0.2) + ℓN(0.1)
+        @test logdensity_rel(c1, c2, x) ≈ ℓ1 - ℓ2
+        @test logdensity_rel(c1, c1, x) == 0
+        @test logdensity_rel(c1, basemeasure(c1), x) ≈ MeasureBase.logdensity_def(c1, x)
+        @test logdensity_rel(c1, rootmeasure(c1), x) ≈ logdensityof(c1, x) ≈ ℓ1
+        @test logdensity_rel(superpose(c1, c2), rootmeasure(c1), x) ≈ log(exp(ℓ1) + exp(ℓ2))
+        c3, c4 = mcombine(vcat, StdNormal()^2, StdExponential()^2), mcombine(vcat, StdNormal()^2, StdNormal()^2)
+        @test logdensity_rel(c3, c4, [0.1, 0.2, 0.3, 0.4]) ≈ -0.7 - ℓN(0.3) - ℓN(0.4)
+
+        b1 = mbind(a -> pushfwd(Mul(1.0), StdNormal()), StdNormal(), vcat)
+        b2 = mbind(a -> pushfwd(Mul(2.0), StdNormal()), StdNormal(), vcat)
+        @test logdensity_rel(b1, b2, [0.3, 1.0]) ≈ ℓN(1.0) - ℓN(1.0, 0.0, 2.0)
+        bp1 = mbind(a -> StdNormal()^2, StdNormal(), vcat)
+        bp2 = mbind(a -> pushfwd(Mul(2.0), StdNormal())^2, StdNormal(), vcat)
+        @test logdensity_rel(bp1, bp2, [0.3, 1.0, 0.5]) ≈ ℓN(1.0) + ℓN(0.5) - ℓN(1.0, 0.0, 2.0) - ℓN(0.5, 0.0, 2.0)
+    end
+
     @testset "accessors" begin
         μ = mcombine(vcat, StdNormal()^2, StdExponential()^1)
         @test μ isa MeasureBase.CombinedMeasure
