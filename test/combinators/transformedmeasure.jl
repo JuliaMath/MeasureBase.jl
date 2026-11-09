@@ -333,6 +333,14 @@ ChangesOfVariables.with_logabsdet_jacobian(f::CountedHalving, y) = (f(y), -lengt
     @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), μ3; varsize = (static(3),))))) === Size(3)
     @test @inferred(mspace_flatsize(typeof(pushfwd(CountedDoubling(), StdNormal()^static(3))))) === Size(3)
     @test _doubling_calls[] == n_calls
+
+    # Origins with nested variates: sizes are learned from the image of the
+    # test value, functions that refuse lazy arrays need a declared size:
+    o = (StdNormal()^2)^3
+    @test mspace_flatsize(pushfwd(x -> reduce(vcat, x), o)) == (6,)
+    dense_only(x) = x isa Vector ? reduce(vcat, x) : throw(ArgumentError("dense variates only"))
+    @test_throws "varsize" mspace_flatsize(pushfwd(dense_only, o))
+    @test mspace_flatsize(pushfwd(dense_only, o; varsize = (6,))) == (6,)
 end
 
 # A rotation of the plane with a fused batched implementation, counting
