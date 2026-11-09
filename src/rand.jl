@@ -114,6 +114,10 @@ end
 @inline _stack_variates(xs::AbstractArray{<:Number}) = xs
 @inline _stack_variates(xs::AbstractArray{<:AbstractArray}) = stacked(map(_stack_variates, xs))
 @inline _stack_variates(xs::AbstractArray{<:Union{Tuple,NamedTuple}}) = StructArrays.components(StructArray(xs))
+# Empty batches of array variates keep the variate dimensions:
+function _stack_variates(xs::AbstractArray{<:AbstractArray{T}}, μ) where {T<:Number}
+    isempty(xs) ? similar(xs, T, (_empty_batch_flatsize(μ)..., size(xs)...)) : _stack_variates(xs)
+end
 
 
 # Bulk draws of standard variates on the compute unit, single draws for

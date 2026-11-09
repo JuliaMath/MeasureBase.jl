@@ -42,7 +42,7 @@ end
 
 @inline _to_std_slices(::Type{S}, μ, X::AbstractArray{<:Any,K}, ::Val{K}) where {S,K} = _as_stdstream(transport_to_std(S, μ, X))
 @inline function _to_std_slices(::Type{S}, μ, X::AbstractArray, ::Val{K}) where {S,K}
-    stacked(map(Base.Fix1(_ToStd{S}(), μ), sliced(X, Val(K))))
+    _stack_mapped(Base.Fix1(_ToStd{S}(), μ), sliced(X, Val(K)), X, float(eltype(X)), () -> (_empty_batch_dof(μ),))
 end
 
 # A flat batch of variates of `μ` as a batch of streams, the variate
@@ -113,7 +113,7 @@ end
 end
 @inline _from_std_columns(::Type{S}, μ, z::AbstractVector) where {S} = transport_from_std(S, μ, z)
 @inline function _from_std_columns(::Type{S}, μ, Z::AbstractArray) where {S}
-    stacked(map(Base.Fix1(_FromStd{S}(), μ), sliced(Z, Val(1))))
+    _stack_mapped(Base.Fix1(_FromStd{S}(), μ), sliced(Z, Val(1)), Z, eltype(Z), () -> _empty_batch_flatsize(μ))
 end
 
 

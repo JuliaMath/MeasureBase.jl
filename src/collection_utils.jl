@@ -68,6 +68,12 @@ _flatten_to_rv(tpl::Tuple{Vararg{AbstractVector}}) = vcat(tpl...)
 _flatten_to_rv(tpl::Tuple{Vararg{StaticVector}}) = vcat(tpl...)
 
 
+# `stacked(map(f, xs))`, empty `xs` give an empty array of size
+# `(lead()..., size(xs)...)` and element type `T`, similar to `A`:
+@inline function _stack_mapped(f::F, xs::AbstractArray, A::AbstractArray, ::Type{T}, lead::L) where {F,T,L}
+    isempty(xs) ? similar(A, T, (lead()..., size(xs)...)) : stacked(map(f, xs))
+end
+
 # Non-mutating concatenation of measure collections:
 _cat_measures(a::Tuple, b::Tuple) = (a..., b...)
 _cat_measures(a::AbstractVector, b::Tuple) = vcat(a, [b...])

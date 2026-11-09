@@ -16,6 +16,7 @@ using MeasureBase: logdensities
 using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf, quantile
 using ChangesOfVariables: with_logabsdet_jacobian
 using StructArrays: StructArray, StructArrays
+using MeasureBase: transports_with_ladj
 using AffineMaps: Mul, MulAdd
 using JLArrays
 
@@ -150,6 +151,18 @@ using JLArrays
         @test flatview(transports(g4, U)) ≈ 2 .* quantileN.(U)
         gp = transport_to(productmeasure((a = p, b = StdNormal()^2)), StdUniform()^3)
         @test transports(gp, U) == map(gp, eachcol(U))
+    end
+
+    @testset "empty batches keep the variate dimensions" begin
+        b = mbind(a -> StdNormal()^2, StdNormal(), vcat)
+        f = transport_to(StdUniform()^3, b)
+        @test size(flatview(transports(f, zeros(3, 0)))) == (3, 0)
+        @test size(flatview(f.(nestedview(zeros(3, 0))))) == (3, 0)
+        Y, ladjs = transports_with_ladj(f, zeros(3, 0))
+        @test isempty(Y) && isempty(ladjs)
+        c = mcombine(vcat, b, StdUniform())
+        @test size(flatview(transports(transport_to(StdUniform()^4, c), zeros(4, 0)))) == (4, 0)
+        @test isempty(transports(transport_to(c, StdUniform()^4), zeros(4, 0)))
     end
 
     @testset "affine pushforwards" begin

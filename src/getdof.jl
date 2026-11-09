@@ -137,6 +137,20 @@ _try_local_dof(μ::AbstractMeasure, ::AbstractNoDOF) =
 _some_localmeasure(μ::AbstractMeasure) = localmeasure(μ, testvalue(μ))
 
 
+# The DOF of the variates in an empty batch, where no variate tells them,
+# zero if they can't be determined:
+_empty_batch_dof(μ) = _empty_batch_dof(μ, getdof(μ))
+_empty_batch_dof(::Any, n::IntegerLike) = dynamic(n)
+function _empty_batch_dof(μ, ::AbstractNoDOF)
+    try
+        dynamic(some_dof(μ))
+    catch err
+        err isa ArgumentError || rethrow()
+        0
+    end
+end
+
+
 """
     MeasureBase.check_dof(ν, μ)::Nothing
 

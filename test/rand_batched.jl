@@ -20,7 +20,7 @@ using StaticArrays: SVector
 using Static: static
 
 struct NoBatchRandMeasure <: AbstractMeasure end
-MeasureBase.rand_impl(ctx::GenContext, ::NoBatchRandMeasure) = 3 * rand(MeasureBase.get_rng(ctx), MeasureBase.get_precision(ctx))
+MeasureBase.rand_impl(ctx::GenContext, ::NoBatchRandMeasure) = 3 * rand(ctx)
 
 struct NoRandMeasure <: AbstractMeasure end
 
@@ -105,6 +105,14 @@ struct NoRandMeasure <: AbstractMeasure end
         @test batched_rand_impl(ctx(), μb, ()) == rand(stblrng(), μb)
         @test size(batched_rand_impl(ctx(), (StdNormal()^2)^3, (4, 5))) == (2, 3, 4, 5)
         @test size(batched_rand_impl(ctx(), StdNormal()^(2, 3), (4,))) == (2, 3, 4)
+    end
+
+    @testset "empty batches keep the variate dimensions" begin
+        b = mbind(a -> StdNormal()^2, StdNormal(), vcat)
+        @test size(batched_rand_impl(ctx(), b, (0,))) == (3, 0)
+        @test size(batched_rand_impl(ctx(), b, (3, 0))) == (3, 3, 0)
+        @test size(batched_rand_impl(ctx(), mcombine(vcat, b, StdUniform()), (0,))) == (4, 0)
+        @test size(batched_rand_impl(ctx(), NoBatchRandMeasure(), (0,))) == (0,)
     end
 
     @testset "moments of batches" begin

@@ -441,7 +441,7 @@ function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, x::AbstractVec
     _combined_batched_to_std(S, μ, x, static(true))
 end
 function _combined_batched_to_std(::Type{S}, μ::CombinedMeasure, X::AbstractArray, ::False) where {S}
-    stacked(map(x -> _combined_batched_to_std(S, μ, x, static(true)), sliced(X, Val(1))))
+    _stack_mapped(x -> _combined_batched_to_std(S, μ, x, static(true)), sliced(X, Val(1)), X, float(eltype(X)), () -> (_empty_batch_dof(μ),))
 end
 
 function batched_transport_to_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
@@ -475,7 +475,7 @@ function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, z::AbstractV
     transport_from_std(S, μ, z)
 end
 function _combined_batched_from_std(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::False) where {S}
-    stacked(map(z -> transport_from_std(S, μ, z), sliced(Z, Val(1))))
+    _stack_mapped(z -> transport_from_std(S, μ, z), sliced(Z, Val(1)), Z, eltype(Z), () -> _empty_batch_flatsize(μ))
 end
 
 function batched_transport_from_std_with_rest(::Type{S}, μ::CombinedMeasure{typeof(vcat)}, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
@@ -495,8 +495,13 @@ function _combined_batch_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::A
 end
 # Components without fixed variate sizes are consumed stream by stream:
 function _combined_batch_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, ::False) where {S}
+    isempty(sliced(Z, Val(1))) && return _empty_batch_from_std_with_rest(μ, Z)
     results = map(z -> transport_from_std_with_rest(S, μ, z), sliced(Z, Val(1)))
     return stacked(map(first, results)), stacked(map(last, results))
+end
+function _empty_batch_from_std_with_rest(μ, Z::AbstractArray)
+    _, Z_rest = _batched_split(Z, _empty_batch_dof(μ))
+    return similar(Z, (_empty_batch_flatsize(μ)..., Base.tail(size(Z))...)), Z_rest
 end
 function _combined_from_std_with_rest(::Type{S}, μ::CombinedMeasure, Z::AbstractArray, sz::SizeLike) where {S}
     _batched_from_std_bydof(S, μ, Z, sz, fast_dof(μ))

@@ -76,6 +76,12 @@ function some_mspace_elsize end
 _mspace_some_elsize_impl(μ::AbstractMeasure, ::NoMSpaceElementSize) =
     maybestatic_size(testvalue(μ))
 
+# The flat variate size of the variates in an empty batch, where no
+# variate tells it:
+_empty_batch_flatsize(μ) = _empty_batch_flatsize(μ, mspace_flatsize(μ))
+_empty_batch_flatsize(::Any, sz::SizeLike) = asnonstatic(size_tuple(sz))
+_empty_batch_flatsize(μ, ::NoMSpaceElementSize) = asnonstatic(size_tuple(some_mspace_elsize(μ)))
+
 @inline _value_elsize(::Number) = ()
 @inline _value_elsize(x::AbstractArray) = maybestatic_size(x)
 @inline _value_elsize(x) = NoMSpaceElementSize{typeof(x)}()
