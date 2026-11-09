@@ -282,9 +282,10 @@ using .Interface
     AbstractUnknownMass, UnknownMass, UnknownFiniteMass,
     # Measure types and accessors:
     pwr_base, pwr_axes, pwr_size, atomof, DensityMeasure, AsMeasure, StdSimplex,
+    MeasureJoin, OpaqueRoot,
     transportmeasure, tpmeasure_split_combined,
     Bind, MKernel, kernelmeasure, valuecombinator, combinedmeasures,
-    gettransform, TransformVolCorr, NoVolCorr, WithVolCorr,
+    gettransform, batched_apply, TransformVolCorr, NoVolCorr, WithVolCorr,
     # Test utilities for measure implementations:
     Interface
 
