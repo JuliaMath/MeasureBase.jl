@@ -67,6 +67,30 @@ end
     @test massof(StdNormal(), -10.0 .. -9.0) ≈ cdf(Normal(), -9.0) - cdf(Normal(), -10.0)
 end
 
+@testset "log-space inverses of the StdNormal Stieltjes measure functions" begin
+    # Beyond the underflow of the cdf, Float64 and Float32:
+    for lp in (-1e-20, -0.1, -1.0, -40.0, -700.0, -745.0, -800.0, -5000.0, -1e6)
+        x = invlogsmf(StdNormal(), lp)
+        @test logsmf(StdNormal(), x) ≈ lp
+        @test invlogcsmf(StdNormal(), lp) == -x
+    end
+    for lp in (-1.0, -40.0, -700.0, -800.0)
+        @test invlogsmf(StdNormal(), lp) ≈ invlogcdf(Normal(), lp)
+    end
+    @test invlogsmf(StdNormal(), logsmf(StdNormal(), -40.0)) ≈ -40
+    for lp in (-1.0f0, -40.0f0, -87.0f0, -90.0f0, -200.0f0)
+        x = invlogsmf(StdNormal(), lp)
+        @test x isa Float32
+        @test x ≈ invlogcdf(Normal(), Float64(lp)) rtol = 1e-6
+    end
+    @test isnan(invlogsmf(StdNormal(), 0.1)) && invlogsmf(StdNormal(), -Inf) == -Inf
+    # Inherited by weighted measures and Half:
+    @test invlogsmf(2 * StdNormal(), log(2) - 800) ≈ invlogcdf(Normal(), -800.0)
+    @test logcsmf(Half(StdNormal()), 40.0) ≈ log(2) + logccdf(Normal(), 40.0)
+    @test invlogcsmf(Half(StdNormal()), log(2) - 800) ≈ invlogccdf(Normal(), -800.0)
+    @test isnan(invlogcsmf(Half(StdNormal()), 0.1))
+end
+
 @testset "interval masses of measures with atoms" begin
     # Stieltjes measure functions give the masses of left-open, right-closed
     # intervals:
