@@ -106,25 +106,18 @@ end
     n == length(size_tuple(sz)) ? root : powermeasure(ν, sz)
 end
 
-# Pushed-forward Lebesgue roots relative to the root they push forward: the
-# volume element of the inverse.
-const _LebesgueRoot = Union{LebesgueBase,PowerMeasure{LebesgueBase}}
-@inline _pushfwd_root_ladj(ν::PushforwardMeasure, y) = last(with_logabsdet_jacobian(unwrap(ν.finv), y))
-@inline function logdensity_rel_def(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, ::M, y) where {F,I,M<:_LebesgueRoot}
-    _pushfwd_root_ladj(ν, y)
+# Powers of root measures are roots of the kind of their base (see
+# `_root_kind`), their densities relative to Lebesgue measure add up over
+# the elements. Powers of equal roots and equal sizes are equal, whether
+# the sizes are static or not:
+@inline _root_kind(μ::PowerMeasure) = _root_kind(pwr_base(μ))
+@inline _lebesgue_logd(μ::PowerMeasure, x) = _pwr_lebesgue_logd(first(_pwr_unwrap(μ)), μ, x)
+@inline _pwr_lebesgue_logd(::LebesgueBase, ::PowerMeasure, x) = zero(_logd_numtype(x))
+function _pwr_lebesgue_logd(::Any, μ::PowerMeasure, x)
+    sum(Base.Fix1(_lebesgue_logd, pwr_base(μ)), x; init = zero(_logd_numtype(x)))
 end
-@inline function logdensity_rel_def(::M, ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M<:_LebesgueRoot}
-    -_pushfwd_root_ladj(ν, y)
-end
-
-# Pushed-forward counting roots relative to the root they push forward:
-# atoms in both supports have equal masses.
-const _CountingRootOrigin = Union{Counting,PowerMeasure{<:Counting}}
-@inline function logdensity_rel_def(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, μ::M, y) where {F,I,M<:_CountingRootOrigin}
-    logdensityof(ν, y) - logdensityof(μ, y)
-end
-@inline function logdensity_rel_def(μ::M, ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M<:_CountingRootOrigin}
-    logdensityof(μ, y) - logdensityof(ν, y)
+@inline function _equal_roots(μ::PowerMeasure, ν::PowerMeasure)
+    pwr_size(μ) == pwr_size(ν) && _equal_roots(pwr_base(μ), pwr_base(ν))
 end
 
 # The variates of powers of measures with fixed stream sizes but no
