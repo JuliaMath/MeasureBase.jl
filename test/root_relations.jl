@@ -11,12 +11,28 @@ using IntervalSets
 using LinearAlgebra: I
 using StaticArrays: SVector
 using Static: static
+using SpecialFunctions: besseli, besselix
 
 struct _SimplexWarp{T}
     r::T
 end
 (f::_SimplexWarp)(x) = [x[1]^f.r, 1 - x[1]^f.r]
 InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
+
+# The von Mises distribution on the unit circle in the plane, with a
+# density relative to arc length, a reference measure without a chart:
+struct _VonMisesCircle <: MeasureBase.AbstractMeasure
+    κ::Float64
+end
+MeasureBase.basemeasure(::_VonMisesCircle) = MeasureBase.OpaqueRoot(:unit_circle, (2,), static(1))
+MeasureBase.logdensity_def(m::_VonMisesCircle, x) = m.κ * (x[1] - 1) - log(2π * besselix(0, m.κ))
+MeasureBase.insupportof(::_VonMisesCircle, x) = x[1]^2 + x[2]^2 ≈ 1
+MeasureBase.mspace_ndims(::Type{<:_VonMisesCircle}) = 1
+
+struct _OnSphere <: MeasureBase.AbstractMeasure end
+MeasureBase.basemeasure(::_OnSphere) = MeasureBase.OpaqueRoot(:unit_sphere, (3,), static(2))
+MeasureBase.logdensity_def(::_OnSphere, x) = -log(4π)
+MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
 
 @testset "root_relations.jl" begin
     P = asmeasure(Poisson(2.0))
@@ -106,6 +122,35 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         b = pushfwd(Add(-1.0), asmeasure(Binomial(2, 0.5)))
         @test_throws ArgumentError Half(b)
         @test_throws ArgumentError truncate(b, 0.0 .. 1.0)
+    end
+
+    @testset "opaque roots" begin
+        m1, m2 = _VonMisesCircle(1.0), _VonMisesCircle(2.5)
+        x = [cos(0.3), sin(0.3)]
+        vm(κ, θ) = exp(κ * cos(θ)) / (2π * besseli(0, κ))
+        @test logdensityof(m1, x) ≈ log(vm(1.0, 0.3))
+        @test logdensity_rel(m1, m2, x) ≈ log(vm(1.0, 0.3) / vm(2.5, 0.3))
+        @test logdensity_rel(m1^2, m2^2, [x x]) ≈ 2 * log(vm(1.0, 0.3) / vm(2.5, 0.3))
+        @test logdensityof(m1 + m2, x) ≈ log(vm(1.0, 0.3) + vm(2.5, 0.3))
+        @test getdof(m1) == 1 && MeasureBase.fast_dof(m1) == 1 && getdof(m1^3) == 3
+        @test getdof(_OnSphere()) == 2
+
+        # Other roots don't relate:
+        @test_throws ArgumentError logdensity_rel(m1, StdNormal()^2, x)
+        @test_throws ArgumentError logdensity_rel(StdNormal()^2, m1, x)
+        @test_throws ArgumentError logdensity_rel(m1, MeasureBase.Lebesgue()^2, x)
+        @test_throws ArgumentError logdensity_rel(m1, MeasureBase.OpaqueRoot(:ellipse, (2,), static(1)), x)
+        @test_throws ArgumentError logdensityof(m1 + StdNormal()^2, x)
+
+        # Maps of the ambient space have no volume element for opaque roots,
+        # the root can only be pushed forward:
+        f = setinverse(x -> 2x, y -> y / 2)
+        @test_throws ArgumentError pushfwd(f, m1)
+        @test_throws ArgumentError pushfwd(f, m1^3)
+        @test_throws ArgumentError pushfwd(f, productmeasure((m1, StdNormal())))
+        p = pushfwd(f, m1, PushfwdRootMeasure())
+        @test logdensityof(p, 2x) ≈ logdensityof(m1, x)
+        @test_throws ArgumentError logdensity_rel(p, m1, x)
     end
 
     @testset "pushforwards of mixed measures" begin

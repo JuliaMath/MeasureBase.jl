@@ -370,6 +370,54 @@ end
     )
 end
 
+
+"""
+    MeasureBase.OpaqueRoot(space, sz, dof)
+
+A root measure on a variate space without a chart known to MeasureBase,
+for measures (like wrapped manifold-valued distributions) whose densities
+refer to a reference measure on a submanifold of the space of arrays of
+size `sz`. `space` identifies the reference measure, opaque roots with
+equal `space` and `sz` are equal. `dof` is the number of degrees of
+freedom of the variates, or a [`MeasureBase.NoDOF`](@ref).
+
+Measures with an opaque root measure relate only to measures with an
+equal root measure, other relative densities throw an `ArgumentError`.
+Maps of the ambient space have no volume element for opaque roots, so
+`pushfwd(f, μ)` throws an `ArgumentError` unless it pushes the root
+measure forward, `pushfwd(f, μ, PushfwdRootMeasure())`.
+"""
+struct OpaqueRoot{S,SZ<:Tuple,D} <: AbstractMeasure
+    space::S
+    size::SZ
+    dof::D
+end
+
+Base.:(==)(a::OpaqueRoot, b::OpaqueRoot) = a.space == b.space && a.size == b.size
+Base.isequal(a::OpaqueRoot, b::OpaqueRoot) = isequal(a.space, b.space) && isequal(a.size, b.size)
+Base.hash(a::OpaqueRoot, h::UInt) = hash(a.space, hash(a.size, hash(:OpaqueRoot, h)))
+
+Pretty.tile(μ::OpaqueRoot) = Pretty.list_layout(Pretty.tile.([μ.space, μ.size]); prefix = :OpaqueRoot)
+
+basemeasure(μ::OpaqueRoot) = μ
+logdensity_def(::OpaqueRoot, x) = zero(_logd_numtype(x))
+@inline insupportof(μ::OpaqueRoot, ::Any) = NoFastInsupport{typeof(μ)}()
+
+@inline getdof(μ::OpaqueRoot) = μ.dof
+@inline fast_dof(μ::OpaqueRoot) = μ.dof
+
+@inline mspace_flatsize(μ::OpaqueRoot) = μ.size
+@inline mspace_ndims(::Type{<:OpaqueRoot{<:Any,<:NTuple{N,Any}}}) where {N} = N
+batched_logdensity_def(μ::OpaqueRoot, X::AbstractArray) = _zero_logd_batch(X, static(length(μ.size)))
+batched_logdensityof_impl(μ::OpaqueRoot, X::AbstractArray) = batched_logdensity_def(μ, X)
+
+@noinline _throw_no_root_rel(μ::OpaqueRoot, ::Any) = _throw_opaque_root_rel(μ)
+@noinline _throw_no_root_rel(::Any, ν::OpaqueRoot) = _throw_opaque_root_rel(ν)
+@noinline _throw_no_root_rel(μ::OpaqueRoot, ::OpaqueRoot) = _throw_opaque_root_rel(μ)
+@noinline function _throw_opaque_root_rel(μ::OpaqueRoot)
+    throw(ArgumentError("Measures with an opaque root measure (space $(repr(μ.space)), variate size $(μ.size), no chart known) have densities only relative to measures with the same root measure"))
+end
+
 @inline density_rel(μ, ν, x) = exp(logdensity_rel(μ, ν, x))
 
 @deprecate density_def(μ, ν::AbstractMeasure, x) exp(logdensity_def(μ, ν, x)) false

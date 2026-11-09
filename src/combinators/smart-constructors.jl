@@ -178,10 +178,25 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 # measures push their root measure forward instead of adapting it with a
 # volume element. Transports adapt the root measure to the one of their
 # target, whatever the origin's (see `basemeasure` of pushforwards):
+# Opaque roots have no volume element for maps of the ambient space, they
+# can only be pushed forward. The marker dominates in the folds over the
+# roots of components:
+struct _NoAmbientVolume{M} end
+Base.:|(a::_NoAmbientVolume, ::Any) = a
+Base.:|(::Union{Bool,StaticBool}, b::_NoAmbientVolume) = b
+Base.:&(a::_NoAmbientVolume, ::Any) = a
+Base.:&(::Union{Bool,StaticBool}, b::_NoAmbientVolume) = b
+@inline _pushfwd_root(::M) where {M<:OpaqueRoot} = _NoAmbientVolume{M}()
+
 @inline _pushfwd_style(style::PushFwdStyle, f, μ) = _style_for_root(style, _pushfwd_root(μ))
 @inline _pushfwd_style(style::PushFwdStyle, ::TransportFunction, μ) = style
 @inline _style_for_root(::AdaptRootMeasure, ::True) = PushfwdRootMeasure()
+@inline _style_for_root(::AdaptRootMeasure, ::_NoAmbientVolume{M}) where {M} = _throw_no_ambient_volume(M)
 @inline _style_for_root(style::PushFwdStyle, ::Any) = style
+
+@noinline function _throw_no_ambient_volume(::Type{M}) where {M}
+    throw(ArgumentError("Pushforwards of measures with a root measure of type $(nameof(M)) (no chart of the variate space is known) can't adapt the root measure with the volume element of the map, push the root measure forward with `pushfwd(f, μ, PushfwdRootMeasure())`"))
+end
 
 # Whether pushforwards push the root measure of a measure forward, along
 # the chain of base measures and structurally for combinators. Mixed roots
