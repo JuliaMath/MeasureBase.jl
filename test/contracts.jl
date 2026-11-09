@@ -92,6 +92,14 @@ test_measure_contracts(μ, x_out; kwargs...) =
     test_measure_contracts(productmeasure((a = StdNormal(), b = StdUniform())), (a = 0.5, b = 2.0))
     test_measure_contracts(mcombine(vcat, StdNormal()^2, StdExponential()^2), [0.1, 0.2, -1.0, 1.0])
     test_measure_contracts(Dirac(2.0), 3.0; transport = false)
+    # Supports given as types contain only values of the type:
+    for (c, out) in ((Counting(0:10), 11), (Counting(Set([1, 2, 7])), 3), (Counting([1, 2, 7]), 3), (Counting(Int), nothing))
+        test_measure_contracts(c, [1, 2, 7], out; transport = false)
+        test_measure_contracts(c^3, [[1, 2, 7], [7, 1, 1]], isnothing(out) ? nothing : [1, 2, out]; transport = false)
+        test_measure_contracts(productmeasure((c, StdNormal())), [(1, 0.5), (7, -0.5)], isnothing(out) ? nothing : (out, 0.5); transport = false)
+        test_composition_invariants(c, 1, 2)
+    end
+    @test logdensityof(Counting(Int), 1.5) == logdensityof(Counting(Int)^2, [1, 1.5]) == -Inf
     test_measure_contracts(superpose(StdUniform(), StdExponential()), -1.0; transport = false)
     test_measure_contracts(restrict(>(0), StdNormal()), [0.5, 1.0, 2.0], -1.0; transport = false)
     test_measure_contracts(mintegrate_exp(x -> -x, StdExponential()), [0.5, 1.0, 2.0], -1.0; transport = false)

@@ -32,12 +32,21 @@ basemeasure(μ::Counting) = μ
 
 Counting() = Counting(ℤ)
 
+# Supports of scalar variates given as collections or types of numbers:
+const _ScalarCountingSupport = Union{AbstractRange{<:Number},AbstractSet{<:Number},AbstractVector{<:Number},Type{<:Number}}
+const _ScalarCounting = Counting{<:Union{IntegerValues,BoundedInts,_ScalarCountingSupport}}
+
 @inline mspace_elsize(μ::Counting) = _valueset_elsize(μ.support)
 @inline mspace_flatsize(μ::Counting) = _valueset_flatsize(μ.support)
-@inline mspace_flatsize(::Type{<:Counting{IntegerValues}}) = ()
-@inline mspace_flatsize(::Type{<:Counting{<:BoundedInts}}) = ()
+@inline mspace_elsize(::_ScalarCounting) = ()
+@inline mspace_flatsize(::_ScalarCounting) = ()
+@inline mspace_flatsize(::Type{<:_ScalarCounting}) = ()
 
 testvalue(::Type{T}, d::Counting) where {T} = testvalue(T, d.support)
+function testvalue(::Type{T}, d::Counting{<:Union{AbstractRange{<:Number},AbstractSet{<:Number},AbstractVector{<:Number}}}) where {T}
+    isempty(d.support) ? zero(T) : convert(T, first(d.support))
+end
+testvalue(::Type{T}, ::Counting{Type{S}}) where {T,S<:Number} = isconcretetype(S) ? zero(S) : convert(S, zero(T))
 
 proxy(d::Counting) = restrict(in(d.support), CountingBase())
 
