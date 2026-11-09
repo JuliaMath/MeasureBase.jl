@@ -50,4 +50,17 @@ _mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(
         f_ti = u -> sum(transport_to(StdNormal()^3, StdUniform()^3)(u))
         @test _mooncake_gradient(f_ti, u) ≈ ForwardDiff.gradient(f_ti, u)
     end
+
+    @testset "standard conversions in the tails" begin
+        # Derivatives as density ratios, the branches not taken are singular
+        # at these points:
+        φ(z) = exp(-z^2 / 2) / sqrt(2π)
+        f = transport_to(StdExponential(), StdNormal())
+        @test _mooncake_gradient(f, 9.0) ≈ φ(9.0) / exp(-f(9.0))
+        f = transport_to(StdNormal(), StdExponential())
+        @test _mooncake_gradient(f, 1e-20) ≈ exp(-1e-20) / φ(f(1e-20))
+        @test _mooncake_gradient(f, 40.0) ≈ exp(-40.0) / φ(f(40.0))
+        f = transport_to(StdNormal(), StdLogistic())
+        @test _mooncake_gradient(f, 40.0) ≈ exp(-40.0) / (1 + exp(-40.0))^2 / φ(f(40.0))
+    end
 end

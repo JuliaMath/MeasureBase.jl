@@ -40,3 +40,19 @@ end
         @test Zygote.gradient(f, x)[1] ≈ ForwardDiff.derivative(f, x)
     end
 end
+
+
+@testset "Zygote gradients of transports in the tails" begin
+    # Through the standard conversions, against the density ratios:
+    φ(z) = exp(-z^2 / 2) / sqrt(2π)
+    for (ν, μ, x, ref) in [
+        (StdNormal(), Exponential(1.0), 40.0, z -> pdf(Exponential(1.0), 40.0) / φ(z)),
+        (StdNormal(), Weibull(1.5, 2.0), 30.0, z -> pdf(Weibull(1.5, 2.0), 30.0) / φ(z)),
+        (StdNormal(), Gumbel(), 40.0, z -> pdf(Gumbel(), 40.0) / φ(z)),
+        (Normal(0.2, 1.3), StdLogistic(), 40.0, y -> exp(-40.0) / (1 + exp(-40.0))^2 / pdf(Normal(0.2, 1.3), y)),
+        (Normal(0.2, 1.3), StdLogistic(), -40.0, y -> exp(-40.0) / (1 + exp(-40.0))^2 / pdf(Normal(0.2, 1.3), y)),
+    ]
+        f = transport_to(ν, μ)
+        @test Zygote.gradient(f, x)[1] ≈ ref(f(x))
+    end
+end
