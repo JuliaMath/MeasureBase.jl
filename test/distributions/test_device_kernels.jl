@@ -151,7 +151,7 @@ end
         x = minimum(d) - 1
         @test logdensityof(m, x) == -Inf
         @test isnan(transport_to(StdNormal(), m)(x))
-        @test isnan(transport_to(StdNormal(), m)(Inf)) || d isa Union{Exponential,LogNormal,Weibull,Gamma}
+        @test isnan(transport_to(StdNormal(), m)(Inf))
         Y = Array(transport_to(StdNormal(), m).(JLArray([x, mean(d)])))
         @test isnan(Y[1]) && !isnan(Y[2])
     end
@@ -162,6 +162,16 @@ end
     end
     for d in (Exponential(0.7), Weibull(1.4, 0.9))
         @test isnan(transport_to(asmeasure(d), StdExponential())(-1.0))
+    end
+    for d in (Normal(0.3, 1.7), Logistic(0.2, 1.3), 2 * TDist(3.0) + 1), S in (StdNormal(), StdUniform(), StdLogistic()), x in (Inf, -Inf)
+        @test isnan(transport_to(S, asmeasure(d))(x))
+    end
+    mn = asmeasure(MvNormal([0.0, 0.0], [1 0.5; 0.5 1]))
+    for S in (StdNormal()^2, StdUniform()^2)
+        f = transport_to(S, mn)
+        @test all(isnan, f([Inf, 0.0])) && all(isnan, f([0.0, -Inf])) && !any(isnan, f([0.0, 0.0]))
+        Z = flatview(f.(sliced([Inf 0.3; 0.0 0.1], Val(1))))
+        @test all(isnan, Z[:, 1]) && !any(isnan, Z[:, 2])
     end
     @test logdensityof(asmeasure(Rayleigh(2.0)), Inf) == -Inf
     @test logdensityof(asmeasure(Poisson(2.7)), Inf) == -Inf

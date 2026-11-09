@@ -160,7 +160,7 @@ for (D, S) in [
 ]
     @eval begin
         @inline MeasureBase.preferred_stdmeasure(::Type{<:$D}) = $S
-        @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _affine_to_std(d, x)
+        @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _nan_outside(d, x, _affine_to_std(d, x))
         @inline MeasureBase.transport_from_std(::Type{$S}, d::$D, z) = _std_to_affine(d, z)
     end
 end

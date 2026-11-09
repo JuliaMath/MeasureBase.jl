@@ -50,8 +50,11 @@ end
 MeasureBase.logdensity_def(m::MvNormalMeasure, x::AbstractVector) = MeasureBase.batched_logdensity_def(m, x)
 MeasureBase.unsafe_logdensityof(m::MvNormalMeasure, x::AbstractVector) = MeasureBase.batched_logdensityof_impl(m, x)
 
+# Columns with infinite values lie outside the support:
 function MeasureBase.batched_transport_to_std(::Type{StdNormal}, d::MvNormal, X::AbstractArray)
-    _from_columns(_cholesky_L(d.Σ) \ (_as_columns(X) .- d.μ), X)
+    Xc = _as_columns(X)
+    Z = _cholesky_L(d.Σ) \ (Xc .- d.μ)
+    _from_columns(_nan_columns(Z, _column_all(isfinite.(Xc))), X)
 end
 function MeasureBase.batched_transport_from_std(::Type{StdNormal}, d::MvNormal, Z::AbstractArray)
     _from_columns(_cholesky_L(d.Σ) * _as_columns(Z) .+ d.μ, Z)
