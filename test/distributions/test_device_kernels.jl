@@ -124,14 +124,17 @@ using StructArrays: StructArray
             Y = f.(sliced(X, Val(1)))
             @test flatview(Y) ≈ stack(map(f, eachcol(X)))
             @test flatview(inverse(f).(Y)) ≈ X
-            # JLArrays have no triangular solves, so only diagonal
-            # covariances run on them (CUDA covers the general case):
-            if !(Σ isa AbstractMatrix)
+            # Triangular matrix products give wrong values on JLArrays, so
+            # only diagonal and scalar covariances run on them (CUDA covers
+            # the general case):
+            if Σ isa Union{PDMats.PDiagMat,PDMats.ScalMat}
                 mj = Adapt.adapt(JLArray, m)
                 @test Array(logdensities(mj, JLArray(X))) ≈ ℓ_ref
                 fj = transport_to(StdNormal()^2, mj)
                 @test Array(flatview(fj.(sliced(JLArray(X), Val(1))))) ≈ flatview(Y)
                 @test Array(flatview(inverse(fj).(sliced(JLArray(flatview(Y)), Val(1))))) ≈ X
+                Xj = batched_rand_impl(GenContext{Float32}(MeasureBase.HeterogeneousComputing.AbstractComputeUnit(JLBackend())), mj, (7,))
+                @test Xj isa JLArray && size(Xj) == (2, 7) && all(isfinite, Array(logdensities(mj, Xj)))
             end
             @test size(batched_rand_impl(GenContext{Float64}(stblrng()), m, (7,))) == (2, 7)
         end

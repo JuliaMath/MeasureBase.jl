@@ -2,6 +2,7 @@
 
 module MeasureBaseDistributionsExt
 
+import LinearAlgebra
 using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, cholesky, logdet
 import Adapt
 
