@@ -132,7 +132,9 @@ const _derivatives = (
                     a -> transport_to(Beta(a, 2.0), StdUniform())(0.2),
                     b -> transport_to(Beta(1.5, b), StdUniform())(0.9),
                 ]
-                    @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 broken = backend == :Zygote && fdpullbacks
+                    # (Below the resolution of the variates near one, where the
+                    # finite differences vanish:)
+                    @test ∂(f, shape) ≈ fd(f, shape) rtol = 1e-7 atol = 1e-15 broken = backend == :Zygote && fdpullbacks
                 end
             end
             # Dirichlet transports, also with a concentration that depends on
@@ -189,15 +191,17 @@ const _derivatives = (
     end
 
     @testset "Float32 tails" begin
-        # Cauchy quantiles are `-cot(πp)`:
+        # Cauchy quantiles are `-cot(πp)`, up to the rounding of the
+        # logistic pivot `logit(p)`:
         f = transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform())
         tail = Float32[10.0^-k for k in 37:-1:1]
         ps = vcat(tail, 0.3f0, 0.5f0, 0.7f0, 1 .- reverse(filter(>=(eps(Float32)), tail)))
         xs = f.(ps)
         @test xs isa Vector{Float32}
-        @test all(isapprox.(xs, Float32.(-cot.(big(π) .* ps)), rtol = 4 * eps(Float32)))
+        pivot_rtol(p) = 4 * eps(Float32) * max(1, abs(log(p / (1 - p))))
+        @test all(map((x, p) -> isapprox(x, Float32(-cot(big(π) * p)), rtol = pivot_rtol(Float64(p))), xs, ps))
         @test issorted(xs) && sign.(xs) == sign.(ps .- 0.5f0)
-        @test f(1f-9) ≈ -1 / (π * 1f-9) rtol = 4 * eps(Float32)
+        @test f(1f-9) ≈ -1 / (π * 1f-9) rtol = pivot_rtol(1e-9)
         @test transport_to(asmeasure(Cauchy()), StdUniform())(1e-300) ≈ -1 / (π * 1e-300)
 
         # Cauchy densities where `z^2` overflows:

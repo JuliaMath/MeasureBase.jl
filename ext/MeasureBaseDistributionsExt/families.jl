@@ -154,7 +154,7 @@ end
 
 
 # Standard transports of the non-affine families: Cauchy, Laplace, Gamma
-# and Beta pivot on the uniform measure, the log-normal and Weibull
+# and Beta pivot on the logistic measure, the log-normal and Weibull
 # families on the normal resp. exponential measure.
 
 # The regularized incomplete gamma and beta functions and their inverses
@@ -190,34 +190,52 @@ end
 # computed from tail probabilities, selected by the same condition as the
 # result, so that derivatives at the median follow one branch.
 
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Cauchy}) = StdUniform
-# `atan(z)/π + 1/2` cancels in the lower tail, the angle `atan(1, -z)` doesn't:
-@inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Cauchy, x)
-    z = (x - d.μ) / d.σ
-    _nan_outside(d, x, atan(one(z), -z) / π)
-end
-# `tan(π(p - 1/2))` loses small probabilities in `p - 1/2`, the cotangent
-# of the tail probability doesn't:
-@inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Cauchy, p)
-    q = _unit_interior(p)
-    lower = q < 1 // 2
-    r = ifelse(lower, q, 1 - q)
+# The lower and upper tail probabilities `p` and `q` of a variate give the
+# standard logistic variate `log(p) - log(q)`, which resolves both tails
+# (with the probabilities floored at the smallest positive float). Back
+# from it, the quantile comes from the smaller one of `logistic(±l)`:
+@inline _logit_of_tails(p, q) = log(MeasureBase._positive_prob(p)) - log(MeasureBase._positive_prob(q))
+
+# `|x|` with the derivative of `x` at zero (`abs` has none there in some AD
+# backends):
+@inline _signed_abs(x) = ifelse(x < zero(x), -x, x)
+
+# Cauchy: `atan(z) / π + 1/2` cancels in the tails, the angles
+# `atan(σ, μ - x)` and `atan(σ, x - μ)` don't. `tan(π(p - 1/2))` loses
+# small probabilities in `p - 1/2`, the cotangent of the smaller tail
+# probability doesn't.
+@inline _cauchy_cdf(d::Cauchy, x) = atan(d.σ, d.μ - x) / π
+@inline _cauchy_ccdf(d::Cauchy, x) = atan(d.σ, x - d.μ) / π
+@inline function _cauchy_tail_quantile(d::Cauchy, p, q)
+    lower = p < q
+    r = _unit_interior(ifelse(lower, p, q))
     t = cospi(r) / sinpi(r)
-    _nan_outside(StdUniform, p, muladd(d.σ, ifelse(lower, -t, t), d.μ))
+    muladd(d.σ, ifelse(lower, -t, t), d.μ)
 end
 
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdUniform
-@inline function MeasureBase.transport_to_std(::Type{StdUniform}, d::Laplace, x)
-    z = (x - d.μ) / d.θ
-    lower = z < 0
-    t = exp(ifelse(lower, z, -z)) / 2
-    _nan_outside(d, x, ifelse(lower, t, 1 - t))
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Cauchy}) = StdLogistic
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Cauchy, x)
+    _nan_outside(d, x, _logit_of_tails(_cauchy_cdf(d, x), _cauchy_ccdf(d, x)))
 end
-@inline function MeasureBase.transport_from_std(::Type{StdUniform}, d::Laplace, p)
-    q = _unit_interior(p)
-    lower = q < 1 // 2
-    l = log(2 * ifelse(lower, q, 1 - q))
-    _nan_outside(StdUniform, p, muladd(d.θ, ifelse(lower, l, -l), d.μ))
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Cauchy, l)
+    _cauchy_tail_quantile(d, logistic(l), logistic(-l))
+end
+
+
+# Laplace: `l = ±log(2 exp(|z|) - 1)` by the sign of `z`, and back
+# `|z| = log((exp(|l|) + 1) / 2)`, each in two forms that stay accurate
+# near zero resp. don't overflow:
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Laplace}) = StdLogistic
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Laplace, x)
+    z = (x - d.μ) / d.θ
+    a = _signed_abs(z)
+    g = ifelse(a < 1, log1p(2 * expm1(min(a, one(a)))), a + logtwo + log1p(-exp(-a) / 2))
+    _nan_outside(d, x, ifelse(z < 0, -g, g))
+end
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Laplace, l)
+    b = _signed_abs(l)
+    a = ifelse(b < 1, log1p(expm1(min(b, one(b))) / 2), log1pexp(b) - logtwo)
+    muladd(d.θ, ifelse(l < 0, -a, a), d.μ)
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:LogNormal}) = StdNormal
@@ -228,15 +246,41 @@ end
 @inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Weibull, x) = _nan_outside(d, x, abs(x / d.θ)^d.α)
 @inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Weibull, z) = _nan_outside(StdExponential, z, d.θ * abs(z)^(1 / d.α))
 
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Gamma}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Gamma, x) = _nan_outside(d, x, _gamma_cdf(d.α, _nonnan(abs(x / d.θ), 1)))
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Gamma, p) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _quantile_arg(p)))
+# Gamma and Beta: the tail probabilities from the incomplete gamma resp.
+# the (mirrored) incomplete beta functions, quantiles from the smaller one:
+@inline function _gamma_tail_quantile(α, p, q)
+    lower = p < q
+    r = _quantile_arg(ifelse(lower, p, q))
+    h = one(r) / 2
+    ifelse(lower, _gamma_quantile(α, ifelse(lower, r, h)), _gamma_cquantile(α, ifelse(lower, h, r)))
+end
+@inline function _beta_tail_quantile(α, β, p, q)
+    lower = p < q
+    y = _beta_quantile(ifelse(lower, α, β), ifelse(lower, β, α), _quantile_arg(ifelse(lower, p, q)))
+    ifelse(lower, y, 1 - y)
+end
 
-@inline MeasureBase.preferred_stdmeasure(::Type{<:Beta}) = StdUniform
-@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Beta, x) = _nan_outside(d, x, _beta_cdf(d.α, d.β, _nonnan(_unit_clamp(x), 1 // 2)))
-@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Beta, p) = _nan_outside(StdUniform, p, _beta_quantile(d.α, d.β, _quantile_arg(p)))
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Gamma}) = StdLogistic
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Gamma, x)
+    u = _gamma_trafo_arg(x / d.θ)
+    _nan_outside(d, x, _logit_of_tails(_gamma_cdf(d.α, u), _gamma_ccdf(d.α, u)))
+end
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Gamma, l)
+    _nan_or(l, d.θ * _gamma_tail_quantile(d.α, logistic(l), logistic(-l)))
+end
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Beta}) = StdLogistic
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::Beta, x)
+    u = _nonnan(_unit_clamp(x), 1 // 2)
+    _nan_outside(d, x, _logit_of_tails(_beta_cdf(d.α, d.β, u), _beta_cdf(d.β, d.α, 1 - u)))
+end
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::Beta, l)
+    _nan_or(l, _beta_tail_quantile(d.α, d.β, logistic(l), logistic(-l)))
+end
 
 @inline _unit_clamp(x) = clamp(x, zero(x), one(x))
+# `|z|` inside the support and on its lower end, one for infinite and NaN `z`:
+@inline _gamma_trafo_arg(z) = ifelse(isfinite(z), abs(z), one(z))
 
 # The Stieltjes measure functions of the gamma and beta families and their
 # inverses go through the kernels, so that they are differentiable with

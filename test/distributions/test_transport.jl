@@ -208,6 +208,42 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
         end
     end
 
+    @testset "both tails of the logistic-pivot families" begin
+        # Closed-form log tail probabilities at 1200 bits:
+        ref(f, x) = setprecision(() -> Float64(f(big(x))), BigFloat, 1200)
+        laplace_z(x) = (x - big(0.2)) / big(1.3)
+        zs = ([-37.0, -20.0, -8.0, -6.0, 6.0, 8.0, 20.0, 37.0], Float32[-12, -8, -6, 6, 8, 12])
+        # Variates close to one limit the upper tail of Beta, and the
+        # incomplete beta functions lose accuracy beyond `1e-100`:
+        zs_beta = ([-20.0, -8.0, -6.0, 6.0], Float32[-12, -8, -6, 6])
+        families = [
+            (T -> Laplace(T(0.2), T(1.3)), x -> (z = laplace_z(x); z < 0 ? z - log(big(2)) : log1p(-exp(-z) / 2)),
+                x -> (z = laplace_z(x); z > 0 ? -z - log(big(2)) : log1p(-exp(z) / 2)), zs),
+            (T -> Cauchy(T(0.2), T(1.3)), x -> log(atan(big(1.3), big(0.2) - x) / big(π)), x -> log(atan(big(1.3), x - big(0.2)) / big(π)), zs),
+            (T -> Gamma(T(2), T(1.3)), x -> (y = x / big(1.3); log(-expm1(-y) - y * exp(-y))), x -> (y = x / big(1.3); log1p(y) - y), zs),
+            (T -> Beta(T(2), T(2)), x -> log(x^2 * (3 - 2x)), x -> log((1 - x)^2 * (1 + 2x)), zs_beta),
+        ]
+        for (d, logcdf_ref, logccdf_ref, zs_d) in families, (T, zs_T, rtol) in ((Float64, zs_d[1], 1e-12), (Float32, zs_d[2], 1e-4))
+            m = asmeasure(d(T))
+            f = transport_to(StdNormal(), m)
+            for z in zs_T
+                x = inverse(f)(z)
+                @test x isa T && isfinite(x)
+                @test (z < 0 ? ref(logcdf_ref, x) / logcdf(Normal(), z) : ref(logccdf_ref, x) / logccdf(Normal(), z)) ≈ 1 rtol = rtol
+                @test f(x) ≈ z rtol = rtol
+                # The logistic pivot `l ≈ ±z^2 / 2` resolves tail probabilities
+                # to `eps(l)`:
+                @test transport_to(m, m)(x) ≈ x rtol = 4 * eps(T) * (1 + z^2)
+            end
+        end
+        # The reproducers of the uniform pivot, which saturated at 8.2095:
+        @test transport_to(StdNormal(), asmeasure(Laplace())).([36.0, 40.0, 50.0]) ≈ [8.204292745263682, 8.671935735036621, 9.745474864965937]
+        @test transport_to(StdNormal(), asmeasure(Gamma(2.0)))(45.0) ≈ 8.726209036109491
+        @test transport_to(StdNormal(), asmeasure(Beta(2.0, 2.0)))(1 - 1e-9) ≈ 8.632548295388746 rtol = 1e-7
+        f = transport_to(asmeasure(Gamma(2.0)), StdNormal())
+        @test last(with_logabsdet_jacobian(f, 9.0)) ≈ log(ForwardDiff.derivative(f, 9.0))
+    end
+
     @testset "Dirichlet precision and boundary" begin
         dir = Dirichlet([2.0, 3.0, 4.0])
         f = transport_to(StdUniform()^2, dir)
