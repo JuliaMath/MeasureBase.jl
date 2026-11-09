@@ -445,10 +445,13 @@ end
 @inline _pwr_dims(ν) = ()
 
 # Point transport: flat variates are batches with zero batch dimensions,
-# nested variates without flat storage transport element by element.
+# nested variates without flat storage, and the variates of bases without
+# fixed variate sizes, transport element by element.
 function transport_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray) where {S<:StdMeasure}
-    _pwr_to_std(S, μ, x, _flat_storage(x))
+    _pwr_to_std(S, μ, x, _pwr_flat_storage(x, fixed_stream_size(pwr_base(μ))))
 end
+@inline _pwr_flat_storage(x, ::True) = _flat_storage(x)
+@inline _pwr_flat_storage(::Any, ::False) = NoFlatStorage()
 @inline function _pwr_to_std(::Type{S}, μ::PowerMeasure, x, x_flat::Union{AbstractArray,Tuple,NamedTuple}) where {S}
     _single_std(batched_transport_to_std(S, μ, x_flat))
 end
@@ -458,7 +461,13 @@ function _pwr_to_std(::Type{S}, μ::PowerMeasure, x::AbstractArray, ::NoFlatStor
 end
 
 function transport_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector) where {S<:StdMeasure}
-    _pwr_variate(μ, batched_transport_from_std(S, μ, z))
+    _pwr_from_std(S, μ, z, fixed_stream_size(pwr_base(μ)))
+end
+_pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, ::True) where {S} = _pwr_variate(μ, batched_transport_from_std(S, μ, z))
+function _pwr_from_std(::Type{S}, μ::PowerMeasure, z::AbstractVector, ::False) where {S}
+    x, z_rest = transport_from_std_with_rest(S, μ, z)
+    isempty(z_rest) || _throw_std_length_mismatch()
+    return x
 end
 
 # Streams: a power consumes the variates of its base measure with its size

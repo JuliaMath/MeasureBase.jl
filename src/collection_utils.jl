@@ -58,9 +58,9 @@ _fill_axes(x::FillArrays.Fill) = x.axes
 
 _flatten_to_rv(VV::AbstractVector{<:AbstractVector{<:Number}}) = flatview(VectorOfArrays(VV))
 _flatten_to_rv(VV::AbstractVector{<:StaticVector{N,<:Number}}) where {N} =
-    flatview(VectorOfSimilarArrays(VV))
+    vec(flatview(VectorOfSimilarArrays(VV)))
 
-_flatten_to_rv(VV::VectorOfSimilarVectors{<:Number}) = flatview(VV)
+_flatten_to_rv(VV::VectorOfSimilarVectors{<:Number}) = vec(flatview(VV))
 _flatten_to_rv(VV::VectorOfVectors{<:Number}) = flatview(VV)
 
 _flatten_to_rv(::Tuple{}) = SVector{0,Bool}()
