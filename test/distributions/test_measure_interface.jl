@@ -45,6 +45,22 @@ using LinearAlgebra: I
 end
 
 
+@testset "bare distributions behave like their measures" begin
+    for d in (Distributions.Uniform(1.0, 2.0), Distributions.Dirichlet([1.0, 2.0, 3.0]), Distributions.Categorical([0.2, 0.5, 0.3]),
+              Distributions.Multinomial(3, [0.2, 0.8]), Distributions.Poisson(2.0), Distributions.product_distribution(Distributions.Uniform.([1.0, 2.0], [2.0, 3.0])))
+        @test Distributions.insupport(d, MeasureBase.testvalue(d))
+        @test MeasureBase.basemeasure(d) == MeasureBase.basemeasure(MeasureBase.asmeasure(d))
+    end
+    @test MeasureBase.basemeasure(Distributions.Dirichlet([1.0, 2.0, 3.0])) == MeasureBase.Lebesgue(MeasureBase.StdSimplex(3))
+    @test MeasureBase.basemeasure(Distributions.Poisson(2.0)) == MeasureBase.Counting(MeasureBase.ℤ)
+    @test !MeasureBase.insupportof(Distributions.Normal(), Inf)
+    # Constructors that took bare distributions:
+    @test MeasureBase.logdensityof(MeasureBase.weightedmeasure(0.5, Distributions.Normal()), 0.3) ≈ Distributions.logpdf(Distributions.Normal(), 0.3) + 0.5
+    p = MeasureBase.pushfwd(exp, Distributions.Uniform(1.0, 2.0))
+    @test exp(1.0) <= MeasureBase.testvalue(p) <= exp(2.0)
+    @test MeasureBase.logdensityof(p, exp(1.5)) ≈ -1.5
+end
+
 # Needs AffineMaps >= 0.3.4 (earlier versions give per-column Jacobians of
 # scalar factors and scalar ones for Add):
 @testset "affine pushforward densities" begin

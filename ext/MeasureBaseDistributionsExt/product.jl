@@ -12,6 +12,24 @@
     end
 end
 
+# Products over arrays of distributions convert to product measures over
+# struct arrays, which isn't type-stable. The bare products keep type-stable
+# forms of the base measures and test values of these:
+_marginal_dists(d::Distributions.Product) = d.v
+@static if isdefined(Distributions, :ProductDistribution)
+    _marginal_dists(d::Distributions.ProductDistribution{N,M,<:AbstractArray}) where {N,M} = d.dists
+    const _ArrayProductDistribution = Union{Distributions.Product,Distributions.ProductDistribution{<:Any,<:Any,<:AbstractArray}}
+else
+    const _ArrayProductDistribution = Distributions.Product
+end
+
+MeasureBase.basemeasure(d::_ArrayProductDistribution) = MeasureBase.rootmeasure(d)
+MeasureBase.rootmeasure(d::_ArrayProductDistribution) = _product_root(d, Distributions.value_support(typeof(d)))
+_product_root(d, ::Type{Continuous}) = Lebesgue()^size(d)
+_product_root(d, ::Type{Discrete}) = Counting()^size(d)
+MeasureBase.testvalue(d::_ArrayProductDistribution) = map(testvalue, _marginal_dists(d))
+MeasureBase.testvalue(::Type{T}, d::_ArrayProductDistribution) where {T} = map(c -> testvalue(T, c), _marginal_dists(d))
+
 function Distributions.Distribution(
     m::MeasureBase.ProductMeasure{<:AbstractArray{<:AsMeasure{<:Distribution{Univariate}}}},
 )

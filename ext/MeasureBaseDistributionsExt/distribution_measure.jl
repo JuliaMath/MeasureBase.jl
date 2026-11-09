@@ -166,5 +166,3 @@ end
 
 @inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
 @inline MeasureBase.paramsof(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))
-
-# @inline MeasureBase.testvalue(m::DistributionMeasure) = testvalue(basemeasure(d))
