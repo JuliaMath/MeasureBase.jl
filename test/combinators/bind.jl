@@ -4,7 +4,7 @@ using Test
 
 using Random
 using StableRNGs: StableRNG
-using AffineMaps: Mul
+using AffineMaps: Mul, Add
 
 using MeasureBase
 using MeasureBase: StdExponential, StdNormal, StdUniform
@@ -12,6 +12,7 @@ using MeasureBase: mbind, mkernel, bindkernel, boundmeasure
 using MeasureBase: pushfwd, productmeasure, transport_to, transportmeasure, localmeasure, weightedmeasure
 using MeasureBase: superpose, massof, mcombine
 import OneTwoMany
+using InverseFunctions: inverse
 
 # A value combination function with a specialized split:
 struct _SwapCombine <: Function end
@@ -196,6 +197,32 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         @test logdensityof(μr, (position = -0.3, noise = 0.2)) == -Inf
         @test logdensities(μr, (position = [0.3, -0.3], noise = [0.2, 0.2])) ≈
               [logdensityof(μr, (position = 0.3, noise = 0.2)), -Inf]
+    end
+
+    @testset "powers and products of binds" begin
+        ℓN(x) = -x^2 / 2 - log(2π) / 2
+        joint_ld(a, b) = ℓN(a) + ℓN(b - a)
+        k(a) = pushfwd(Add(a), StdNormal())
+        bt = mbind(k, StdNormal(), tuple)
+        X = rand(stblrng(), bt^3)
+        @test X isa AbstractVector{<:Tuple{Real,Real}}
+        ref = sum(x -> joint_ld(x...), X)
+        @test logdensityof(bt^3, X) ≈ ref
+        @test logdensityof(productmeasure(fill(bt, 3)), X) ≈ ref
+        @test logdensities(bt, X) ≈ [joint_ld(x...) for x in X]
+        @test logdensities(bt, (0.1, 0.4)) ≈ joint_ld(0.1, 0.4)
+        @test logdensityof((bt^3)^2, rand(stblrng(), (bt^3)^2)) isa Real
+        @test logdensities(mbind(k, StdExponential(), tuple), ([0.5, -1.0], [0.2, 0.3])) ≈ [-0.5 + ℓN(-0.3), -Inf]
+
+        # Transports of powers of binds, element by element:
+        for b in (bt, mbind(k, StdNormal(), vcat), mbind(k, StdNormal(), Pair))
+            f = transport_to(StdNormal()^6, b^3)
+            x = rand(stblrng(), b^3)
+            z = f(x)
+            @test z ≈ reduce(vcat, map(xi -> transport_to(StdNormal()^2, b)(xi), x))
+            @test all(map((y, xi) -> all(collect(y) .≈ collect(xi)), inverse(f)(z), x))
+            @test transports(f, [x, x]) ≈ [z, z]
+        end
     end
 
     @testset "densities outside of the primary support" begin

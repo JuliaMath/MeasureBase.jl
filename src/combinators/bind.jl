@@ -415,17 +415,22 @@ function logdensityof_with_rest(μ::_BindBy{typeof(merge)}, x::NamedTuple)
     return ℓ_a + ℓ_b, merge(a, b), x_rest
 end
 
-# Batches of merge-bind variates are named tuples of batches: the primary
-# part is evaluated as a batch, the secondary part variate by variate.
+# Batches of merge-bind resp. tuple-bind variates are named tuples resp.
+# tuples of batches: the primary part is evaluated as a batch, the
+# secondary part variate by variate.
 function batched_logdensityof_impl(μ::_BindBy{typeof(merge)}, X::NamedTuple)
     X_α, X_β = _split_after(X, Val(_mspace_names(μ.α)))
-    _merge_bind_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
+    _bind_batch_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
 end
-_merge_bind_ld(μ::Bind, ℓ_α::Number, a, b) = _bind_ld(ℓ_α, () -> logdensityof(_get_β_a(μ, a), b))
-function _merge_bind_ld(μ::Bind, ℓ_α::AbstractArray, X_α, X_β)
+function batched_logdensityof_impl(μ::_BindBy{typeof(tuple)}, X::Tuple{Any,Any})
+    X_α, X_β = X
+    _bind_batch_ld(μ, _materialize(batched_logdensityof_impl(μ.α, X_α)), X_α, X_β)
+end
+_bind_batch_ld(μ::Bind, ℓ_α::Number, a, b) = _bind_ld(ℓ_α, () -> logdensityof(_get_β_a(μ, a), b))
+function _bind_batch_ld(μ::Bind, ℓ_α::AbstractArray, X_α, X_β)
     B = ndims(ℓ_α)
     map(CartesianIndices(ℓ_α)) do i
-        _merge_bind_ld(μ, ℓ_α[i], _batch_row(X_α, i, B), _batch_row(X_β, i, B))
+        _bind_batch_ld(μ, ℓ_α[i], _batch_row(X_α, i, B), _batch_row(X_β, i, B))
     end
 end
 
