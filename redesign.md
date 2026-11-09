@@ -155,12 +155,28 @@ with counting root measures push their root measure forward (counting
 measure on the image) instead of adapting it with a volume element, also
 under `AdaptRootMeasure()`, and so do measures on the simplex (its
 coordinate measure is a chart, maps of the ambient space have no volume
-element for it); mixed roots (superpositions of continuous and atomic
-measures) still get the volume element everywhere. Pushforwards by
+element for it). Pushforward is linear, so superpositions push forward
+component by component, each component keeping or adapting its own root,
+and normalization commutes with pushforwards. Other measures with mixed
+roots (spike mixtures, products of atomic or simplex and continuous
+marginals) push their whole root forward. Pushforwards with atomic roots
+check their support through the inverse. Pushforwards by
 transports adapt the root measure to the one of the transport's target
 (the volume element of a transport is the density ratio relative to the
 roots of its source and target) and don't compose with other
 pushforwards.
+
+**Root relations.** Root measures relate by the kind of reference measure
+they have a density relative to. Atomic roots (counting measures, point
+masses, their pushforwards, powers and products) have density one
+relative to each other. Continuous roots (Lebesgue measure, its powers and
+products, and its pushforwards, which carry the volume element of the
+inverse) have densities relative to Lebesgue measure. Atomic roots are
+singular relative to continuous ones. Other roots (the simplex coordinate
+measure, products of marginals of different kinds) relate only to equal
+roots, otherwise relative densities throw an `ArgumentError`: a root type
+doesn't determine the measure, pushforwards carry their function as a
+value. Pairs of products relate marginal by marginal.
 
 ## Extension points
 
@@ -200,9 +216,12 @@ implements the recipes of docs/src/concepts.md.
   Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull,
   Gamma, Beta, Poisson, Bernoulli) get branch-free density formulas and
   transports to the standard measure matching their shape (`families.jl`),
-  other univariate distributions go via `StdLogistic` (log-cdf and
-  quantile). `MvNormal` works on column batches through its Cholesky
-  factor, `Dirichlet` through stick-breaking Beta transports in FlatPPL's
+  Cauchy, Laplace, Gamma and Beta to `StdLogistic` from both tail
+  probabilities, so that their upper tails don't saturate; other
+  univariate distributions go via `StdLogistic` (log-cdf and quantile).
+  `MvNormal` works on column batches through its Cholesky factor,
+  `Dirichlet` through stick-breaking Beta transports to `StdLogistic`
+  (break fractions and their complements from suffix sums) in FlatPPL's
   orientation (break fractions `Beta(α_i, Σ_{j>i} α_j)`, the complement
   of BAT 5.x's coordinates) with `cumsum` and `cumprod` along the variate
   dimension (`multivariate.jl`), with
@@ -303,6 +322,11 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   points, a null-set convention like BAT's `[eps, 1 - eps]` clamping in
   practice), tail probabilities of log-space conversions floor at the
   smallest positive float.
+  Exact zeros of uniform draws for transports (and StdLogistic draws)
+  become half the smallest nonzero draw of the grid of `rand`
+  (`eps(T) / 4`) instead of `floatmin`, so that uniform-pivot samplers
+  have no atom at the `floatmin` quantile; uniform draws themselves keep
+  their zeros.
   Kernels must not throw outside the support, since the masks evaluate
   both branches (`abs`, `clamp`, `min` guards instead of `NaNMath`, which
   isn't device-compatible). Downstream checks such as BAT's
@@ -338,6 +362,27 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   pushforwards are only defined on the image of their map, the inverse may
   throw outside of it (`logdensityof(pushfwd(exp, StdNormal()), -1.0)`
   throws a `DomainError` from `log`). Documented, not masked.
+- Array-variate superpositions have no batched kernel: their densities
+  loop over the variates on the host with per-variate base-chain masks
+  (host results for device batches, Reactant unrolls the trace), and
+  support checks of powers allocate (review A43).
+- Relative densities between unequal roots of the "other" kind (simplex
+  coordinate measures of different charts, products of mixed kinds) throw
+  instead of relating them.
+- Wrapped distributions without standard transports (Poisson, Bernoulli,
+  Categorical, ...) draw only with Distributions' samplers, on host
+  compute units; on others they throw an `ArgumentError` naming the
+  limit.
+- JLArrays give wrong results for triangular matrix products (GPUArrays
+  #850, #851), so the device tests of dense `MvNormal` covariances run on
+  CUDA only.
+- Shape derivatives of the incomplete gamma and beta functions sum up to
+  a term budget that grows with the square root of the shapes, up to 10^7
+  terms (shapes up to about 10^12), and are `NaN` where the series don't
+  converge. For shapes of at least 10 their prefactors expand around the
+  median with Stirling's series (gamma derivatives accurate to about
+  1e-11 up to shape 1e10, beta derivatives near the median to about 2e-10
+  at 1e8).
 - Empty batches of array products over heterogeneous marginals fail in
   the reduction (`zero(Any)`), needs an `init` keyword for
   `sum_leading_dims` in StaticThings.

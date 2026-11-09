@@ -184,7 +184,12 @@ type states its preferred standard measure
 ([`MeasureBase.preferred_stdmeasure`](@ref)), the pivot for a pair of
 measures is chosen by [`MeasureBase.promote_stdmeasure`](@ref), and
 [`MeasureBase.stdconvert`](@ref) converts between standard measures in
-log form, tail-accurately. Measure types implement transport to and from
+log form. The conversions between `StdNormal`, `StdExponential` and
+`StdLogistic` are tail-accurate for finite variates, except from
+`StdLogistic` to `StdNormal`, which saturates where the logistic tail
+probability falls below the smallest positive float. Conversions from and
+to `StdUniform` are limited by the resolution of uniform variates near
+one. Measure types implement transport to and from
 their preferred standard measure only. Standard variates are flat
 streams `(dof, batch dims...)`.
 
