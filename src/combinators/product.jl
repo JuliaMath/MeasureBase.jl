@@ -154,8 +154,15 @@ end
 @inline _common_root_kind(mar) = isempty(mar) ? _OtherRoot() : mapreduce(_root_kind, _join_root_kinds, mar)
 @inline _join_root_kinds(a::K, ::K) where {K} = a
 @inline _join_root_kinds(::Any, ::Any) = _OtherRoot()
-@inline _lebesgue_logd(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x) = sum(map(_lebesgue_logd, values(marginals(μ)), values(x)))
+@inline _lebesgue_logd(μ::ProductMeasure{<:Tuple}, x) = sum(map(_lebesgue_logd, marginals(μ), values(x)))
+@inline _lebesgue_logd(μ::ProductMeasure{<:NamedTuple}, x) = sum(map(_lebesgue_logd, values(marginals(μ)), _named_values(μ, x)))
 _lebesgue_logd(μ::ProductMeasure, x) = sum(map(_lebesgue_logd, marginals(μ), x); init = zero(_logd_numtype(x)))
+
+# Named tuple products pair their marginals by name:
+@inline function logdensity_rel_def(μ::ProductMeasure{<:NamedTuple{names}}, ν::ProductMeasure{<:NamedTuple{names}}, x) where {names}
+    sum(map(unsafe_logdensity_rel, values(marginals(μ)), values(marginals(ν)), _named_values(μ, x)))
+end
+@inline logdensity_rel_def(::ProductMeasure{<:NamedTuple}, ::ProductMeasure{<:NamedTuple}, ::Any) = _throw_marginal_mismatch()
 
 _mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
 
@@ -186,7 +193,7 @@ for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :log
     @eval @inline $head(d::ProductMeasure{T}, x) where {T<:Tuple} = _marginalwise_ld($func, d, x)
 
     @eval function $head(d::ProductMeasure{NamedTuple{N,T}}, x) where {N,T}
-        _product_gen_impl(Val($func), d, x)
+        _product_gen_impl(Val($func), d, _named_variate(d, x))
     end
 
     # Numeric vectors are single streams:
@@ -197,6 +204,19 @@ for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :log
         _stream_point_ld($head, $func, d, x, fixed_stream_size(d))
     end
 end
+
+# Variates of named tuple products have the names of the marginals in the
+# same order. Other property containers (e.g. shaped views of flat
+# vectors) are accepted if their property names match:
+@inline _named_variate(::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where {names} = x
+@inline _named_variate(::ProductMeasure{<:NamedTuple{names}}, ::NamedTuple) where {names} = _throw_marginal_mismatch()
+@inline function _named_variate(::ProductMeasure{<:NamedTuple{names}}, x) where {names}
+    propertynames(x) == names || _throw_marginal_mismatch()
+    return x
+end
+
+@inline _named_values(::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where {names} = values(x)
+@inline _named_values(d::ProductMeasure{<:NamedTuple{names}}, x) where {names} = map(Base.Fix1(getproperty, _named_variate(d, x)), names)
 
 # For tuples, `mapreduce` has trouble with type inference
 @inline function _marginalwise_ld(func::F, d::ProductMeasure{<:Tuple}, x) where {F}
@@ -426,6 +446,9 @@ end
 @inline function insupportof(d::AbstractProductMeasure, x)
     mapreduce(insupportof, _insupport_and, marginals(d), x)
 end
+@inline insupportof(d::ProductMeasure{<:NamedTuple}, x) = _named_insupport(d, x)
+@inline insupportof(d::ProductMeasure{<:NamedTuple}, x::AbstractArray) = _named_insupport(d, x)
+@inline _named_insupport(d, x) = mapreduce(insupportof, _insupport_and, values(marginals(d)), _named_values(d, x))
 
 @inline _all_insupport(A::AbstractArray{<:NoFastInsupport{T}}) where {T} = NoFastInsupport{T}()
 @inline _all_insupport(A::AbstractArray) = all(A)
@@ -491,6 +514,7 @@ function checked_arg(
 ) where {names}
     NamedTuple{names}(map(checked_arg, values(marginals(μ)), values(x)))
 end
+checked_arg(::ProductMeasure{<:NamedTuple}, ::NamedTuple) = _throw_marginal_mismatch()
 
 
 # Transport marginal by marginal, the standard variates of the marginals

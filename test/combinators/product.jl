@@ -102,3 +102,34 @@ import Distributions
         @test Array(flatview(Yj)) ≈ flatview(transport_to(StdUniform()^3, P).(sliced(X, Val(1))))
     end
 end
+
+# A non-NamedTuple container with properties, like shaped views of flat
+# vectors:
+struct _PropertyVariate
+    a::Float64
+    b::Float64
+end
+
+@testset "named tuple products pair fields by name" begin
+    P = productmeasure((a = StdNormal(), b = StdExponential()))
+    Q = productmeasure((a = StdUniform(), b = StdNormal()))
+    ℓP(a, b) = logdensityof(StdNormal(), a) + logdensityof(StdExponential(), b)
+    ℓQ(a, b) = logdensityof(StdUniform(), a) + logdensityof(StdNormal(), b)
+    x = (a = 0.3, b = 0.5)
+    @test logdensityof(P, x) ≈ ℓP(0.3, 0.5)
+    @test logdensity_rel(Q, P, x) ≈ ℓQ(0.3, 0.5) - ℓP(0.3, 0.5)
+    @test insupportof(P, (a = 0.5, b = -1.0)) == false
+    @test logdensityof(P, _PropertyVariate(0.3, 0.5)) ≈ ℓP(0.3, 0.5)
+    @test insupportof(P, _PropertyVariate(0.3, -0.5)) == false
+
+    merged = mcombine(merge, productmeasure((a = StdNormal(),)), productmeasure((b = StdExponential(),)))
+    f = transport_to(StdNormal, P)
+    for y in ((b = 0.5, a = 0.3), (a = 0.3, b = 0.5, c = 1.0), (a = 0.3,), 0.5)
+        @test_throws ArgumentError logdensityof(P, y)
+        @test_throws ArgumentError logdensityof(merged, y)
+        @test_throws ArgumentError insupportof(P, y)
+        @test_throws ArgumentError logdensity_rel(Q, P, y)
+        @test_throws ArgumentError f(y)
+        @test_throws ArgumentError logdensities(P, y)
+    end
+end
