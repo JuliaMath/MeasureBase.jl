@@ -1,5 +1,5 @@
 using SpecialFunctions: erfc, erfcinv, logerfc
-using IrrationalConstants: invsqrt2, log2π, logtwo, sqrtπ
+using IrrationalConstants: invsqrt2, invsqrt2π, log2π, logtwo, sqrtπ
 
 """
     StdNormal <: StdMeasure
@@ -71,6 +71,51 @@ end
 end
 
 smf(::StdNormal) = Φ
+
+# Interval masses from the interval reflected into the lower half, where the
+# difference of `erfc` doesn't cancel unless the interval is short relative
+# to the scale of the density (`|x - a| * max(|m|, 1) <= 0.1` around the
+# midpoint `m`). Short intervals integrate the Taylor series of the density
+# around the midpoint, `φ(m) h Σ He_2k(m) (h/2)^2k / (2k+1)!`, exact to the
+# float precision with six terms:
+smf(μ::StdNormal, a, x) = _std_normal_smf(float(a), float(x))
+
+function _std_normal_smf(a, x)
+    upper = a + x > zero(a + x)
+    lo, hi = ifelse(upper, -x, a), ifelse(upper, -a, x)
+    tails = (erfc(-hi * invsqrt2) - erfc(-lo * invsqrt2)) / 2
+    h, m = hi - lo, (lo + hi) / 2
+    short = abs(h) * max(abs(m), one(m)) <= oftype(h, 0.1)
+    # The series of a long interval stays finite, for the gradients:
+    h_s, m_s = ifelse(short, h, zero(h)), ifelse(short, m, zero(m))
+    ifelse(short, _normal_interval_series(m_s, h_s), tails)
+end
+
+@inline function _normal_interval_series(m, h)
+    y, t = m^2, (h / 2)^2
+    He = (
+        y - 1, evalpoly(y, (3, -6, 1)), evalpoly(y, (-15, 45, -15, 1)), evalpoly(y, (105, -420, 210, -28, 1)),
+        evalpoly(y, (-945, 4725, -3150, 630, -45, 1)),
+    )
+    S = evalpoly(t, (one(t), He[1] / 6, He[2] / 120, He[3] / 5040, He[4] / 362880, He[5] / 39916800))
+    return exp(-y / 2) * invsqrt2π * h * S
+end
+
+# From the quantile of `smf(b) + p` resp. of the complement `csmf(b) - p`
+# above the median (floored at the smallest positive float), with `a`
+# reflected into the lower half, refined by a Newton step on the accurate
+# interval mass, which resolves `x` close to `a`:
+function invsmf(μ::StdNormal, a, p)
+    upper = a > zero(a)
+    b, q = ifelse(upper, -a, a), ifelse(upper, -p, p)
+    F_b, G_b = Φ(b), Φ(-b)
+    valid = (-F_b <= q) & (q <= G_b)
+    s, c = _positive_prob(F_b + q), _positive_prob(G_b - q)
+    x_0 = ifelse(s <= c, Φinv(min(s, one(s))), -Φinv(min(c, one(c))))
+    δ = (smf(μ, b, x_0) - q) / (exp(-x_0^2 / 2) * invsqrt2π)
+    x = ifelse(isfinite(δ), x_0 - δ, x_0)
+    ifelse(valid, ifelse(upper, -x, x), oftype(x, NaN))
+end
 
 transport_def(::StdNormal, μ::StdUniform, p) = _nan_outside(μ, p, Φinv(_unit_interior(p)))
 transport_def(::StdUniform, ::StdNormal, x) = Φ(x)

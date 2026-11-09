@@ -57,6 +57,8 @@ _logweight(μ::NormalizedMeasure{<:Any,<:AbstractUnknownMass}) = _throw_unknown_
 smf(μ::NormalizedMeasure, x) = _unscaled_smf(_basemass(μ), smf(μ.base, x))
 csmf(μ::NormalizedMeasure, x) = _unscaled_smf(_basemass(μ), csmf(μ.base, x))
 invsmf(μ::NormalizedMeasure, p) = invsmf(μ.base, p * _basemass(μ))
+smf(μ::NormalizedMeasure, a, x) = _unscaled_smf(_basemass(μ), smf(μ.base, a, x))
+invsmf(μ::NormalizedMeasure, a, p) = invsmf(μ.base, a, p * _basemass(μ))
 invcsmf(μ::NormalizedMeasure, p) = invcsmf(μ.base, p * _basemass(μ))
 
 @inline _unscaled_smf(mass, F) = F / mass

@@ -91,6 +91,8 @@ insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 # The Stieltjes measure function scales with the weight:
 smf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), smf(basemeasure(μ), x))
 invsmf(μ::AbstractWeightedMeasure, p) = invsmf(basemeasure(μ), p / exp(_logweight(μ)))
+smf(μ::AbstractWeightedMeasure, a, x) = _scaled_smf(exp(_logweight(μ)), smf(basemeasure(μ), a, x))
+invsmf(μ::AbstractWeightedMeasure, a, p) = invsmf(basemeasure(μ), a, p / exp(_logweight(μ)))
 csmf(μ::AbstractWeightedMeasure, x) = _scaled_smf(exp(_logweight(μ)), csmf(basemeasure(μ), x))
 invcsmf(μ::AbstractWeightedMeasure, p) = invcsmf(basemeasure(μ), p / exp(_logweight(μ)))
 logsmf(μ::AbstractWeightedMeasure, x) = _shifted_logsmf(_logweight(μ), logsmf(basemeasure(μ), x))

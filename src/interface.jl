@@ -48,7 +48,8 @@ function test_transport end
     test_smf(μ, n = 100)
 
 Test the Stieltjes measure function `smf(μ, x)` and its inverse against
-each other and against the measure of intervals. Requires `using Test`.
+each other and against the measure of intervals, likewise the interval
+forms `smf(μ, a, x)` and `invsmf(μ, a, p)`. Requires `using Test`.
 """
 function test_smf end
 

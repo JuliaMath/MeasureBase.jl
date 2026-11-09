@@ -158,6 +158,10 @@ function test_smf(μ, n = 100)
             x = Finv(a)
             y = Finv(b)
             @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))
+            # The interval forms, to the precision of the difference:
+            @test isapprox(smf(μ, x, y), F(y) - F(x); atol = 8 * eps(float(max(abs(F(x)), abs(F(y))))))
+            @test isapprox(smf(μ, y, x), F(x) - F(y); atol = 8 * eps(float(max(abs(F(x)), abs(F(y))))))
+            @test invsmf(μ, x, smf(μ, x, y)) ≈ y && invsmf(μ, y, smf(μ, y, x)) ≈ x
         end
     end
 end

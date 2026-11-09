@@ -133,6 +133,19 @@ _plain(x::Number) = Float64(x)
             test_traced(lp -> MeasureBase.invlogsmf.(Ref(StdNormal()), lp), lp)
             test_traced(lp -> MeasureBase.invlogcsmf.(Ref(StdNormal()), lp), lp)
         end
+        # Interval masses, their inverses and the transports of Half and
+        # truncations built on them, also close to the lower end:
+        a, b = [-30.0, -1.0, 0.0, 0.0, 0.5, 3.0, -Inf], [-29.99, -1.0 + 1e-12, 1e-17, 0.3, 0.5 + 1e-9, 1.0, 0.2]
+        for μ in (StdNormal(), StdLogistic(), StdExponential())
+            a_μ, b_μ = μ isa StdExponential ? (abs.(a), abs.(b)) : (a, b)
+            test_traced((a, x) -> MeasureBase.smf.(Ref(μ), a, x), a_μ, b_μ)
+            test_traced((a, p) -> MeasureBase.invsmf.(Ref(μ), a, p), a_μ, MeasureBase.smf.(Ref(μ), a_μ, b_μ))
+        end
+        for t in (Half(StdNormal()), truncate(StdNormal(), 0.5 .. 2.0), truncate(StdLogistic(), -Inf .. 0.3))
+            f = transport_to(StdNormal(), t)
+            test_traced(x -> f.(x), [0.5 + 1e-12, 0.6, 1.0, 1.9])
+            test_traced(z -> inverse(f).(z), [-9.0, -1.0, 0.0, 2.0, 7.0])
+        end
     end
 
     # Distribution parameters stay constants, Distributions' parameter

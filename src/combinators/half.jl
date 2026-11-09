@@ -71,17 +71,17 @@ testvalue(::Type{T}, ::Half) where {T} = one(T)
 massof(μ::Half) = massof(unhalf(μ))
 
 # The fold doubles the upper half of the parent, the Stieltjes measure
-# functions scale with the mass of the parent (`smf(μ.parent, 0)` is half
-# of it):
+# functions scale with the mass of the parent. They build on the interval
+# masses of the parent above zero, which stay accurate close to zero:
 smf(μ::Half, x) = _half_smf(μ.parent, x)
+smf(μ::Half, a, x) = 2 * smf(μ.parent, max(a, zero(a)), max(x, zero(x)))
 csmf(μ::Half, x) = 2 * csmf(μ.parent, max(x, zero(x)))
-invsmf(μ::Half, p) = _nan_outside_mass(μ, p, invsmf(μ.parent, _half_smf_arg(μ.parent, p)))
+invsmf(μ::Half, p) = _nan_outside_mass(μ, p, invsmf(μ.parent, zero(p), p / 2))
 invcsmf(μ::Half, p) = _nan_outside_mass(μ, p, invcsmf(μ.parent, p / 2))
 logcsmf(μ::Half, x) = logtwo + logcsmf(μ.parent, max(x, zero(x)))
 invlogcsmf(μ::Half, logp) = _nan_outside_logmass(μ, logp, invlogcsmf(μ.parent, logp - logtwo))
 
-@inline _half_smf(ν, x) = 2 * (smf(ν, max(x, zero(x))) - smf(ν, zero(x)))
-@inline _half_smf_arg(ν, p) = smf(ν, zero(p)) + p / 2
+@inline _half_smf(ν, x) = 2 * smf(ν, zero(x), max(x, zero(x)))
 
 @inline _nan_outside_mass(μ, p, x) = ifelse((zero(p) <= p) & (p <= massof(μ)), x, oftype(x, NaN))
 @inline _nan_outside_logmass(μ, logp, x) = ifelse(logp <= _logmass(massof(μ)), x, oftype(x, NaN))
@@ -89,6 +89,5 @@ invlogcsmf(μ::Half, logp) = _nan_outside_logmass(μ, logp, invlogcsmf(μ.parent
 # Transports map the normalized law, the fold of the normalized parent:
 @inline transport_to_std(::Type{StdUniform}, μ::Half, x) = _nan_outside(μ, x, _half_smf(normalize(μ.parent), x))
 @inline function transport_from_std(::Type{StdUniform}, μ::Half, u)
-    ν = normalize(μ.parent)
-    _nan_outside(StdUniform(), u, invsmf(ν, _unit_interior(_half_smf_arg(ν, u))))
+    _nan_outside(StdUniform(), u, invsmf(normalize(μ.parent), zero(u), _unit_interior(u) / 2))
 end

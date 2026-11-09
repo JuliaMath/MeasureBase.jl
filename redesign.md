@@ -412,8 +412,19 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   (`μ((x, ∞))`, ccdf-like, accurate in the upper tail), `invcsmf`, and the
   log forms `logsmf`, `logcsmf`, `invlogsmf`, `invlogcsmf` (defaults via
   `log`/`exp`, stable forms for the standard measures and wrapped
-  distributions). `truncate` and interval masses use `csmf` where
-  `csmf(μ, a) < smf(μ, b)` (branch-free for traced bounds).
+  distributions).
+- Interval masses (decided 2026-11-09, review B11): `smf(μ, a, x)` is the
+  signed mass `smf(μ, x) - smf(μ, a)` (`μ((a, x])` for `a <= x`) and
+  `invsmf(μ, a, p)` its inverse in `x` (`p < 0` gives `x < a`), the
+  extension point for accurate masses of short intervals. The default is
+  the difference of `smf`, or of `csmf` for `a` in the upper tail
+  (`csmf(μ, a) < smf(μ, a)`, branch-free for traced bounds). Stable
+  forms for `StdNormal` (reflected `erfc` differences, a Taylor series of
+  the density for short intervals, a Newton step for the inverse),
+  `StdLogistic` and `StdExponential` (factored forms), wrapped
+  distributions via the standard ones and the gamma and beta kernels.
+  Weights and normalization forward them. `TruncatedMeasure` (only its
+  mass is stored), `Half` and `massof(μ, a..b)` build on them.
 - Constant batches (2026-10-23): batches of point masses with numeric atoms
   are `Fill`s on the host, from `rand` and transports alike, dense arrays
   on devices.

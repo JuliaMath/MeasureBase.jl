@@ -34,3 +34,26 @@ invlogsmf(::StdLogistic, logp) = (lp = min(logp, zero(logp)); _nan_above_zero(lo
 invlogcsmf(μ::StdLogistic, logp) = -invlogsmf(μ, logp)
 
 invsmf(μ::StdLogistic, p) = transport_def(μ, StdUniform(), p)
+
+# Interval masses and their inverses in factored forms without
+# cancellation, `logistic(x) - logistic(a) = -expm1(a - x) logistic(x)
+# logistic(-a)` and `x - a = log1p(p / logistic(a)) - log1p(-p /
+# logistic(-a))`, the inverses floored at the quantiles of the smallest
+# positive float:
+function smf(::StdLogistic, a, x)
+    d = ifelse(a == x, zero(a - x), a - x)
+    -expm1(d) * logistic(x) * logistic(-a)
+end
+
+function invsmf(::StdLogistic, a, p)
+    L_a, L_na = logistic(a), logistic(-a)
+    valid = (-L_a <= p) & (p <= L_na)
+    # From the quantile of `smf(a) + p` for infinite `a`, arguments
+    # sanitized for invalid `p` and infinite `a`:
+    finite = isfinite(a)
+    a_s, p_s = ifelse(finite, a, zero(a)), ifelse(valid & finite, p, zero(p))
+    x_a = a_s + (log1p(p_s / logistic(a_s)) - log1p(-p_s / logistic(-a_s)))
+    x = ifelse(finite, x_a, logit(clamp(L_a + p, zero(L_a), one(L_a))))
+    x_max = -log(_prob_floor(x))
+    ifelse(valid, clamp(x, -x_max, x_max), oftype(x, NaN))
+end
