@@ -17,7 +17,7 @@ using StructArrays: StructArray
 using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
-using Distributions: Poisson, MvNormal, Dirichlet
+using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
 using MeasureBase.InverseFunctions: inverse
 
 Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
@@ -203,6 +203,11 @@ _plain(x::Number) = Float64(x)
             y = @jit (c -> rand(c, μ))(ctx)
             @test Reactant.unwrapped_eltype(y) == Float32
         end
+        # Bernoulli variates compare uniform variates with the success
+        # probability:
+        b = @jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Bernoulli(0.3)), (2000,)))(ctx)
+        @test Reactant.unwrapped_eltype(b) == Bool && isapprox(count(Array(b)) / 2000, 0.3, atol = 0.05)
+        @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Bernoulli(0.3))))(ctx)) == Bool
         # Single variates of scalar and array superpositions, drawn
         # branch-free:
         for μ in (superpose(StdNormal(), Dirac(0.5f0)), superpose(StdNormal()^3, Dirac(fill(0.5f0, 3))))
