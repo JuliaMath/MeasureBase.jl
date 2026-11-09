@@ -232,7 +232,7 @@ end
 
 @testset "native draws of wrapped distributions" begin
     using Distributions: DiscreteNonParametric, Normal, Gamma, Poisson, Multinomial, DirichletMultinomial, MvNormal
-    using MeasureBase: GenContext, testvalue
+    using MeasureBase: GenContext, testvalue, pushfwd
     using StableRNGs: StableRNG
     using StaticArrays: SVector
     using Static: static
@@ -243,6 +243,8 @@ end
     x = rand(ctx32, m)
     @test x isa Float64 && x in (0.1, 0.7) && logdensityof(m, x) ≈ log(0.5)
     @test logdensityof(m^5, rand(ctx32, m^5)) ≈ 5 * log(0.5)
+    p2 = pushfwd(AffineMaps.Mul(2.0), m)
+    @test rand(ctx32, p2) isa Float64 && logdensityof(p2, rand(ctx32, p2)) ≈ log(0.5)
     # Static powers give static arrays (without allocations where
     # Distributions' sampler doesn't allocate):
     for (d, T) in ((Normal(1.0, 2.0), Float64), (Gamma(2.0, 1.5), Float64), (Poisson(2.0), Int))

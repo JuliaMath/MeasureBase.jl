@@ -59,6 +59,9 @@ end
 @inline _native_draw(::Type{T}, ::Distribution{<:ArrayLikeVariate,Continuous}, x) where {T<:Real} = convert_realtype(T, x)
 @inline _native_draw(::Type{<:Real}, ::Distribution, x) = x
 
+# Transformed atoms stay exact as well:
+@inline MeasureBase._pushfwd_draw(::GenContext, ::DistributionMeasure{<:Any,Discrete}, y) = y
+
 # Constant RNGs (for test values) only draw floats, but Distributions'
 # samplers draw integer ranges and may reject constant draws forever, so
 # univariate distributions are sampled by inversion then (in the type of
