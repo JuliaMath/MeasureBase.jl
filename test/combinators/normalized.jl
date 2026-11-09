@@ -84,7 +84,7 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test exp(logdensityof(d, 1.0)) ≈ 2 / 5 && exp(logdensityof(d, 2.0)) ≈ 3 / 5
     end
 
-    @testset "uniform laws of Lebesgue measures" begin
+    @testset "uniform laws of Lebesgue and counting measures" begin
         u = normalize(Lebesgue(1.0 .. 3.0))
         test_smf(u)
         @test smf(u, 1.0) == 0 && smf(u, 3.0) == 1
@@ -99,6 +99,12 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test 0 <= rand(Lebesgue(0.0 .. 2.0)) <= 2
         @test rand(MeasureBase.GenContext{Float32}(MersenneTwister(1)), u) isa Float32
         @test_throws ArgumentError rand(Lebesgue(0.0 .. Inf))
+
+        K = rand(MersenneTwister(1), normalize(Counting(1:6))^60_000)
+        @test eltype(K) == Int
+        @test [count(==(k), K) for k in 1:6] ≈ fill(10_000, 6) rtol = 0.05
+        @test rand(MersenneTwister(1), Counting(Set([2, 5, 7]))) in (2, 5, 7)
+        @test all(in(2:4), rand(MersenneTwister(1), Counting(BoundedInts(2, 4))^100))
     end
 
     @testset "batched densities" begin
