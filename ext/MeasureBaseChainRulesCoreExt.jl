@@ -3,8 +3,11 @@
 module MeasureBaseChainRulesCoreExt
 
 using MeasureBase
-using ChainRulesCore: NoTangent, ZeroTangent, @non_differentiable
+using ChainRulesCore: AbstractZero, NoTangent, ZeroTangent, Tangent, ProjectTo, unthunk, @non_differentiable
 import ChainRulesCore
+using Static: StaticInteger
+using StructArrays: StructArray
+import StructArrays
 
 # = utils ====================================================================
 
@@ -68,6 +71,45 @@ function ChainRulesCore.rrule(::typeof(_exp_cumsum_log), xs::AbstractVector)
         (NoTangent(), ∂xs)
     end
     return result, _exp_cumsum_log_pullback
+end
+
+
+# = products ===================================================================
+
+using MeasureBase: _sum_leading_logd, _marginal_storage
+
+# Zygote has no rule for `sum` with an `init`:
+function ChainRulesCore.rrule(::typeof(_sum_leading_logd), ℓ::AbstractArray, n::StaticInteger{N}; kw...) where {N}
+    project = ProjectTo(ℓ)
+    function _sum_leading_logd_pullback(thunked_Δ)
+        Δ = unthunk(thunked_Δ)
+        Δ isa AbstractZero && return (NoTangent(), Δ, NoTangent())
+        Δ_lead = Δ isa Number ? Δ : reshape(Δ, (ntuple(_ -> 1, Val(N))..., size(Δ)...))
+        return NoTangent(), project(broadcast(_second, ℓ, Δ_lead)), NoTangent()
+    end
+    return _sum_leading_logd(ℓ, n; kw...), _sum_leading_logd_pullback
+end
+_second(_, b) = b
+
+# Struct-array storage of marginals: the structural cotangent of the struct
+# array becomes an array of per-marginal cotangents:
+function ChainRulesCore.rrule(::typeof(_marginal_storage), mar::AbstractArray)
+    S = _marginal_storage(mar)
+    _marginal_storage_pullback(ΔS) = (NoTangent(), _elementwise_tangent(S, unthunk(ΔS)))
+    return S, _marginal_storage_pullback
+end
+_marginal_storage_identity_pullback(ΔS) = (NoTangent(), ΔS)
+ChainRulesCore.rrule(::typeof(_marginal_storage), mar::StructArray) = _marginal_storage(mar), _marginal_storage_identity_pullback
+
+_elementwise_tangent(::AbstractArray, Δ) = Δ
+_elementwise_tangent(::StructArray, Δ::AbstractZero) = Δ
+_elementwise_tangent(::StructArray, Δ::AbstractArray) = Δ
+function _elementwise_tangent(sa::StructArray{T}, Δ) where {T}
+    cs = StructArrays.components(sa)
+    names = keys(cs)
+    Δcols = map((c, n) -> _elementwise_tangent(c, getproperty(Δ.components, n)), values(cs), names)
+    all(Base.Fix2(isa, AbstractZero), Δcols) && return ZeroTangent()
+    broadcast((Δxs...) -> Tangent{T}(; NamedTuple{names}(Δxs)...), Δcols...)
 end
 
 

@@ -4,6 +4,7 @@ using Test
 
 using LinearAlgebra
 using Distributions, ArraysOfArrays
+using FillArrays: Fill
 import ForwardDiff, Zygote
 using MeasureBase: StdNormal, StdUniform, StdLogistic, transport_to
 
@@ -55,4 +56,38 @@ end
         f = transport_to(ν, μ)
         @test Zygote.gradient(f, x)[1] ≈ ref(f(x))
     end
+end
+
+
+@testset "Zygote gradients of array products" begin
+    # Closed forms: ∂/∂x log N(x | μ, σ) = (μ - x) / σ², ∂/∂μ = (x - μ) / σ²,
+    # ∂/∂σ = ((x - μ)² / σ² - 1) / σ.
+    μ, σ, x = [0.1, 0.2, 0.3], [1.0, 2.0, 0.5], [0.3, -0.8, 1.1]
+    pm = productmeasure(asmeasure.(Normal.(μ, σ)))
+    @test Zygote.gradient(x -> logdensityof(pm, x), x)[1] ≈ (μ .- x) ./ σ.^2
+    @test Zygote.gradient(μ -> logdensityof(productmeasure(asmeasure.(Normal.(μ, σ))), x), μ)[1] ≈ (x .- μ) ./ σ.^2
+    @test Zygote.gradient(σ -> logdensityof(productmeasure(asmeasure.(Normal.(μ, σ))), x), σ)[1] ≈ ((x .- μ).^2 ./ σ.^2 .- 1) ./ σ
+
+    X = [0.3 0.5; -0.8 0.1; 1.1 2.0]
+    @test Zygote.gradient(X -> sum(logdensities(pm, X)), X)[1] ≈ (μ .- X) ./ σ.^2
+    @test Zygote.gradient(μ -> sum(logdensities(productmeasure(asmeasure.(Normal.(μ, σ))), X)), μ)[1] ≈ vec(sum((X .- μ) ./ σ.^2, dims = 2))
+
+    θ = [0.2, 1.3]
+    f_fill = θ -> logdensityof(productmeasure(Fill(asmeasure(Normal(θ[1], θ[2])), 3)), x)
+    @test Zygote.gradient(f_fill, θ)[1] ≈ [sum(x .- θ[1]) / θ[2]^2, sum(((x .- θ[1]).^2 ./ θ[2]^2 .- 1) ./ θ[2])]
+
+    # An array of powers:
+    Y = [0.3 1.1; -0.8 0.4]
+    f_pwr = θ -> logdensityof(productmeasure([asmeasure(Normal(θ[1], 1.0))^2, asmeasure(Normal(θ[2], 2.0))^2]), Y)
+    @test Zygote.gradient(f_pwr, [0.1, 0.5])[1] ≈ [sum(Y[:, 1] .- 0.1), sum(Y[:, 2] .- 0.5) / 4]
+
+    # Transports of products built inside the differentiated function,
+    # x = μ + σ z:
+    z, w = [0.3, -0.8, 1.1], [0.2, -0.5, 0.7]
+    f_trafo = (μ, σ, z) -> sum(transport_to(productmeasure(asmeasure.(Normal.(μ, σ))), StdNormal()^3)(z) .* w)
+    @test all(Zygote.gradient(f_trafo, μ, σ, z) .≈ (w, z .* w, σ .* w))
+
+    # Likelihoods with parameter-dependent marginals:
+    ℒ = likelihoodof(μ -> productmeasure(asmeasure.(Normal.(μ, σ))), x)
+    @test Zygote.gradient(μ -> logdensityof(ℒ, μ), μ)[1] ≈ (x .- μ) ./ σ.^2
 end
