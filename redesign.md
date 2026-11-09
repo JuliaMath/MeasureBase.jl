@@ -384,6 +384,15 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   Categorical, ...) draw only with Distributions' samplers, on host
   compute units; on others they throw an `ArgumentError` naming the
   limit.
+- Distributions without family kernels (TDist, Gumbel, Frechet, ...) go
+  through Distributions' cdfs and quantiles (Chisq, Erlang, InverseGamma,
+  FDist and BetaPrime go through the gamma and beta kernels). Under Zygote
+  their parameter derivatives inherit upstream behavior: SpecialFunctions
+  marks the shape tangents of `gamma_inc`/`beta_inc` as not implemented,
+  which Zygote turns into zeros; Mooncake is recommended for them. Zygote
+  derivatives with respect to variates of TDist need ForwardDiffPullbacks
+  (`setindex!` inside `beta_inc`). Quantiles of continuous univariate
+  mixtures are differentiated as roots in all backends.
 - JLArrays give wrong results for triangular matrix products (GPUArrays
   #850, #851), so the device tests of dense `MvNormal` covariances run on
   CUDA only.

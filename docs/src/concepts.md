@@ -243,6 +243,20 @@ covariances for scalar marginals only) and, with AffineMaps loaded, affine
 pushforwards. Other measures throw an `ArgumentError`, MeasureBase doesn't
 estimate moments by sampling.
 
+## Automatic differentiation
+
+MeasureBase implements the densities, transports and Stieltjes measure
+functions of the wrapped Normal, Uniform, Exponential, Logistic, Cauchy,
+Laplace, LogNormal, Weibull, Gamma, Beta, Poisson and Bernoulli
+distributions itself, and those of Chisq, Erlang, InverseGamma, FDist and
+BetaPrime via the gamma and beta families. ForwardDiff, Zygote and
+Mooncake differentiate them with respect to variates and parameters.
+Other distributions go through the cdfs and quantiles of Distributions,
+so their parameter derivatives under Zygote are those of Distributions
+and SpecialFunctions. SpecialFunctions has no derivatives with respect to
+the shape parameters of the incomplete gamma and beta functions, Zygote
+gives zeros for them. Mooncake is recommended for these distributions.
+
 ## Measure combinators
 
 - `powermeasure(μ, dims)` or `μ^dims`: variates `(base dims..., power
