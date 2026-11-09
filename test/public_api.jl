@@ -9,8 +9,9 @@ using MeasureBase
         for n in (
             :logdensityof_impl, :batched_logdensityof_impl, :rand_impl, :batched_rand_impl,
             :transport_to_std, :transport_from_std, :preferred_stdmeasure, :mspace_ndims,
-            :mspace_flatsize, :checked_arg, :NoDOF, :UnknownMass, :DensityMeasure,
-            :TransportFunction, :GenContext, :kernelmeasure, :valuecombinator, :combinedmeasures,
+            :mspace_flatsize, :stream_ndims, :SizeLike, :size_tuple, :static, :checked_arg, :NoDOF,
+            :UnknownMass, :DensityMeasure, :TransportFunction, :GenContext, :Bind, :MKernel,
+            :kernelmeasure, :valuecombinator, :combinedmeasures, :Interface,
         )
             @test Base.ispublic(MeasureBase, n) && !Base.isexported(MeasureBase, n)
         end

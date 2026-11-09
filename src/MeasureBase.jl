@@ -264,15 +264,18 @@ using .Interface
     batched_transport_to_std_with_rest, batched_transport_from_std_with_rest,
     preferred_stdmeasure, promote_stdmeasure, StdMeasure, AnyStdMeasure,
     NoStdTransport, stdconvert, TransportFunction,
-    # Measurable spaces, degrees of freedom and argument checks:
-    mspace_ndims, mspace_flatsize, mspace_elsize, NoMSpaceElementSize, fixed_stream_size,
+    # Measurable spaces, sizes, degrees of freedom and argument checks:
+    mspace_ndims, stream_ndims, mspace_flatsize, mspace_elsize, NoMSpaceElementSize, fixed_stream_size,
+    SizeLike, size_tuple, static,
     checked_arg, NoDOF, NoFastDOF, NoFastInsupport,
     # Masses:
     AbstractUnknownMass, UnknownMass, UnknownFiniteMass,
     # Measure types and accessors:
     pwr_base, pwr_axes, pwr_size, DensityMeasure, AsMeasure, StdSimplex,
     transportmeasure, tpmeasure_split_combined,
-    kernelmeasure, valuecombinator, combinedmeasures,
-    gettransform, TransformVolCorr, NoVolCorr, WithVolCorr
+    Bind, MKernel, kernelmeasure, valuecombinator, combinedmeasures,
+    gettransform, TransformVolCorr, NoVolCorr, WithVolCorr,
+    # Test utilities for measure implementations:
+    Interface
 
 end # module MeasureBase
