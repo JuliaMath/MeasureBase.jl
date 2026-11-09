@@ -214,3 +214,18 @@ end
     @test logdensities(AbstractMeasure(W), X) ≈ [Distributions.logpdf(W, X[:, :, 1]), -Inf, Distributions.logpdf(W, X[:, :, 3])]
     @test logdensities(AbstractMeasure(DirichletMultinomial(3, [1.0, 2.0])), [1 1.5; 2 1.5]) ≈ [Distributions.logpdf(DirichletMultinomial(3, [1.0, 2.0]), [1, 2]), -Inf]
 end
+
+@testset "root measures of discrete distributions over non-integers" begin
+    using Distributions: DiscreteNonParametric, Categorical, Normal
+    using MeasureBase: logdensity_rel, rootmeasure, logdensities, Counting
+    m = AbstractMeasure(DiscreteNonParametric([0.5, 1.5], [0.4, 0.6]))
+    @test logdensity_rel(m, rootmeasure(m), 0.5) ≈ log(0.4)
+    # Superpositions with continuous components and point masses see the atoms:
+    s = m + AbstractMeasure(Normal())
+    @test logdensityof(s, 0.5) ≈ log(0.4) && logdensityof(s, 0.7) ≈ Distributions.logpdf(Normal(), 0.7)
+    @test logdensities(s, [0.5, 0.7, 1.5]) ≈ [log(0.4), Distributions.logpdf(Normal(), 0.7), log(0.6)]
+    @test logdensityof(m + MeasureBase.Dirac(0.5), 1.5) ≈ log(0.6)
+    # Distributions over integers count on all integers:
+    @test rootmeasure(AbstractMeasure(Categorical([0.2, 0.8]))) == Counting()
+    @test rootmeasure(AbstractMeasure(DiscreteNonParametric([1, 3], [0.4, 0.6]))) == Counting()
+end

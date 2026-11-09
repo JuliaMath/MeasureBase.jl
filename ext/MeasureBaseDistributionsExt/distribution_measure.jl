@@ -132,6 +132,13 @@ end
 @inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate{0},<:Discrete}) = Counting()
 @inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate,<:Discrete}) = Counting()^size(m.obj)
 
+# Discrete distributions over integers count on all integers, those over
+# other values on their atoms, so that the base measures of superpositions
+# see these:
+@inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.DiscreteNonParametric}) = _atoms_root(m.obj)
+@inline _atoms_root(::Distributions.DiscreteNonParametric{<:Integer}) = Counting()
+@inline _atoms_root(d::Distributions.DiscreteNonParametric) = Counting(Distributions.support(d))
+
 @inline MeasureBase.basemeasure(m::DistributionMeasure) = rootmeasure(m)
 
 @inline MeasureBase.massof(::DistributionMeasure) = static(1.0)
