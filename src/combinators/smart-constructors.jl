@@ -180,7 +180,9 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 @inline _style_for_root(style::PushFwdStyle, ::Any) = style
 
 # Whether pushforwards push the root measure of a measure forward, along
-# the chain of base measures and structurally for combinators:
+# the chain of base measures and structurally for combinators. Mixed roots
+# (products and superpositions with atomic or simplex parts) are pushed
+# forward as a whole, a volume element would apply to the atoms too:
 @inline _pushfwd_root(μ) = _pushfwd_root_of(basemeasure(μ), μ)
 @inline _pushfwd_root_of(::M, ::M) where {M} = static(false)
 @inline _pushfwd_root_of(β, ::Any) = _pushfwd_root(β)
@@ -190,9 +192,9 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 @inline _pushfwd_root(ν::PushforwardMeasure) = _pushfwd_root(ν.origin)
 # Pushforwards by transports have the root measure of the target:
 @inline _pushfwd_root(ν::PushforwardMeasure{<:TransportFunction,<:Any,<:Any,AdaptRootMeasure}) = _pushfwd_root(ν.f.ν)
-@inline _pushfwd_root(μ::AbstractProductMeasure) = _all_pushfwd_root(marginals(μ))
-@inline _pushfwd_root(μ::SuperpositionMeasure) = _all_pushfwd_root(μ.components)
-@inline _all_pushfwd_root(μs) = mapreduce(_pushfwd_root, &, values(μs); init = static(true))
+@inline _pushfwd_root(μ::AbstractProductMeasure) = _any_pushfwd_root(marginals(μ))
+@inline _pushfwd_root(μ::SuperpositionMeasure) = _any_pushfwd_root(μ.components)
+@inline _any_pushfwd_root(μs) = mapreduce(_pushfwd_root, |, values(μs); init = static(false))
 
 # Pushforward and weighting commute:
 function _pushfwd_impl(f, μ::WeightedMeasure, style::PushFwdStyle, varsize)
