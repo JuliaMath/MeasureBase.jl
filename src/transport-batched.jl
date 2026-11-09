@@ -395,13 +395,13 @@ end
 @inline _nest_batch(Y::AbstractArray{<:Any,K}, ::Val{K}) where {K} = Y
 @inline _nest_batch(Y::AbstractArray, ::Val{K}) where {K} = _nested_slices(Y, Val(K))
 
-# `sliced(A, Val(K))`, but as an array of the slices where ArraysOfArrays
-# can't infer the slice type (e.g. for nested slices of struct arrays with
-# array-valued fields):
-@inline function _nested_slices(A::AbstractArray{<:Any,N}, ::Val{K}) where {N,K}
-    S = Base.promote_op(view, typeof(A), ntuple(_ -> Colon, Val(K))..., ntuple(_ -> Int, Val(N - K))...)
-    isconcretetype(S) ? sliced(A, Val(K)) : _collected_slices(A, Val(K))
-end
+# `sliced(A, Val(K))`, but as an array of the slices for nested slices of
+# struct arrays (variates of nested powers of tuple products), whose slice
+# type ArraysOfArrays can't infer where their fields are arrays. Decided by
+# type, inferring the slice type here would leave widened inference results
+# for ArraysOfArrays' own slice types:
+@inline _nested_slices(A::AbstractArray, ::Val{K}) where {K} = sliced(A, Val(K))
+@inline _nested_slices(A::AbstractArray{<:StructArray}, ::Val{K}) where {K} = _collected_slices(A, Val(K))
 function _collected_slices(A::AbstractArray{<:Any,N}, ::Val{K}) where {N,K}
     lead = ntuple(_ -> Colon(), Val(K))
     map(i -> view(A, lead..., Tuple(i)...), CartesianIndices(ntuple(i -> axes(A, K + i), Val(N - K))))
