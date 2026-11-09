@@ -1,13 +1,16 @@
 using Test
 
 using MeasureBase
-using MeasureBase: StdNormal, Half
+using MeasureBase: StdNormal, Half, logdensities
 using MeasureBase: pushfwd, superpose, PushfwdRootMeasure
 import MeasureBase
-using Distributions: Normal, Poisson, Binomial, Dirichlet, logpdf, pdf
+using Distributions: Normal, Poisson, Binomial, Dirichlet, MvNormal, logpdf, pdf
 using AffineMaps: Mul, Add
 using InverseFunctions: InverseFunctions
 using IntervalSets
+using LinearAlgebra: I
+using StaticArrays: SVector
+using Static: static
 
 struct _SimplexWarp{T}
     r::T
@@ -27,6 +30,39 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         end
     end
 
+    @testset "powers of primitive roots" begin
+        x = [0.1, -0.2, 0.3]
+        @test logdensity_rel(StdNormal()^static(3), StdNormal()^3, x) == 0
+        @test logdensity_rel(StdNormal()^3, StdNormal()^static(3), SVector(x...)) == 0
+        @test logdensity_rel(asmeasure(MvNormal(zeros(3), I(3))), StdNormal()^static(3), SVector(x...)) ≈ 0 atol = 1e-14
+        @test logdensity_rel(P^2, StdNormal()^2, [1.0, 2.0]) == Inf
+        @test logdensity_rel(StdNormal()^2, P^2, [1.0, 2.0]) == -Inf
+        @test logdensity_rel(StdNormal()^2, P^2, [1.5, 2.0]) == Inf
+        p2 = pushfwd(Mul(2.0), StdNormal(), PushfwdRootMeasure())
+        @test logdensity_rel(p2^3, StdNormal()^3, x) ≈ sum(logpdf.(Normal(0, 2), x) .- logpdf.(Normal(), x))
+    end
+
+    @testset "superpositions of continuous and atomic measures" begin
+        s = superpose(P^2, StdNormal()^2)
+        @test logdensityof(s, [1.0, 2.0]) ≈ logpdf(Poisson(2.0), 1) + logpdf(Poisson(2.0), 2)
+        @test logdensityof(s, [1.5, 2.0]) ≈ logpdf(Normal(), 1.5) + logpdf(Normal(), 2.0)
+
+        v = superpose(StdNormal()^2, Dirac([0.0, 0.0]))
+        ℓ_cont = logpdf(Normal(), 0.5) + logpdf(Normal(), 0.0)
+        @test logdensityof(v, [0.0, 0.0]) == 0
+        @test logdensityof(v, [0.5, 0.0]) ≈ ℓ_cont
+        @test logdensities(v, [0.0 0.5; 0.0 0.0]) ≈ [0, ℓ_cont]
+        @test logdensityof(superpose(StdNormal(), Dirac(0.0)), 0.0) == 0
+
+        d3 = superpose(StdNormal()^3, Dirac(0.5)^3)
+        @test logdensityof(d3, fill(0.5, 3)) == 0
+        @test logdensityof(d3, [0.5, 0.5, 0.4]) ≈ sum(logpdf.(Normal(), [0.5, 0.5, 0.4]))
+
+        # Both components have the same density:
+        sv = superpose(StdNormal()^static(2), asmeasure(MvNormal(zeros(2), I(2))))
+        @test logdensity_rel(sv, StdNormal()^static(2), SVector(0.1, 0.2)) ≈ log(2)
+    end
+
     @testset "pushed-forward counting roots" begin
         pp = pushfwd(Mul(2.0), P)
         @test logdensityof(pp, 2.0) ≈ logpdf(Poisson(2.0), 1)
@@ -37,6 +73,7 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         @test logdensity_rel(pp, Dirac(2.0), 2.0) ≈ logpdf(Poisson(2.0), 1)
         @test logdensity_rel(pp, StdNormal(), 2.0) == Inf
         @test logdensity_rel(StdNormal(), pp, 2.0) == -Inf
+        @test logdensity_rel(pp^3, StdNormal()^3, [2.0, 4.0, 6.0]) == Inf
 
         P3 = asmeasure(Poisson(3.0))
         q2, q3 = pushfwd(Mul(2.0), P), pushfwd(Mul(3.0), P3)
