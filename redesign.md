@@ -147,10 +147,12 @@ The output size is declared (`pushfwd(f, μ; varsize)`), the origin's for
 numbers or arrays of the origin's rank (static sizes for static origins,
 `Core.Compiler.return_type`, used only for these declarations); otherwise
 it is learned from `f(testvalue(μ))` on demand (not cached, point
-densities don't need it). Batched
-application needs no traits: elementwise for `Base.BroadcastFunction`
-(fused density kernels), column batches for AffineMaps types (weak
-dependency, `MeasureBaseAffineMapsExt`), a host loop otherwise. Measures
+densities don't need it). Functions take and return structured single
+variates; batches go through `batched_apply` (a host loop over the
+variates by default, the flat storage for `Base.BroadcastFunction`,
+matrices of columns for AffineMaps types (weak dependency,
+`MeasureBaseAffineMapsExt`), user specializations for fused
+implementations). Measures
 with counting root measures push their root measure forward (counting
 measure on the image) instead of adapting it with a volume element, also
 under `AdaptRootMeasure()`, and so do measures on the simplex (its
@@ -158,8 +160,8 @@ coordinate measure is a chart, maps of the ambient space have no volume
 element for it). Pushforward is linear, so superpositions push forward
 component by component, each component keeping or adapting its own root,
 and normalization commutes with pushforwards. Other measures with mixed
-roots (spike mixtures, products of atomic or simplex and continuous
-marginals) push their whole root forward. Pushforwards with atomic roots
+roots (products of atomic or simplex and continuous marginals) push their
+whole root forward. Pushforwards with atomic roots
 check their support through the inverse. Pushforwards by
 transports adapt the root measure to the one of the transport's target
 (the volume element of a transport is the density ratio relative to the
@@ -176,7 +178,16 @@ singular relative to continuous ones. Other roots (the simplex coordinate
 measure, products of marginals of different kinds) relate only to equal
 roots, otherwise relative densities throw an `ArgumentError`: a root type
 doesn't determine the measure, pushforwards carry their function as a
-value. Pairs of products relate marginal by marginal.
+value. Pairs of products relate marginal by marginal. The root of a
+superposition is `MeasureJoin(roots)`, the join of the component roots
+(decided 2026-11-09, review B1): equal roots join to the root, mutually
+singular roots to their sum, roots of identical singleton types to the
+root itself. Joins of roots relate to any measure through the largest
+density of their roots relative to it, and to each other by the same
+rule, so superposition densities are the sums of the component densities
+where the roots are equal, and the atom weights at atoms. Opaque roots
+(`OpaqueRoot`, of manifold-valued distributions without a declared chart,
+review B4) relate only to equal opaque roots, also in superpositions.
 
 ## Extension points
 
@@ -212,8 +223,8 @@ implements the recipes of docs/src/concepts.md.
 - Combined `vcat`: streams; `merge`: merged named tuples. Binds: single
   streams, value-dependent sizes.
 - Weighted, restricted, density measures, Half: forward plus weights or
-  masks. Superpositions and spike mixtures: one batch per component,
-  masks aligned with the variate dimensions. Dirac: constant batches.
+  masks. Superpositions: one batch per component, masks aligned with the
+  variate dimensions. Dirac: constant batches.
 - Distributions extension: the main univariate families (Normal,
   Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull,
   Gamma, Beta, Poisson, Bernoulli) get branch-free density formulas and
@@ -400,8 +411,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   per manifold: correlation matrices, PSD matrices of a given rank, the
   unit sphere; Wishart, InverseWishart, MatrixBeta and MatrixFDist of
   equal size share one). Relative densities between distributions on the
-  same manifold work, others and pushforward Jacobians in the ambient
-  space throw an `ArgumentError`. `getdof`/`fast_dof` are the manifold
+  same manifold work, others throw an `ArgumentError`, and so do
+  pushforwards with the default `AdaptRootMeasure()` (no Jacobians in the
+  ambient space), `PushfwdRootMeasure()` pushes the root forward. `getdof`/`fast_dof` are the manifold
   dimensions (`n(n-1)/2` for LKJ, `n r - r(r-1)/2` for Wishart of rank
   `r`, `n(n+1)/2` for the other matrix distributions, `n-1` for
   VonMisesFisher). Chart roots later (decided 2026-11-09, review B4).
