@@ -6,7 +6,7 @@ import LinearAlgebra
 using LinearAlgebra: Diagonal, Cholesky, LowerTriangular, UpperTriangular, Symmetric, diag, cholesky, logdet
 import Adapt
 
-using Random: AbstractRNG, Xoshiro
+using Random: AbstractRNG, Xoshiro, randexp
 
 import DensityInterface
 using DensityInterface: logdensityof, densityof

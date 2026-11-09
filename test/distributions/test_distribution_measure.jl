@@ -315,3 +315,27 @@ end
     # Wishart(5, 4S), the ambient Jacobian would be off by log(2)):
     @test_throws ArgumentError logdensity_rel(pushfwd(Mul(2.0), AbstractMeasure(W)), AbstractMeasure(Wishart(5.0, 4S)), 2X)
 end
+
+@testset "Dirichlet draws" begin
+    using Distributions: Dirichlet, Beta, ccdf
+    using MeasureBase: GenContext, batched_rand_impl, testvalue
+    using StableRNGs: StableRNG
+    # Also for small concentrations, where all gamma variates underflow
+    # together: finite draws on the simplex, with the marginal tails of
+    # Beta(α₁, α₀ - α₁):
+    for (T, α) in ((Float64, fill(1e-3, 3)), (Float32, fill(1f-3, 3)), (Float32, fill(1f-38, 3)), (Float64, [0.3, 2.0, 4.5]))
+        m = AbstractMeasure(Dirichlet(α))
+        X = batched_rand_impl(GenContext{T}(StableRNG(5)), m, (10^4,))
+        @test X isa Matrix{T} && size(X) == (3, 10^4)
+        @test all(isfinite, X) && all(>=(0), X) && all(s -> s ≈ 1, sum(X; dims = 1))
+        a = Float64.(α)
+        for t in (1e-10, 0.1, 0.5, 0.9)
+            @test count(>(t), X[1, :]) / 10^4 ≈ ccdf(Beta(a[1], sum(a) - a[1]), t) atol = 0.025
+        end
+        @test testvalue(m) == fill(1 / 3, 3)
+        @test all(isfinite, rand(StableRNG(6), T, m))
+    end
+    # In the precision of the context:
+    x = rand(GenContext{BigFloat}(StableRNG(4)), AbstractMeasure(Dirichlet([0.5, 2.0, 3.0])))
+    @test x isa Vector{BigFloat} && sum(x) ≈ 1 && any(v -> Float64(v) != v, x)
+end
