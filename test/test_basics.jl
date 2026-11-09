@@ -78,6 +78,11 @@ end
     @test rand(Dirac(0.2)) == 0.2
     @test logdensityof(Dirac(0.3), 0.3) == 0.0
     @test logdensityof(Dirac(0.3), 0.4) == -Inf
+    @test MeasureBase.atomof(Dirac([1.0, 2.0])) == [1.0, 2.0]
+    @test MeasureBase.atomof(pushfwd(x -> 2x, Dirac(0.5))) == 1.0
+    @static if VERSION >= v"1.11"
+        @test Base.ispublic(MeasureBase, :atomof) && !Base.isexported(MeasureBase, :atomof)
+    end
 end
 
 # @testset "For" begin

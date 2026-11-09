@@ -108,6 +108,22 @@ end
 
 @inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
 
+"""
+    transport_source(f::MeasureBase.TransportFunction)
+
+The measure that `f` transports from, `μ` for `f = transport_to(ν, μ)`.
+"""
+transport_source(f::TransportFunction) = f.μ
+export transport_source
+
+"""
+    transport_target(f::MeasureBase.TransportFunction)
+
+The measure that `f` transports to, `ν` for `f = transport_to(ν, μ)`.
+"""
+transport_target(f::TransportFunction) = f.ν
+export transport_target
+
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end

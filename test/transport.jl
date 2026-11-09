@@ -71,6 +71,15 @@ include("testutils.jl")
         @test_throws ArgumentError transport_to(μ, StdExponential()^1)
     end
 
+    @testset "source and target" begin
+        f = transport_to(StdUniform()^2, productmeasure((StdNormal(), StdExponential())))
+        @test MeasureBase.transport_source(f) == productmeasure((StdNormal(), StdExponential()))
+        @test MeasureBase.transport_target(f) == StdUniform()^2
+        @test MeasureBase.transport_source(inverse(f)) == MeasureBase.transport_target(f)
+        @test MeasureBase.transport_target(transport_to(StdNormal, StdUniform()^3)) == StdNormal()^3
+        @test Base.isexported(MeasureBase, :transport_source) && Base.isexported(MeasureBase, :transport_target)
+    end
+
     @testset "transport_to autosel" begin
         @test @inferred(transport_to(StdExponential, StdUniform())) ==
               transport_to(StdExponential(), StdUniform())

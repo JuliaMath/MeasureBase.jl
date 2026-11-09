@@ -15,6 +15,13 @@ function Pretty.tile(d::Dirac)
     Pretty.literal("Dirac(") * Pretty.tile(d.x) * Pretty.literal(")")
 end
 
+"""
+    MeasureBase.atomof(μ::Dirac)
+
+The point that the point mass `μ` is located at.
+"""
+atomof(μ::Dirac) = μ.x
+
 Base.:(==)(a::Dirac, b::Dirac) = a.x == b.x
 Base.hash(a::Dirac, h::UInt) = hash(a.x, hash(:Dirac, h))
 Base.isapprox(a::Dirac, b::Dirac; kwargs...) = isapprox(a.x, b.x; kwargs...)

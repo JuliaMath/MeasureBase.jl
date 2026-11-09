@@ -195,7 +195,7 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 @inline _pushfwd_root(μ::WeightedMeasure) = _pushfwd_root(μ.base)
 @inline _pushfwd_root(ν::PushforwardMeasure) = _pushfwd_root(ν.origin)
 # Pushforwards by transports have the root measure of the target:
-@inline _pushfwd_root(ν::PushforwardMeasure{<:TransportFunction,<:Any,<:Any,AdaptRootMeasure}) = _pushfwd_root(ν.f.ν)
+@inline _pushfwd_root(ν::PushforwardMeasure{<:TransportFunction,<:Any,<:Any,AdaptRootMeasure}) = _pushfwd_root(transport_target(ν.f))
 @inline _pushfwd_root(μ::AbstractProductMeasure) = _any_pushfwd_root(marginals(μ))
 @inline _pushfwd_root(μ::SuperpositionMeasure) = _any_pushfwd_root(μ.components)
 @inline _any_pushfwd_root(μs) = mapreduce(_pushfwd_root, |, values(μs); init = static(false))

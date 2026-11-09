@@ -354,7 +354,7 @@ end
 # root measure of the target, e.g. the simplex reference for transports to
 # Dirichlet distributions:
 @inline function basemeasure(ν::PushforwardMeasure{<:TransportFunction,I,M,AdaptRootMeasure}) where {I,M}
-    rootmeasure(ν.f.ν)
+    rootmeasure(transport_target(ν.f))
 end
 
 @inline getdof(ν::MU) where {MU<:PushforwardMeasure} = getdof(ν.origin)
