@@ -1,4 +1,5 @@
 using Test
+using Random
 using MeasureBase
 using MeasureBase.Interface: test_interface, test_transport
 
@@ -25,6 +26,13 @@ end
     @test (@test_deprecated MeasureBase.insupport(StdUniform())(0.5)) == true
     @test Base.isexported(MeasureBase, :params)
     @test (@test_deprecated MeasureBase.params(StdNormal())) == NamedTuple()
+end
+
+@testset "gentype" begin
+    # MeasureBase doesn't extend `Random.gentype`, the type of `rand` depends
+    # on the generative context:
+    @test !Base.isexported(MeasureBase, :gentype)
+    @test !any(m -> parentmodule(m) === MeasureBase, methods(Random.gentype))
 end
 
 @testset "conditioning" begin

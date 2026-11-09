@@ -16,7 +16,9 @@ by default) and the compute unit that array-valued variates are generated
 on. Variates of powers of measures are generated as one flat batch of
 variates of the base measure.
 
-Variates follow the normalized law of `μ`, weights don't affect them.
+Batches of variates are variates of powers of `μ`, `rand(μ^n)` resp.
+`rand(μ^dims)`. Variates follow the normalized law of `μ`, weights don't
+affect them.
 Binds are sampled ancestrally from the normalized laws of their components,
 see [`mbind`](@ref).
 
@@ -33,6 +35,14 @@ Base.rand(μ::AbstractMeasure) = rand(GenContext{Float64}(), μ)
 Base.rand(rng::AbstractRNG, μ::AbstractMeasure) = rand(GenContext{Float64}(rng), μ)
 Base.rand(::Type{T}, μ::AbstractMeasure) where {T<:AbstractFloat} = rand(GenContext{T}(), μ)
 Base.rand(rng::AbstractRNG, ::Type{T}, μ::AbstractMeasure) where {T<:AbstractFloat} = rand(GenContext{T}(rng), μ)
+
+# Batches of variates are variates of powers:
+Base.rand(μ::AbstractMeasure, dims::Dims) = _throw_rand_dims()
+Base.rand(μ::AbstractMeasure, dim::Integer, dims::Integer...) = _throw_rand_dims()
+Base.rand(rng::AbstractRNG, μ::AbstractMeasure, dims::Dims) = _throw_rand_dims()
+Base.rand(rng::AbstractRNG, μ::AbstractMeasure, dim::Integer, dims::Integer...) = _throw_rand_dims()
+@noinline _throw_rand_dims() =
+    throw(ArgumentError("rand(μ, dims...) is not supported for measures, use rand(μ^dims) for a batch of variates of μ"))
 
 
 """

@@ -54,8 +54,6 @@ function Pretty.tile(μ::Lebesgue)
     Pretty.list_layout([Pretty.tile(μ.support)]; prefix = :Lebesgue)
 end
 
-gentype(::Lebesgue) = Float64
-
 Lebesgue() = Lebesgue(ℝ)
 
 @inline mspace_elsize(μ::Lebesgue) = _valueset_elsize(μ.support)
@@ -160,8 +158,6 @@ rootmeasure(μ::_SimplexLebesgue) = μ
 @inline fast_dof(μ::_SimplexLebesgue) = getdof(μ)
 
 massof(μ::_SimplexLebesgue) = inv(prod(float, 1:(dynamic(μ.support.n) - 1); init = 1.0))
-
-gentype(::_SimplexLebesgue) = Vector{Float64}
 
 testvalue(::Type{T}, μ::_SimplexLebesgue) where {T} = testvalue(T, μ.support)
 

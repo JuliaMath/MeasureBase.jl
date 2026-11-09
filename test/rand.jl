@@ -41,6 +41,12 @@ struct _NoSampler <: AbstractMeasure end
         @test @inferred(rand(GenContext{Float32}(stblrng()), StdUniform()^(2, 3))) isa Matrix{Float32}
         @test @inferred(rand(StdExponential())) isa Float64
         @test_throws ArgumentError rand(Lebesgue())
+        # Batches are variates of powers, Random's batch forms point there:
+        for args in ((3,), (3, 4), ((3, 4),))
+            @test_throws "rand(μ^dims)" rand(StdNormal(), args...)
+            @test_throws ArgumentError rand(stblrng(), StdNormal(), args...)
+        end
+        @test size(rand(StdNormal()^(3, 4))) == (3, 4)
     end
 
     @testset "minimal sampling hooks" begin

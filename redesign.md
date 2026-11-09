@@ -260,7 +260,9 @@ machinery, `NoTransport`, `transport_to_mvstd`, per-measure
 and the exports `kleisli`, `AbstractTransitionKernel`, `↣`, `rebase`,
 `commonbase`, `likelihood_ratio`, `log_likelihood_ratio`, `↑`,
 `ZeroSet`, `CodimOne`, `Simplex`, `ℝ₊` and `𝕀` (with
-`PointwiseProductMeasure` and power-weighted measures).
+`PointwiseProductMeasure` and power-weighted measures), and the
+`Random.gentype` methods (test values of powers are `Fill`s, and the type
+of `rand` depends on the generative context).
 
 API: the operators live in `MeasureOperators` and are re-exported; `⊙`
 is now the pullback (it was the pointwise product). Extension points and
@@ -279,8 +281,9 @@ Behavior changes for the release notes: univariate Distributions pivot on
 views, powers of tuple products struct arrays; `Half` transports via
 `StdUniform` (tails limited); `mcombine(vcat, ::Product, ::Product)`
 merges only concrete homogeneous marginals; `rand(rng, Int, μ)`
-unsupported; isbits marginal arrays become struct arrays (`rand` of such
-products gives plain arrays); vcat-combined and bind variates are flat;
+unsupported, `rand(μ, dims...)` throws (use `rand(μ^dims)`); isbits
+marginal arrays become struct arrays (`rand` of such products gives plain
+arrays); vcat-combined and bind variates are flat;
 `transport_to(StdUniform, m)` with binds inside errors (use
 `StdUniform()^n`); batched kernels of rank-less measures throw.
 

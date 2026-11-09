@@ -84,8 +84,6 @@ end
 
 Base.:*(m::AbstractMeasure, k::Number) = k * m
 
-gentype(μ::WeightedMeasure) = gentype(μ.base)
-
 insupportof(μ::WeightedMeasure, x) = insupportof(μ.base, x)
 
 # The Stieltjes measure function scales with the weight:

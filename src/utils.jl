@@ -11,6 +11,9 @@ export testvalue
 A deterministic variate in the support of `μ`, used for type and size
 inference. Floating-point variates have the precision `T`, `Float64` by
 default.
+
+Test values may be lazy arrays (e.g. `Fill`s for powers), so functions
+given to [`pushfwd`](@ref) should accept any `AbstractArray`.
 """
 function testvalue end
 

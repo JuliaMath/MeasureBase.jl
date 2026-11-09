@@ -13,7 +13,6 @@ using Base: OneTo
 
 using Random
 import Random: rand!
-import Random: gentype
 using Statistics
 using LinearAlgebra
 
@@ -77,8 +76,6 @@ using OneTwoMany: firstarg, secondarg
 using StructArrays: StructArray
 import StructArrays
 import Adapt
-
-export gentype
 
 export AbstractMeasure
 
@@ -147,16 +144,6 @@ end
 @inline DensityKind(::AbstractMeasure) = HasDensity()
 
 Broadcast.broadcastable(m::AbstractMeasure) = Ref(m)
-
-"""
-    gentype(μ::AbstractMeasure)
-
-`Random.gentype` for measures, by default the type of the test value of `μ`
-(see [`testvalue`](@ref)).
-"""
-gentype(μ::AbstractMeasure) = typeof(testvalue(μ))
-
-# gentype(μ::AbstractMeasure) = gentype(basemeasure(μ))
 
 using LogExpFunctions: logsumexp, logistic, logit
 
