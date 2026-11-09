@@ -472,6 +472,9 @@ applied to a test value of `μ` (see [`testvalue`](@ref)) when an
 operation needs it (batched kernels, streams). `f` is never evaluated at
 construction, so `μ` needs no random variates unless the size must be
 learned.
+
+The pushforward under a composition `g ∘ h` is
+`pushfwd(g, pushfwd(h, μ))`.
 """
 function pushfwd end
 export pushfwd
@@ -482,6 +485,14 @@ export pushfwd
 
 @inline pushfwd(::typeof(identity), μ; varsize = nothing) = asmeasure(μ)
 @inline pushfwd(::typeof(identity), μ, ::PushFwdStyle; varsize = nothing) = asmeasure(μ)
+
+# The pushforward under a composition is the composition of the
+# pushforwards, each function adapts the root measure of its own origin
+# (e.g. the root of the target of an inner transport):
+@inline pushfwd(f::ComposedFunction, μ; varsize = nothing) = pushfwd(f.outer, pushfwd(f.inner, μ); varsize)
+@inline function pushfwd(f::ComposedFunction, μ, style::PushFwdStyle; varsize = nothing)
+    pushfwd(f.outer, pushfwd(f.inner, μ, style), style; varsize)
+end
 
 _pushfwd_impl(f, μ, style, varsize) = _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
 

@@ -246,6 +246,34 @@ end
     @test pushfwd(AffineMaps.Mul(2.0), StdNormal()).style isa AdaptRootMeasure
 end
 
+@testset "pushforwards of compositions" begin
+    # Compositions of bijections push forward like the composed function:
+    μ = StdNormal()^2
+    h = AffineMaps.Mul([2.0 0.5; 0.0 1.0])
+    for g in (Base.BroadcastFunction(exp), transport_to(StdUniform()^2, pushfwd(h, μ)))
+        f = g ∘ h
+        ν, ν_ref = pushfwd(f, μ), pushfwd(setinverse(f, inverse(f)), μ)
+        Y = rand(Xoshiro(1), ν^5)
+        @test logdensities(ν, Y) ≈ logdensities(ν_ref, Y) atol = 1e-10
+        @test rand(Xoshiro(2), ν) ≈ rand(Xoshiro(2), ν_ref)
+        @test transport_to(StdNormal()^2, ν)(Y[1]) ≈ transport_to(StdNormal()^2, ν_ref)(Y[1])
+        @test logdensityof(pullbck(f, ν), [0.3, -0.4]) ≈ logdensityof(μ, [0.3, -0.4])
+    end
+
+    # Functions composed with a transport have their volume element relative
+    # to the root measure of the target, also for origins with atoms:
+    mu = productmeasure((a = StdNormal()^2, b = StdExponential(), c = MeasureBase.Dirac(4.2)))
+    f_dt = transport_to(StdNormal()^3, mu)
+    for g in (AffineMaps.Add(zeros(3)), AffineMaps.Mul(2.0))
+        ν = pushfwd(g ∘ f_dt, mu)
+        for x in (rand(Xoshiro(i), mu) for i in 1:3)
+            y = g(f_dt(x))
+            @test logdensityof(ν, y) ≈ logdensityof(pushfwd(g, StdNormal()^3), y)
+            @test logdensityof(pullbck(g ∘ f_dt, ν), x) ≈ logdensityof(mu, x)
+        end
+    end
+end
+
 @testset "PushFwdStyle types" begin
     @test AdaptRootMeasure() isa PushFwdStyle
     @test PushfwdRootMeasure() isa PushFwdStyle
