@@ -187,3 +187,30 @@ end
         @test rand(MeasureBase.ConstantRNG(), Float64, m^3) == fill(x, 3)
     end
 end
+
+@testset "densities outside the support of generic distributions" begin
+    using LinearAlgebra: I
+    using Distributions: InverseGamma, Wishart, InverseWishart, LKJ, DirichletMultinomial, MatrixNormal, Binomial
+    using MeasureBase: logdensities
+    # Distributions throw outside of the support or return finite values or
+    # NaN, the densities are -Inf there, point and batched:
+    I2 = Matrix(1.0I, 2, 2)
+    not_pd = [1.0 2.0; 2.0 1.0]
+    for (d, x) in [
+        (InverseGamma(2.0, 1.0), -1.0), (InverseGamma(2f0, 1f0), -1f0), (Binomial(10, 0.3), 11), (Binomial(10, 0.3), 2.5),
+        (Wishart(3.0, I2), not_pd), (Wishart(3.0, I2), [1.0 0.5; 0.4 1.0]), (InverseWishart(3.0, I2), not_pd), (LKJ(2, 1.0), not_pd),
+        (DirichletMultinomial(3, [1.0, 2.0]), [1.5, 1.5]), (MatrixNormal(zeros(2, 2), I2, I2), [Inf 0; 0 0]),
+    ]
+        m = AbstractMeasure(d)
+        @test !MeasureBase.insupportof(m, x)
+        @test logdensityof(m, x) == -Inf
+        @test logdensityof(m, x) isa float(promote_type(eltype(x), Distributions.partype(d)))
+    end
+    m = AbstractMeasure(InverseGamma(2.0, 1.0))
+    @test logdensities(m, [-1.0, 0.5]) ≈ [-Inf, Distributions.logpdf(InverseGamma(2.0, 1.0), 0.5)]
+    @test logdensityof(m^2, [-1.0, 0.5]) == -Inf
+    W = Wishart(3.0, I2)
+    X = cat([2.0 0.5; 0.5 1.0], not_pd, [1.5 0.0; 0.0 1.2]; dims = 3)
+    @test logdensities(AbstractMeasure(W), X) ≈ [Distributions.logpdf(W, X[:, :, 1]), -Inf, Distributions.logpdf(W, X[:, :, 3])]
+    @test logdensities(AbstractMeasure(DirichletMultinomial(3, [1.0, 2.0])), [1 1.5; 2 1.5]) ≈ [Distributions.logpdf(DirichletMultinomial(3, [1.0, 2.0]), [1, 2]), -Inf]
+end

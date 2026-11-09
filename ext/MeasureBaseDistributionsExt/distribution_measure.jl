@@ -83,22 +83,48 @@ end
 
 @inline MeasureBase.logdensity_def(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
 
+# Distributions' densities may throw outside of the support (e.g.
+# InverseGamma below zero, Wishart at matrices that aren't positive
+# definite), so they are only evaluated inside of it. Plain conditions
+# branch, traced or device ones select (see `MeasureBase._select`). The
+# family kernels don't throw and keep their branch-free masks:
+@inline function MeasureBase.logdensityof_impl(m::DistributionMeasure, x)
+    R = _logd_type(m.obj, x)
+    MeasureBase._select(MeasureBase.insupportof(m, x), () -> convert(R, MeasureBase.unsafe_logdensityof(m, x)), () -> R(-Inf))
+end
+@inline _logd_type(d::Distribution, x) = float(promote_type(_real_eltype(x), Distributions.partype(d)))
+@inline _real_eltype(x) = (T = eltype(x); T <: Real ? T : Bool)
+
 # Distributions evaluate flat batches of array variates (the trailing
-# dimensions are batch dimensions) directly, univariate wrappers broadcast
-# their point kernels:
+# dimensions are batch dimensions) directly where all variates lie in the
+# support, univariate wrappers broadcast their point kernels:
 for (bhead, phead) in ((:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def))
     @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{N}}, X::AbstractArray) where {N}
-        Distributions.logpdf(m.obj, X)
+        _masked_batch_logpdf(m, X, Val(N))
     end
     @eval function MeasureBase.$bhead(m::DistributionMeasure{<:ArrayLikeVariate{0}}, X::AbstractArray)
         MeasureBase._scalar_kernel_broadcast(MeasureBase.$phead, m, X)
     end
 end
+
+function _masked_batch_logpdf(m::DistributionMeasure, X::AbstractArray, ::Val{N}) where {N}
+    ndims(X) == N && return MeasureBase.logdensityof_impl(m, X)
+    xs = eachslice(X; dims = ntuple(i -> N + i, ndims(X) - N))
+    ins = map(x -> MeasureBase.insupportof(m, x), xs)
+    if all(ins)
+        Distributions.logpdf(m.obj, X)
+    else
+        R = _logd_type(m.obj, X)
+        map((x, i) -> i ? convert(R, Distributions.logpdf(m.obj, x)) : R(-Inf), xs, ins)
+    end
+end
+
 @inline MeasureBase.unsafe_logdensityof(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
 @inline MeasureBase.insupportof(m::DistributionMeasure, x) = Distributions.insupport(m.obj, x) & _finite_variate(m.obj, x)
-# Infinite values lie outside the support of univariate distributions,
-# where Distributions may evaluate to NaN:
+# Infinite values lie outside the support, where Distributions may evaluate
+# to NaN:
 @inline _finite_variate(::Distribution{Univariate}, x) = isfinite(x)
+@inline _finite_variate(::Distribution{<:ArrayLikeVariate}, x) = all(isfinite, x)
 @inline _finite_variate(::Distribution, x) = true
 
 @inline MeasureBase.rootmeasure(m::DistributionMeasure{<:ArrayLikeVariate{0},<:Continuous}) = Lebesgue()

@@ -14,6 +14,8 @@ const _Families = Union{Normal,Uniform,Exponential,Logistic,Cauchy,Laplace,LogNo
 @inline MeasureBase.logdensity_def(m::AsMeasure{<:_Families}, x) = _family_logd(m.obj, x)
 @inline MeasureBase.unsafe_logdensityof(m::AsMeasure{<:_Families}, x) = _family_logd(m.obj, x)
 @inline MeasureBase.insupportof(m::AsMeasure{<:_Families}, x) = _family_insupport(m.obj, x) & _finite_variate(m.obj, x)
+@inline MeasureBase.logdensityof_impl(m::AsMeasure{<:_Families}, x) =
+    MeasureBase._checksupport(MeasureBase.insupportof(m, x), _family_logd(m.obj, x))
 
 # Zero by value: dual numbers compare lexicographically with their
 # partials, but not across the smallest normal float (subnormals count as
