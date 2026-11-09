@@ -105,20 +105,25 @@ for f in (:invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
 end
 
 # Infinite arguments give exact values, also for derivatives with respect to
-# the parameters, which would be NaN:
+# the parameters. The foreign functions only see finite arguments, since
+# their derivatives at infinite ones are NaN, which reverse-mode AD would
+# propagate from the unselected branch:
 @inline MeasureBase.smf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.cdf, d, x, x > 0)
 @inline MeasureBase.csmf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.ccdf, d, x, x < 0)
 @inline MeasureBase.logsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logcdf, d, x, x > 0)
 @inline MeasureBase.logcsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logccdf, d, x, x < 0)
 
 @inline function _dist_smf(f::F, d, x, at_one) where {F}
-    y = f(d, _nonnan(x, zero(x)))
+    y = f(d, _finite_arg(x))
     ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), oftype(y, at_one), y))
 end
 @inline function _dist_logsmf(f::F, d, x, at_zero) where {F}
-    y = f(d, _nonnan(x, zero(x)))
+    y = f(d, _finite_arg(x))
     ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), ifelse(at_zero, zero(y), oftype(y, -Inf)), y))
 end
+
+# One, not zero, as the placeholder keeps `log` finite (e.g. for LogNormal):
+@inline _finite_arg(x) = ifelse(isfinite(x), x, one(x))
 
 @inline MeasureBase.invsmf(d::Distribution{Univariate,Continuous}, p::Real) =
     _nan_outside(StdUniform, p, _dist_quantile(d, _quantile_arg(p)))

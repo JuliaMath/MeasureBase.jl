@@ -92,6 +92,24 @@ end
     @test_throws ArgumentError truncate(asmeasure(MvNormal([1.0 0.0; 0.0 1.0])), 0 .. 3)
 end
 
+@testset "reverse-mode derivatives of truncations with infinite ends" begin
+    mooncake_derivative(f, x) = Mooncake.value_and_gradient!!(Mooncake.prepare_gradient_cache(f, x), f, x)[2][2]
+    ℓ(d, a, b, x) = logdensityof(normalize(truncate(asmeasure(d), a .. b)), x)
+    for f in [
+        σ -> ℓ(Normal(0.2, σ), 0.0, Inf, 0.5), σ -> ℓ(Normal(0.2, σ), -Inf, 0.0, -0.5),
+        σ -> ℓ(LogNormal(0.2, σ), 1.0, Inf, 1.5), σ -> ℓ(Exponential(σ), 1.0, Inf, 1.5),
+        σ -> ℓ(Laplace(0.1, σ), 1.0, Inf, 1.5), σ -> ℓ(Logistic(0.1, σ), 1.0, Inf, 1.5),
+        σ -> ℓ(Weibull(σ, 1.1), 1.0, Inf, 1.5),
+        σ -> transport_to(StdUniform(), truncate(asmeasure(Normal(0.2, σ)), -1.0 .. Inf))(0.7),
+    ]
+        ∂f_ref = (f(1.3 + 1e-6) - f(1.3 - 1e-6)) / 2e-6
+        @test only(Zygote.gradient(f, 1.3)) ≈ ∂f_ref rtol = 1e-6
+        @test mooncake_derivative(f, 1.3) ≈ ∂f_ref rtol = 1e-6
+    end
+    g = σ -> smf(asmeasure(Normal(0.2, σ)), Inf) + csmf(asmeasure(Normal(0.2, σ)), -Inf) + logsmf(asmeasure(Normal(0.2, σ)), Inf)
+    @test only(Zygote.gradient(g, 1.3)) == 0 && mooncake_derivative(g, 1.3) == 0
+end
+
 @testset "derivatives of truncated gamma and beta distributions" begin
     # Via the differentiable incomplete gamma and beta functions, in the
     # upper tails via their complements; dx/du = mass / pdf(x):
