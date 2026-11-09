@@ -514,6 +514,23 @@ function _pwr_point_to_std_with_rest(::Type{S}, μ::PowerMeasure, x::AbstractVec
     return reduce(vcat, [z for z in zs]), x_μ, x_rest
 end
 
+# Batches of streams consume powers of bases without degrees of freedom
+# (e.g. pushforwards without an inverse) through the base:
+function batched_transport_from_std_with_rest(::Type{S}, μ::PowerMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
+    _pwr_batched_from_std_with_rest(S, μ, Z, sz, fast_dof(pwr_base(μ)))
+end
+_pwr_batched_from_std_with_rest(::Type{S}, μ, Z, sz, ::Any) where {S} = _from_std_with_rest_default(S, μ, Z, sz)
+function _pwr_batched_from_std_with_rest(::Type{S}, μ, Z, sz, ::NoDOF) where {S}
+    _pwr_base_from_std_with_rest(S, μ, Z, sz, fixed_stream_size(pwr_base(μ)))
+end
+_pwr_base_from_std_with_rest(::Type{S}, μ, z::AbstractVector, ::Tuple{}, ::Any) where {S} = transport_from_std_with_rest(S, μ, z)
+function _pwr_base_from_std_with_rest(::Type{S}, μ, Z, sz, ::True) where {S}
+    batched_transport_from_std_with_rest(S, pwr_base(μ), Z, (size_tuple(pwr_size(μ))..., size_tuple(sz)...))
+end
+@noinline function _pwr_base_from_std_with_rest(::Type{S}, μ, ::AbstractArray, ::SizeLike, ::False) where {S}
+    throw(ArgumentError("Batches of standard variate streams for powers of measures of type $(nameof(typeof(pwr_base(μ)))) must be consumed stream by stream"))
+end
+
 # Powers of measures without fast degrees of freedom transport their
 # elements sequentially:
 function transport_from_std_with_rest(::Type{S}, μ::PowerMeasure, z::AbstractVector) where {S<:StdMeasure}

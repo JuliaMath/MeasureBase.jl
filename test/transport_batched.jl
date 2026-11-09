@@ -13,7 +13,7 @@ using InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview, nestedview, ArrayOfSimilarArrays
 using StaticArrays: SVector, SMatrix, @SMatrix
 using MeasureBase: logdensities
-using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf
+using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf, quantile
 using ChangesOfVariables: with_logabsdet_jacobian
 using StructArrays: StructArray, StructArrays
 using AffineMaps: Mul, MulAdd
@@ -131,6 +131,25 @@ using JLArrays
         JLArrays.allowscalar(false)
         @test Array(logdensities(νe, JLArray(Ye))) ≈ logdensities(νe, Ye)
         @test Array(flatview(fe.(sliced(JLArray(Ye), Val(1))))) ≈ flatview(fe.(sliced(Ye, Val(1))))
+    end
+
+    @testset "pushforwards without a declared inverse" begin
+        quantileN(u) = quantile(Normal(), u)
+        p = pushfwd(x -> 2x, StdNormal())
+        g = transport_to(p, StdUniform())
+        u = [0.1, 0.4, 0.6, 0.9]
+        @test map(g, u) ≈ 2 .* quantileN.(u)
+        @test g.(u) == transports(g, u) == map(g, u)
+        U = rand(3, 4)
+        for pv in (pushfwd(x -> 2 .* x, StdNormal()^3), pushfwd(x -> 2 .* x, StdNormal()^3; varsize = (3,)), pushfwd(x -> [x[1], x[1] + x[2], x[3]], StdNormal()^3))
+            gv = transport_to(pv, StdUniform()^3)
+            @test transports(gv, U) == map(gv, eachcol(U)) == gv.(nestedview(U))
+        end
+        g4 = transport_to(p^3, StdUniform()^3)
+        @test transports(g4, U) == map(g4, eachcol(U))
+        @test flatview(transports(g4, U)) ≈ 2 .* quantileN.(U)
+        gp = transport_to(productmeasure((a = p, b = StdNormal()^2)), StdUniform()^3)
+        @test transports(gp, U) == map(gp, eachcol(U))
     end
 
     @testset "affine pushforwards" begin
