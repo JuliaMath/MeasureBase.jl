@@ -91,12 +91,16 @@ function massof(μ::Lebesgue{<:AbstractInterval}, s::Interval)
     max(w, zero(w))
 end
 
+# Stieltjes measure functions of intervals with a finite left end start at
+# zero there:
 function smf(μ::Lebesgue{<:AbstractInterval}, x)
     a, b = endpoints(μ.support)
-    clamp(x, a, b)
+    clamp(x, a, b) - _smf_offset(a)
 end
 
-invsmf(μ::Lebesgue{<:AbstractInterval}, p) = p
+invsmf(μ::Lebesgue{<:AbstractInterval}, p) = _smf_offset(leftendpoint(μ.support)) + p
+
+@inline _smf_offset(a) = ifelse(isfinite(a), a, zero(a))
 
 function csmf(μ::Lebesgue{<:AbstractInterval}, x)
     a, b = endpoints(μ.support)
@@ -104,6 +108,27 @@ function csmf(μ::Lebesgue{<:AbstractInterval}, x)
 end
 
 invcsmf(μ::Lebesgue{<:AbstractInterval}, p) = rightendpoint(μ.support) - p
+
+# The log forms would otherwise go to the proxy, which has no SMF:
+logsmf(μ::Lebesgue{<:AbstractInterval}, x) = log(smf(μ, x))
+logcsmf(μ::Lebesgue{<:AbstractInterval}, x) = log(csmf(μ, x))
+invlogsmf(μ::Lebesgue{<:AbstractInterval}, logp) = invsmf(μ, exp(logp))
+invlogcsmf(μ::Lebesgue{<:AbstractInterval}, logp) = invcsmf(μ, exp(logp))
+
+# The normalized law on a finite interval is the uniform distribution:
+function batched_rand_impl(ctx::GenContext, μ::Lebesgue{<:AbstractInterval}, sz::SizeLike)
+    a, b = endpoints(μ.support)
+    _check_finite_support(μ, isfinite(a) & isfinite(b))
+    U = _rand_bulk(ctx, sz)
+    T = eltype(U)
+    return T(a) .+ T(b - a) .* U
+end
+
+@inline _check_finite_support(μ, finite::Bool) = finite || _throw_infinite_support(μ)
+# Traced or device values can't be checked:
+@inline _check_finite_support(μ, ::Any) = nothing
+@noinline _throw_infinite_support(μ) =
+    throw(ArgumentError("Random variates of $(nameof(typeof(μ))) measure require a finite support, got $(μ.support)"))
 
 smf(::Lebesgue{<:RealValues}, x) = x
 smf(::Lebesgue{<:RealValues}) = identity

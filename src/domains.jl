@@ -160,6 +160,12 @@ struct RealValues <: ValueSet end
 
 testvalue(::Type{T}, ::RealValues) where {T} = zero(T)
 
+# A point inside an interval, also for open and half-infinite ones:
+function testvalue(::Type{T}, s::AbstractInterval) where {T}
+    a, b = map(T, endpoints(s))
+    ifelse(isfinite(a), ifelse(isfinite(b), (a + b) / 2, a + one(T)), ifelse(isfinite(b), b - one(T), zero(T)))
+end
+
 """
     const MeasureBase.ℝ = RealValues()
 

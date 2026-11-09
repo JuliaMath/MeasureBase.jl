@@ -5,7 +5,7 @@ using MeasureBase
 using MeasureBase: StdNormal, StdExponential, StdUniform, NormalizedMeasure, BoundedInts
 using MeasureBase: normalize, massof, isnormalized, UnknownMass, mbind, weightedmeasure, logdensities
 using MeasureBase: getdof, fast_dof, transports
-using MeasureBase.Interface: test_transport
+using MeasureBase.Interface: test_transport, test_smf
 using ChangesOfVariables: with_logabsdet_jacobian
 using InverseFunctions: inverse
 using AffineMaps: Add, Mul
@@ -82,6 +82,23 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test sum(k -> exp(logdensityof(c, k)), -2:12) ≈ 1
         d = normalize(superpose(2 * Dirac(1.0), 3 * Dirac(2.0)))
         @test exp(logdensityof(d, 1.0)) ≈ 2 / 5 && exp(logdensityof(d, 2.0)) ≈ 3 / 5
+    end
+
+    @testset "uniform laws of Lebesgue measures" begin
+        u = normalize(Lebesgue(1.0 .. 3.0))
+        test_smf(u)
+        @test smf(u, 1.0) == 0 && smf(u, 3.0) == 1
+        @test invsmf(u, 0) == 1 && invsmf(u, 0.25) ≈ 1.5
+        @test smf(Lebesgue(-Inf .. 2.0), 1.0) == 1.0 && invsmf(Lebesgue(-Inf .. 2.0), 1.0) == 1.0
+        @test insupportof(Lebesgue(0 .. Inf), testvalue(Lebesgue(0 .. Inf)))
+        X = rand(MersenneTwister(1), u^10_000)
+        @test all(x -> 1 <= x <= 3, X)
+        @test sum(X) / length(X) ≈ 2 atol = 0.03
+        @test sum(abs2, X .- 2) / length(X) ≈ 1 / 3 atol = 0.02
+        # Unnormalized measures sample their normalized law:
+        @test 0 <= rand(Lebesgue(0.0 .. 2.0)) <= 2
+        @test rand(MeasureBase.GenContext{Float32}(MersenneTwister(1)), u) isa Float32
+        @test_throws ArgumentError rand(Lebesgue(0.0 .. Inf))
     end
 
     @testset "batched densities" begin
