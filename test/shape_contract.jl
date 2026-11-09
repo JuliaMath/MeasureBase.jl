@@ -19,6 +19,15 @@ _flat_iter(x::AbstractArray) = Iterators.flatten(map(_flat_iter, x))
 
 struct _CustomStd <: MeasureBase.StdMeasure end
 
+# A leaf that declares its flat variate size only in the type form:
+struct _TypeSizedIso3 <: MeasureBase.AbstractMeasure end
+MeasureBase.mspace_flatsize(::Type{<:_TypeSizedIso3}) = (static(3),)
+MeasureBase.basemeasure(::_TypeSizedIso3) = Lebesgue()^3
+function MeasureBase.batched_logdensityof_impl(::_TypeSizedIso3, X)
+    r = sum(abs2, X; dims = 1) ./ -2 .- 3 * log(2π) / 2
+    X isa AbstractVector ? only(r) : dropdims(r; dims = 1)
+end
+
 @testset "shape contract" begin
     @testset "mspace_elsize and mspace_flatsize" begin
         for μ in (StdNormal(), StdUniform(), Lebesgue(), Lebesgue(0..1), Counting(), LebesgueBase(), CountingBase(), Dirac(1.5))
@@ -133,6 +142,15 @@ struct _CustomStd <: MeasureBase.StdMeasure end
         @test logdensities(Dirac([0.0, 0.0]), [0.0 1.0; 0.0 0.0]) == [0.0, -Inf]
         @test_throws ArgumentError logdensityof(Dirac([0.0, 0.0])^3, zeros(1, 3))
         @test logdensityof(Dirac([0.0, 0.0])^3, zeros(2, 3)) == 0
+
+        # The type form of the flat size checks instances, also in powers:
+        iso = _TypeSizedIso3()
+        @test mspace_flatsize(iso) == (3,)
+        @test logdensityof(iso, [0.1, 0.2, 0.3]) ≈ logdensityof(StdNormal()^3, [0.1, 0.2, 0.3])
+        @test_throws ArgumentError logdensityof(iso, [0.1, 0.2])
+        @test_throws ArgumentError logdensities(iso, zeros(2, 2))
+        @test logdensityof(iso^2, zeros(3, 2)) ≈ 2 * logdensityof(StdNormal()^3, zeros(3))
+        @test_throws ArgumentError logdensityof(iso^2, zeros(2, 2))
 
         # Array products of marginals with array variates check each marginal:
         P = ProductMeasure([Dirac([0.0, 0.0]), Dirac([1.0, 1.0])])

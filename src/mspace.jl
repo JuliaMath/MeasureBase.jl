@@ -38,11 +38,14 @@ arrays, their flat storage has the size of the inner arrays followed by
 the size of the power. Returns [`NoMSpaceElementSize{typeof(μ)}()`](@ref NoMSpaceElementSize)
 if the variates of `μ` have no flat storage of a common size.
 
+Defaults to the size declared for the type of `μ`, see
+`mspace_flatsize(::Type)`.
+
 See also [`mspace_elsize`](@ref).
 """
 function mspace_flatsize end
 
-@inline mspace_flatsize(μ::AbstractMeasure) = NoMSpaceElementSize{typeof(μ)}()
+@inline mspace_flatsize(μ::AbstractMeasure) = mspace_flatsize(typeof(μ))
 
 @inline _cat_sizes(a::SizeLike, b::SizeLike) = canonical_size((size_tuple(a)..., size_tuple(b)...))
 @inline _cat_sizes(a::NoMSpaceElementSize, ::SizeLike) = a
