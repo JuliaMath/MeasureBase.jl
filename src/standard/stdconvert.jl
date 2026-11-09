@@ -3,18 +3,20 @@
 # measures, since the uniform variate saturates at one.
 
 # Standard normal log-cdf and log-ccdf:
-@inline _normlogcdf(z) = logerfc(-z * invsqrt2) - logtwo
-@inline _normlogccdf(z) = logerfc(z * invsqrt2) - logtwo
+@inline _normlogcdf(z) = _logerfc(-z * invsqrt2) - logtwo
+@inline _normlogccdf(z) = _logerfc(z * invsqrt2) - logtwo
 
 # Complementary standard normal cdf, accurate for large positive arguments:
 @inline _normccdf(z) = erfc(z * invsqrt2) / 2
 
+# In the upper tails via the log-ccdf and its inverse, the square of `z`
+# must not overflow:
 @inline function transport_def(::StdExponential, ::StdNormal, z)
-    ifelse(z < zero(z), -log1p(-Φ(z)), -log(_positive_prob(_normccdf(z))))
+    ifelse(z < zero(z), -log1p(-Φ(z)), -_normlogccdf(min(z, sqrt(floatmax(float(real_numtype(typeof(z))))))))
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
-    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_positive_prob(-expm1(-x))), -Φinv(min(_positive_prob(exp(-x)), one(x)))))
+    _nan_outside(μ, x, ifelse(x < oftype(float(x), logtwo), Φinv(_positive_prob(-expm1(-x))), -_norminvlogcdf(-x)))
 end
 
 @inline transport_def(::StdLogistic, ::StdNormal, z) = _normlogcdf(z) - _normlogccdf(z)
