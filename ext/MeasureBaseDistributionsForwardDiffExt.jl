@@ -58,6 +58,20 @@ end
     ForwardDiff.Dual{TAG}(x, dx_dp * ForwardDiff.partials(p))
 end
 
+# Stieltjes measure functions and their inverses of distributions with plain
+# parameters at dual numbers, which Distributions doesn't support for all
+# families (e.g. TDist), via the hooks above:
+@inline function MeasureBase._dist_call(f::F, d::Distribution{Univariate,Continuous}, x::ForwardDiff.Dual) where {F}
+    _dual_call(f, MeasureBase._dist_params_numtype(d), d, x)
+end
+@inline _dual_call(f::F, ::Type, d, x) where {F} = f(d, x)
+@inline _dual_call(::typeof(Distributions.logcdf), T::_PlainParams, d, x) = MeasureBase._trafo_logcdf_impl(T, d, x)
+@inline _dual_call(::typeof(Distributions.logccdf), T::_PlainParams, d, x) = MeasureBase._trafo_logccdf_impl(T, d, x)
+@inline _dual_call(::typeof(Distributions.cdf), T::_PlainParams, d, x) = exp(MeasureBase._trafo_logcdf_impl(T, d, x))
+@inline _dual_call(::typeof(Distributions.ccdf), T::_PlainParams, d, x) = exp(MeasureBase._trafo_logccdf_impl(T, d, x))
+@inline _dual_call(::typeof(MeasureBase._dist_quantile), T::_PlainParams, d, p) = MeasureBase._trafo_quantile_impl(T, d, p)
+@inline _dual_call(::typeof(MeasureBase._dist_cquantile), T::_PlainParams, d, p) = MeasureBase._trafo_cquantile_impl(T, d, p)
+
 # Dual numbers through the regularized incomplete gamma and beta functions
 # and their inverses: the derivatives with respect to the variate resp.
 # probability follow from the density, the ones with respect to the shape

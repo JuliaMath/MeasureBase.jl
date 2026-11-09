@@ -197,6 +197,7 @@ function _trafo_quantile_impl end
 function _trafo_cquantile_impl end
 function _dist_quantile end
 function _dist_cquantile end
+function _dist_call end
 function _dist_params_numtype end
 
 # Transports of univariate distributions to and from StdLogistic via their

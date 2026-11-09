@@ -177,21 +177,27 @@ end
 @inline MeasureBase.logcsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logccdf, d, x, x < 0)
 
 @inline function _dist_smf(f::F, d, x, at_one) where {F}
-    y = f(d, _finite_arg(x))
+    y = _dist_call(f, d, _finite_arg(x))
     ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), oftype(y, at_one), y))
 end
 @inline function _dist_logsmf(f::F, d, x, at_zero) where {F}
-    y = f(d, _finite_arg(x))
+    y = _dist_call(f, d, _finite_arg(x))
     ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), ifelse(at_zero, zero(y), oftype(y, -Inf)), y))
 end
 
 # One, not zero, as the placeholder keeps `log` finite (e.g. for LogNormal):
 @inline _finite_arg(x) = ifelse(isfinite(x), x, one(x))
 
+# `f(d, x)` for the tail functions (`cdf`, `logccdf`, ...) and quantiles
+# (`_dist_quantile`, `_dist_cquantile`) of `d`. The ForwardDiff extension
+# takes dual numbers, which Distributions doesn't support for all families,
+# through the transport hooks:
+@inline _dist_call(f::F, d, x) where {F} = f(d, x)
+
 @inline MeasureBase.invsmf(d::Distribution{Univariate,Continuous}, p::Real) =
-    _nan_outside(StdUniform, p, _dist_quantile(d, _quantile_arg(p)))
+    _nan_outside(StdUniform, p, _dist_call(_dist_quantile, d, _quantile_arg(p)))
 @inline MeasureBase.invcsmf(d::Distribution{Univariate,Continuous}, p::Real) =
-    _nan_outside(StdUniform, p, _dist_cquantile(d, _quantile_arg(p)))
+    _nan_outside(StdUniform, p, _dist_call(_dist_cquantile, d, _quantile_arg(p)))
 @inline MeasureBase.invlogsmf(d::Distribution{Univariate,Continuous}, logp::Real) =
     _nan_above_zero(logp, Distributions.invlogcdf(d, _logquantile_arg(logp)))
 @inline MeasureBase.invlogcsmf(d::Distribution{Univariate,Continuous}, logp::Real) =

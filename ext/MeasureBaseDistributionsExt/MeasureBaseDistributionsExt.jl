@@ -26,7 +26,7 @@ using MeasureBase: convert_realtype, _fwddiff, @_adignore
 import MeasureBase:
     _dist_params_numtype, _trafo_logcdf_impl, _trafo_logccdf_impl,
     _trafo_quantile_impl, _trafo_cquantile_impl, _dist_quantile, _dist_cquantile,
-    _to_logistic_via, _from_logistic_via
+    _dist_call, _to_logistic_via, _from_logistic_via
 using MeasureBase: _pushfront, _pushback, _dropfront, _dropback, _rev_cumsum, _exp_cumsum_log
 using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf, _dualtag
 using MeasureBase: _stirling_err

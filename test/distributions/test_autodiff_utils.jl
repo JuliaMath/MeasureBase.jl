@@ -154,6 +154,24 @@ end
 end
 
 
+@testset "ForwardDiff through the SMFs of generic distributions" begin
+    # The cdf and quantile of TDist in Distributions don't take dual numbers:
+    D = ForwardDiff.derivative
+    t = TDist(3.0)
+    @test D(x -> MeasureBase.smf(t, x), -2.0) ≈ pdf(t, -2.0)
+    @test D(x -> MeasureBase.logcsmf(t, x), 5.0) ≈ -pdf(t, 5.0) / ccdf(t, 5.0)
+    @test D(p -> MeasureBase.invsmf(t, p), 0.2) ≈ 1 / pdf(t, quantile(t, 0.2))
+    @test D(q -> MeasureBase.invcsmf(t, q), 0.01) ≈ -1 / pdf(t, cquantile(t, 0.01))
+    # Half transports via the SMFs of its parent, its density is 2 pdf(t, x):
+    φ(z) = exp(-z^2 / 2) / sqrt(2π)
+    h = MeasureBase.Half(asmeasure(t))
+    z_of_x = transport_to(StdNormal(), h)
+    @test D(z_of_x, 0.7) ≈ 2 * pdf(t, 0.7) / φ(z_of_x(0.7))
+    x_of_z = transport_to(h, StdNormal())
+    @test D(x_of_z, 0.3) ≈ φ(0.3) / (2 * pdf(t, x_of_z(0.3)))
+end
+
+
 @testset "shape derivatives for large shapes" begin
     # ∂P(α, x)/∂α of the regularized lower incomplete gamma function near the
     # median, references from the power series in 160-bit arithmetic:
