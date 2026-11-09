@@ -85,6 +85,19 @@ using StructArrays: StructArray
         end
     end
 
+    @testset "discrete distributions without standard transports" begin
+        jl32 = GenContext{Float32}(MeasureBase.HeterogeneousComputing.AbstractComputeUnit(JLBackend()))
+        for d in (Poisson(2.0), Bernoulli(0.3), Categorical([0.2, 0.8]), Binomial(5, 0.3))
+            err = try
+                batched_rand_impl(jl32, asmeasure(d), (5,))
+            catch e
+                e
+            end
+            @test err isa ArgumentError && occursin("host compute units", err.msg)
+            @test_throws ArgumentError rand(jl32, asmeasure(d))
+        end
+    end
+
     @testset "parameter batches of distributions" begin
         μs, σs = [0.3, -1.0, 2.0], [1.7, 0.5, 1.2]
         ds = Normal.(μs, σs)

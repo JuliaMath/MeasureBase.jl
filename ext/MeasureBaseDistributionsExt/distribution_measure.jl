@@ -27,6 +27,7 @@ function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
     if _native_rand(ctx, d)
         _native_draw(get_precision(ctx), d, _dist_rand(get_rng(ctx), d))
     else
+        _check_std_transport(d)
         MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
     end
 end
@@ -36,6 +37,7 @@ function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, 
     if _native_rand(ctx, d)
         _flat_powrand(get_rng(ctx), get_precision(ctx), d, sz)
     else
+        _check_std_transport(d)
         MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
     end
 end
@@ -48,6 +50,11 @@ end
     promote_type(P, T) == P
 end
 @inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
+
+@inline _check_std_transport(d::Distribution) = _has_std_transport(d) || _throw_host_only_sampler(d)
+@noinline _throw_host_only_sampler(d::Distribution) = throw(ArgumentError(
+    "Distributions' sampler for $(nameof(typeof(d))) runs only on host compute units, and it has no standard transport"
+))
 
 @inline _native_draw(::Type{T}, ::Distribution{<:ArrayLikeVariate,Continuous}, x) where {T<:Real} = convert_realtype(T, x)
 @inline _native_draw(::Type{<:Real}, ::Distribution, x) = x
