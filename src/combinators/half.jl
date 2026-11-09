@@ -25,8 +25,8 @@ end
     throw(ArgumentError("Half requires measures with $what, but got a measure of type $(nameof(typeof(μ)))"))
 
 # Whether a root measure has no atoms, true unless known otherwise:
-_atom_free(::Any) = true
-_atom_free(::Union{Dirac,Counting,CountingBase,SpikeMixture}) = false
+_atom_free(ρ) = !(_root_kind(ρ) isa _AtomicRoot)
+_atom_free(::SpikeMixture) = false
 _atom_free(μ::SuperpositionMeasure) = all(_atom_free, μ.components)
 
 # Whether a measure is symmetric about zero, `nothing` if not known:

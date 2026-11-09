@@ -305,8 +305,28 @@ end
 @inline _lazy_combine_ladj(ℓ, ladj) = Broadcast.instantiate(Broadcast.broadcasted(_combine_logd_with_ladj, ℓ, ladj))
 
 # Checking the support via the origin would require a potentially costly
-# transformation of x:
+# transformation of x. Measures with atomic roots push their root forward,
+# their atoms are the images of the atoms of the origin, so their support
+# is checked via the inverse:
 insupportof(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
+@inline function insupportof(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M}
+    _pushfwd_insupport(_root_kind(rootmeasure(ν.origin)), ν, y)
+end
+@inline _pushfwd_insupport(::_AtomicRoot, ν::PushforwardMeasure, y) = insupportof(ν.origin, unwrap(ν.finv)(y))
+@inline _pushfwd_insupport(::_AtomicRoot, ν::_NonBijectivePusfwdMeasure, y) = NoFastInsupport{typeof(ν)}()
+@inline _pushfwd_insupport(::Any, ν::PushforwardMeasure, y) = NoFastInsupport{typeof(ν)}()
+
+# Pushed-forward root measures have the kind of the root they push forward
+# (see `_root_kind`): injective maps keep atomic roots atomic, continuous
+# roots gain the volume element of the inverse. Other pushed roots relate
+# only to equal ones:
+const _PushedRoot = PushforwardMeasure{<:Any,<:Any,<:Any,PushfwdRootMeasure}
+@inline _root_kind(ν::_PushedRoot) = _root_kind(ν.origin)
+@inline function _lebesgue_logd(ν::_PushedRoot, y)
+    x, ladj = with_logabsdet_jacobian(unwrap(ν.finv), y)
+    return _lebesgue_logd(ν.origin, x) + ladj
+end
+@inline _equal_roots(μ::_PushedRoot, ν::_PushedRoot) = isequal(μ.f, ν.f) && _equal_roots(μ.origin, ν.origin)
 
 function testvalue(::Type{T}, ν::PushforwardMeasure) where {T}
     ν.f(testvalue(T, parent(ν)))

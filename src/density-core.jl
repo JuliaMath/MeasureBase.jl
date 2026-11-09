@@ -330,11 +330,36 @@ end
     return prog
 end
 
-# Root measures of the same type are equal almost everywhere for the
-# purpose of pointwise relative densities:
-_root_logdensity_rel(μ::M, ν::M, x) where {M} = zero(logdensity_def(μ, x))
+# Root measures relate through the kind of reference measure they have a
+# density relative to. Atomic roots have density one relative to counting
+# measure on their atoms, continuous roots the density `_lebesgue_logd(μ, x)`
+# relative to Lebesgue measure. Atomic roots are singular relative to
+# continuous ones, support checks take care of points that aren't atoms.
+# Other roots relate only to equal roots: a root type does not determine the
+# measure (pushforwards carry their function as a value, for example).
+struct _AtomicRoot end
+struct _ContinuousRoot end
+struct _OtherRoot end
 
-function _root_logdensity_rel(@nospecialize(μ), @nospecialize(ν), @nospecialize(x))
+@inline _root_kind(::Any) = _OtherRoot()
+
+function _lebesgue_logd end
+
+@inline _equal_roots(μ, ν) = isequal(μ, ν)
+
+@inline _root_logdensity_rel(μ, ν, x) = _root_rel(_root_kind(μ), _root_kind(ν), μ, ν, x)
+
+@inline _root_rel(::_AtomicRoot, ::_AtomicRoot, μ, ν, x) = zero(_logd_numtype(x))
+@inline _root_rel(::_AtomicRoot, ::_ContinuousRoot, μ, ν, x) = -_neg_inf_logd(x)
+@inline _root_rel(::_ContinuousRoot, ::_AtomicRoot, μ, ν, x) = _neg_inf_logd(x)
+@inline _root_rel(::_ContinuousRoot, ::_ContinuousRoot, μ, ν, x) = _lebesgue_logd(μ, x) - _lebesgue_logd(ν, x)
+@inline function _root_rel(::_OtherRoot, ::_OtherRoot, μ, ν, x)
+    _equal_roots(μ, ν) || _throw_no_root_rel(μ, ν)
+    return zero(_logd_numtype(x))
+end
+@inline _root_rel(::Any, ::Any, μ, ν, x) = _throw_no_root_rel(μ, ν)
+
+@noinline function _throw_no_root_rel(μ, ν)
     throw(
         ArgumentError(
             "No method available to compute the log-density between measures with root measures of type $(nameof(typeof(μ))) and $(nameof(typeof(ν)))",

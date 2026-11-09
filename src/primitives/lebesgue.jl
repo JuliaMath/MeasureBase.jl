@@ -16,9 +16,8 @@ insupportof(::LebesgueBase, x) = true
 
 insupportof(::LebesgueBase) = Returns(true)
 
-logdensity_rel_def(::LebesgueBase, ::CountingBase, x) = _neg_inf_logd(x)
-
-logdensity_rel_def(::CountingBase, ::LebesgueBase, x) = -_neg_inf_logd(x)
+@inline _root_kind(::LebesgueBase) = _ContinuousRoot()
+@inline _lebesgue_logd(::LebesgueBase, x) = zero(_logd_numtype(x))
 
 @inline getdof(::LebesgueBase) = static(1)
 
