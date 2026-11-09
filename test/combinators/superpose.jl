@@ -1,8 +1,10 @@
 using Test
 
 using MeasureBase
-using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, GenContext
-using Distributions: Poisson
+using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, StdExponential, GenContext
+using MeasureBase: MeasureJoin, LebesgueBase, Lebesgue, static
+using Distributions: Distributions, Poisson, MvNormal, Dirichlet, Normal, pdf, logpdf
+using StaticArrays: SVector
 using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
 using JLArrays: JLArray, JLBackend
 using Random: Xoshiro
@@ -14,7 +16,7 @@ using Random: Xoshiro
     @test μs isa SuperpositionMeasure{<:Tuple{Dirac,Dirac}}
     @test μs == SuperpositionMeasure((μ, ν)) == superpose(μ, ν)
     @test exp(logdensity_def(μs, 0)) == 1.0
-    @test basemeasure(μs) == μs
+    @test basemeasure(μs) == MeasureJoin((μ, ν))
     @test densityof(μs, 0) == 1.0
     @test densityof(μs, 1) == 1.0
     @test densityof(μs, 0.5) == 0
@@ -22,7 +24,7 @@ using Random: Xoshiro
     μs = SuperpositionMeasure([μ, ν])
     @test μs isa SuperpositionMeasure{<:AbstractVector{<:AbstractMeasure}}
     @test exp(logdensity_def(μs, 0)) == 1.0
-    @test collect(basemeasure(μs).components) == [μ, ν]
+    @test basemeasure(μs) == MeasureJoin([μ, ν])
     @test densityof(μs, 0) == 1.0
     # Base measures of components count wherever they have mass, not only
     # where the component itself does:
@@ -57,11 +59,12 @@ using Random: Xoshiro
     @test MeasureBase.insupportof(MeasureBase.TrivialMeasure(), 1.0) == false
     @test logdensity_rel(MeasureBase.TrivialMeasure(), MeasureBase.LebesgueBase(), 1.0) == -Inf
 
-    # Dirac equality is not decidable from types, so no weighted collapse:
+    # Dirac equality is not decidable from types, so no weighted collapse,
+    # the equal atoms join to one root:
     μ2 = μ + μ
     @test μ2 isa SuperpositionMeasure
     @test μ2 == superpose(μ, μ)
-    @test exp(logdensity_def(μ2, 0)) == 1.0
+    @test exp(logdensity_def(μ2, 0)) == 2.0
 
     # Relative densities of superpositions of equal type don't assume equal
     # components, the oracle is the mass of the atoms:
@@ -106,4 +109,64 @@ end
     @test count(==(2.0), x) / length(x) ≈ 0.7 atol = 0.02
     v = rand(Xoshiro(1), superpose(StdNormal()^2, Dirac([0.0, 0.0])))
     @test v isa Vector{Float64} && length(v) == 2
+end
+
+@testset "roots of superpositions" begin
+    pdfsum(ds, x) = log(sum(d -> pdf(d, x), ds))
+
+    # Components with equal roots have the sum of their densities, in all
+    # representations of the superposition:
+    ds = (MvNormal([0.0, 1.0], [1.0 0.2; 0.2 1.5]), MvNormal([1.0, -1.0], [2.0 0.0; 0.0 0.5]))
+    a, b = map(asmeasure, ds)
+    x = [0.3, 0.4]
+    for s in (superpose(a, b), a + b, superpose((a, b)), superpose([a, b]))
+        @test logdensityof(s, x) ≈ pdfsum(ds, x)
+        @test logdensity_rel(s, Lebesgue()^2, x) ≈ pdfsum(ds, x)
+    end
+    @test logdensityof(superpose(a, b, a), x) ≈ log(2 * pdf(ds[1], x) + pdf(ds[2], x))
+    @test logdensityof(0.3 * a + 0.7 * b, x) ≈ log(0.3 * pdf(ds[1], x) + 0.7 * pdf(ds[2], x))
+    ℓ_sum(x) = log(exp(logdensityof(StdNormal()^2, x)) + exp(logdensityof(StdExponential()^2, x)))
+    @test logdensityof(StdNormal()^2 + StdExponential()^2, x) ≈ ℓ_sum(x)
+    @test logdensityof(StdNormal()^static(2) + StdExponential()^static(2), SVector(0.3, 0.4)) ≈ ℓ_sum(x)
+    dd = (Dirichlet([1.0, 2.0, 3.0]), Dirichlet([2.0, 2.0, 1.0]))
+    @test logdensityof(asmeasure(dd[1]) + asmeasure(dd[2]), [0.2, 0.3, 0.5]) ≈ pdfsum(dd, [0.2, 0.3, 0.5])
+    P2, P3 = asmeasure(Poisson(2.0))^2, asmeasure(Poisson(3.0))^2
+    @test logdensityof(P2 + P3, [1, 2]) ≈ log(prod(pdf.(Poisson(2.0), [1, 2])) + prod(pdf.(Poisson(3.0), [1, 2])))
+
+    # Mutually singular roots join to their sum, a point mass added to a
+    # continuous measure has the weight of the atom at the atom:
+    s = StdNormal() + 0.3 * Dirac(0.0)
+    J = rootmeasure(s)
+    @test J == MeasureJoin((LebesgueBase(), Dirac(0.0)))
+    @test logdensityof(s, 0.0) ≈ log(0.3)
+    @test logdensityof(s, 0.5) ≈ logpdf(Normal(), 0.5)
+    @test logdensity_rel(J, Lebesgue(), 0.5) == 0 && logdensity_rel(J, Lebesgue(), 0.0) == Inf
+    @test logdensity_rel(Lebesgue(), J, 0.0) == -Inf && logdensity_rel(Dirac(0.0), J, 0.0) == 0
+    @test logdensity_rel(s, J, 0.0) ≈ log(0.3)
+
+    # Joins relate to joins and to other superpositions:
+    s2 = StdNormal() + Dirac(0.0) + Dirac(1.0)
+    J2 = rootmeasure(s2)
+    @test logdensity_rel(J, J2, 0.0) == 0 && logdensity_rel(J, J2, 1.0) == -Inf && logdensity_rel(J2, J, 1.0) == Inf
+    @test logdensity_rel(J, J2, 0.5) == 0
+    @test logdensity_rel(s, s2, 0.0) ≈ log(0.3)
+    @test logdensity_rel(s, s2, 0.5) ≈ 0 atol = 1e-15
+    @test logdensity_rel(s2, s, 1.0) == Inf
+
+    # Roots of identical singleton types are the root itself:
+    @test rootmeasure(StdNormal() + StdExponential()) === LebesgueBase()
+    @test rootmeasure(superpose([StdNormal(), 2 * StdNormal()])) === LebesgueBase()
+    @test logdensityof(superpose([StdNormal(), 2 * StdNormal()]), 0.3) ≈ log(3) + logpdf(Normal(), 0.3)
+
+    # Joins of arrays of roots record whether all roots are equal:
+    @test MeasureJoin([Dirac(0.0), Dirac(0.0)]).equal_roots
+    @test !MeasureJoin([Dirac(0.0), Dirac(1.0)]).equal_roots
+    let s = superpose([Dirac(0.0), 0.5 * Dirac(1.0), 0.25 * Dirac(0.0)])
+        @test logdensityof(s, 0.0) ≈ log(1.25) && logdensityof(s, 1.0) ≈ log(0.5) && logdensityof(s, 0.5) == -Inf
+    end
+    @test logdensityof(superpose([Dirac(0.0), 2 * Dirac(0.0)]), 0.0) ≈ log(3)
+
+    # Mixture models convert to superpositions with the pdf of the mixture:
+    mix = Distributions.MixtureModel([MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0]), MvNormal([1.0, 1.0], [2.0 0.0; 0.0 2.0])], [0.4, 0.6])
+    @test logdensityof(asmeasure(mix), x) ≈ logpdf(mix, x)
 end

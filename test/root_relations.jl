@@ -110,7 +110,7 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
 
     @testset "pushforwards of mixed measures" begin
         ps = pushfwd(Mul(2.0), StdNormal() + Dirac(0.5))
-        @test rootmeasure(ps) == MeasureBase.LebesgueBase() + Dirac(1.0)
+        @test rootmeasure(ps) == MeasureBase.MeasureJoin((MeasureBase.LebesgueBase(), Dirac(1.0)))
         @test logdensityof(ps, 1.0) == 0
         @test logdensityof(ps, 0.5) ≈ logpdf(Normal(0, 2), 0.5)
         @test logdensity_rel(ps, pushfwd(Mul(2.0), StdNormal()) + Dirac(1.0), 1.0) == 0
