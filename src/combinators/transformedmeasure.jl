@@ -386,6 +386,15 @@ end
 function batched_transport_from_std(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray) where {S<:StdMeasure}
     _apply_batched(ν.f, batched_transport_from_std(S, ν.origin, Z), _stream_ndims(ν.origin))
 end
+# Streams are consumed by the origin, also where the pushforward has no
+# degrees of freedom of its own (without an inverse):
+function batched_transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure}
+    X, Z_rest = batched_transport_from_std_with_rest(S, ν.origin, Z, sz)
+    return _apply_batched(ν.f, X, _stream_ndims(ν.origin)), Z_rest
+end
+function batched_transport_from_std_with_rest(::Type{S}, ν::PushforwardMeasure, z::AbstractVector, ::Tuple{}) where {S<:StdMeasure}
+    transport_from_std_with_rest(S, ν, z)
+end
 
 # Apply `f` to a flat batch of variates of rank `k`:
 @inline _apply_batched(f, X, k) = _apply_generic(unwrap(f), X, k)
