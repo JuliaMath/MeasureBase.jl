@@ -56,3 +56,22 @@ massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupportof(c), s))
 massof(::CountingBase, s::Set) = length(s)
 
 @inline mdomain(μ::Counting{<:SetLike}) = μ.support
+
+# The normalized law on a finite set is the uniform distribution on it,
+# drawn by uniform index, the values stay exact:
+const _FiniteCounting = Counting{<:Union{AbstractRange,BoundedInts,AbstractSet}}
+function batched_rand_impl(ctx::GenContext, μ::_FiniteCounting, sz::SizeLike)
+    vals = _counting_values(μ.support)
+    n = length(vals)
+    n > 0 || throw(ArgumentError("Can't draw random variates from counting measure on an empty set"))
+    return _values_at(vals, min.(floor.(Int, _rand_bulk(ctx, sz) .* n), n - 1) .+ 1)
+end
+_counting_values(r::AbstractRange) = r
+_counting_values(s::AbstractSet) = collect(s)
+function _counting_values(b::BoundedInts)
+    isfinite(b.lower) && isfinite(b.upper) ||
+        throw(ArgumentError("Random variates of counting measure require a finite support, got $b"))
+    Int(dynamic(b.lower)):Int(dynamic(b.upper))
+end
+@inline _values_at(vals, i::Integer) = vals[i]
+@inline _values_at(vals, idxs::AbstractArray) = map(i -> vals[i], idxs)
