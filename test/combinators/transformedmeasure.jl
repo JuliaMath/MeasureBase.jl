@@ -9,11 +9,11 @@ import AffineMaps
 import Zygote
 using InverseFunctions: inverse
 using ChangesOfVariables: with_logabsdet_jacobian
-import Statistics: var
+using Statistics: var
 using DensityInterface: logdensityof
 using LogExpFunctions
 using SpecialFunctions: erfc, erfcinv
-import InverseFunctions: inverse, FunctionWithInverse, setinverse
+import InverseFunctions: inverse, setinverse
 using IrrationalConstants: invsqrt2, sqrt2
 using IntervalSets
 import ChangesOfVariables: with_logabsdet_jacobian
@@ -21,8 +21,6 @@ using MeasureBase.Interface: transport_to, test_transport
 
 Φ(z) = erfc(-z * invsqrt2) / 2
 Φinv(p) = -erfcinv(2 * p) * sqrt2
-
-with_logabsdet_jacobian(f::FunctionWithInverse, x) = with_logabsdet_jacobian(f.f, x)
 
 with_logabsdet_jacobian(::typeof(Φ), z) = (Φ(z), logdensityof(StdNormal(), z))
 
@@ -33,11 +31,6 @@ end
 
 inverse(::typeof(Φ)) = Φinv
 inverse(::typeof(Φinv)) = Φ
-
-var(::StdNormal) = 1.0
-var(::StdExponential) = 1.0
-var(::StdUniform) = 1 / 12
-var(::StdLogistic) = π^2 / 3
 
 function test_pushfwd(f, μ, ν_ref)
     @testset "pushfwd($f, $μ)" begin
