@@ -320,13 +320,19 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   the support (including non-integers for counting-based measures and
   infinite values), transports are `NaN` outside the support of the
   source, `NaN` inputs give `NaN` or `-Inf`, relative densities keep
-  `+Inf`/`-Inf`/`NaN`. Pushforwards are only defined on the image of their
-  map, the inverse may throw outside of it (see below). Finite inputs give
-  finite transports: uniform inputs are clamped into the open unit interval
-  before quantiles (the endpoints stand for their nearest interior grid
-  points, a null-set convention like BAT's `[eps, 1 - eps]` clamping in
-  practice), tail probabilities of log-space conversions floor at the
-  smallest positive float.
+  `+Inf`/`-Inf`/`NaN`. `StdNormal` and `StdLogistic` include `±Inf` in
+  their support, `StdExponential` includes `Inf` (decided 2026-11-09,
+  review B12): densities `-Inf`, transports give limit or floored values.
+  Components without degrees of freedom (point masses) contribute no
+  standard coordinates, so their out-of-support values show only in
+  densities and as a `-Inf` log-Jacobian, transports don't mask them with
+  `NaN` (decided 2026-11-09, review B10). Pushforwards are only defined on
+  the image of their map, the inverse may throw outside of it (see
+  below). Finite inputs give finite transports: uniform inputs are clamped
+  into the open unit interval before quantiles (the endpoints stand for
+  their nearest interior grid points, a null-set convention like BAT's
+  `[eps, 1 - eps]` clamping in practice), tail probabilities of log-space
+  conversions floor at the smallest positive float.
   Exact zeros of uniform draws for transports (and StdLogistic draws)
   become half the smallest nonzero draw of the grid of `rand`
   (`eps(T) / 4`) instead of `floatmin`, so that uniform-pivot samplers

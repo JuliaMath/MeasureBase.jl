@@ -128,10 +128,20 @@ only the likelihood path above runs traced.
   values of measures over counting measures and infinite values. `NaN`
   inputs give `NaN` or `-Inf`. Relative densities keep `+Inf`, `-Inf` and
   `NaN`.
+- `StdNormal` and `StdLogistic` include `±Inf` in their support,
+  `StdExponential` includes `Inf`. Their densities are `-Inf` there, and
+  their transports map infinite values to limits or floored values (`Inf`
+  in `StdLogistic` to `37.5` in `StdNormal`). Wrapped continuous
+  distributions don't include infinite values in their support.
 - Transports return `NaN` outside of the support of the source measure.
   Finite inputs give finite results: uniform inputs are clamped into the
   open unit interval before quantiles, tail probabilities of log-space
   conversions floor at the smallest positive float.
+- Components without degrees of freedom, such as point masses in
+  products, binds and combinations, contribute no standard coordinates.
+  Transports don't return `NaN` for their out-of-support values, which
+  show only in densities and as a `-Inf` log-abs-det Jacobian. Other
+  discrete measures have no transports.
 - Variates of the wrong shape (rank, size, container or element kind,
   tuple arity) throw an `ArgumentError` at the entry points, raised by
   [`MeasureBase.checked_arg`](@ref) and, for densities, by comparing flat
