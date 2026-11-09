@@ -139,6 +139,16 @@ end
     sum(map(unsafe_logdensity_rel, marginals(μ), marginals(ν), x))
 end
 
+# Products of root measures are roots of the common kind of their marginals
+# (see `_root_kind`), other roots if the kinds differ. Their densities
+# relative to Lebesgue measure add up over the marginals:
+@inline _root_kind(μ::ProductMeasure) = _common_root_kind(values(marginals(μ)))
+@inline _common_root_kind(mar) = isempty(mar) ? _OtherRoot() : mapreduce(_root_kind, _join_root_kinds, mar)
+@inline _join_root_kinds(a::K, ::K) where {K} = a
+@inline _join_root_kinds(::Any, ::Any) = _OtherRoot()
+@inline _lebesgue_logd(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}, x) = sum(map(_lebesgue_logd, values(marginals(μ)), values(x)))
+_lebesgue_logd(μ::ProductMeasure, x) = sum(map(_lebesgue_logd, marginals(μ), x); init = zero(_logd_numtype(x)))
+
 _mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
 
 function Pretty.tile(d::ProductMeasure{T}) where {T<:Tuple}
