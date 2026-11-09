@@ -157,7 +157,7 @@ end
 @inline _nonnan(x, y) = ifelse(isnan(x), oftype(x, y), x)
 @inline _quantile_arg(p) = _nonnan(_unit_interior(p), 1 // 2)
 @inline _logquantile_arg(logp) = _nonnan(min(logp, zero(logp)), -log(oftype(float(logp), 2)))
-@inline _nan_above_zero(logp, y) = ifelse(logp > zero(logp), oftype(y, NaN), y)
+@inline _nan_above_zero(logp, y) = ifelse(logp <= zero(logp), y, oftype(y, NaN))
 
 for (D, S) in [
     (Logistic, StdLogistic),

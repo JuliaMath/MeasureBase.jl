@@ -49,6 +49,28 @@ end
     @test csmf(3 * m, 9.0) ≈ 3 * ccdf(Normal(), 9.0)
 end
 
+@testset "Cauchy Stieltjes measure functions in the tails" begin
+    c = asmeasure(Cauchy())
+    for x in (1e15, 1e17, 1e300)
+        @test csmf(c, x) ≈ 1 / (π * x) && smf(c, -x) ≈ 1 / (π * x)
+        @test logcsmf(c, x) ≈ -log(π * x) && logsmf(c, -x) ≈ -log(π * x)
+        @test invcsmf(c, csmf(c, x)) ≈ x && invsmf(c, smf(c, -x)) ≈ -x
+        @test invlogcsmf(c, logcsmf(c, x)) ≈ x && invlogsmf(c, logsmf(c, -x)) ≈ -x
+    end
+    @test logsmf(c, 1e17) ≈ -1 / (π * 1e17) && logcsmf(c, -1e17) ≈ -1 / (π * 1e17)
+    @test smf(c, 0.3) ≈ cdf(Cauchy(), 0.3) && invsmf(c, 0.3) ≈ quantile(Cauchy(), 0.3)
+    @test smf(c, Inf) == 1 && csmf(c, Inf) == 0 && logsmf(c, -Inf) == -Inf && isnan(smf(c, NaN))
+    @test isnan(invlogsmf(c, NaN)) && isnan(invlogcsmf(c, 0.5)) && isnan(invcsmf(c, 1.5))
+    for a in (1e17, -1e17)
+        t = truncate(c, a > 0 ? (a .. Inf) : (-Inf .. a))
+        @test massof(t) ≈ 1 / (π * 1e17)
+        # The tail beyond 2a holds about half of the truncated mass:
+        X = rand(StableRNG(789990641), normalize(t)^10^4)
+        @test count(x -> abs(x) > 2e17, X) / length(X) ≈ 0.5 atol = 0.03
+        @test all(x -> abs(x) >= 1e17, X)
+    end
+end
+
 @testset "truncated distributions" begin
     for (d, a, b) in [
         (Normal(1.0, 2.0), -0.5, 2.5),

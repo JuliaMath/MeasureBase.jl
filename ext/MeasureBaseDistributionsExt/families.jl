@@ -196,9 +196,18 @@ end
 # from it, the quantile comes from the smaller one of `logistic(±l)`:
 @inline _logit_of_tails(p, q) = log(MeasureBase._positive_prob(p)) - log(MeasureBase._positive_prob(q))
 
+# `log(p)` from `q` where `p` is close to one:
+@inline function _log_tail(p, q)
+    lower = p < q
+    ifelse(lower, log(ifelse(lower, p, one(p))), log1p(-ifelse(lower, zero(q), q)))
+end
+
 # `|x|` with the derivative of `x` at zero (`abs` has none there in some AD
 # backends):
 @inline _signed_abs(x) = ifelse(x < zero(x), -x, x)
+
+# The (log) probability arguments of the inverse SMFs in both tails:
+@inline _probs_of_logp(logp) = (lp = _logquantile_arg(logp); (exp(lp), -expm1(lp)))
 
 # Cauchy: `atan(z) / π + 1/2` cancels in the tails, the angles
 # `atan(σ, μ - x)` and `atan(σ, x - μ)` don't. `tan(π(p - 1/2))` loses
@@ -221,6 +230,17 @@ end
     _cauchy_tail_quantile(d, logistic(l), logistic(-l))
 end
 
+@inline MeasureBase.smf(d::Cauchy, x::Real) = _dist_smf(_cauchy_cdf, d, x, x > 0)
+@inline MeasureBase.csmf(d::Cauchy, x::Real) = _dist_smf(_cauchy_ccdf, d, x, x < 0)
+@inline MeasureBase.logsmf(d::Cauchy, x::Real) = _dist_logsmf((d, x) -> _log_tail(_cauchy_cdf(d, x), _cauchy_ccdf(d, x)), d, x, x > 0)
+@inline MeasureBase.logcsmf(d::Cauchy, x::Real) = _dist_logsmf((d, x) -> _log_tail(_cauchy_ccdf(d, x), _cauchy_cdf(d, x)), d, x, x < 0)
+@inline MeasureBase.invsmf(d::Cauchy, p::Real) = _nan_outside(StdUniform, p, _cauchy_tail_quantile(d, p, 1 - p))
+@inline MeasureBase.invcsmf(d::Cauchy, q::Real) = _nan_outside(StdUniform, q, _cauchy_tail_quantile(d, 1 - q, q))
+@inline MeasureBase.invlogsmf(d::Cauchy, logp::Real) = _nan_above_zero(logp, _cauchy_tail_quantile(d, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogcsmf(d::Cauchy, logq::Real)
+    q, p = _probs_of_logp(logq)
+    _nan_above_zero(logq, _cauchy_tail_quantile(d, p, q))
+end
 
 # Laplace: `l = ±log(2 exp(|z|) - 1)` by the sign of `z`, and back
 # `|z| = log((exp(|l|) + 1) / 2)`, each in two forms that stay accurate
