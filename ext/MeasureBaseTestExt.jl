@@ -61,22 +61,39 @@ function test_interface(μ::M) where {M}
             @test ℓμ ≈ logdensity_def(μ, x) + ℓβ
 
             @test logdensity_def(μ, testvalue(Float64, μ)) isa Real
+
+            test_batched_densities(asmeasure(μ))
         end
     end
+end
+
+structisapprox(a, b) = isapprox(a, b)
+structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where {N} = all(map(structisapprox, a, b))
+function structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where {names}
+    all(map(structisapprox, values(a), values(b)))
+end
+
+batchisapprox(A, B) = size(A) == size(B) && all(map(structisapprox, A, B))
+
+# A batch of variates of `μ`: random draws, or copies of the test value if
+# `μ` has infinite mass and so no normalized law to draw from.
+test_batch(μ) = _test_batch(μ, massof(μ))
+_test_batch(μ, mass::Real) = mass == Inf ? fill(testvalue(μ), 3) : rand(μ^3)
+_test_batch(μ, ::Any) = rand(μ^3)
+
+function test_batched_densities(μ)
+    X = test_batch(μ)
+    ℓ = map(x -> logdensityof(μ, x), X)
+    @test size(X) == (3,) && all(>(-Inf), ℓ)
+    @test batchisapprox(logdensities(μ, X), ℓ)
+    @test logdensityof(μ^3, X) ≈ sum(ℓ)
+    @test isempty(logdensities(μ, X[1:0]))
 end
 
 function test_transport(ν, μ)
     supertype(x) = Any
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where {N} = AbstractArray{<:Real,N}
-
-    structisapprox(a, b) = isapprox(a, b)
-    function structisapprox(a::NTuple{N,Any}, b::NTuple{N,Any}) where {N}
-        all(map(structisapprox, a, b))
-    end
-    function structisapprox(a::NamedTuple{names}, b::NamedTuple{names}) where {names}
-        all(map(structisapprox, values(a), values(b)))
-    end
 
     @testset "transport_to $μ to $ν" begin
         x = rand(μ)
@@ -91,6 +108,16 @@ function test_transport(ν, μ)
         @test structisapprox(y, y2)
         @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
         @test ladj_fwd ≈ logdensityof(MeasureBase._unweighted(μ), x) - logdensityof(MeasureBase._unweighted(ν), y)
+
+        X = rand(μ^3)
+        ys = map(f, X)
+        @test batchisapprox(transports(f, X), ys)
+        @test batchisapprox(f.(X), ys)
+        Y, ladjs = transports_with_ladj(f, X)
+        @test batchisapprox(Y, ys)
+        @test batchisapprox(ladjs, map(x -> with_logabsdet_jacobian(f, x)[2], X))
+        @test batchisapprox(transports(inverse(f), Y), X)
+        @test isempty(transports(f, X[1:0]))
     end
 end
 

@@ -1,5 +1,6 @@
 using Test
 using MeasureBase
+using MeasureBase.Interface: test_interface, test_transport
 
 @testset "public API" begin
     @static if VERSION >= v"1.11"
@@ -106,4 +107,44 @@ end
     end
     @test Dirac([1.0, 2.0]) != Dirac([1.0, 3.0])
     @test weightedmeasure(0.5, StdNormal()) != weightedmeasure(0.6, StdNormal())
+end
+
+
+# Records test results without reporting them, to test the test helpers:
+struct _RecordingTestSet <: Test.AbstractTestSet
+    description::String
+    results::Vector{Any}
+end
+_RecordingTestSet(description::AbstractString; kwargs...) = _RecordingTestSet(description, [])
+Test.record(ts::_RecordingTestSet, result) = (push!(ts.results, result); result)
+Test.record(ts::_RecordingTestSet, child::_RecordingTestSet) = (append!(ts.results, child.results); child)
+function Test.finish(ts::_RecordingTestSet)
+    parent = Test.get_testset_depth() > 0 ? Test.get_testset() : nothing
+    parent isa _RecordingTestSet && Test.record(parent, ts)
+    return ts
+end
+
+# A normal distribution whose batched density and batched transport to
+# StdNormal disagree with the point kernels:
+struct _InconsistentNormal <: AbstractMeasure end
+MeasureBase.logdensity_def(::_InconsistentNormal, x) = -x^2 / 2
+MeasureBase.basemeasure(::_InconsistentNormal) = weightedmeasure(-log(2π) / 2, Lebesgue())
+MeasureBase.insupportof(::_InconsistentNormal, x) = true
+MeasureBase.massof(::_InconsistentNormal) = MeasureBase.static(1.0)
+MeasureBase.mspace_flatsize(::Type{<:_InconsistentNormal}) = ()
+MeasureBase.mspace_flatsize(::_InconsistentNormal) = ()
+MeasureBase.preferred_stdmeasure(::Type{<:_InconsistentNormal}) = StdNormal
+MeasureBase.transport_to_std(::Type{StdNormal}, ::_InconsistentNormal, x) = x
+MeasureBase.transport_from_std(::Type{StdNormal}, ::_InconsistentNormal, z) = z
+MeasureBase.batched_logdensityof_impl(::_InconsistentNormal, X) = @. -X^2 - log(2π) / 2
+MeasureBase.batched_transport_to_std(::Type{StdNormal}, ::_InconsistentNormal, X) = 2 .* reshape(X, 1, size(X)...)
+
+@testset "Interface test helpers check batched kernels" begin
+    for check in (() -> test_interface(_InconsistentNormal()), () -> test_transport(StdNormal(), _InconsistentNormal()))
+        ts = @testset _RecordingTestSet "inconsistent batched kernels" begin
+            check()
+        end
+        @test any(r -> r isa Test.Fail, ts.results)
+        @test !any(r -> r isa Test.Error, ts.results)
+    end
 end
