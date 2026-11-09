@@ -61,6 +61,26 @@ end
     @test MeasureBase.logdensityof(p, exp(1.5)) ≈ -1.5
 end
 
+@testset "parameters of distributions" begin
+    I2 = Matrix(1.0I, 2, 2)
+    for (d, names) in [
+        (Distributions.Weibull(0.7, 1.3), (:α, :θ)), (Distributions.Dirichlet([1.0, 2.0, 3.0]), (:alpha,)),
+        (Distributions.Categorical([0.2, 0.8]), (:p,)), (Distributions.DiscreteUniform(1, 6), (:a, :b)),
+        (Distributions.DiscreteNonParametric([0.5, 1.5], [0.4, 0.6]), (:support, :p)),
+        (Distributions.Wishart(3.0, I2), (:df, :S)), (Distributions.LKJ(2, 1.0), (:d, :η)),
+        (Distributions.MvTDist(3.0, [0.0, 1.0], I2), (:df, :μ, :Σ)), (Distributions.MvNormal([0.0, 1.0], I2), (:μ, :Σ)),
+        (Distributions.truncated(Distributions.Normal(), 0.0, 1.0), (:p1, :p2, :p3, :p4)),
+        (Distributions.censored(Distributions.Normal(), 0.0, 1.0), (:p1, :p2, :p3, :p4)),
+    ]
+        m = MeasureBase.asmeasure(d)
+        @test MeasureBase.paramnames(d) == MeasureBase.paramnames(m) == names
+        @test values(MeasureBase.paramsof(d)) == values(MeasureBase.paramsof(m)) == Distributions.params(d)
+    end
+    @test @inferred(MeasureBase.paramsof(Distributions.Dirichlet([1.0, 2.0]))) == (alpha = [1.0, 2.0],)
+    @test MeasureBase.paramsof(MeasureBase.asmeasure(Distributions.Dirichlet([1.0, 2.0]))^3) == (alpha = [1.0, 2.0],)
+end
+
+
 # Needs AffineMaps >= 0.3.4 (earlier versions give per-column Jacobians of
 # scalar factors and scalar ones for Add):
 @testset "affine pushforward densities" begin

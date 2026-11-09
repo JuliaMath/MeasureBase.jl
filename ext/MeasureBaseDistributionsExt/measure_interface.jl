@@ -15,5 +15,20 @@ MeasureBase.mintegrate(f, base::Distribution) =
     MeasureBase.mintegrate(f, convert(AbstractMeasure, base))
 
 
-@inline MeasureBase.paramnames(d::Distribution) = propertynames(d)
-@inline MeasureBase.paramsof(d::Distribution) = NamedTuple{propertynames(d)}(Distributions.params(d))
+# Parameters as returned by `Distributions.params`, named after the
+# leading fields of the distribution where these hold them (by type),
+# after the constructor arguments for some common distributions whose
+# fields differ, positionally (`p1`, `p2`, ...) otherwise:
+function MeasureBase.paramsof(d::Distribution)
+    p = Distributions.params(d)
+    NamedTuple{_paramnames(typeof(d), typeof(p))}(p)
+end
+MeasureBase.paramnames(d::Distribution) = keys(MeasureBase.paramsof(d))
+
+@generated function _paramnames(::Type{D}, ::Type{P}) where {D<:Distribution,P<:Tuple}
+    n = fieldcount(P)
+    by_fields = fieldcount(D) >= n && all(i -> fieldtype(D, i) == fieldtype(P, i), 1:n)
+    by_fields ? fieldnames(D)[1:n] : ntuple(i -> Symbol(:p, i), n)
+end
+_paramnames(::Type{<:Distributions.Categorical}, ::Type{<:Tuple{Any}}) = (:p,)
+_paramnames(::Type{<:Distributions.AbstractMvTDist}, ::Type{<:NTuple{3,Any}}) = (:df, :μ, :Σ)

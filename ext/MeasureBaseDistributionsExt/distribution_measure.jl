@@ -164,5 +164,5 @@ end
 @inline MeasureBase.batched_transport_from_std(::Type{S}, m::DistributionMeasure, Z::AbstractArray) where {S<:StdMeasure} =
     MeasureBase.batched_transport_from_std(S, m.obj, Z)
 
-@inline MeasureBase.paramnames(m::DistributionMeasure) = propertynames(m.obj)
-@inline MeasureBase.paramsof(m::DistributionMeasure) = NamedTuple{propertynames(m.obj)}(Distributions.params(m.obj))
+@inline MeasureBase.paramnames(m::DistributionMeasure) = MeasureBase.paramnames(m.obj)
+@inline MeasureBase.paramsof(m::DistributionMeasure) = MeasureBase.paramsof(m.obj)
