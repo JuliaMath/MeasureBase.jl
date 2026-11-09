@@ -203,8 +203,10 @@ implements the recipes of docs/src/concepts.md.
 
 - Powers: `(base dims..., power dims..., batch dims...)`, innermost base
   first; standard variates are the flat vector of the base's. Results
-  are nested views over the flat storage. Powers of tuple products treat
-  numeric flat variates as streams and accept tuples of batches.
+  are nested views over the flat storage, arrays of struct-array slices
+  for nested powers of tuple products (ArraysOfArrays can't infer their
+  slice types). Powers of tuple products treat numeric flat variates as
+  streams and accept tuples of batches.
 - Array products: `(marginal dims..., product dims..., batch dims...)`.
 - Tuple products: tuples of batches; marginal by marginal in streams.
 - Combined `vcat`: streams; `merge`: merged named tuples. Binds: single
