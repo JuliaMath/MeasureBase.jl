@@ -96,7 +96,8 @@ end
 @inline _transported_std_draw(ctx::GenContext, μ, ::Tuple{}, ::Type{S}, ::IntegerLike, ::StaticInteger{0}) where {S} =
     transport_from_std(S, μ, _rand_std(ctx, S, ()))
 
-# Variates generated one by one, stacked into a flat batch:
+# Variates generated one by one in a host loop, stacked into a flat batch
+# and moved to the compute unit:
 @inline _rand_pointwise(ctx::GenContext, μ, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
 @noinline _rand_pointwise(::GenContext, μ, ::Tuple{}) = _throw_no_rand_impl(μ)
 @noinline function _throw_no_rand_impl(μ)
@@ -104,7 +105,8 @@ end
 end
 
 function _batched_rand_pointwise(ctx::GenContext, μ, sz::SizeLike)
-    _stack_variates(map(_ -> rand_impl(ctx, μ), CartesianIndices(asnonstatic(sz))), μ)
+    xs = map(_ -> rand_impl(ctx, μ), CartesianIndices(asnonstatic(sz)))
+    _on_compute_unit(ctx, _stack_variates(xs, μ))
 end
 @inline _batched_rand_pointwise(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
 
@@ -117,6 +119,19 @@ end
 # Empty batches of array variates keep the variate dimensions:
 function _stack_variates(xs::AbstractArray{<:AbstractArray{T}}, μ) where {T<:Number}
     isempty(xs) ? similar(xs, T, (_empty_batch_flatsize(μ)..., size(xs)...)) : _stack_variates(xs)
+end
+
+# Numeric batches generated on the host, moved to the compute unit of the
+# context. Fills and device arrays stay as they are, and so do traced
+# numbers:
+@inline _on_compute_unit(ctx::GenContext, X) = _on_host(ctx) ? X : _to_compute_unit(get_compute_unit(ctx), X)
+@inline _to_compute_unit(unit, X::Union{Tuple,NamedTuple}) = map(Base.Fix1(_to_compute_unit, unit), X)
+@inline _to_compute_unit(unit, X) = X
+function _to_compute_unit(unit, X::Array{T}) where {T<:Number}
+    isbitstype(T) || return X
+    Y = allocate_array(unit, T, size(X))
+    copyto!(Y, X)
+    return Y
 end
 
 

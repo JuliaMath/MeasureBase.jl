@@ -172,5 +172,16 @@ struct NoRandMeasure <: AbstractMeasure end
         @test isapprox(mean(Array(Xt[2])), 1.0, atol = 0.05)
         Xc = batched_rand_impl(dctx, productmeasure((a = StdNormal(), c = Dirac(2.0f0))), (n,))
         @test Xc.c isa JLArray{Float32,1} && all(==(2.0f0), Array(Xc.c))
+
+        # Variates generated one by one on the host are moved to the device:
+        b = mbind(a -> StdNormal(), StdNormal())
+        bv = mbind(a -> StdNormal()^2, StdNormal(), vcat)
+        for (μ, sz) in ((b, (3,)), (NoBatchRandMeasure(), (3,)), (bv, (3, 3)), (mcombine(vcat, NoBatchRandMeasure()^2, StdNormal()^2), (4, 3)), (mcombine(vcat, bv^2, StdNormal()^2), (8, 3)))
+            X = batched_rand_impl(dctx, μ, (3,))
+            @test X isa JLArray{Float32} && size(X) == sz
+        end
+        Xb = batched_rand_impl(dctx, productmeasure((a = StdNormal(), b = b)), (3,))
+        @test Xb.a isa JLArray{Float32,1} && Xb.b isa JLArray{Float32,1}
+        @test rand(dctx, NoBatchRandMeasure()^3) isa JLArray{Float32,1}
     end
 end

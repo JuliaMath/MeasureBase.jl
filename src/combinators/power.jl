@@ -63,7 +63,7 @@ rand_impl(ctx::GenContext, μ::PowerMeasure) = _pwr_rand(ctx, μ, fixed_stream_s
 _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::True) = _pwr_variate(μ, batched_rand_impl(ctx, μ, ()))
 function _pwr_rand(ctx::GenContext, μ::PowerMeasure, ::False)
     ν = pwr_base(μ)
-    map(_ -> rand_impl(ctx, ν), _cartidxs(pwr_axes(μ)))
+    _on_compute_unit(ctx, map(_ -> rand_impl(ctx, ν), _cartidxs(pwr_axes(μ))))
 end
 
 function batched_rand_impl(ctx::GenContext, μ::PowerMeasure, sz::SizeLike)
