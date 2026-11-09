@@ -167,20 +167,33 @@ end
 @inline function _flat_storage(X::AbstractArray{<:Union{Tuple,NamedTuple}})
     _flat_storage(StructArray(X; unwrap = T -> T <: Union{Tuple,NamedTuple}))
 end
-@inline _components_storage(cs::Tuple) = map(_component_storage, cs)
-@inline _components_storage(cs::NamedTuple{names}) where {names} = NamedTuple{names}(map(_component_storage, values(cs)))
+# Components of value-dependent size (ragged arrays of arrays) leave the
+# whole batch without flat storage:
+@inline _components_storage(cs::Tuple) = _all_flat(map(_component_storage, cs))
+@inline function _components_storage(cs::NamedTuple{names}) where {names}
+    _named_flat(_components_storage(values(cs)), Val(names))
+end
+@inline _all_flat(cs::Tuple) = any(c -> c isa NoFlatStorage, cs) ? NoFlatStorage() : cs
+@inline _named_flat(cs::Tuple, ::Val{names}) where {names} = NamedTuple{names}(cs)
+@inline _named_flat(cs::NoFlatStorage, ::Val) = cs
 @inline _component_storage(c::StructArray{<:Union{Tuple,NamedTuple}}) = _flat_storage(c)
-@inline _component_storage(c::AbstractArray{<:Number}) = c
+@inline _component_storage(c::Union{Number,AbstractArray{<:Number}}) = c
+@inline _component_storage(c::Union{Tuple,NamedTuple}) = _components_storage(c)
 @inline _component_storage(c::AbstractArray{<:AbstractArray}) = _component_flat(c, _flat_storage(c))
+@inline _component_storage(c::AbstractArray{<:Union{Tuple,NamedTuple}}) = _flat_storage(c)
 @inline _component_flat(c, c_flat::AbstractArray) = c_flat
-@inline _component_flat(c, ::NoFlatStorage) = stacked(c)
+@inline _component_flat(c, ::NoFlatStorage) = _uniform_size(c) ? stacked(c) : NoFlatStorage()
+@inline _uniform_size(c::AbstractArray) = isempty(c) || all(x -> size(x) == size(first(c)), c)
 
 # Entry: arrays of numbers are flat storage, arrays of variates are fused
 # into their flat storage (else evaluated variate by variate), tuples and
 # named tuples of batches go to the kernels directly.
 @inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _checked_batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, x::Number) where {F} = _point_ld(f, μ, x)
-@inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X)
+@inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_ld_tuple(f, μ, X, _components_storage(X))
+@inline _batched_ld_tuple(f::F, μ, X, X_flat::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X_flat)
+# Tuples of ragged batches are evaluated variate by variate:
+@inline _batched_ld_tuple(f::F, μ, X, ::NoFlatStorage) where {F} = _batched_ld(f, μ, StructArray(X))
 @inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _stream_ndims(μ))
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::AbstractArray, ::StaticInteger) where {F}
     _check_batch_shape(_checked_batched_kernel(f, μ, X_flat), X)

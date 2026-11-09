@@ -7,6 +7,7 @@ using MeasureBase: StdNormal, StdUniform, StdExponential, productmeasure, insupp
 using MeasureBase: weightedmeasure, mintegrate_exp, mcombine
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
+import StructArrays
 using ArraysOfArrays: flatview
 using FillArrays: Fill
 using Distributions: Normal, cdf
@@ -42,6 +43,35 @@ using MeasureBase: Dirac
     @test Yn isa StructArray && Yn[1] isa NamedTuple{(:a, :b)}
     @test all(Yn[i].a ≈ X[i][1] && Yn[i].b ≈ X[i][2] for i in 1:6)
     @test inverse(h).(Yn) isa StructArray
+
+    @testset "tuple batches with arrays of variates and ragged components" begin
+        x2 = [0.1, 0.2]
+        P1 = productmeasure((StdNormal()^2, StdNormal()))
+        ℓ1 = logdensityof(P1, (x2, 0.3))
+        @test logdensities(P1, ([x2, x2, x2], [0.3, 0.3, 0.3])) ≈ fill(ℓ1, 3)
+        @test logdensities(productmeasure((a = StdNormal()^2, b = StdNormal())), (a = [x2, x2], b = [0.3, 0.3])) ≈ fill(ℓ1, 2)
+        Y = rand(P1^3)
+        @test logdensities(P1, StructArrays.components(Y)) ≈ logdensityof.(Ref(P1), Y)
+        f = transport_to(StdNormal()^3, P1)
+        @test flatview(transports(f, StructArrays.components(Y))) ≈ stack(map(f, Y))
+        @test_throws ArgumentError logdensities(P1, ([x2, x2, [0.1]], [0.3, 0.3, 0.3]))
+
+        # Value-dependent variate sizes are evaluated variate by variate:
+        b = MeasureBase.mbind(a -> StdNormal()^(a > 0 ? 1 : 2), StdNormal(), vcat)
+        Pb = productmeasure((a = StdNormal(), b = b))
+        xs = [(a = 0.1, b = [0.3, 0.2]), (a = -0.4, b = [-0.3, 0.2, 0.5]), (a = 1.0, b = [0.6, 0.7])]
+        ℓs = logdensityof.(Ref(Pb), xs)
+        ℓN(x) = -x^2 / 2 - log(2π) / 2
+        @test ℓs ≈ [ℓN(x.a) + sum(ℓN, x.b) for x in xs]
+        @test logdensities(Pb, xs) ≈ ℓs
+        @test logdensities(Pb, StructArray(xs)) ≈ ℓs
+        @test logdensities(Pb, (a = map(x -> x.a, xs), b = map(x -> x.b, xs))) ≈ ℓs
+        @test logdensityof(Pb^3, xs) ≈ sum(ℓs)
+        @test insupportof(Pb^3, xs) isa Union{Bool,MeasureBase.NoFastInsupport}
+        g = transport_to(Pb, Pb)
+        @test transports(g, xs) == map(g, xs)
+        @test_throws ArgumentError logdensities(productmeasure((a = StdNormal(), b = StdNormal()^2)), [(a = 0.1, b = [0.1, 0.2]), (a = 0.1, b = [0.1])])
+    end
 
     @testset "fill columns" begin
         # Constant columns (`rand` gives them for point masses) mix with
