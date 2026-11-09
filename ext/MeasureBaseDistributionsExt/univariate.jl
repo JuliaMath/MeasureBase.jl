@@ -242,9 +242,16 @@ for (D, S) in [
         @inline MeasureBase.preferred_stdmeasure(::Type{<:$D}) = $S
         @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _nan_outside(d, x, _affine_to_std(d, x))
         @inline MeasureBase.transport_from_std(::Type{$S}, d::$D, z) = _std_to_affine(d, z)
-        @inline MeasureBase.smf(d::$D, a::Real, x::Real) = MeasureBase.smf($S(), _affine_to_std(d, a), _affine_to_std(d, x))
-        @inline MeasureBase.invsmf(d::$D, a::Real, p::Real) = _std_to_affine(d, MeasureBase.invsmf($S(), _affine_to_std(d, a), p))
+        @inline MeasureBase.smf(d::$D, a::Real, x::Real) = MeasureBase.smf($S(), _interval_end_to_std(d, a), _interval_end_to_std(d, x))
+        @inline MeasureBase.invsmf(d::$D, a::Real, p::Real) = _std_to_affine(d, MeasureBase.invsmf($S(), _interval_end_to_std(d, a), p))
     end
+end
+
+# Infinite interval ends stay exact, also for derivatives with respect to the
+# parameters (the affine map gives them NaN partials):
+@inline function _interval_end_to_std(d::Distribution{Univariate}, x::Real)
+    z = _affine_to_std(d, _finite_arg(x))
+    ifelse(isfinite(x), z, oftype(z, x))
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
