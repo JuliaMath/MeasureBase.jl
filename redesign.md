@@ -73,9 +73,10 @@ via `logdensities`). Results never alias the input. Leaves implement
 measure (`preferred_stdmeasure`, `promote_stdmeasure`, `AnyStdMeasure`,
 `NoStdTransport`), array-variate leaves also the `batched_` forms.
 `stdconvert` converts between standard measures in log form,
-`transport_def` may be specialized for direct pairs, together with
-`batched_transport_def`, which batched transports and broadcasting use (as
-with `rand_impl` and `batched_rand_impl`). Transports map
+`transport_def` may be specialized for direct pairs. Batches then go
+variate by variate through it, unless `batched_transport_def` is
+specialized for the pair as well (looked up at run time, so later method
+definitions take effect). Transports map
 normalized laws: weighted measures transport like their base, and the
 log-abs-det Jacobian is the density ratio of the normalized measures, with
 weights stripped structurally (through weighted measures, tuple products,
@@ -165,16 +166,18 @@ pushforwards.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |---|---|---|---|
-| Density | `logdensity_def`, `basemeasure`, `insupportof` | + `batched_logdensityof_impl` (`batched_logdensity_def` optional, used by composed kernels) | kernels via components, with-rest forms |
+| Density | `logdensity_def`, `basemeasure`, `insupportof` | + `batched_logdensityof_impl`, or only `batched_logdensity_def` (point and batched densities derived from it, composed kernels use it) | kernels via components, with-rest forms |
 | Mass | `massof` (transport Jacobians, densities of `normalize`) | the same | derived |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | + `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
 | Random | `batched_rand_impl` (default via transport), optionally `rand_impl` | `batched_rand_impl` (default via transport) | derived |
 | Declarations | `mspace_flatsize(::Type)` | `mspace_ndims`, optionally `mspace_flatsize` | derived |
 
 Measures of value-dependent size have no base measure: besides the
-with-rest forms and `fixed_stream_size` they implement the point density,
-`insupportof`, point transports, `rand_impl`, `massof`, `getdof`/`fast_dof`
-(`NoDOF`), `checked_arg` and `mspace_ndims`. Extension methods keep the
+with-rest forms and `fixed_stream_size` they implement `insupportof`,
+`preferred_stdmeasure`, `rand_impl`, `massof` and `mspace_ndims`. Their
+densities and point transports of whole streams, `NoDOF` degrees of
+freedom and argument checks are derived from the with-rest forms (only
+for measure types without a `basemeasure` method). Extension methods keep the
 argument annotations of the generic methods (`sz::SizeLike`,
 `Z::AbstractArray`), otherwise they are ambiguous with them; `SizeLike`,
 `size_tuple` and `static` are public for that. `test/extension_recipes.jl`

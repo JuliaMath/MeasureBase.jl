@@ -10,10 +10,10 @@ with-rest hooks (`MeasureBase.logdensityof_with_rest`,
 `MeasureBase.transport_to_std_with_rest`,
 `MeasureBase.transport_from_std_with_rest` and their `batched_` forms)
 and declare `MeasureBase.fixed_stream_size`. They have no base measure,
-so they also implement the point density and point transports,
-`MeasureBase.rand_impl`, their degrees of freedom (`MeasureBase.NoDOF`)
-and `MeasureBase.checked_arg`. See [Concepts](@ref) for both tiers, the
-full lists and the stream conventions.
+their densities, point transports and degrees of freedom follow from the
+with-rest hooks, and they implement `MeasureBase.rand_impl`. See
+[Concepts](@ref) for both tiers, the full lists and the stream
+conventions.
 
 ```@autodocs
 Modules = [MeasureBase, MeasureBase.MeasureOperators]

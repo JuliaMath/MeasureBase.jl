@@ -22,7 +22,6 @@ MeasureBase.basemeasure(::_RecipeLaplace) = weightedmeasure(-log(2.0), Lebesgue(
 MeasureBase.insupportof(::_RecipeLaplace, x) = true
 MeasureBase.massof(::_RecipeLaplace) = MeasureBase.static(1.0)
 MeasureBase.mspace_flatsize(::Type{<:_RecipeLaplace}) = ()
-MeasureBase.mspace_flatsize(::_RecipeLaplace) = ()
 MeasureBase.preferred_stdmeasure(::Type{<:_RecipeLaplace}) = StdUniform
 MeasureBase.transport_to_std(::Type{StdUniform}, ::_RecipeLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_RecipeLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
@@ -94,28 +93,13 @@ function MeasureBase.batched_transport_from_std_with_rest(::Type{S}, μ::_Recipe
 end
 MeasureBase.fixed_stream_size(::Type{<:_RecipeChain}) = MeasureBase.static(false)
 
-_whole_stream(result, rest) = isempty(rest) ? result : throw(ArgumentError("Variate too long"))
-function MeasureBase.logdensityof_impl(μ::_RecipeChain, x::AbstractVector)
-    ℓ, _, x_rest = MeasureBase.logdensityof_with_rest(μ, x)
-    return _whole_stream(ℓ, x_rest)
-end
 MeasureBase.insupportof(::_RecipeChain, x) = MeasureBase.NoFastInsupport{_RecipeChain}()
 MeasureBase.massof(::_RecipeChain) = MeasureBase.static(1.0)
 MeasureBase.preferred_stdmeasure(::Type{<:_RecipeChain}) = StdNormal
-function MeasureBase.transport_to_std(::Type{S}, μ::_RecipeChain, x::AbstractVector) where {S<:StdMeasure}
-    z, _, x_rest = MeasureBase.transport_to_std_with_rest(S, μ, x)
-    return _whole_stream(z, x_rest)
-end
-function MeasureBase.transport_from_std(::Type{S}, μ::_RecipeChain, z::AbstractVector) where {S<:StdMeasure}
-    _whole_stream(MeasureBase.transport_from_std_with_rest(S, μ, z)...)
-end
 function MeasureBase.rand_impl(ctx::GenContext, ::_RecipeChain)
     a = MeasureBase.rand_impl(ctx, StdExponential())
     return vcat(a, MeasureBase.rand_impl(ctx, _chain_tail(a)))
 end
-MeasureBase.getdof(::_RecipeChain) = MeasureBase.NoDOF{_RecipeChain}()
-MeasureBase.fast_dof(::_RecipeChain) = MeasureBase.NoDOF{_RecipeChain}()
-MeasureBase.checked_arg(::_RecipeChain, x) = x
 MeasureBase.mspace_ndims(::Type{<:_RecipeChain}) = 1
 
 
@@ -201,6 +185,9 @@ MeasureBase.mspace_ndims(::Type{<:_RecipeChain}) = 1
         @test transports(f, [x, x2]) ≈ [f(x), f(x2)]
         @test transport_to(StdNormal()^4, ν)([x; 0.7]) ≈ [f(x); 0.7]
 
+        # Without a base measure, densities, transports, the degrees of
+        # freedom and the argument checks come from the with-rest hooks:
+        @test getdof(μ) isa MeasureBase.NoDOF && fast_dof(μ) isa MeasureBase.NoDOF
         xs = [rand(μ) for _ in 1:5]
         @test all(x -> length(x) == 1 + max(1, ceil(Int, x[1])), xs)
         @test all(isfinite, logdensities(μ, xs))

@@ -268,12 +268,12 @@ derived.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |:--- |:--- |:--- |:--- |
-| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupportof` | the same, plus `batched_logdensityof_impl` | kernels via components, with-rest forms |
+| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupportof` | the same, plus `batched_logdensityof_impl` (or only `batched_logdensity_def`) | kernels via components, with-rest forms |
 | Mass | `massof` | the same | derived, `massof` for value-dependent sizes |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | also `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
 | Random | `batched_rand_impl` or `rand_impl` (derived from a transport) | `batched_rand_impl` (derived from a transport) | derived, `rand_impl` for value-dependent sizes |
 | Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize` | derived, `mspace_ndims` for value-dependent sizes |
-| Degrees of freedom | `getdof` and `fast_dof` where they differ from those of the base measure (e.g. over counting measures) | the same | derived, `NoDOF` for value-dependent sizes |
+| Degrees of freedom | `getdof` and `fast_dof` where they differ from those of the base measure (e.g. over counting measures) | the same | derived |
 
 All of these are declared `public` (see the [Extension API](@ref) page) and
 must be qualified with `MeasureBase.` when extended. Methods for new
@@ -305,25 +305,24 @@ Measures come in two tiers:
   `MeasureBase.fixed_stream_size(::Type{<:M}) = MeasureBase.static(false)`.
   Batches of such variates are evaluated variate by variate, see
   [Streams](@ref) for the conventions. These measures have no base
-  measure, so the defaults derived from it don't apply. Outside of
-  streams they also need the point density `logdensityof_impl` with
-  `insupportof` (returning a `MeasureBase.NoFastInsupport` if the density
-  checks the support), `preferred_stdmeasure` with point transports
-  `transport_to_std` and `transport_from_std` that consume the whole
-  stream, `rand_impl`, `massof`, `getdof` and `fast_dof` returning a
-  `MeasureBase.NoDOF`, `checked_arg`, and `mspace_ndims` for vector
-  variates.
+  measure. Their densities and point transports of whole streams follow
+  from the with-rest hooks, their degrees of freedom are unknown
+  (`MeasureBase.NoDOF`) and their arguments are checked by the hooks.
+  They also need `insupportof` (returning a `MeasureBase.NoFastInsupport`
+  if the density checks the support), `preferred_stdmeasure` (the
+  standard measure of their transports), `rand_impl`, `massof`, and
+  `mspace_ndims` for vector variates.
 
 A scalar-variate leaf `M` with `logdensity_def`, `basemeasure` and
-`insupportof` has point densities. Batched densities, powers and products
-need its variate rank, `MeasureBase.mspace_flatsize(::Type{<:M}) = ()`.
-Streams (`mcombine(vcat, ...)`, binds) need its variate size,
-`MeasureBase.mspace_flatsize(::M) = ()`, or draw a test variate to learn
-it. Random variates need `batched_rand_impl` or `rand_impl`, or the
-standard transport (`preferred_stdmeasure`, `transport_to_std`,
+`insupportof` has point densities. Batched densities, powers, products
+and streams (`mcombine(vcat, ...)`, binds) need its variate size and rank,
+both declared by `MeasureBase.mspace_flatsize(::Type{<:M}) = ()`. Random
+variates need `batched_rand_impl` or `rand_impl`, or the standard
+transport (`preferred_stdmeasure`, `transport_to_std`,
 `transport_from_std`), which also provides `transport_to`. Random
 variates and test values from the standard transport, and transports from
-standard measures, need the variate rank as well. Transport Jacobians
+standard measures, need the variate rank as well, without it they throw
+an `ArgumentError` that names the declaration. Transport Jacobians
 (also in densities of pushforwards by transports) and the densities of
 `normalize` need its mass, `MeasureBase.massof(::M) = MeasureBase.static(1.0)`
 for a probability measure (static, so that `normalize` returns the
@@ -339,16 +338,19 @@ flat batches of its variates: `batched_logdensityof_impl` (densities
 relative to the root measure), `batched_transport_to_std` and
 `batched_transport_from_std`, and optionally `batched_rand_impl`. The
 Distributions extension implements `MvNormal` and `Dirichlet` this way.
+In place of the point `logdensity_def` and `batched_logdensityof_impl`,
+an array-variate leaf may implement only
+`MeasureBase.batched_logdensity_def`, from which both are derived.
 
 - [`MeasureBase.logdensityof_impl`](@ref) implements `logdensityof`,
   [`MeasureBase.batched_logdensityof_impl`](@ref) implements
   `logdensities`. Measure types should specialize these (or
   `logdensity_def` and `basemeasure`), not `logdensityof` itself.
-  [`MeasureBase.batched_logdensity_def`](@ref), the batched form of
-  `logdensity_def` that the kernels of powers, products and weighted
-  measures call, maps `logdensity_def` over the variates unless it is
-  specialized. Specializing it doesn't change `logdensityof` and
-  `logdensities`.
+  [`MeasureBase.batched_logdensity_def`](@ref) is the batched form of
+  `logdensity_def`. It has no generic method: measure types that
+  implement it get `logdensity_def` and the default
+  `batched_logdensityof_impl` from it, and the kernels of powers, products
+  and weighted measures use it for their components.
 - [`MeasureBase.batched_rand_impl`](@ref) is the primary extension point
   for random variates. [`MeasureBase.rand_impl`](@ref) defaults to it (with
   zero batch dimensions) and may be specialized for single variates. The
@@ -361,9 +363,10 @@ Distributions extension implements `MvNormal` and `Dirichlet` this way.
   binds and combinations with other value combination functions than
   `tuple`, `Pair`, `vcat` and `merge`.
 - [`MeasureBase.transport_def`](@ref) may be specialized for direct
-  transports between specific pairs of measure types, together with
-  [`MeasureBase.batched_transport_def`](@ref), which batched transports
-  and broadcasting use. For scalar variates, e.g.
+  transports between specific pairs of measure types. Batched transports
+  and broadcasting then transport variate by variate with it, unless
+  [`MeasureBase.batched_transport_def`](@ref) is specialized for the pair
+  as well, for a fused batched transport. For scalar variates, e.g.
   `MeasureBase.batched_transport_def(ν::A, μ::B, X) = broadcast(x -> MeasureBase.transport_def(ν, μ, x), X)`.
 
 The test utilities in [`MeasureBase.Interface`](@ref) check measure

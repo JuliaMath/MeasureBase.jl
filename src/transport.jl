@@ -47,7 +47,10 @@ of other measures specialize the stream forms
 [`MeasureBase.transport_to_std_with_rest`](@ref) and
 [`MeasureBase.transport_from_std_with_rest`](@ref) instead (and their
 batched forms). [`MeasureBase.transport_def`](@ref) may be specialized
-for pairs of measure types with a direct transport.
+for pairs of measure types with a direct transport. Batches then go
+variate by variate through it, unless
+[`MeasureBase.batched_transport_def`](@ref) is specialized for the pair
+as well.
 """
 function transport_to end
 export transport_to
