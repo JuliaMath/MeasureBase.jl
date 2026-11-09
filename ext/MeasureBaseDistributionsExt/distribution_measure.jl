@@ -27,8 +27,7 @@ function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
     if _native_rand(ctx, d)
         _native_draw(get_precision(ctx), d, _dist_rand(get_rng(ctx), d))
     else
-        _check_std_transport(d)
-        MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
+        _nonnative_rand(ctx, m, ())
     end
 end
 
@@ -37,9 +36,18 @@ function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, 
     if _native_rand(ctx, d)
         _flat_powrand(get_rng(ctx), get_precision(ctx), d, sz)
     else
-        _check_std_transport(d)
-        MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+        _nonnative_rand(ctx, m, sz)
     end
+end
+
+function _nonnative_rand(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
+    _check_std_transport(m.obj)
+    MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+end
+# Bernoulli variates compare uniform variates with the success probability,
+# branch-free and exact:
+function _nonnative_rand(ctx::GenContext, m::AsMeasure{<:Bernoulli}, sz::SizeLike)
+    MeasureBase._rand_bulk(ctx, sz) .< convert(get_precision(ctx), Distributions.succprob(m.obj))
 end
 
 @inline function _native_rand(ctx::GenContext, d::Distribution)
@@ -73,6 +81,9 @@ end
 # they draw a fixed variate:
 @inline _dist_rand(::ConstantRNG, d::Distribution{<:Union{Distributions.CholeskyVariate,Distributions.NamedTupleVariate}}) =
     rand(Xoshiro(0), d)
+# Those of correlation matrices and of the sphere give variates outside of
+# the support with constant draws, they draw a fixed variate as well:
+@inline _dist_rand(::ConstantRNG, d::Union{Distributions.LKJ,Distributions.VonMisesFisher}) = rand(Xoshiro(0), d)
 _dist_rand(rng::ConstantRNG, d::Distributions.Multinomial) = _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), Distributions.probs(d))
 function _dist_rand(rng::ConstantRNG, d::Distributions.DirichletMultinomial)
     _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), d.α ./ sum(d.α))
@@ -81,9 +92,6 @@ end
 function _multinomial_by_inversion(u::Real, n::Integer, p::AbstractVector{<:Real})
     x = zeros(Int, length(p))
     n_rem, p_rem = n, one(eltype(p))
-# Those of correlation matrices and of the sphere give variates outside of
-# the support with constant draws, they draw a fixed variate as well:
-@inline _dist_rand(::ConstantRNG, d::Union{Distributions.LKJ,Distributions.VonMisesFisher}) = rand(Xoshiro(0), d)
     for i in firstindex(p):(lastindex(p) - 1)
         k = Int(Distributions.quantile(Distributions.Binomial(n_rem, clamp(p[i] / p_rem, 0, 1)), u))
         x[i] = k
@@ -196,14 +204,6 @@ end
     "Wrapped distributions of $(nameof(Distributions.variate_form(typeof(d)))) variates have no root measure"
 ))
 
-# Logit-normal distributions on the simplex, like Dirichlet:
-@inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.MvLogitNormal}) = Lebesgue(MeasureBase.StdSimplex(length(m.obj)))
-@inline MeasureBase.getdof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
-@inline MeasureBase.fast_dof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
-
-# Discrete distributions over integers count on all integers, those over
-# other values on their atoms, so that the base measures of superpositions
-# see these:
 # Distributions on manifolds have densities relative to measures on their
 # coordinates (e.g. Lebesgue measure on the free entries of symmetric
 # matrices, or the surface measure of the sphere), which aren't declared as
@@ -239,6 +239,14 @@ struct _UnitSphere end
 @inline _manifold_dim(s::_PSDMatrices, (n, _)::Dims{2}) = n * s.rank - s.rank * (s.rank - 1) ÷ 2
 @inline _manifold_dim(::_UnitSphere, (n,)::Dims{1}) = n - 1
 
+# Logit-normal distributions on the simplex, like Dirichlet:
+@inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.MvLogitNormal}) = Lebesgue(MeasureBase.StdSimplex(length(m.obj)))
+@inline MeasureBase.getdof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
+@inline MeasureBase.fast_dof(m::AsMeasure{<:Distributions.MvLogitNormal}) = length(m.obj) - 1
+
+# Discrete distributions over integers count on all integers, those over
+# other values on their atoms, so that the base measures of superpositions
+# see these:
 @inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.DiscreteNonParametric}) = _atoms_root(m.obj)
 @inline _atoms_root(::Distributions.DiscreteNonParametric{<:Integer}) = Counting()
 @inline _atoms_root(d::Distributions.DiscreteNonParametric) = Counting(Distributions.support(d))

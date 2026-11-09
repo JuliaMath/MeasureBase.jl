@@ -87,7 +87,16 @@ using StructArrays: StructArray
 
     @testset "discrete distributions without standard transports" begin
         jl32 = GenContext{Float32}(MeasureBase.HeterogeneousComputing.AbstractComputeUnit(JLBackend()))
-        for d in (Poisson(2.0), Bernoulli(0.3), Categorical([0.2, 0.8]), Binomial(5, 0.3))
+        # Bernoulli variates compare uniform variates with the success
+        # probability:
+        X = batched_rand_impl(jl32, asmeasure(Bernoulli(0.3)), (10^4,))
+        @test X isa JLArray{Bool,1}
+        @test count(Array(X)) / 10^4 ≈ 0.3 atol = 5 * sqrt(0.21 / 10^4)
+        @test rand(jl32, asmeasure(Bernoulli(0.3))) isa Bool
+        @test rand(jl32, asmeasure(Bernoulli(0.3))^3) isa JLArray{Bool,1}
+        @test all(Array(batched_rand_impl(jl32, asmeasure(Bernoulli(1.0)), (100,))))
+        @test !any(Array(batched_rand_impl(jl32, asmeasure(Bernoulli(0.0)), (100,))))
+        for d in (Poisson(2.0), Categorical([0.2, 0.8]), Binomial(5, 0.3))
             err = try
                 batched_rand_impl(jl32, asmeasure(d), (5,))
             catch e
