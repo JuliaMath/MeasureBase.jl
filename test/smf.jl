@@ -1,5 +1,5 @@
-using Distributions: Normal, Logistic, Exponential, Uniform
-using Distributions: cdf, ccdf, logcdf, logccdf, cquantile, invlogcdf, invlogccdf
+using Distributions: Normal, Logistic, Exponential, Uniform, Poisson, Bernoulli
+using Distributions: pdf, cdf, ccdf, logcdf, logccdf, cquantile, invlogcdf, invlogccdf
 using IntervalSets
 
 smf_measures = [
@@ -65,4 +65,18 @@ end
     @test massof(StdNormal(), 9.0 .. Inf) ≈ ccdf(Normal(), 9.0)
     @test massof(StdNormal(), 9.0 .. 10.0) ≈ ccdf(Normal(), 9.0) - ccdf(Normal(), 10.0)
     @test massof(StdNormal(), -10.0 .. -9.0) ≈ cdf(Normal(), -9.0) - cdf(Normal(), -10.0)
+end
+
+@testset "interval masses of measures with atoms" begin
+    # Stieltjes measure functions give the masses of left-open, right-closed
+    # intervals:
+    p = asmeasure(Poisson(2.0))
+    @test massof(p, Interval{:open,:closed}(1, 5)) ≈ sum(k -> pdf(Poisson(2.0), k), 2:5)
+    @test massof(p, Interval{:open,:closed}(-1, 0)) ≈ pdf(Poisson(2.0), 0)
+    @test massof(asmeasure(Bernoulli(0.3)), Interval{:open,:closed}(-1, 0)) ≈ 0.7
+    # Other intervals would lose or gain the atoms at their ends:
+    @test_throws ArgumentError massof(p, 2 .. 5)
+    @test_throws ArgumentError p(0 .. 0)
+    @test_throws ArgumentError massof(asmeasure(Bernoulli(0.3)), 0 .. 1)
+    @test massof(StdNormal(), 0 .. 1) ≈ cdf(Normal(), 1) - cdf(Normal(), 0)
 end

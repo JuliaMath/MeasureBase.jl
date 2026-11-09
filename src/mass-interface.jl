@@ -69,7 +69,11 @@ should *not* add new "call" methods, but instead extend `MeasureBase.massof`.
 
 For example, for many univariate measures `m` with `rootmeasure(m) ==
 LebesgueBase()`, users can call `massof(m, a_b)` where
-`a_b::IntervalSets.Interval`.
+`a_b::IntervalSets.Interval`. Interval masses come from the Stieltjes
+measure function (see [`smf`](@ref)), they are exact for left-open,
+right-closed intervals `Interval{:open,:closed}(a, b)`. Other intervals
+are treated alike (they differ by the masses of the ends) and require a
+root measure without atoms.
 
 `massof` often returns a `Real`. But in many cases we may only know the mass is
 finite, or we may know nothing at all about it. For these cases, it will return
@@ -121,7 +125,20 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-function massof(μ, a_b::AbstractInterval)
+# Stieltjes measure functions give the masses of left-open, right-closed
+# intervals. Other intervals differ from them by the masses of their ends,
+# which only vanish for measures without atoms:
+massof(μ, a_b::AbstractInterval) = _interval_massof(μ, a_b, _atom_free(rootmeasure(μ)))
+_interval_massof(μ, a_b::Interval{:open,:closed}, ::Bool) = _smf_interval_massof(μ, a_b)
+_interval_massof(μ, a_b::AbstractInterval, atom_free::Bool) =
+    atom_free ? _smf_interval_massof(μ, a_b) : _throw_atomic_interval_massof(μ)
+@noinline _throw_atomic_interval_massof(μ) = throw(
+    ArgumentError(
+        "Masses of intervals other than left-open, right-closed ones require a root measure without atoms, the root measure of a measure of type $(nameof(typeof(μ))) has atoms",
+    ),
+)
+
+function _smf_interval_massof(μ, a_b::AbstractInterval)
     lo, hi = endpoints(a_b)
     _smf_interval_massof(μ, smf(μ, lo), smf(μ, hi), csmf(μ, lo), csmf(μ, hi))
 end
