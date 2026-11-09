@@ -19,20 +19,22 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 # precision of the distribution parameters. Where that is lower than the
 # precision of the context, and on other compute units, variates are
 # generated from standard variates of the context precision via the
-# transports. Draws of distributions without standard transports are
-# converted to the context precision afterwards, only their type follows
-# the context then.
+# transports. Draws of continuous distributions without standard transports
+# are converted to the context precision afterwards, only their type
+# follows the context then. Atoms of discrete distributions stay exact.
 function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
-    if _native_rand(ctx, m.obj)
-        convert_realtype(get_precision(ctx), _dist_rand(get_rng(ctx), m.obj))
+    d = m.obj
+    if _native_rand(ctx, d)
+        _native_draw(get_precision(ctx), d, _dist_rand(get_rng(ctx), d))
     else
         MeasureBase._rand_default(ctx, m, (), MeasureBase._NoRandImpl())
     end
 end
 
 function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
-    if _native_rand(ctx, m.obj)
-        _flat_powrand(get_rng(ctx), get_precision(ctx), m.obj, asnonstatic(sz))
+    d = m.obj
+    if _native_rand(ctx, d)
+        _flat_powrand(get_rng(ctx), get_precision(ctx), d, sz)
     else
         MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
     end
@@ -47,35 +49,74 @@ end
 end
 @inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
 
+@inline _native_draw(::Type{T}, ::Distribution{<:ArrayLikeVariate,Continuous}, x) where {T<:Real} = convert_realtype(T, x)
+@inline _native_draw(::Type{<:Real}, ::Distribution, x) = x
+
 # Constant RNGs (for test values) only draw floats, but Distributions'
 # samplers draw integer ranges and may reject constant draws forever, so
 # univariate distributions are sampled by inversion then (in the type of
-# their native draws):
-@inline _dist_rand(rng::AbstractRNG, d::Distribution) = rand(rng, d)
+# their native draws), multinomials by the inversion of their sequential
+# binomial draws:
+@inline _dist_rand(rng::AbstractRNG, d) = rand(rng, d)
 @inline _dist_rand(rng::ConstantRNG, d::Distribution{Univariate}) = convert(eltype(d), Distributions.quantile(d, rand(rng)))
+_dist_rand(rng::ConstantRNG, d::Distributions.Multinomial) = _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), Distributions.probs(d))
+function _dist_rand(rng::ConstantRNG, d::Distributions.DirichletMultinomial)
+    _multinomial_by_inversion(rand(rng), Distributions.ntrials(d), d.α ./ sum(d.α))
+end
 
-# A single variate for zero batch dimensions, flat batches otherwise:
-_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = convert_realtype(T, _dist_rand(rng, d))
-_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real} = _flat_powrand_batch(rng, T, d, sz)
-_flat_powrand(rng::ConstantRNG, ::Type{T}, d::Distribution{Univariate}, sz::Dims) where {T<:Real} =
-    fill(convert_realtype(T, _dist_rand(rng, d)), sz)
+function _multinomial_by_inversion(u::Real, n::Integer, p::AbstractVector{<:Real})
+    x = zeros(Int, length(p))
+    n_rem, p_rem = n, one(eltype(p))
+    for i in firstindex(p):(lastindex(p) - 1)
+        k = Int(Distributions.quantile(Distributions.Binomial(n_rem, clamp(p[i] / p_rem, 0, 1)), u))
+        x[i] = k
+        n_rem -= k
+        p_rem -= p[i]
+    end
+    x[end] = n_rem
+    return x
+end
+
+# A single variate for zero batch dimensions, flat batches otherwise, static
+# arrays for static sizes of univariate distributions. Constant RNGs give
+# constant batches of the single variate:
+_flat_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::SizeLike) where {T<:Real} = _sized_powrand(rng, T, d, sz)
+_flat_powrand(rng::ConstantRNG, ::Type{T}, d::Distribution, sz::SizeLike) where {T<:Real} = _const_powrand(T, d, _dist_rand(rng, d), sz)
+
+_sized_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, ::Tuple{}) where {T<:Real} = _native_draw(T, d, _dist_rand(rng, d))
+_sized_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::SizeLike) where {T<:Real} = _flat_powrand_batch(rng, T, d, asnonstatic(sz))
+function _sized_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{Univariate}, sz::StaticSizeLike) where {T<:Real}
+    smp = Distributions.sampler(d)
+    A = similar_type(staticarray_type(T, canonical_size(sz)), _native_draw_type(T, d))
+    A(ntuple(_ -> _native_draw(T, d, rand(rng, smp)), Val(length(A))))
+end
+_sized_powrand(rng::AbstractRNG, ::Type{T}, d::Distribution{Univariate}, ::Tuple{}) where {T<:Real} = _native_draw(T, d, _dist_rand(rng, d))
+
+@inline _native_draw_type(::Type{T}, d::Distribution) where {T<:Real} = typeof(_native_draw(T, d, zero(eltype(d))))
+
+_const_powrand(::Type{T}, d::Distribution, x, ::Tuple{}) where {T<:Real} = _native_draw(T, d, x)
+_const_powrand(::Type{T}, d::Distribution{Univariate}, x, ::Tuple{}) where {T<:Real} = _native_draw(T, d, x)
+_const_powrand(::Type{T}, d::Distribution{Univariate}, x, sz::SizeLike) where {T<:Real} = maybestatic_fill(_native_draw(T, d, x), sz)
+function _const_powrand(::Type{T}, d::Distribution, x, sz::SizeLike) where {T<:Real}
+    y = _native_draw(T, d, x)
+    reshape(repeat(vec(y), prod(asnonstatic(sz))), size(y)..., asnonstatic(sz)...)
+end
 
 function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{0}}, sz::Dims) where {T<:Real}
-    convert_realtype(T, reshape(rand(rng, d, prod(sz)), sz...))
+    _native_draw(T, d, reshape(rand(rng, d, prod(sz)), sz...))
 end
 
 function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution{<:ArrayLikeVariate{1}}, sz::Dims) where {T<:Real}
-    convert_realtype(T, reshape(rand(rng, d, prod(sz)), size(d)..., sz...))
+    _native_draw(T, d, reshape(rand(rng, d, prod(sz)), size(d)..., sz...))
 end
 
 function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::ReshapedDistribution{N,<:Any,<:Distribution{<:ArrayLikeVariate{1}}}, sz::Dims) where {T<:Real,N}
-    convert_realtype(T, reshape(rand(rng, d.dist, prod(sz)), d.dims..., sz...))
+    _native_draw(T, d, reshape(rand(rng, d.dist, prod(sz)), d.dims..., sz...))
 end
 
 function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::Dims) where {T<:Real}
-    flatview(ArrayOfSimilarArrays(convert_realtype(T, rand(rng, d, sz))))
+    flatview(ArrayOfSimilarArrays(_native_draw(T, d, rand(rng, d, sz))))
 end
-
 
 
 @inline DensityInterface.densityof(m::DistributionMeasure) = densityof(m.obj)

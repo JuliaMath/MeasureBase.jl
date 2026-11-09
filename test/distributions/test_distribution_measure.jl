@@ -229,3 +229,35 @@ end
     @test rootmeasure(AbstractMeasure(Categorical([0.2, 0.8]))) == Counting()
     @test rootmeasure(AbstractMeasure(DiscreteNonParametric([1, 3], [0.4, 0.6]))) == Counting()
 end
+
+@testset "native draws of wrapped distributions" begin
+    using Distributions: DiscreteNonParametric, Normal, Gamma, Poisson, Multinomial, DirichletMultinomial, MvNormal
+    using MeasureBase: GenContext, testvalue
+    using StableRNGs: StableRNG
+    using StaticArrays: SVector
+    using Static: static
+    using LinearAlgebra: I
+    # Atoms stay exact under lower context precisions:
+    m = AbstractMeasure(DiscreteNonParametric([0.1, 0.7], [0.5, 0.5]))
+    ctx32 = GenContext{Float32}(StableRNG(1))
+    x = rand(ctx32, m)
+    @test x isa Float64 && x in (0.1, 0.7) && logdensityof(m, x) ≈ log(0.5)
+    @test logdensityof(m^5, rand(ctx32, m^5)) ≈ 5 * log(0.5)
+    # Static powers give static arrays (without allocations where
+    # Distributions' sampler doesn't allocate):
+    for (d, T) in ((Normal(1.0, 2.0), Float64), (Gamma(2.0, 1.5), Float64), (Poisson(2.0), Int))
+        @test @inferred(rand(StableRNG(1), AbstractMeasure(d)^static(3))) isa SVector{3,T}
+    end
+    alloc_of(rng, p) = (rand(rng, p); @allocated rand(rng, p))
+    @test alloc_of(StableRNG(1), AbstractMeasure(Normal(1.0, 2.0))^static(3)) == 0
+    @test rand(GenContext{Float32}(StableRNG(1)), AbstractMeasure(Normal(1.0, 2.0))^static(3)) isa SVector{3,Float32}
+    @test rand(StableRNG(1), productmeasure((AbstractMeasure(Normal(1.0, 2.0))^static(2), StdNormal()^static(2)))) isa NTuple{2,SVector{2,Float64}}
+    # Test values of multinomials (Distributions' samplers reject constant
+    # draws forever for larger counts), in the support:
+    for d in (Multinomial(50, [0.2, 0.3, 0.5]), Multinomial(30, [0.5, 0.5]), DirichletMultinomial(100, [1.0, 2.0]))
+        x = testvalue(AbstractMeasure(d))
+        @test Distributions.insupport(d, x) && sum(x) == Distributions.ntrials(d)
+        @test testvalue(AbstractMeasure(d)^3) == fill(x, 3)
+    end
+    @test testvalue(AbstractMeasure(MvNormal([1.0, 2.0], Matrix(1.0I, 2, 2)))^2) == fill([1.0, 2.0], 2)
+end

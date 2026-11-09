@@ -47,7 +47,8 @@ using HeterogeneousComputing: real_numtype, GenContext, get_rng, get_precision
 using ConstantRNGs: ConstantRNG
 
 using Static: True, False, static
-using StaticThings: SizeLike, asnonstatic
+using StaticThings: SizeLike, StaticSizeLike, asnonstatic, canonical_size, staticarray_type, maybestatic_fill
+using StaticArrays: similar_type
 using FillArrays: Fill
 
 using ArgCheck: @argcheck
