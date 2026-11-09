@@ -42,6 +42,15 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         @test logdensity_rel(p2^3, StdNormal()^3, x) ≈ sum(logpdf.(Normal(0, 2), x) .- logpdf.(Normal(), x))
     end
 
+    @testset "products of primitive roots" begin
+        s = superpose(productmeasure((StdNormal(), StdNormal())), Dirac((0.0, 1.0)))
+        @test logdensityof(s, (0.0, 1.0)) == 0
+        @test logdensityof(s, (0.5, 1.0)) ≈ logpdf(Normal(), 0.5) + logpdf(Normal(), 1.0)
+        c = productmeasure([Counting(1:3), Counting(0:4)])
+        @test logdensity_rel(c, StdNormal()^2, [1.0, 2.0]) == Inf
+        @test logdensity_rel(c, P^2, [1.0, 2.0]) ≈ -(logpdf(Poisson(2.0), 1) + logpdf(Poisson(2.0), 2))
+    end
+
     @testset "superpositions of continuous and atomic measures" begin
         s = superpose(P^2, StdNormal()^2)
         @test logdensityof(s, [1.0, 2.0]) ≈ logpdf(Poisson(2.0), 1) + logpdf(Poisson(2.0), 2)
