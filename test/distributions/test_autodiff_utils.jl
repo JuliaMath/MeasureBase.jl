@@ -122,3 +122,31 @@ end
     x_t = transport_to(TDist(3.0), StdNormal())(-0.4)
     @test Zygote.gradient(bt, [0.3, -0.4])[1] ≈ [1.0, 2 * φ(-0.4) / pdf(TDist(3.0), x_t)]
 end
+
+
+@testset "nested ForwardDiff through generic transports" begin
+    # Second derivatives of x(z) = F⁻¹(Φ(z)) and z(x) = Φ⁻¹(F(x)) from the
+    # density f and its log-derivative g = f'/f:
+    φ(z) = exp(-z^2 / 2) / sqrt(2π)
+    d2x_dz2(f, g, z, x) = (r = φ(z) / f(x); r * (-z - r * g(x)))
+    d2z_dx2(f, g, x, z) = (r = f(x) / φ(z); r * (g(x) + z * r))
+    D = ForwardDiff.derivative
+
+    t = TDist(3.0)
+    f_t, g_t = x -> pdf(t, x), x -> -4x / (3 + x^2)
+    x_of_z = transport_to(asmeasure(t), StdNormal())
+    z_of_x = transport_to(StdNormal(), asmeasure(t))
+    @test D(z -> D(x_of_z, z), 0.3) ≈ d2x_dz2(f_t, g_t, 0.3, x_of_z(0.3))
+    @test D(x -> D(z_of_x, x), 0.3) ≈ d2z_dx2(f_t, g_t, 0.3, z_of_x(0.3))
+
+    c = Chisq(3.0)
+    z_of_x_c = transport_to(StdNormal(), asmeasure(c))
+    @test D(x -> D(z_of_x_c, x), 0.7) ≈ d2z_dx2(x -> pdf(c, x), x -> 1 / (2x) - 1 / 2, 0.7, z_of_x_c(0.7))
+
+    # sum(abs2, x(z)) has the diagonal Hessian 2 (x'² + x x''):
+    z = [0.3, -0.2]
+    x_of_z2 = transport_to(asmeasure(t)^2, StdNormal()^2)
+    H = ForwardDiff.hessian(z -> sum(abs2, x_of_z2(z)), z)
+    x = x_of_z2(z)
+    @test H ≈ Diagonal(2 .* ((φ.(z) ./ f_t.(x)).^2 .+ x .* d2x_dz2.(f_t, g_t, z, x)))
+end
