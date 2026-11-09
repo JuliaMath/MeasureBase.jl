@@ -1,7 +1,11 @@
 using Test
 
 using MeasureBase
-using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixture
+using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixture, GenContext
+using Distributions: Poisson
+using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
+using JLArrays: JLArray, JLBackend
+using Random: Xoshiro
 
 @testset "superpose.jl" begin
     μ = Dirac(0)
@@ -85,4 +89,28 @@ using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixtu
     @test s2 isa WeightedMeasure
     @test exp(s2.logweight) ≈ 2
     @test basemeasure(s2) == StdNormal()
+end
+
+@testset "random variates of superpositions" begin
+    # Draws of the components are promoted to a common type, independent of
+    # which components are selected:
+    s = superpose(StdNormal(), Dirac(0.0))
+    for seed in 1:6
+        @test MeasureBase.batched_rand_impl(GenContext{Float32}(Xoshiro(seed)), s, (4,)) isa Vector{Float64}
+    end
+    @test @inferred(MeasureBase.batched_rand_impl(GenContext{Float32}(Xoshiro(1)), s, (4,))) isa Vector{Float64}
+    @test @inferred(rand(Xoshiro(1), s)) isa Float64
+    @test rand(superpose(StdNormal(), Dirac(0))^4) isa Vector{Float64}
+    @test eltype(rand(superpose(asmeasure(Poisson(2.0)), Dirac(0.5))^4)) == Float64
+    dctx = GenContext{Float32}(AbstractComputeUnit(JLBackend()))
+    @test MeasureBase.batched_rand_impl(dctx, s, (5,)) isa JLArray{Float64}
+
+    # Components are selected by mass, single variates like batches:
+    m = superpose(0.3 * StdNormal(), 0.7 * Dirac(2.0))
+    X = rand(Xoshiro(1), m^100_000)
+    @test count(==(2.0), X) / length(X) ≈ 0.7 atol = 0.01
+    x = [rand(Xoshiro(i), m) for i in 1:10_000]
+    @test count(==(2.0), x) / length(x) ≈ 0.7 atol = 0.02
+    v = rand(Xoshiro(1), superpose(StdNormal()^2, Dirac([0.0, 0.0])))
+    @test v isa Vector{Float64} && length(v) == 2
 end

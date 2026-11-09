@@ -118,7 +118,12 @@ function _component_masses(μ::SuperpositionMeasure)
     return map(dynamic, masses), dynamic(total)
 end
 
-function rand_impl(ctx::GenContext, μ::SuperpositionMeasure)
+# Single variates of superpositions with a variate rank are drawn like
+# batches, branch-free (also traced), the others select a component by the
+# drawn threshold:
+rand_impl(ctx::GenContext, μ::SuperpositionMeasure) = _superpose_rand(ctx, μ, _stream_ndims(μ))
+_superpose_rand(ctx::GenContext, μ::SuperpositionMeasure, k::StaticInteger) = _superpose_batched_rand(ctx, μ, (), k)
+function _superpose_rand(ctx::GenContext, μ::SuperpositionMeasure, ::NoMSpaceElementSize)
     components = values(μ.components)
     masses, total = _component_masses(μ)
     threshold = rand(ctx) * total
@@ -131,7 +136,8 @@ function rand_impl(ctx::GenContext, μ::SuperpositionMeasure)
 end
 
 # Batches of superpositions draw a batch from each component and select
-# by mass, branch-free:
+# by mass, branch-free. The draws are promoted to a common number type,
+# point masses stay exact:
 function batched_rand_impl(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike)
     _superpose_batched_rand(ctx, μ, sz, _stream_ndims(μ))
 end
@@ -139,10 +145,31 @@ function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::
     components = values(μ.components)
     masses, total = _component_masses(μ)
     thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, k)
-    X = batched_rand_impl(ctx, first(components), sz)
-    csum = first(masses)
-    for (mass, c) in Iterators.drop(zip(masses, components), 1)
-        X = ifelse.(thresholds .<= csum, X, batched_rand_impl(ctx, c, sz))
+    draws = map(c -> _component_draws(ctx, c, sz), components)
+    T = mapreduce(eltype, promote_type, draws)
+    Xs = map(X -> _convert_draws(T, X), draws)
+    return _select_draws(thresholds, first(Xs), first(masses), _tail(masses), _tail(Xs))
+end
+
+@inline _component_draws(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
+@inline _component_draws(ctx::GenContext, μ, sz::SizeLike) = batched_rand_impl(ctx, μ, sz)
+
+@inline _convert_draws(::Type{T}, X::T) where {T<:Number} = X
+@inline _convert_draws(::Type{T}, X::AbstractArray{T}) where {T} = X
+@inline _convert_draws(::Type{T}, X) where {T} = convert.(T, X)
+
+@inline _tail(xs::Tuple) = Base.tail(xs)
+@inline _tail(xs::AbstractVector) = view(xs, firstindex(xs)+1:lastindex(xs))
+
+# The first component whose cumulative mass reaches the threshold:
+@inline _select_draws(thresholds, X, ::Any, ::Tuple{}, ::Tuple{}) = X
+@inline function _select_draws(thresholds, X, csum, masses::Tuple, Ys::Tuple)
+    X_new = ifelse.(thresholds .<= csum, X, first(Ys))
+    _select_draws(thresholds, X_new, csum + first(masses), Base.tail(masses), Base.tail(Ys))
+end
+function _select_draws(thresholds, X, csum, masses::AbstractVector, Ys::AbstractVector)
+    for (mass, Y) in zip(masses, Ys)
+        X = ifelse.(thresholds .<= csum, X, Y)
         csum += mass
     end
     return X
