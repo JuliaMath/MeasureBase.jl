@@ -81,6 +81,9 @@ end
 function _multinomial_by_inversion(u::Real, n::Integer, p::AbstractVector{<:Real})
     x = zeros(Int, length(p))
     n_rem, p_rem = n, one(eltype(p))
+# Those of correlation matrices and of the sphere give variates outside of
+# the support with constant draws, they draw a fixed variate as well:
+@inline _dist_rand(::ConstantRNG, d::Union{Distributions.LKJ,Distributions.VonMisesFisher}) = rand(Xoshiro(0), d)
     for i in firstindex(p):(lastindex(p) - 1)
         k = Int(Distributions.quantile(Distributions.Binomial(n_rem, clamp(p[i] / p_rem, 0, 1)), u))
         x[i] = k
@@ -201,6 +204,41 @@ end
 # Discrete distributions over integers count on all integers, those over
 # other values on their atoms, so that the base measures of superpositions
 # see these:
+# Distributions on manifolds have densities relative to measures on their
+# coordinates (e.g. Lebesgue measure on the free entries of symmetric
+# matrices, or the surface measure of the sphere), which aren't declared as
+# charts yet. Their opaque roots relate only to equal roots, so that they
+# share the root with the distributions on the same manifold. Their degrees
+# of freedom are the dimensions of the manifolds:
+const _ManifoldDist = Union{
+    Distributions.LKJ,Distributions.Wishart,Distributions.InverseWishart,
+    Distributions.MatrixBeta,Distributions.MatrixFDist,Distributions.VonMisesFisher,
+}
+
+@inline function MeasureBase.rootmeasure(m::AsMeasure{<:_ManifoldDist})
+    space, sz = _manifold(m.obj), size(m.obj)
+    MeasureBase.OpaqueRoot(space, sz, _manifold_dim(space, sz))
+end
+@inline MeasureBase.getdof(m::AsMeasure{<:_ManifoldDist}) = getdof(rootmeasure(m))
+@inline MeasureBase.fast_dof(m::AsMeasure{<:_ManifoldDist}) = MeasureBase.getdof(m)
+
+# Correlation matrices, positive semi-definite matrices of a given rank, the
+# unit sphere:
+struct _CorrelationMatrices end
+struct _PSDMatrices
+    rank::Int
+end
+struct _UnitSphere end
+
+@inline _manifold(::Distributions.LKJ) = _CorrelationMatrices()
+@inline _manifold(d::Distributions.Wishart) = _PSDMatrices(LinearAlgebra.rank(d))
+@inline _manifold(d::Union{Distributions.InverseWishart,Distributions.MatrixBeta,Distributions.MatrixFDist}) = _PSDMatrices(first(size(d)))
+@inline _manifold(::Distributions.VonMisesFisher) = _UnitSphere()
+
+@inline _manifold_dim(::_CorrelationMatrices, (n, _)::Dims{2}) = n * (n - 1) ÷ 2
+@inline _manifold_dim(s::_PSDMatrices, (n, _)::Dims{2}) = n * s.rank - s.rank * (s.rank - 1) ÷ 2
+@inline _manifold_dim(::_UnitSphere, (n,)::Dims{1}) = n - 1
+
 @inline MeasureBase.rootmeasure(m::AsMeasure{<:Distributions.DiscreteNonParametric}) = _atoms_root(m.obj)
 @inline _atoms_root(::Distributions.DiscreteNonParametric{<:Integer}) = Counting()
 @inline _atoms_root(d::Distributions.DiscreteNonParametric) = Counting(Distributions.support(d))

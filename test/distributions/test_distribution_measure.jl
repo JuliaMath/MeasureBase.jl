@@ -283,3 +283,35 @@ end
     @test getdof(ml) == fast_dof(ml) == 2
     @test logdensity_rel(ml, AbstractMeasure(Dirichlet([1.0, 2.0, 3.0])), x) ≈ Distributions.logpdf(d, x) - Distributions.logpdf(Dirichlet([1.0, 2.0, 3.0]), x)
 end
+
+@testset "distributions on manifolds" begin
+    using Distributions: LKJ, Wishart, InverseWishart, MatrixBeta, MatrixFDist, VonMisesFisher, logpdf
+    using MeasureBase: rootmeasure, getdof, fast_dof, testvalue, logdensity_rel, Lebesgue, pushfwd
+    using AffineMaps: Mul
+    using LinearAlgebra: I
+    using StableRNGs: StableRNG
+    S = [2.0 0.5; 0.5 1.0]
+    # Degrees of freedom are the dimensions of the manifolds:
+    for (d, n) in [
+        (LKJ(3, 1.5), 3), (Wishart(5.0, S), 3), (Wishart(1.0, S), 2), (InverseWishart(5.0, S), 3),
+        (MatrixBeta(3, 4.0, 5.0), 6), (MatrixFDist(4.0, 5.0, Matrix(1.0I, 3, 3)), 6), (VonMisesFisher([0.6, 0.0, 0.8], 2.0), 2),
+    ]
+        m = AbstractMeasure(d)
+        @test getdof(m) == fast_dof(m) == n
+        x = rand(StableRNG(1), d)
+        @test logdensityof(m, x) ≈ logpdf(d, x)
+        @test_throws ArgumentError logdensity_rel(m, Lebesgue()^size(d), x)
+        d isa Union{LKJ,VonMisesFisher} && @test Distributions.insupport(d, testvalue(m))
+    end
+    # Distributions on the same manifold share the root:
+    W, X = Wishart(5.0, S), rand(StableRNG(2), Wishart(5.0, S))
+    for d2 in (Wishart(6.0, 2S), InverseWishart(5.0, S))
+        @test logdensity_rel(AbstractMeasure(W), AbstractMeasure(d2), X) ≈ logpdf(W, X) - logpdf(d2, X)
+    end
+    @test logdensity_rel(AbstractMeasure(LKJ(3, 1.5)), AbstractMeasure(LKJ(3, 0.5)), testvalue(AbstractMeasure(LKJ(3, 1.0)))) ≈
+        logpdf(LKJ(3, 1.5), testvalue(AbstractMeasure(LKJ(3, 1.0)))) - logpdf(LKJ(3, 0.5), testvalue(AbstractMeasure(LKJ(3, 1.0))))
+    @test_throws ArgumentError logdensity_rel(AbstractMeasure(LKJ(2, 1.5)), AbstractMeasure(W), [1.0 0.2; 0.2 1.0])
+    # Pushforwards don't apply ambient volume elements (the law of 2X is
+    # Wishart(5, 4S), the ambient Jacobian would be off by log(2)):
+    @test_throws ArgumentError logdensity_rel(pushfwd(Mul(2.0), AbstractMeasure(W)), AbstractMeasure(Wishart(5.0, 4S)), 2X)
+end
