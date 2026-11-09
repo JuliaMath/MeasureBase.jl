@@ -10,7 +10,7 @@ using Adapt: adapt
 using HeterogeneousComputing: GenContext, AbstractComputeUnit
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, Dirac, asmeasure
-using MeasureBase: productmeasure, pushfwd, mcombine, weightedmeasure, superpose, SpikeMixture
+using MeasureBase: productmeasure, pushfwd, mcombine, weightedmeasure, superpose
 using MeasureBase: batched_rand_impl
 using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
@@ -55,7 +55,7 @@ _plain(x::Tuple) = map(_plain, x)
         test_cuda(X -> logdensities(mc, X), Xc)
         mix = superpose(weightedmeasure(log(0.3), StdNormal()), weightedmeasure(log(0.7), StdUniform()))
         test_cuda(x -> logdensities(mix, x), rand(20))
-        test_cuda(x -> logdensities(SpikeMixture(StdNormal(), 0.2), x), vcat(randn(19), 0.0))
+        test_cuda(x -> logdensities(0.2 * StdNormal() + 0.8 * Dirac(0.0), x), vcat(randn(19), 0.0))
         test_cuda(x -> logdensities(Dirac(0.5), x), vcat(rand(19), 0.5))
         νe = pushfwd(Base.BroadcastFunction(exp), StdNormal()^3)
         test_cuda(Y -> logdensities(νe, Y), exp.(X))
@@ -143,7 +143,7 @@ _plain(x::Tuple) = map(_plain, x)
 
     @testset "random variates" begin
         ctx = GenContext{Float32}(AbstractComputeUnit(CUDA.device()))
-        for μ in (StdNormal(), StdUniform(), StdExponential(), StdNormal()^3, (StdNormal()^2)^3, weightedmeasure(0.3, StdNormal()^2), mcombine(vcat, StdNormal()^2, StdUniform()^1), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), superpose(StdNormal(), StdUniform()), SpikeMixture(StdNormal(), 0.5), asmeasure(Normal(0.3, 1.7)), asmeasure(Weibull(1.4, 0.9)), cu_copy(asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3]))))
+        for μ in (StdNormal(), StdUniform(), StdExponential(), StdNormal()^3, (StdNormal()^2)^3, weightedmeasure(0.3, StdNormal()^2), mcombine(vcat, StdNormal()^2, StdUniform()^1), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), superpose(StdNormal(), StdUniform()), 0.5 * StdNormal() + 0.5 * Dirac(0.0f0), asmeasure(Normal(0.3, 1.7)), asmeasure(Weibull(1.4, 0.9)), cu_copy(asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3]))))
             X = batched_rand_impl(ctx, μ, (100,))
             @test X isa CuArray{Float32}
             ℓ = logdensities(μ, X)

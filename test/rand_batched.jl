@@ -11,7 +11,7 @@ using MeasureBase
 using MeasureBase: GenContext, get_precision
 using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac
-using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd, SpikeMixture
+using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd
 using MeasureBase: rand_impl, batched_rand_impl, asmeasure, logdensities
 using Distributions: Normal, MvNormal, Weibull, Poisson, logpdf
 using JLArrays: JLArrays, JLArray, JLBackend
@@ -42,7 +42,7 @@ struct NoRandMeasure <: AbstractMeasure end
         @test batched_rand_impl(ctx(), weightedmeasure(0.3, StdNormal()), ()) isa Float64
         @test batched_rand_impl(ctx(), pushfwd(exp, StdNormal()), ()) isa Float64
         @test batched_rand_impl(ctx(), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), ()) isa Vector{Float64}
-        @test batched_rand_impl(ctx(), SpikeMixture(StdNormal(), 0.5), ()) isa Float64
+        @test batched_rand_impl(ctx(), 0.5 * StdNormal() + 0.5 * Dirac(0.0), ()) isa Float64
         @test batched_rand_impl(ctx(), superpose(StdNormal(), StdUniform()), ()) isa Float64
         @test rand(ctx(), NoBatchRandMeasure()) isa Float64
         @test batched_rand_impl(ctx(), NoBatchRandMeasure(), (4,)) isa Vector{Float64}
@@ -119,7 +119,7 @@ struct NoRandMeasure <: AbstractMeasure end
         n = 20_000
         X = batched_rand_impl(ctx(), superpose(StdNormal(), Dirac(3.0)), (n,))
         @test isapprox(mean(X), 1.5, atol = 0.05)
-        Xs = batched_rand_impl(ctx(), SpikeMixture(StdNormal()^2, 0.5), (n,))
+        Xs = batched_rand_impl(ctx(), 0.5 * StdNormal()^2 + 0.5 * Dirac([0.0, 0.0]), (n,))
         @test size(Xs) == (2, n) && isapprox(mean(Xs .== 0), 0.5, atol = 0.02)
         Xp = batched_rand_impl(ctx(), pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), (n,))
         @test isapprox(mean(log.(Xp)), 0.0, atol = 0.03)
@@ -156,7 +156,7 @@ struct NoRandMeasure <: AbstractMeasure end
             (StdNormal(), 0.0), (StdUniform(), 0.5), (StdExponential(), 1.0), (StdLogistic(), 0.0),
             (StdNormal()^3, 0.0), ((StdNormal()^2)^3, 0.0), (weightedmeasure(0.3, StdExponential()^2), 1.0),
             (mcombine(vcat, StdNormal()^2, StdUniform()^1), 1 / 6), (pushfwd(Base.BroadcastFunction(exp), StdNormal()^2), exp(0.5)),
-            (superpose(StdNormal(), StdUniform()), 0.25), (SpikeMixture(StdExponential(), 0.5), 0.5),
+            (superpose(StdNormal(), StdUniform()), 0.25), (0.5 * StdExponential() + 0.5 * Dirac(0.0f0), 0.5),
             (asmeasure(Normal(0.3, 1.7)), 0.3), (asmeasure(Weibull(1.4, 0.9)), mean(Weibull(1.4, 0.9))),
         )
             X = batched_rand_impl(dctx, μ, (n,))

@@ -1,7 +1,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: StdNormal, Half, SpikeMixture, logdensities
+using MeasureBase: StdNormal, Half, logdensities
 using MeasureBase: pushfwd, superpose, productmeasure, PushfwdRootMeasure
 import MeasureBase
 using Distributions: Normal, Poisson, Binomial, Dirichlet, MvNormal, logpdf, pdf
@@ -120,8 +120,7 @@ InverseFunctions.inverse(f::_SimplexWarp) = _SimplexWarp(inv(f.r))
         @test logdensityof(pushfwd(Add(1.0), n), 1.5) ≈ log(0.75)
         @test logdensityof(pushfwd(Add(1.0), n), 1.0) ≈ log(0.25) + logpdf(Normal(), 0.0)
 
-        # Mixed roots are pushed forward as a whole:
-        sm = SpikeMixture(StdNormal(), 0.7)
+        sm = 0.7 * StdNormal() + 0.3 * Dirac(0.0)
         @test logdensityof(pushfwd(Mul(2.0), sm), 0.0) ≈ log(0.3)
         @test logdensityof(pushfwd(Add(1.0), sm), 1.0) ≈ log(0.3)
         @test logdensityof(pushfwd(Add(1.0), sm), 0.0) ≈ log(0.7) + logpdf(Normal(), -1.0)

@@ -4,7 +4,7 @@ using MeasureBase
 using MeasureBase: pushfwd, StdUniform, StdExponential, StdLogistic
 using MeasureBase: pushfwd, PushforwardMeasure
 using MeasureBase: transport_to, unsafe_logdensityof
-using MeasureBase: productmeasure, mbind, superpose, SpikeMixture
+using MeasureBase: productmeasure, mbind, superpose
 import AffineMaps
 import Zygote
 using InverseFunctions: inverse
@@ -105,7 +105,6 @@ using IrrationalConstants: loghalf
     # The fold would double the mass of atoms at zero, parents with atoms
     # are refused, continuous mixtures fold:
     @test_throws ArgumentError Half(Dirac(0.0))
-    @test_throws ArgumentError Half(SpikeMixture(StdNormal(), 0.5))
     @test_throws ArgumentError Half(superpose(StdNormal(), Dirac(0.0)))
     φ(x) = exp(logdensityof(StdNormal(), x))
     mix = superpose(0.5 * pushfwd(AffineMaps.Add(-1.0), StdNormal()), 0.5 * pushfwd(AffineMaps.Add(1.0), StdNormal()))

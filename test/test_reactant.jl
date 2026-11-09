@@ -69,13 +69,13 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensity_rel.(Ref(StdNormal()^10), Ref(StdLogistic()^10), Ref(x)), x)
     end
 
-    @testset "superposition, density measures and spike mixtures" begin
+    @testset "superpositions and density measures" begin
         mix = superpose(weightedmeasure(log(0.3), StdNormal()), weightedmeasure(log(0.7), StdLogistic()))
         test_traced(x -> logdensities(mix, x), x)
         test_traced(x -> logdensityof(mix^10, x), x)
         dm = mintegrate_exp(x -> -abs(x), StdNormal())
         test_traced(x -> logdensities(dm, x), x)
-        sm = SpikeMixture(StdNormal(), 0.2)
+        sm = 0.2 * StdNormal() + 0.8 * Dirac(0.0)
         test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
     end
 

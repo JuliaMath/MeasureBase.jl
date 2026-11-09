@@ -25,28 +25,24 @@ test_measures = [
     0.2 * Lebesgue(ℝ) + 0.8 * Dirac(0.0)
     Dirac(0) + Dirac(1)
     Dirac(0.0) + Lebesgue(ℝ)
-    SpikeMixture(Lebesgue(ℝ), 0.2)
     StdLogistic()
     StdLogistic()^3
     StdLogistic()^(2, 3)
     3 * StdLogistic()
     0.2 * StdLogistic() + 0.8 * Dirac(0.0)
     Dirac(0.0) + StdLogistic()
-    SpikeMixture(StdLogistic(), 0.2)
     StdUniform()
     StdUniform()^3
     StdUniform()^(2, 3)
     3 * StdUniform()
     0.2 * StdUniform() + 0.8 * Dirac(0.0)
     Dirac(0.0) + StdUniform()
-    SpikeMixture(StdUniform(), 0.2)
     StdExponential()^3
     StdExponential()^(2, 3)
     3 * StdExponential()
     StdExponential()
     0.2 * StdExponential() + 0.8 * Dirac(0.0)
     Dirac(0.0) + StdExponential()
-    SpikeMixture(StdExponential(), 0.2)
 
     # d ⊙ d
 ]
@@ -58,7 +54,6 @@ test_measures = [
         test_interface(μ^3)
         test_interface(μ^(3, 2))
         test_interface(5 * μ)
-        # test_interface(SpikeMixture(μ, 0.2))
     end
 end
 
@@ -77,11 +72,6 @@ end
     @test basemeasure(μ) == μ
     @test insupportof(μ, 1.5) == false
     @test logdensityof(μ, 1.5) == -Inf
-end
-
-@testset "SpikeMixture" begin
-    @test rand(SpikeMixture(Dirac(0), 0.5)) == 0
-    @test rand(SpikeMixture(Dirac(1), 1.0)) == 1
 end
 
 @testset "Dirac" begin

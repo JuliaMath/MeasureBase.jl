@@ -1,7 +1,7 @@
 using Test
 
 using MeasureBase
-using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, SpikeMixture, GenContext
+using MeasureBase: superpose, weightedmeasure, StdNormal, StdUniform, GenContext
 using Distributions: Poisson
 using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
 using JLArrays: JLArray, JLBackend
@@ -44,15 +44,8 @@ using Random: Xoshiro
     @test logdensity_rel(Dirac(0.0) + Counting(), Counting(), 0.0) ≈ log(2)
     @test logdensity_rel(Dirac(0.0) + Counting(), Counting(), 1.0) ≈ 0
     @test logdensityof(Dirac(0.0) + Counting(), 0.5) == -Inf
-    # Spike and slab:
-    ss = 0.4 * N + 0.6 * Dirac(0.0)
-    sm = SpikeMixture(N, 0.4)
-    for x in (0.0, 0.7, -1.2)
-        @test logdensityof(ss, x) ≈ logdensityof(sm, x)
-    end
-
-    # Spike mixtures with spike weights independent of the parent weight:
-    sm2 = SpikeMixture(N, 0.3, 0.5)
+    # Spike and slab with unnormalized weights:
+    sm2 = 0.3 * N + 0.5 * Dirac(0.0)
     @test massof(sm2) ≈ 0.8
     @test logdensityof(sm2, 0.0) ≈ log(0.5)
     @test logdensityof(sm2, 1.0) ≈ log(0.3) + ld_N(1.0)
