@@ -6,6 +6,7 @@ using MeasureBase: insupportof as measure_insupport
 using DensityInterface: logdensityof
 
 @testset "primitive" begin
+    grid = (-Inf, -1.2, -1, 0, 0.0, 1 // 2, 0.5, 1, 1.0, 2, 2.3)
     for (m, x) in [
         (MeasureBase.LebesgueBase(), -1.0f0),
         (MeasureBase.LebesgueBase(), 1.0f0),
@@ -16,25 +17,26 @@ using DensityInterface: logdensityof
         (Counting(), 2),
         (Counting(), 2.0f0),
         (Counting(), 1.5f0),
-        (Dirac(4.2), 4.2f0),
+        (Dirac(4.2), 4.2),
         (Dirac(4.2), -1.0f0),
+        (Dirac(4.2f0), 4.2f0),
         (Dirac([1, 2, 3]), [1, 2, 3]),
         (Dirac([4, 5]), [4, 5]),
     ]
         @testset "$(nameof(typeof(m)))" begin
-            for x in [-Inf, -1.2, -1, 0, 0.0, 1 // 2, 0.5, 1, 1.0, 2, 2.3]
-                if m isa Dirac{<:AbstractArray}
-                    # Numbers aren't variates of measures with array variates:
-                    @test_throws ArgumentError logdensityof(m, x)
-                elseif measure_insupport(m, x)
-                    @test @inferred(logdensityof(m, x)) ≈ 0
-                    if x isa Real
-                        ld = logdensityof(m, x)
-                        ld isa float(typeof(x))
-                    end
-                    @test MeasureBase.unsafe_logdensityof(m, x) ≈ 0
+            for y in (x isa Number ? (x, grid...) : (x,))
+                if measure_insupport(m, y)
+                    @test @inferred(logdensityof(m, y)) ≈ 0
+                    @test logdensityof(m, y) isa float(eltype(y))
+                    @test MeasureBase.unsafe_logdensityof(m, y) ≈ 0
                 else
-                    @test @inferred(logdensityof(m, x)) ≈ -Inf
+                    @test @inferred(logdensityof(m, y)) == -Inf
+                end
+            end
+            # Numbers aren't variates of measures with array variates:
+            if !(x isa Number)
+                for y in grid
+                    @test_throws ArgumentError logdensityof(m, y)
                 end
             end
         end
