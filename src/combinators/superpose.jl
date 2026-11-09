@@ -158,6 +158,7 @@ end
 @inline _component_draws(ctx::GenContext, μ, sz::SizeLike) = batched_rand_impl(ctx, μ, sz)
 
 @inline _convert_draws(::Type{T}, X::T) where {T<:Number} = X
+@inline _convert_draws(::Type{T}, x::Number) where {T} = convert(T, x)
 @inline _convert_draws(::Type{T}, X::AbstractArray{T}) where {T} = X
 @inline _convert_draws(::Type{T}, X) where {T} = convert.(T, X)
 

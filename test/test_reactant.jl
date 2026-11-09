@@ -128,6 +128,11 @@ _plain(x::Number) = Float64(x)
         end
         test_traced(x -> transport_to(StdNormal(), StdLogistic()).(x), Float32[-80, -40, -5, 0, 5, 40, 80])
         test_traced(x -> transport_to(StdNormal(), StdExponential()).(x), Float32[1f-30, 1f-3, 1, 30, 80])
+        # Log-space inverse SMFs of StdNormal, also where exp(logp) underflows:
+        for lp in (Float32[-1f-7, -0.1, -0.7, -5, -80, -1f4], [-1e-15, -0.1, -0.7, -5.0, -800.0, -1e6])
+            test_traced(lp -> MeasureBase.invlogsmf.(Ref(StdNormal()), lp), lp)
+            test_traced(lp -> MeasureBase.invlogcsmf.(Ref(StdNormal()), lp), lp)
+        end
     end
 
     # Distribution parameters stay constants, Distributions' parameter
@@ -184,6 +189,12 @@ _plain(x::Number) = Float64(x)
             @test Reactant.unwrapped_eltype(X) == Float32 && all(isfinite, Array(X))
             y = @jit (c -> rand(c, μ))(ctx)
             @test Reactant.unwrapped_eltype(y) == Float32
+        end
+        # Single variates of scalar and array superpositions, drawn
+        # branch-free:
+        for μ in (superpose(StdNormal(), Dirac(0.5f0)), superpose(StdNormal()^3, Dirac(fill(0.5f0, 3))))
+            y = @jit (c -> rand(c, μ))(ctx)
+            @test Reactant.unwrapped_eltype(y) == Float32 && size(y) == size(rand(μ)) && all(isfinite, _plain(y))
         end
     end
 end
