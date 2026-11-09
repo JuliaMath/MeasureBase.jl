@@ -159,18 +159,16 @@ for D in (:_Truncated, :_ContinuousMixture)
 end
 
 # The cdf is the Stieltjes measure function of a distribution, the quantile
-# its inverse, the ccdf and the complementary quantile their complements:
+# its inverse, the ccdf and the complementary quantile their complements,
+# also in the interval forms:
 for f in (:smf, :csmf, :logsmf, :logcsmf)
     @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate}, x) = MeasureBase.$f(m.obj, x)
 end
 for f in (:invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
     @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.$f(m.obj, p)
 end
-# The interval forms of the families that specialize them:
-const _IntervalFamilies = Union{Normal,Logistic,Gamma,Beta,Distributions.Chisq,Distributions.Erlang,
-    Distributions.InverseGamma,Distributions.BetaPrime,Distributions.FDist}
-@inline MeasureBase.smf(m::AsMeasure{<:_IntervalFamilies}, a::Real, x::Real) = MeasureBase.smf(m.obj, a, x)
-@inline MeasureBase.invsmf(m::AsMeasure{<:_IntervalFamilies}, a::Real, p::Real) = MeasureBase.invsmf(m.obj, a, p)
+@inline MeasureBase.smf(m::DistributionMeasure{Univariate}, a, x) = MeasureBase.smf(m.obj, a, x)
+@inline MeasureBase.invsmf(m::DistributionMeasure{Univariate,Continuous}, a, p) = MeasureBase.invsmf(m.obj, a, p)
 
 # Infinite arguments give exact values, also for derivatives with respect to
 # the parameters. The foreign functions only see finite arguments, since
