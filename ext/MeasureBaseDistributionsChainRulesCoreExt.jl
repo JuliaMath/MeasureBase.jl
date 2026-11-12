@@ -11,8 +11,8 @@ using MeasureBase: _dist_params_numtype
 using Distributions: Distribution
 
 _dist_params_numtype_pullback(ΔΩ) = (NoTangent(), NoTangent())
-using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf
-using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape
+using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _gamma_logpdf, _beta_logpdf
+using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape, _beta_quantile_pair
 
 # Derivatives of the regularized incomplete gamma and beta functions and
 # their inverses: with respect to the variate resp. probability from the
@@ -67,15 +67,26 @@ function ChainRulesCore.rrule(::typeof(_beta_cdf), α::Real, β::Real, x::Real)
     end
     return y, _beta_cdf_pullback
 end
-function ChainRulesCore.rrule(::typeof(_beta_quantile), α::Real, β::Real, p::Real)
-    x = _beta_quantile(α, β, p)
-    dx_dp = exp(-_beta_logpdf(α, β, x))
-    function _beta_quantile_pullback(x̄)
-        Δ = dx_dp * unthunk(x̄)
-        dI_dα, dI_dβ = _beta_cdf_dshape(α, β, x)
-        return NoTangent(), ProjectTo(α)(-dI_dα * Δ), ProjectTo(β)(-dI_dβ * Δ), ProjectTo(p)(Δ)
+function ChainRulesCore.rrule(::typeof(_beta_quantile_pair), α::Real, β::Real, p::Real)
+    x, y = _beta_quantile_pair(α, β, p)
+    dx_dp = exp(-_beta_logpdf(α, β, x, y))
+    function _beta_quantile_pullback(pair̄)
+        d = unthunk(pair̄)
+        Δ = if d isa ChainRulesCore.AbstractZero
+            d
+        else
+            unthunk(first(d)) - unthunk(last(d))
+        end
+        Δ = dx_dp * Δ
+        dI_dα, dI_dβ = _beta_cdf_dshape(α, β, x, y)
+        return (
+            NoTangent(),
+            ProjectTo(α)(-dI_dα * Δ),
+            ProjectTo(β)(-dI_dβ * Δ),
+            ProjectTo(p)(Δ),
+        )
     end
-    return x, _beta_quantile_pullback
+    return (x, y), _beta_quantile_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(_dist_params_numtype), d::Distribution)

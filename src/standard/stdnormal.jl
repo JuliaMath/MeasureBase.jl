@@ -34,8 +34,22 @@ csmf(::StdNormal, x) = _normccdf(x)
 invcsmf(μ::StdNormal, p) = -invsmf(μ, p)
 # The log-cdf rounds to zero above the median, the log of the complement is
 # accurate there:
-logsmf(::StdNormal, x) = ifelse(x < zero(x), _normlogcdf(x), log1p(-_normccdf(x)))
-logcsmf(::StdNormal, x) = ifelse(x > zero(x), _normlogccdf(x), log1p(-Φ(x)))
+function logsmf(::StdNormal, x::AbstractFloat)
+    if x < zero(x)
+        _normlogcdf(x)
+    else
+        log1p(-_normccdf(x))
+    end
+end
+function logsmf(::StdNormal, x)
+    lower = x < zero(x)
+    # Keep the unselected log1p branch away from the saturated opposite tail.
+    l = _normlogcdf(ifelse(lower, x, zero(x)))
+    u = log1p(-_normccdf(ifelse(lower, zero(x), x)))
+    ifelse(lower, l, u)
+end
+logcsmf(μ::StdNormal, x) = logsmf(μ, -x)
+
 invlogsmf(::StdNormal, logp) = _nan_above_zero(logp, _norminvlogcdf(min(logp, zero(logp))))
 invlogcsmf(μ::StdNormal, logp) = -invlogsmf(μ, logp)
 

@@ -159,7 +159,10 @@ end
 @inline MeasureBase._gamma_quantile(α, p) = MeasureBase._gamma_quantile_impl(MeasureBase._dualtag(α, p), α, p)
 @inline MeasureBase._gamma_cquantile(α, q) = MeasureBase._gamma_cquantile_impl(MeasureBase._dualtag(α, q), α, q)
 @inline MeasureBase._beta_cdf(α, β, x) = MeasureBase._beta_cdf_impl(MeasureBase._dualtag(α, β, x), α, β, x)
-@inline MeasureBase._beta_quantile(α, β, p) = MeasureBase._beta_quantile_impl(MeasureBase._dualtag(α, β, p), α, β, p)
+@inline MeasureBase._beta_quantile(α, β, p) = first(_beta_quantile_pair(α, β, p))
+@inline MeasureBase._beta_quantile_pair(α, β, p) =
+    MeasureBase._beta_quantile_pair_impl(MeasureBase._dualtag(α, β, p), α, β, p)
+
 @inline MeasureBase._gamma_cdf_impl(::Type{Nothing}, α, x) = first(gamma_inc(α, x))
 @inline MeasureBase._gamma_ccdf_impl(::Type{Nothing}, α, x) = last(gamma_inc(α, x))
 # The complementary probability is formed in the common float type, as
@@ -175,9 +178,22 @@ end
     gamma_inc_inv(convert(T, α), one(T) - qq, qq)
 end
 @inline MeasureBase._beta_cdf_impl(::Type{Nothing}, α, β, x) = first(beta_inc(α, β, x))
-@inline MeasureBase._beta_quantile_impl(::Type{Nothing}, α, β, p) = first(beta_inc_inv(α, β, p))
+@inline MeasureBase._beta_quantile_pair_impl(::Type{Nothing}, α, β, p) = beta_inc_inv(α, β, p)
 @inline MeasureBase._gamma_logpdf(α, x) = _gamma_logd(α, x)
 @inline MeasureBase._beta_logpdf(α, β, x) = _beta_logd(α, β, x)
+
+# Use the smaller coordinate in inverse derivatives, retaining its precision
+# when the other coordinate rounds to an endpoint.
+@inline function _beta_quantile_args(α, β, x, y)
+    lower = x <= y
+    (ifelse(lower, α, β), ifelse(lower, β, α), ifelse(lower, x, y))
+end
+@inline MeasureBase._beta_logpdf(α, β, x, y) =
+    _beta_logpdf(_beta_quantile_args(α, β, x, y)...)
+@inline function MeasureBase._beta_cdf_dshape(α, β, x, y)
+    dα, dβ = MeasureBase._beta_cdf_dshape(_beta_quantile_args(α, β, x, y)...)
+    (ifelse(x <= y, dα, -dβ), ifelse(x <= y, dβ, -dα))
+end
 
 # Branch-free formulas evaluate all branches, also in AD pullbacks, so
 # unselected branches must stay finite with finite derivatives. Tails are
@@ -258,6 +274,33 @@ end
     _nan_outside(d, x, (log(MeasureBase._positive_prob(abs(x))) - d.μ) / d.σ)
 @inline MeasureBase.transport_from_std(::Type{StdNormal}, d::LogNormal, z) = exp(muladd(d.σ, z, d.μ))
 
+# Support limits have zero parameter derivatives. Keep their inactive arithmetic
+# finite so an infinite standardized variate cannot contaminate those derivatives.
+@inline function _lognormal_z(d::LogNormal, x)
+    z = log(x) - d.μ
+    # Zero-scale laws include the atom in their lower tail.
+    ifelse(iszero(d.σ) & iszero(z), one(z), z) / d.σ
+end
+@inline function _lognormal_tail(f, select, d::LogNormal, x, complement)
+    inside = MeasureBase._positive_finite(x)
+    MeasureBase._select(
+        inside,
+        () -> f(StdNormal(), _lognormal_z(d, ifelse(inside, x, one(x)))),
+        () -> begin
+            y = zero(_result_numtype(d, float(x)))
+            _nan_or(x, select(isinf(x) & !signbit(x), false, y, complement))
+        end,
+    )
+end
+@inline MeasureBase.smf(d::LogNormal, x::Real) =
+    _lognormal_tail(MeasureBase.smf, _support_select, d, x, false)
+@inline MeasureBase.csmf(d::LogNormal, x::Real) =
+    _lognormal_tail(MeasureBase.csmf, _support_select, d, x, true)
+@inline MeasureBase.logsmf(d::LogNormal, x::Real) =
+    _lognormal_tail(MeasureBase.logsmf, _log_support_select, d, x, false)
+@inline MeasureBase.logcsmf(d::LogNormal, x::Real) =
+    _lognormal_tail(MeasureBase.logcsmf, _log_support_select, d, x, true)
+
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Weibull}) = StdExponential
 @inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Weibull, x) = _nan_outside(d, x, abs(x / d.θ)^d.α)
 @inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Weibull, z) = _nan_outside(StdExponential, z, d.θ * abs(z)^(1 / d.α))
@@ -270,14 +313,18 @@ end
     h = one(r) / 2
     ifelse(lower, _gamma_quantile(α, ifelse(lower, r, h)), _gamma_cquantile(α, ifelse(lower, h, r)))
 end
-# Beta quantiles from both tail probabilities, the variate `x` from the
-# lower and its complement `1 - x` from the mirrored one, the smaller one
-# of them is accurate:
+# Invert the smaller probability and retain both coordinates returned by
+# the inverse. Reconstructing its small tail from `1 - p` loses precision.
 @inline function _beta_quantiles(α, β, p, q)
-    x, y = _beta_quantile(α, β, _quantile_arg(p)), _beta_quantile(β, α, _quantile_arg(q))
-    small_x = x <= y
-    (ifelse(small_x, x, 1 - y), ifelse(small_x, 1 - x, y))
+    lower = p < q
+    x, y = _beta_quantile_pair(
+        ifelse(lower, α, β),
+        ifelse(lower, β, α),
+        _quantile_arg(ifelse(lower, p, q)),
+    )
+    (ifelse(lower, x, y), ifelse(lower, y, x))
 end
+
 @inline _beta_tail_quantile(α, β, p, q) = first(_beta_quantiles(α, β, p, q))
 
 # Both tail probabilities of Beta(α, β) at `z` with the complement

@@ -179,6 +179,7 @@ function _gamma_quantile end
 function _gamma_cquantile end
 function _beta_cdf end
 function _beta_quantile end
+function _beta_quantile_pair end
 function _gamma_logpdf end
 function _beta_logpdf end
 function _gamma_cdf_impl end
@@ -186,12 +187,13 @@ function _gamma_ccdf_impl end
 function _gamma_quantile_impl end
 function _gamma_cquantile_impl end
 function _beta_cdf_impl end
-function _beta_quantile_impl end
+function _beta_quantile_pair_impl end
 
 # The dual number type among the arguments of such a function, `Nothing`
 # for plain numbers (the ForwardDiff extension adds dual numbers):
 @inline _dualtag() = Nothing
 @inline _dualtag(::Number, rest::Number...) = _dualtag(rest...)
+@inline _positive_finite(x) = isfinite(x) & (x > 0)
 
 # Distributions implementation hooks, specialized for dual numbers in the
 # ForwardDiff extension:

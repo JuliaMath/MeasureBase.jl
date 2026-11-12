@@ -14,6 +14,9 @@ using Distributions: Distribution, Univariate, Continuous, Beta
 
 const _PlainParams = Type{<:Union{Integer,AbstractFloat}}
 
+@inline MeasureBase._positive_finite(x::ForwardDiff.Dual) =
+    MeasureBase._positive_finite(ForwardDiff.value(x))
+
 @inline function MeasureBase._trafo_logcdf_impl(
     T::_PlainParams,
     d::Distribution{Univariate,Continuous},
@@ -78,8 +81,8 @@ end
 # parameters from `_gamma_cdf_dshape` and `_beta_cdf_dshape` (by the
 # implicit function theorem for the quantiles). The latter are only
 # computed for shape parameters with partials of the tag.
-using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _beta_quantile, _gamma_logpdf, _beta_logpdf
-using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape
+using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile, _beta_cdf, _gamma_logpdf, _beta_logpdf
+using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape, _beta_quantile_pair
 
 const _Dual = ForwardDiff.Dual
 
@@ -134,12 +137,17 @@ end
     ∂α, ∂β = _isdual(D, α, β) ? _beta_cdf_dshape(αv, βv, xv) : (nothing, nothing)
     _chain(D, _beta_cdf(αv, βv, xv), (∂α, ∂β, exp(_beta_logpdf(αv, βv, xv))), (α, β, x))
 end
-@inline function MeasureBase._beta_quantile_impl(::Type{D}, α, β, p) where {D<:_Dual}
+@inline function MeasureBase._beta_quantile_pair_impl(::Type{D}, α, β, p) where {D<:_Dual}
     αv, βv, pv = _value(D, α), _value(D, β), _value(D, p)
-    xv = _beta_quantile(αv, βv, pv)
-    ∂p = exp(-_beta_logpdf(αv, βv, xv))
-    ∂α, ∂β = _isdual(D, α, β) ? map(∂ -> -∂ * ∂p, _beta_cdf_dshape(αv, βv, xv)) : (nothing, nothing)
-    _chain(D, xv, (∂α, ∂β, ∂p), (α, β, p))
+    x, y = _beta_quantile_pair(αv, βv, pv)
+    ∂p = exp(-_beta_logpdf(αv, βv, x, y))
+    ∂α, ∂β = if _isdual(D, α, β)
+        map(∂ -> -∂ * ∂p, _beta_cdf_dshape(αv, βv, x, y))
+    else
+        (nothing, nothing)
+    end
+    xd = _chain(D, x, (∂α, ∂β, ∂p), (α, β, p))
+    (xd, D(y, -ForwardDiff.partials(xd)))
 end
 
 # The quantile of Beta doesn't support dual parameters:

@@ -63,7 +63,7 @@ _test_gradient(f, x::AbstractVector) = @test _mooncake_gradient(f, x) ≈ Forwar
             (MeasureBase._gamma_quantile, (0.7, 0.3)),
             (MeasureBase._gamma_cquantile, (0.7, 0.3)),
             (MeasureBase._beta_cdf, (2.0, 3.0, 0.3)),
-            (MeasureBase._beta_quantile, (0.6, 30.0, 0.8)),
+            (MeasureBase._beta_quantile_pair, (0.6, 30.0, 0.8)),
         ]
             Mooncake.TestUtils.test_rule(rng, f, args...; is_primitive = true, mode = Mooncake.ReverseMode)
             test_rrule(f, args...)

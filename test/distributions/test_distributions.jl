@@ -12,6 +12,7 @@ using .MeasureBaseDistributionsExt: DistributionMeasure
 
 @testset "Distributions extension" begin
     include("test_autodiff_utils.jl")
+    include("test_enzyme.jl")
     include("test_measure_interface.jl")
     include("test_shape_contract.jl")
     include("test_distribution_measure.jl")
@@ -21,5 +22,7 @@ using .MeasureBaseDistributionsExt: DistributionMeasure
     include("test_mooncake.jl")
     include("test_reference_values.jl")
     include("test_truncated.jl")
+    include("test_affine_ad.jl")
+    include("test_lognormal_ad.jl")
     include("test_moments.jl")
 end

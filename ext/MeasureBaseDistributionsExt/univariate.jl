@@ -251,7 +251,8 @@ end
 # parameters (the affine map gives them NaN partials):
 @inline function _interval_end_to_std(d::Distribution{Univariate}, x::Real)
     z = _affine_to_std(d, _finite_arg(x))
-    ifelse(isfinite(x), z, oftype(z, x))
+    endpoint = ifelse(Distributions.scale(d) < 0, -x, x)
+    ifelse(isfinite(x), z, oftype(z, endpoint))
 end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
@@ -268,6 +269,34 @@ end
 # Affine transformed distributions transport via the underlying distribution:
 
 const _AffineDist = Distributions.AffineDistribution
+
+# Keep the underlying family's differentiable kernels and both tails. A
+# negative scale exchanges the lower and upper tails for continuous laws.
+for (f, fc) in ((:smf, :csmf), (:csmf, :smf), (:logsmf, :logcsmf), (:logcsmf, :logsmf))
+    @eval @inline function MeasureBase.$f(d::_AffineDist{<:Any,Continuous}, x::Real)
+        z = _interval_end_to_std(d, x)
+        if d.σ > 0
+            MeasureBase.$f(d.ρ, z)
+        else
+            MeasureBase.$fc(d.ρ, z)
+        end
+    end
+end
+for (f, fc) in (
+    (:invsmf, :invcsmf),
+    (:invcsmf, :invsmf),
+    (:invlogsmf, :invlogcsmf),
+    (:invlogcsmf, :invlogsmf),
+)
+    @eval @inline function MeasureBase.$f(d::_AffineDist{<:Any,Continuous}, p::Real)
+        z = if d.σ > 0
+            MeasureBase.$f(d.ρ, p)
+        else
+            MeasureBase.$fc(d.ρ, p)
+        end
+        _std_to_affine(d, z)
+    end
+end
 
 @inline MeasureBase.preferred_stdmeasure(::Type{<:_AffineDist{<:Any,<:Any,D}}) where {D} =
     MeasureBase.preferred_stdmeasure(D)
