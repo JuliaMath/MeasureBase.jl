@@ -12,6 +12,7 @@ import ForwardDiff
 
 using MeasureBase
 using MeasureBase: GenContext
+using HeterogeneousComputing: CPUnit, get_rng, rootrng, subrng
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac, Lebesgue
 using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd, testvalue
 using MeasureBase: rand_impl, batched_rand_impl, massof, isnormalized
@@ -59,6 +60,11 @@ struct _NoSampler <: AbstractMeasure end
             @test_throws ArgumentError rand(stblrng(), StdNormal(), args...)
         end
         @test size(rand(StdNormal()^(3, 4))) == (3, 4)
+        # Keyed RNGs (HeterogeneousComputing stream keys) are used as they are:
+        keyed = rootrng(CPUnit(), 17)
+        @test get_rng(GenContext{Float64}(keyed)) === keyed
+        @test rand(copy(keyed), StdNormal()^3) == rand(copy(keyed), StdNormal()^3)
+        @test rand(subrng(keyed, 1), StdNormal()^3) != rand(subrng(keyed, 2), StdNormal()^3)
     end
 
     @testset "minimal sampling hooks" begin
