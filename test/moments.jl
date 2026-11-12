@@ -34,6 +34,49 @@ using Static: static
         @test var(MeasureBase.Dirac((a = 1.0, b = [2.0, 3.0]))) == (a = 0.0, b = [0.0, 0.0])
     end
 
+    @testset "truncated normal measures" begin
+        # Full and half lines have closed-form conditional moments.
+        for T in (Float32, Float64)
+            full = truncate(StdNormal(), T(-Inf) .. T(Inf))
+            half = truncate(StdNormal(), zero(T) .. T(Inf))
+            @test mean(full) === zero(T) && var(full) === one(T)
+            @test @inferred(mean(half)) ≈ T(sqrt(2 / π))
+            @test @inferred(var(half)) ≈ T(1 - 2 / π)
+            narrow = truncate(StdNormal(), T(1) .. T(1.000001))
+            width = narrow.hi - narrow.lo
+            @test mean(narrow) ≈ narrow.lo + width / 2
+            @test var(narrow) ≈ width^2 / 12 rtol = sqrt(eps(T))
+        end
+        empty = truncate(StdNormal(), 1.0 .. 1.0)
+        @test isnan(mean(empty)) && isnan(var(empty))
+
+        # Centered quadrature, with a scaled density in the tail, is an
+        # independent reference that does not subtract raw moments.
+        function integrate(f, a, b)
+            h = (b - a) / 4000
+            h / 3 * (
+                f(a) +
+                f(b) +
+                4 * sum(i -> f(a + (2i - 1) * h), 1:2000) +
+                2 * sum(i -> f(a + 2i * h), 1:1999)
+            )
+        end
+        for (a, b) in
+            [(-1.0, 2.0), (9.0, 10.0), (12.0, 13.0), (1.0, 1.02), (12.0, 12.08), (12.0, 12.09)]
+            w(x) = exp(-(x^2 - a^2) / 2)
+            mass = integrate(w, a, b)
+            m = integrate(x -> x * w(x), a, b) / mass
+            v = integrate(x -> (x - m)^2 * w(x), a, b) / mass
+            t = truncate(StdNormal(), a .. b)
+            @test mean(t) ≈ m rtol = 1e-10
+            @test var(t) ≈ v rtol = 1e-8
+            @test mean(normalize(t)) == mean(2.5 * t) == mean(t)
+            @test std(normalize(t)) ≈ sqrt(v) rtol = 1e-8
+            @test mean(truncate(StdNormal(), -b .. -a)) ≈ -m rtol = 1e-10
+            @test var(truncate(StdNormal(), Float32(a) .. Float32(b))) ≈ v rtol = 2e-5
+        end
+    end
+
     @testset "weighted and normalized measures" begin
         @test mean(2.5 * StdExponential()) == 1
         @test var(normalize(2.5 * StdUniform())) ≈ 1 / 12
@@ -107,7 +150,7 @@ using Static: static
 
     @testset "unknown moments" begin
         for μ in [
-            truncate(StdNormal(), 0 .. 1),
+            truncate(StdLogistic(), 0 .. 1),
             Lebesgue(),
             restrict(x -> x > 0, StdNormal()),
             pushfwd(exp, StdNormal()),
