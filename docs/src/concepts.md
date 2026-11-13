@@ -225,6 +225,21 @@ are shorthands. Batches of variates are drawn as variates of powers,
 `rand(ctx, μ^n)`. By default, standard variates are drawn in bulk on the
 compute unit and transported to `μ`.
 
+Variates that only host code can generate are drawn on the host and moved
+to the compute unit of the context. That holds for Poisson and other
+distributions without a standard transport, and for array products of
+such distributions.
+The host draws use a random number generator seeded from the generator of
+the context, which advances, so the context determines these draws as
+well. Compiled code (Reactant) can't draw on the host and refuses such
+measures.
+
+Measures draw from the generator of the context in sequence. Generators
+with stream keys (`rootrng`, `subrng` and `subcontext` in
+HeterogeneousComputing) give algorithms independent, reproducible
+streams, e.g. `rand(subcontext(ctx, :prior, i), μ)`. Deriving them is up
+to the caller, since the same key always yields the same draws.
+
 Floating-point variates have the precision of the context, also through
 transformations and combinators. Point masses generate their atom
 exactly, and integer variates (e.g. of counting measures) stay integers.

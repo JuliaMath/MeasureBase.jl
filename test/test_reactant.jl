@@ -19,6 +19,7 @@ using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
 using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
 using MeasureBase.InverseFunctions: inverse
+using MeasureBase.HeterogeneousComputing: get_compute_unit, rootrng
 
 Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
 
@@ -208,6 +209,19 @@ _plain(x::Number) = Float64(x)
         b = @jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Bernoulli(0.3)), (2000,)))(ctx)
         @test Reactant.unwrapped_eltype(b) == Bool && isapprox(count(Array(b)) / 2000, 0.3, atol = 0.05)
         @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Bernoulli(0.3))))(ctx)) == Bool
+        # Distributions without standard transports draw on the host, which
+        # compiled code can't do. Outside of it their variates are moved to
+        # the compute unit:
+        @test_throws "compiled code" @jit (c -> rand(c, asmeasure(Poisson(2.0))))(ctx)
+        @test_throws "compiled code" @jit (c -> rand(c, MeasureBase.productmeasure(asmeasure.(Poisson.([1.0, 2.0])))))(ctx)
+        Xp = MeasureBase.batched_rand_impl(ctx, asmeasure(Poisson(2.0)), (2000,))
+        @test Reactant.unwrapped_eltype(Xp) == Int && isapprox(mean(Array(Xp)), 2, atol = 0.2)
+        # RNGs with stream keys draw in compiled code like the RNGs they
+        # wrap, the same key reproduces the draws:
+        keyed_ctx(seed) = GenContext{Float32}(get_compute_unit(ctx), rootrng(get_compute_unit(ctx), seed))
+        keyed_draw(c) = Array(@jit (c -> MeasureBase.batched_rand_impl(c, StdNormal()^2, (8,)))(c))
+        @test keyed_draw(keyed_ctx(1)) == keyed_draw(keyed_ctx(1))
+        @test keyed_draw(keyed_ctx(1)) != keyed_draw(keyed_ctx(2))
         # Single variates of scalar and array superpositions, drawn
         # branch-free:
         for μ in (superpose(StdNormal(), Dirac(0.5f0)), superpose(StdNormal()^3, Dirac(fill(0.5f0, 3))))

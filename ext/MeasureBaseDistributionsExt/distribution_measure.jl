@@ -22,6 +22,8 @@ const DistributionMeasure{F<:VariateForm,S<:ValueSupport,D<:Distribution{F,S}} =
 # transports. Draws of continuous distributions without standard transports
 # are converted to the context precision afterwards, only their type
 # follows the context then. Atoms of discrete distributions stay exact.
+# On other compute units, distributions without standard transports are
+# sampled on the host, see `_host_rand`.
 function MeasureBase.rand_impl(ctx::GenContext, m::DistributionMeasure)
     d = m.obj
     if _native_rand(ctx, d)
@@ -41,9 +43,23 @@ function MeasureBase.batched_rand_impl(ctx::GenContext, m::DistributionMeasure, 
 end
 
 function _nonnative_rand(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
-    _check_std_transport(m.obj)
-    MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+    if _has_std_transport(m.obj)
+        MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+    else
+        _host_rand(ctx, m, sz)
+    end
 end
+
+# Distributions' samplers draw array-like variates on the host, in a host
+# context derived from the context (whose RNG advances), and the variates
+# are moved to the compute unit:
+function _host_rand(ctx::GenContext, m::DistributionMeasure{<:ArrayLikeVariate}, sz::SizeLike)
+    MeasureBase._can_derive_host_context(ctx) || _throw_host_only_sampler(m.obj, "it can't run within compiled code")
+    host_ctx = MeasureBase._host_context(ctx)
+    MeasureBase._on_compute_unit(ctx, MeasureBase.batched_rand_impl(host_ctx, m, asnonstatic(sz)))
+end
+_host_rand(::GenContext, m::DistributionMeasure, ::SizeLike) =
+    _throw_host_only_sampler(m.obj, "its variates can't be moved to other compute units")
 # Bernoulli variates compare uniform variates with the success probability,
 # branch-free and exact:
 function _nonnative_rand(ctx::GenContext, m::AsMeasure{<:Bernoulli}, sz::SizeLike)
@@ -57,11 +73,16 @@ end
     P = float(Distributions.partype(d))
     promote_type(P, T) == P
 end
-@inline _has_std_transport(d::Distribution) = MeasureBase.preferred_stdmeasure(d) <: StdMeasure
+@inline _has_std_transport(d::Distribution) = _has_std_transport(typeof(d))
+@inline _has_std_transport(::Type{D}) where {D<:Distribution} = MeasureBase.preferred_stdmeasure(D) <: StdMeasure
 
-@inline _check_std_transport(d::Distribution) = _has_std_transport(d) || _throw_host_only_sampler(d)
-@noinline _throw_host_only_sampler(d::Distribution) = throw(ArgumentError(
-    "Distributions' sampler for $(nameof(typeof(d))) runs only on host compute units, and it has no standard transport"
+# Arrays of distributions without standard transports have no batched
+# kernels, so their products draw in host loops (also Bernoulli ones):
+@inline MeasureBase._host_drawn_marginals(::Type{AsMeasure{D}}) where {D<:Distribution{<:ArrayLikeVariate}} =
+    !_has_std_transport(D)
+
+@noinline _throw_host_only_sampler(d::Distribution, reason::AbstractString) = throw(ArgumentError(
+    "$(nameof(typeof(d))) has no standard transport and Distributions' sampler for it runs only on host compute units, $reason"
 ))
 
 @inline _native_draw(::Type{T}, ::Distribution{<:ArrayLikeVariate,Continuous}, x) where {T<:Real} = convert_realtype(T, x)

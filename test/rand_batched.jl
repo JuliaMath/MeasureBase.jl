@@ -184,6 +184,16 @@ struct NoRandMeasure <: AbstractMeasure end
         Xb = batched_rand_impl(dctx, productmeasure((a = StdNormal(), b = b)), (3,))
         @test Xb.a isa JLArray{Float32,1} && Xb.b isa JLArray{Float32,1}
         @test rand(dctx, NoBatchRandMeasure()^3) isa JLArray{Float32,1}
+
+        # Array products of marginals that only host code can sample draw
+        # as a whole in a host context derived from the context:
+        P = productmeasure(asmeasure.(Poisson.([0.5, 2.0, 30.0])))
+        @test rand(dctx, P) isa JLArray{Int,1}
+        @test batched_rand_impl(dctx, P, ()) isa JLArray{Int,1}
+        Xp = batched_rand_impl(dctx, P, (n,))
+        @test Xp isa JLArray{Int,2} && size(Xp) == (3, n) && isapprox(mean(Array(Xp)), 32.5 / 3, atol = 0.2)
+        # Other products draw marginal by marginal with the context:
+        @test rand(dctx, productmeasure([StdNormal()^3, StdNormal()^3])) isa Vector{<:JLArray{Float32,1}}
     end
 
     @testset "fill marginals" begin

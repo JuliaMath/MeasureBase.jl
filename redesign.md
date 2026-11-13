@@ -395,11 +395,35 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   coordinate measures of different charts, products of mixed kinds) throw
   instead of relating them.
 - Bernoulli draws on all compute units (`rand(ctx, sz) .< p`, exact
-  `Bool`s). Poisson, Categorical, Binomial and other discrete distributions
-  without standard transports draw only with Distributions' samplers, on
-  host compute units; on others they throw an `ArgumentError` naming the
-  limit. Poisson on devices later (trigger: splittable RNGs in
-  HeterogeneousComputing).
+  `Bool`s). Poisson, Categorical, Binomial, matrix-variate and other
+  distributions without standard transports draw with Distributions'
+  samplers on the host. For other compute units they draw in a host
+  context derived from the context (`adapt(CPUnit(), ctx)`, its RNG is
+  seeded from the RNG of the context, which advances) and the variates
+  are moved to the compute unit (2026-11-13, the Poisson item deferred
+  until HeterogeneousComputing could derive RNGs). Array products of
+  such distributions (`_host_drawn_marginals`, set by the Distributions
+  extension, Bernoulli included) draw that way as a whole, with one
+  derived context per call, also with parameters in struct-array columns
+  on the compute unit (`adapt(cunit, product)`). Single variates of
+  products of array variates are arrays of device arrays, as for other
+  products. This is a host round trip, not a device kernel. All other
+  array products draw as before. Compiled code (Reactant) can't derive
+  contexts and refuses these measures, as do non-array variates (e.g.
+  `LKJCholesky`), which can't be moved. Open: pointwise batches (binds,
+  combined measures) still loop with the device context, one derived
+  context per host-only leaf draw; plain arrays of measures that hold
+  device parameters inside the measures are not adapted to the host;
+  device arrays of measures (`asmeasure.(Poisson.(λ))` on a device
+  array) can't be turned into products directly, build the product on
+  the host and `adapt` it; a `ConstantRNG` under a device context gives
+  host `Fill`s for these draws.
+- Stream keys (HeterogeneousComputing `rootrng`/`subrng`/`subcontext`):
+  measures draw from the RNG of the context in sequence and derive no
+  child streams per call (the same key replays the same stream, and
+  draws must advance the caller's RNG). Algorithms derive child
+  contexts, keyed RNGs pass through `rand` unchanged, also into
+  compiled code.
 - Distributions without family kernels (TDist, Gumbel, Frechet, ...) go
   through Distributions' cdfs and quantiles (Chisq, Erlang, InverseGamma,
   FDist and BetaPrime go through the gamma and beta kernels). Under Zygote
