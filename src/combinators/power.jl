@@ -79,10 +79,19 @@ params(d::PowerMeasure) = params(first(marginals(d)))
 end
 
 @inline function logdensity_def(d::PowerMeasure{M}, x) where {M}
-    parent = d.parent
+    _power_logdensity_def(d.parent, x)
+end
+
+@inline function _power_logdensity_def(parent, x)
     sum(x) do xj
         logdensity_def(parent, xj)
     end
+end
+
+# `sum` fails for empty `x`, but an empty `Fill` still carries a value:
+@inline function _power_logdensity_def(parent, x::FillArrays.AbstractFill)
+    s = length(x) * logdensity_def(parent, FillArrays.getindex_value(x))
+    isempty(x) ? zero(s) : s
 end
 
 @inline function logdensity_def(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}
