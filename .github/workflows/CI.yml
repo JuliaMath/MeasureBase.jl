@@ -6,6 +6,7 @@ on:
       - main
       - dev
       - 'releases/**'
+      - 'release-*'
     tags: '*'
   pull_request:
   release:
