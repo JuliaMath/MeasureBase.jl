@@ -5,6 +5,7 @@ using Test
 using Random, Statistics
 using StableRNGs: StableRNG
 using StructArrays: StructArray
+using FillArrays: Fill
 using ArraysOfArrays: flatview
 
 using MeasureBase
@@ -183,5 +184,11 @@ struct NoRandMeasure <: AbstractMeasure end
         Xb = batched_rand_impl(dctx, productmeasure((a = StdNormal(), b = b)), (3,))
         @test Xb.a isa JLArray{Float32,1} && Xb.b isa JLArray{Float32,1}
         @test rand(dctx, NoBatchRandMeasure()^3) isa JLArray{Float32,1}
+    end
+
+    @testset "fill marginals" begin
+        # Each marginal draws its own variate:
+        x = rand(StableRNG(789), MeasureBase.ProductMeasure(Fill(asmeasure(Poisson(20.0)), 50)))
+        @test x isa Vector{Int} && length(x) == 50 && !allequal(x)
     end
 end

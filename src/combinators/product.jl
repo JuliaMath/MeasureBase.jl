@@ -45,9 +45,13 @@ basemeasure(d::AbstractProductMeasure) = productmeasure(map(basemeasure, margina
 rand_impl(ctx::GenContext, d::AbstractProductMeasure) = _rand_map(Base.Fix1(_marginal_rand, ctx), marginals(d))
 
 # Draws are eager, a lazily mapped array of marginal draws would draw anew
-# on every access:
+# on every access, and a mapped fill would repeat a single draw:
 @inline _rand_map(f::F, mar) where {F} = _map(f, mar)
 @inline _rand_map(f::F, mar::MappedArrays.ReadonlyMappedArray) where {F} = map(f, mar)
+@inline function _rand_map(f::F, mar::FillArrays.AbstractFill) where {F}
+    m = FillArrays.getindex_value(mar)
+    map(_ -> f(m), CartesianIndices(mar))
+end
 
 @inline _marginal_rand(ctx::GenContext, m::AbstractMeasure) = rand_impl(ctx, m)
 @inline _marginal_rand(ctx::GenContext, d) = convert_realtype(get_precision(ctx), rand(get_rng(ctx), d))
