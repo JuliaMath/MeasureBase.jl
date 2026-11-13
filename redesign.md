@@ -461,10 +461,10 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
 - Empty batches of array products over heterogeneous marginals fail in
   the reduction (`zero(Any)`), needs an `init` keyword for
   `sum_leading_dims` in StaticThings.
-- `convert_realtype` turns Poisson/Bernoulli draws into floats while
-  `Counting(Int)` checks types, so `logdensity_rel(Poisson, Counting(Int),
-  2.0)` is `+Inf` but finite relative to `Counting(ℤ)`. Either keep
-  integer draws or make `Counting(Int)` check values.
+- `Counting(Int)` checks types, so `logdensity_rel(Poisson, Counting(Int),
+  2.0)` is `+Inf` but finite relative to `Counting(ℤ)`. Draws of discrete
+  distributions stay integers, so this only shows for float-valued
+  variates from elsewhere. `Counting(Int)` could check values instead.
 - Decisions pending: `Half` general design (law of `abs(x)`, density
   `logaddexp(ℓ(x), ℓ(-x))`, quantile by root finding unless symmetric,
   symmetry declared by the Distributions extension) versus the current
@@ -505,7 +505,9 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
 - Names clashing with Distributions (decided 2026-10-23): `insupport` and
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   as deprecations for one release. Deprecated names (also `pullback` and
-  `density_def`) aren't exported (decided 2026-11-09, review B13), so
-  `using MeasureBase, Distributions` has no clashes.
+  `density_def`) aren't exported (decided 2026-11-09, review B13). The one
+  name both packages still export is `Dirac`, so `using MeasureBase,
+  Distributions` requires qualifying it (open: rename, don't export, or
+  leave).
 - Polish before merge: final docs and release notes pass, history curation,
   version bump, remove this file.
