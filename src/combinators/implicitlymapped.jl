@@ -227,7 +227,7 @@ export Marginalized
 implicit_origin(mapped::Marginalized) = mapped.obj
 
 function explicit_mapfunc(::Marginalized, obs::NamedTuple{names}) where {names}
-    PropSelFunction{names,names}()
+    PropSelFunction(names...)
 end
 function pushfwd(f::PropSelFunction, mu::ProductMeasure{<:NamedTuple}, ::PushfwdRootMeasure)
     productmeasure(f(marginals(mu)))
