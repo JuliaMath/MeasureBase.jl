@@ -78,12 +78,17 @@ params(d::PowerMeasure) = params(first(marginals(d)))
     basemeasure(d.parent)^d.axes
 end
 
+@inline _pwr_logd_sum(f, x) = sum(f, x)
+
+# Fill-valued variates can be empty (e.g. after transport from a Dirac):
+@inline function _pwr_logd_sum(f, x::FillArrays.AbstractFill)
+    s = length(x) * f(FillArrays.getindex_value(x))
+    isempty(x) ? zero(s) : s
+end
+
 for func in [:logdensityof, :logdensity_def]
     @eval @inline function $func(d::PowerMeasure{M}, x) where {M}
-        parent = d.parent
-        sum(x) do xj
-            $func(parent, xj)
-        end
+        _pwr_logd_sum(Base.Fix1($func, d.parent), x)
     end
 
     @eval @inline function $func(d::PowerMeasure{M,Tuple{Static.SOneTo{N}}}, x) where {M,N}

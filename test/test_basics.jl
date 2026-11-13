@@ -1,3 +1,5 @@
+using FillArrays: Fill, Zeros
+
 d = ∫exp(x -> -x^2, Lebesgue(ℝ))
 
 # function draw2(μ)
@@ -122,6 +124,12 @@ end
 @testset "powers" begin
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3,), 2)
     @test logdensityof(Lebesgue()^3, 2) == logdensityof(Lebesgue()^(3, 1), (2, 0))
+
+    @test @inferred(logdensityof(StdNormal()^3, Fill(0.5, 3))) ≈
+          logdensityof(StdNormal()^3, fill(0.5, 3))
+    @test @inferred(logdensityof(StdExponential()^2, Fill(-1.0, 2))) == -Inf
+    @test @inferred(logdensityof(StdExponential()^(2, 0), Fill(-1.0, 2, 0))) == 0
+    @test @inferred(MeasureBase.logdensity_def(StdUniform()^0, Zeros{Bool}(0))) == 0
 end
 
 NormalMeasure() = ∫exp(x -> -0.5x^2, Lebesgue(ℝ))
