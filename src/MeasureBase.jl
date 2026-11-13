@@ -64,7 +64,7 @@ using StaticThings:
 import HeterogeneousComputing
 using HeterogeneousComputing: real_numtype
 using HeterogeneousComputing:
-    GenContext, get_rng, get_precision, get_compute_unit, is_host_unit, allocate_array, fill_array
+    GenContext, CPUnit, get_rng, get_precision, get_compute_unit, is_host_unit, allocate_array, fill_array
 
 using ArraysOfArrays:
     ArrayOfSimilarArrays, VectorOfArrays, VectorOfVectors, VectorOfSimilarArrays,

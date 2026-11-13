@@ -173,6 +173,19 @@ end
 
 @inline _on_host(ctx::GenContext) = is_host_unit(get_compute_unit(ctx))
 
+# Variates that only host code can generate are drawn in a host context
+# derived from the context and moved to its compute unit. The RNG of the
+# derived context is seeded with numbers drawn from the RNG of the context
+# (see `adapt` for `GenContext`), host contexts stay as they are. Compiled
+# code can't derive contexts:
+@inline _host_context(ctx::GenContext) = Adapt.adapt(CPUnit(), ctx)
+@inline _can_derive_host_context(::GenContext) = true
+@inline _draws_in_host_context(ctx::GenContext) = !_on_host(ctx) && _can_derive_host_context(ctx)
+
+# Marginal types whose variates, numbers or arrays of numbers, only host
+# code can generate, one variate at a time:
+@inline _host_drawn_marginals(::Type) = false
+
 # Constant fills keep the type of the constant (point masses are exact):
 @inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = fill_array(get_compute_unit(ctx), x, asnonstatic(sz))
 @inline _const_bulk(ctx::GenContext, x, sz::StaticSizeLike) =

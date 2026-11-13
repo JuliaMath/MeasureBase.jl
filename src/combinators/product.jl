@@ -103,7 +103,35 @@ function rand_impl(ctx::GenContext, d::ProductMeasure{<:AbstractArray{M}}) where
     _array_product_rand(ctx, d, _fused_marginals(M))
 end
 _array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{true}) = batched_rand_impl(ctx, d, ())
-_array_product_rand(ctx::GenContext, d::ProductMeasure, ::Val{false}) = _rand_map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+function _array_product_rand(ctx::GenContext, d::ProductMeasure{<:AbstractArray{M}}, ::Val{false}) where {M}
+    if _draws_in_host_context(ctx) && _host_drawn_marginals(M)
+        _product_variate_on_unit(ctx, rand_impl(_host_context(ctx), Adapt.adapt(CPUnit(), d)))
+    else
+        _rand_map(Base.Fix1(_marginal_rand, ctx), marginals(d))
+    end
+end
+
+# A single variate of an array product is an array of marginal variates:
+@inline _product_variate_on_unit(ctx::GenContext, X) = _on_compute_unit(ctx, X)
+@inline _product_variate_on_unit(ctx::GenContext, X::AbstractArray{<:AbstractArray}) =
+    map(Base.Fix1(_on_compute_unit, ctx), X)
+
+# Marginals that only host code can sample (see `_host_drawn_marginals`)
+# draw one by one in a host loop. On other compute units their product
+# draws as a whole in a host context derived from the context (see
+# `_host_context`), with parameter columns adapted to the host, and the
+# variates are moved to the compute unit:
+function batched_rand_impl(ctx::GenContext, d::ProductMeasure{<:AbstractArray{M}}, sz::SizeLike) where {M}
+    if !_host_drawn_marginals(M)
+        _rand_default(ctx, d, sz)
+    elseif sz isa Tuple{}
+        rand_impl(ctx, d)
+    elseif _draws_in_host_context(ctx)
+        _on_compute_unit(ctx, batched_rand_impl(_host_context(ctx), Adapt.adapt(CPUnit(), d), sz))
+    else
+        _rand_default(ctx, d, sz)
+    end
+end
 
 # Batches of tuple and named tuple products are tuples resp. named tuples
 # of marginal batches:

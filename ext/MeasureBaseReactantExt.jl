@@ -2,12 +2,15 @@
 
 module MeasureBaseReactantExt
 
-using Reactant: Reactant, TracedRNumber
+using Reactant: Reactant, TracedRNumber, TracedRArray, ReactantRNG
 import MeasureBase
-using MeasureBase: RealValues, IntegerValues
+using MeasureBase: RealValues, IntegerValues, GenContext
 
 Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
+
+# Compiled code draws from traced RNGs, host code can't take part in it:
+MeasureBase._can_derive_host_context(::GenContext{<:Any,<:Any,<:ReactantRNG{<:TracedRArray}}) = false
 
 # Traced floating-point numbers aren't `AbstractFloat`s, so the context
 # precision would pass them by. Traced integers stay as they are:
