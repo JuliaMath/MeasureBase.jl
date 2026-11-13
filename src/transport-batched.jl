@@ -420,7 +420,10 @@ Returns a tuple `(Y, ladjs)` of the transported batch `Y`, as returned by
 log-abs-det Jacobians over the batch dimensions of `X` (a number for a
 single variate), like the results of [`logdensities`](@ref). The
 Jacobians are the ratios of the normalized densities of `μ` and `ν` (see
-[`transport_to`](@ref)), evaluated in batched density evaluations.
+[`transport_to`](@ref)). Affine Gaussian transports over finite CPU arrays
+use the covariance factors directly, without evaluating those densities.
+Their Jacobian remains constant when squared norms overflow. Other storage,
+AD representations and nonfinite variates retain the density-ratio path.
 """
 function transports_with_ladj end
 export transports_with_ladj

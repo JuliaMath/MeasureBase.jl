@@ -9,6 +9,7 @@ import Adapt
 using Random: AbstractRNG, Xoshiro, randexp
 
 import DensityInterface
+import ChangesOfVariables
 using DensityInterface: logdensityof, densityof
 
 import MeasureBase

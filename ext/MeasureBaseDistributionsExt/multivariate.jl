@@ -62,6 +62,56 @@ end
 MeasureBase.transport_to_std(::Type{StdNormal}, d::MvNormal, x) = MeasureBase.batched_transport_to_std(StdNormal, d, x)
 MeasureBase.transport_from_std(::Type{StdNormal}, d::MvNormal, z) = MeasureBase.batched_transport_from_std(StdNormal, d, z)
 
+# Finite Gaussian transports are affine. Read the current factors once per
+# call, in the sample/parameter precision, rather than whitening every sample
+# again in two reference densities. Other storage and AD types keep the generic
+# path, including its nonfinite conventions.
+const GaussianTransportMeasure = Union{MvNormalMeasure,MeasureBase.StdPowerMeasure{StdNormal}}
+const GaussianTransport = MeasureBase.TransportFunction{<:GaussianTransportMeasure,<:GaussianTransportMeasure}
+
+_gaussian_partype(m::MvNormalMeasure, T) = Distributions.partype(m.obj)
+_gaussian_partype(::MeasureBase.StdPowerMeasure{StdNormal}, T) = T
+_gaussian_finite(m::MvNormalMeasure) =
+    m.obj.Σ isa Union{PDMats.PDMat,PDMats.PDiagMat,PDMats.ScalMat} && all(isfinite, m.obj.μ)
+_gaussian_finite(::MeasureBase.StdPowerMeasure{StdNormal}) = true
+_gaussian_logdet(m::MvNormalMeasure, T) = _gaussian_logdet(m.obj.Σ, T)
+_gaussian_logdet(::MeasureBase.StdPowerMeasure{StdNormal}, T) = zero(T)
+_gaussian_logdet(Σ::PDMats.PDMat, T) = 2 * sum(x -> log(T(x)), diag(Σ.chol.factors))
+_gaussian_logdet(Σ::PDMats.PDiagMat, T) = sum(x -> log(T(x)), Σ.diag)
+_gaussian_logdet(Σ::PDMats.ScalMat, T) = T(Σ.dim) * log(T(Σ.value))
+
+function _gaussian_ladj(f::GaussianTransport, X, Y)
+    Xf, Yf = MeasureBase._flat_storage(X), MeasureBase._flat_storage(Y)
+    Xf isa StridedArray || return nothing
+    Yf isa StridedArray || return nothing
+    isconcretetype(eltype(Xf)) && eltype(Xf) <: AbstractFloat || return nothing
+    T = promote_type(eltype(Xf), _gaussian_partype(f.μ, eltype(Xf)), _gaussian_partype(f.ν, eltype(Xf)))
+    T <: AbstractFloat || return nothing
+    _gaussian_finite(f.μ) && _gaussian_finite(f.ν) || return nothing
+    all(isfinite, Xf) && all(isfinite, Yf) || return nothing
+    ladj = (_gaussian_logdet(f.ν, T) - _gaussian_logdet(f.μ, T)) / 2
+    return isfinite(ladj) ? ladj : nothing
+end
+
+function ChangesOfVariables.with_logabsdet_jacobian(f::GaussianTransport, x)
+    y = f(x)
+    ladj = _gaussian_ladj(f, x, y)
+    if isnothing(ladj)
+        ladj = MeasureBase._transport_ladj(logdensityof(f.μ, x), logdensityof(f.ν, y))
+    end
+    return y, ladj
+end
+
+function MeasureBase.transports_with_ladj(f::GaussianTransport, X)
+    Y = MeasureBase.transports(f, X)
+    ladj = _gaussian_ladj(f, X, Y)
+    if isnothing(ladj)
+        return Y, broadcast(MeasureBase._transport_ladj, MeasureBase.logdensities(f.μ, X), MeasureBase.logdensities(f.ν, Y))
+    end
+    dims = Base.tail(size(MeasureBase._as_stream_batch(MeasureBase._flat_batch(X), f.μ)))
+    return Y, isempty(dims) ? ladj : fill(ladj, dims)
+end
+
 # Parameters follow the batches to the device:
 function Adapt.adapt_structure(to, m::MvNormalMeasure)
     d = m.obj

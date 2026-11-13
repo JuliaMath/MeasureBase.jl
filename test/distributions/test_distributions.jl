@@ -18,6 +18,7 @@ using .MeasureBaseDistributionsExt: DistributionMeasure
     include("test_distribution_measure.jl")
     include("test_conversions.jl")
     include("test_transport.jl")
+    include("test_gaussian_ladj.jl")
     include("test_device_kernels.jl")
     include("test_mooncake.jl")
     include("test_reference_values.jl")
