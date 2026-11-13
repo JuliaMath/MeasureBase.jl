@@ -4,6 +4,8 @@ using Test,
     LinearAlgebra, Distributions, ChangesOfVariables, InverseFunctions, ArraysOfArrays
 using MeasureBase
 import ForwardDiff
+using Adapt: adapt
+using JLArrays: JLArray
 
 @testset "Affine Gaussian Jacobians" begin
     for T in (Float32, Float64)
@@ -49,4 +51,9 @@ import ForwardDiff
     @test ForwardDiff.derivative(t -> last(with_logabsdet_jacobian(f, [t, 0.2])), 0.4) ≈ 0 atol=64eps(
         Float64,
     )
+
+    X = JLArray([0.3 0.5; 0.4 -0.1])
+    _, device_ladjs = transports_with_ladj(adapt(JLArray, f), X)
+    @test device_ladjs isa JLArray
+    @test Array(device_ladjs) ≈ fill(log(3/2), 2)
 end

@@ -108,6 +108,10 @@ end
 
 @inline transport_to(ν, μ) = TransportFunction(asmeasure(ν), asmeasure(μ))
 
+function Adapt.adapt_structure(to, f::TransportFunction)
+    return transport_to(Adapt.adapt(to, f.ν), Adapt.adapt(to, f.μ))
+end
+
 """
     transport_source(f::MeasureBase.TransportFunction)
 

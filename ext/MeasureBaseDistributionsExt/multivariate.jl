@@ -84,6 +84,8 @@ function _gaussian_ladj(f::GaussianTransport, X, Y)
     Xf, Yf = MeasureBase._flat_storage(X), MeasureBase._flat_storage(Y)
     Xf isa StridedArray || return nothing
     Yf isa StridedArray || return nothing
+    get_compute_unit(Xf) isa CPUnit || return nothing
+    get_compute_unit(Yf) isa CPUnit || return nothing
     isconcretetype(eltype(Xf)) && eltype(Xf) <: AbstractFloat || return nothing
     T = promote_type(eltype(Xf), _gaussian_partype(f.μ, eltype(Xf)), _gaussian_partype(f.ν, eltype(Xf)))
     T <: AbstractFloat || return nothing
