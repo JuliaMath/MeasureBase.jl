@@ -1,6 +1,12 @@
 
 export Dirac
 
+"""
+    Dirac(x)
+
+The point mass at `x`, its own base measure. Its log-density is zero at `x`
+and `-Inf` elsewhere.
+"""
 struct Dirac{X} <: AbstractMeasure
     x::X
 end
@@ -9,38 +15,120 @@ function Pretty.tile(d::Dirac)
     Pretty.literal("Dirac(") * Pretty.tile(d.x) * Pretty.literal(")")
 end
 
-gentype(μ::Dirac{X}) where {X} = X
+"""
+    MeasureBase.atomof(μ::Dirac)
+
+The point that the point mass `μ` is located at.
+"""
+atomof(μ::Dirac) = μ.x
+
+Base.:(==)(a::Dirac, b::Dirac) = a.x == b.x
+Base.hash(a::Dirac, h::UInt) = hash(a.x, hash(:Dirac, h))
+Base.isapprox(a::Dirac, b::Dirac; kwargs...) = isapprox(a.x, b.x; kwargs...)
 
 function (μ::Dirac{X})(s) where {X}
     μ.x ∈ s && return 1
     return 0
 end
 
-basemeasure(d::Dirac) = CountingBase()
+# A point mass is its own base measure, so that structural measures such as
+# superpositions see where its base has mass:
+basemeasure(d::Dirac) = d
 
 massof(::Dirac) = static(1.0)
 
-function logdensityof(μ::Dirac, x::Real)
+function logdensityof_impl(μ::Dirac, x::Number)
     R = float(typeof(x))
-    insupport(μ, x) ? zero(R) : R(-Inf)
+    _checksupport(insupportof(μ, x), zero(R))
 end
 
-logdensityof(μ::Dirac, x) = insupport(μ, x) ? 0.0 : -Inf
+logdensityof_impl(μ::Dirac, x) = _checksupport(insupportof(μ, x), zero(_logd_numtype(x)))
 
-logdensity_def(::Dirac, x::Real) = zero(float(typeof(x)))
-logdensity_def(::Dirac, x) = 0.0
+logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
+logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
 
-Base.rand(::Random.AbstractRNG, T::Type, μ::Dirac) = μ.x
+@inline rand_impl(::GenContext, μ::Dirac) = μ.x
+@inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::SizeLike) = _const_batch(ctx, μ.x, sz)
 
 export dirac
 
+"""
+    dirac(μ)
+
+The point mass at a random variate of `μ`, `Dirac(rand(μ))`.
+"""
+function dirac end
+
 dirac(d::AbstractMeasure) = Dirac(rand(d))
 
-insupport(d::Dirac, x) = x == d.x
+insupportof(d::Dirac, x) = x == d.x
 
 @inline getdof(::Dirac) = static(0)
 
-@propagate_inbounds function checked_arg(μ::Dirac, x)
-    @boundscheck insupport(μ, x) || throw(ArgumentError("Invalid variate for measure"))
+@inline mspace_elsize(μ::Dirac) = _value_elsize(μ.x)
+@inline mspace_flatsize(μ::Dirac) = _value_flatsize(μ.x)
+@inline mspace_flatsize(::Type{<:Dirac{<:Number}}) = ()
+
+# Only the shape of variates is checked, values other than the atom are
+# valid arguments (outside the support):
+@inline checked_arg(::Dirac, x) = x
+@inline checked_arg(::Dirac{<:Number}, ::AbstractArray) = _throw_size_mismatch()
+@inline checked_arg(::Dirac{<:AbstractArray}, ::Number) = _throw_size_mismatch()
+@propagate_inbounds function checked_arg(μ::Dirac{<:AbstractArray}, x::AbstractArray)
+    @boundscheck size(x) == size(μ.x) || _throw_size_mismatch()
     x
 end
+
+# Dirac measures have no degrees of freedom:
+@inline transport_to_std(::Type{S}, ::Dirac, x) where {S<:StdMeasure} = SVector{0,Bool}()
+@inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
+@inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
+
+# Transports between scalar point masses map the atom to the atom and give
+# NaN elsewhere, like other transports outside the support of the source:
+@inline transport_def(ν::Dirac{<:Real}, μ::Dirac{<:Real}, x) = _nan_outside(μ, x, float(ν.x))
+batched_transport_def(ν::Dirac{<:Real}, μ::Dirac{<:Real}, X) = broadcast(x -> transport_def(ν, μ, x), X)
+
+# Batched kernels cover Dirac measures with numbers and numeric arrays as
+# flat variates, others have no declared variate rank:
+const _FlatDirac = Dirac{<:Union{Number,AbstractArray{<:Number}}}
+
+@inline batched_transport_to_std(::Type{S}, ::Dirac, ::Number) where {S<:StdMeasure} = SVector{0,Bool}()
+function batched_transport_to_std(::Type{S}, μ::_FlatDirac, X::AbstractArray) where {S<:StdMeasure}
+    n = length(_value_flatsize(μ.x))
+    similar(X, Bool, (0, ntuple(i -> size(X, n + i), Val(ndims(X) - n))...))
+end
+
+function batched_transport_from_std(::Type{S}, μ::_FlatDirac, Z::AbstractArray) where {S<:StdMeasure}
+    _const_variates(μ.x, Z)
+end
+@inline _const_variates(x::Number, ::AbstractVector) = x
+@inline function _const_variates(x, Z::AbstractArray)
+    _is_host_array(Z) && _has_fill_batch(x) ? _fill_batch(x, Base.tail(maybestatic_size(Z))) : _dense_const_variates(x, Z)
+end
+function _dense_const_variates(x, Z::AbstractArray)
+    X = similar(Z, eltype(x), (size(x)..., Base.tail(size(Z))...))
+    X .= x
+    return X
+end
+
+@inline mspace_ndims(::Type{<:Dirac{<:AbstractArray{<:Number,N}}}) where {N} = N
+
+# Batches of array variates: all elements of a variate must match.
+function batched_logdensityof_impl(μ::Dirac{<:AbstractArray{<:Number,N}}, X::AbstractArray) where {N}
+    matches = _all_leading(X .== μ.x, static(N))
+    ifelse.(matches, zero(_logd_numtype(X)), _neg_inf_logd(X))
+end
+# Broadcasts over zero-dimensional arrays only give numbers:
+@inline _all_leading(A::AbstractArray, n::StaticInteger) = all_leading_dims(A, n)
+@inline _all_leading(b::Bool, ::StaticInteger{0}) = b
+function batched_logdensity_def(μ::Dirac{<:AbstractArray{<:Number}}, X::AbstractArray)
+    _zero_logd_batch(X, static(ndims(μ.x)))
+end
+
+Adapt.adapt_structure(to, μ::Dirac) = Dirac(Adapt.adapt(to, μ.x))
+
+# Counting measures and point masses (also on arrays) are atomic roots, they
+# agree with each other where both have mass and are singular relative to
+# Lebesgue measure:
+@inline _root_kind(::Union{Counting,CountingBase,Dirac}) = _AtomicRoot()

@@ -1,0 +1,316 @@
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
+
+
+@inline MeasureBase.getdof(::Distribution{Univariate}) = static(1)
+
+@inline MeasureBase.check_dof(a::Distribution{Univariate}, b::Distribution{Univariate}) = nothing
+
+_dist_params_numtype(d::Distribution) = real_numtype(typeof(Distributions.params(d)))
+
+@inline function _result_numtype(d::Distribution{Univariate}, x::T) where {T<:Number}
+    float(promote_type(T, _dist_params_numtype(d)))
+end
+
+
+# Generic transports between univariate continuous distributions and
+# StdLogistic: the log-cdf and log-ccdf keep both tails accurate on the way
+# to the standard measure, quantile and complementary quantile on the way
+# back. The implementation hooks are specialized for dual numbers in the
+# ForwardDiff extension.
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Distribution{Univariate,Continuous}}) = StdLogistic
+
+@inline _trafo_logcdf(d::Distribution{Univariate,Continuous}, x::Number) =
+    _trafo_logcdf_impl(_dist_params_numtype(d), d, x)
+@inline _trafo_logccdf(d::Distribution{Univariate,Continuous}, x::Number) =
+    _trafo_logccdf_impl(_dist_params_numtype(d), d, x)
+@inline _trafo_quantile(d::Distribution{Univariate,Continuous}, p::Number) =
+    _trafo_quantile_impl(_dist_params_numtype(d), d, p)
+@inline _trafo_cquantile(d::Distribution{Univariate,Continuous}, p::Number) =
+    _trafo_cquantile_impl(_dist_params_numtype(d), d, p)
+
+# The log tails are the log SMFs (exact at infinite arguments, through the
+# kernels of the families). Single-precision variates are evaluated in
+# double precision, which Distributions' tails and quantiles need (e.g. of
+# TDist), the results are converted back by the transports:
+@inline _trafo_logcdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
+    MeasureBase.logsmf(d, _widened(x))
+@inline _trafo_logccdf_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, x::Number) =
+    MeasureBase.logcsmf(d, _widened(x))
+@inline _trafo_quantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, p::Number) =
+    _dist_quantile(d, _widened(p))
+@inline _trafo_cquantile_impl(::Type{<:Real}, d::Distribution{Univariate,Continuous}, p::Number) =
+    _dist_cquantile(d, _widened(p))
+
+@inline _widened(x::AbstractFloat) = convert(promote_type(Float64, typeof(x)), x)
+@inline _widened(x::Number) = x
+
+@inline _dist_quantile(d::Distribution{Univariate,Continuous}, p::Number) = Distributions.quantile(d, p)
+@inline _dist_cquantile(d::Distribution{Univariate,Continuous}, p::Number) = Distributions.cquantile(d, p)
+
+# The quantile implementation of Beta only supports Float64:
+const _Float64Compatible = Union{Integer,AbstractFloat}
+@inline function _dist_quantile(d::Beta{<:_Float64Compatible}, p::_Float64Compatible)
+    Distributions.quantile(d, convert(promote_type(Float64, typeof(p)), p))
+end
+@inline function _dist_cquantile(d::Beta{<:_Float64Compatible}, p::_Float64Compatible)
+    Distributions.cquantile(d, convert(promote_type(Float64, typeof(p)), p))
+end
+
+# Truncated distributions: Distributions forms their tails and quantiles
+# from the lower tail of the untruncated distribution, which loses
+# truncations to upper tails. Here both come from the tail of the
+# untruncated distribution with the smaller mass beyond the truncation
+# bounds (like for `MeasureBase.truncate`), via the log tails resp. inverse
+# SMFs of the untruncated distribution:
+const _Truncated = Distributions.Truncated{<:Distribution{Univariate,Continuous}}
+const _ContinuousMixture = Distributions.AbstractMixtureModel{Univariate,Continuous}
+
+# The log tails of the untruncated distribution at the bounds, in the
+# direction of the smaller mass:
+function _truncation_logtails(d::_Truncated)
+    d0, a, b = d.untruncated, minimum(d), maximum(d)
+    lc_a, l_b = _trafo_logccdf(d0, a), _trafo_logcdf(d0, b)
+    upper = lc_a < l_b
+    upper ? (upper, lc_a, _trafo_logccdf(d0, b)) : (upper, _trafo_logcdf(d0, a), l_b)
+end
+
+@inline _trafo_logcdf(d::_Truncated, x::Number) = first(_truncated_logtails(d, x))
+@inline _trafo_logccdf(d::_Truncated, x::Number) = last(_truncated_logtails(d, x))
+
+function _truncated_logtails(d::_Truncated, x)
+    d0, x_t = d.untruncated, clamp(x, minimum(d), maximum(d))
+    upper, t_a, t_b = _truncation_logtails(d)
+    lm = logsubexp(t_a, t_b)
+    if upper
+        lc_x = _trafo_logccdf(d0, x_t)
+        (logsubexp(t_a, lc_x) - lm, logsubexp(lc_x, t_b) - lm)
+    else
+        l_x = _trafo_logcdf(d0, x_t)
+        (logsubexp(l_x, t_a) - lm, logsubexp(t_b, l_x) - lm)
+    end
+end
+
+# Quantiles stay within the truncation, despite rounding:
+@inline _dist_quantile(d::_Truncated, p::Real) = _truncated_quantile(d, p, true)
+@inline _dist_cquantile(d::_Truncated, q::Real) = _truncated_quantile(d, q, false)
+
+function _truncated_quantile(d::_Truncated, p::Real, lower_tail::Bool)
+    d0 = d.untruncated
+    upper, t_a, t_b = _truncation_logtails(d)
+    s_a, s_b = exp(t_a), exp(t_b)
+    x = if upper
+        MeasureBase.invcsmf(d0, lower_tail ? s_a - p * (s_a - s_b) : s_b + p * (s_a - s_b))
+    else
+        MeasureBase.invsmf(d0, lower_tail ? s_a + p * (s_b - s_a) : s_b - p * (s_b - s_a))
+    end
+    clamp(x, minimum(d), maximum(d))
+end
+
+# Distributions with a preferred standard measure other than StdLogistic
+# (e.g. the families with branch-free kernels) convert from that one:
+@inline MeasureBase.transport_to_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x) =
+    _to_logistic_via(MeasureBase.preferred_stdmeasure(d), d, x)
+@inline MeasureBase.transport_from_std(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l) =
+    _from_logistic_via(MeasureBase.preferred_stdmeasure(d), d, l)
+
+@inline _to_logistic_via(::Type{S}, d, x) where {S<:StdMeasure} =
+    MeasureBase.stdconvert(StdLogistic, S, transport_to_std(S, d, x))
+@inline _from_logistic_via(::Type{S}, d, l) where {S<:StdMeasure} =
+    transport_from_std(S, d, MeasureBase.stdconvert(S, StdLogistic, l))
+
+# Distributions' functions run on the host only, so these may branch. Like
+# the standard conversions, the log tail probabilities floor at the smallest
+# positive float of the result type, so that finite variates (also at the
+# ends of the support) give finite standard variates:
+@inline function _to_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, x)
+    R = _result_numtype(d, x)
+    MeasureBase.insupportof(asmeasure(d), x) || return convert(R, NaN)
+    lfloor = log(floatmin(real_numtype(R)))
+    convert(R, max(_trafo_logcdf(d, x), lfloor) - max(_trafo_logccdf(d, x), lfloor))
+end
+
+# From the side that keeps the tail. Quantiles of finite logistic variates
+# that overflow (Distributions' tails don't always resolve the floored
+# probabilities) stay at the largest finite values of the support:
+@inline function _from_logistic_via(::Type{StdLogistic}, d::Distribution{Univariate,Continuous}, l)
+    R = _result_numtype(d, l)
+    isnan(l) && return convert(R, NaN)
+    lower = l < zero(l)
+    x = convert(R, lower ? _trafo_quantile(d, _unit_interior(logistic(l))) : _trafo_cquantile(d, _unit_interior(logistic(-l))))
+    isinf(x) ? _finite_support_end(R, d, lower) : x
+end
+
+@inline function _finite_support_end(::Type{R}, d::Distribution{Univariate}, lower::Bool) where {R}
+    T = real_numtype(R)
+    convert(R, lower ? max(nextfloat(convert(T, minimum(d))), -floatmax(T)) : min(prevfloat(convert(T, maximum(d))), floatmax(T)))
+end
+
+
+# The Stieltjes measure functions of truncations and mixtures follow their
+# log tails:
+for D in (:_Truncated, :_ContinuousMixture)
+    @eval begin
+        @inline MeasureBase.smf(d::$D, x::Real) = _dist_smf(exp ∘ _trafo_logcdf, d, x, x > 0)
+        @inline MeasureBase.csmf(d::$D, x::Real) = _dist_smf(exp ∘ _trafo_logccdf, d, x, x < 0)
+        @inline MeasureBase.logsmf(d::$D, x::Real) = _dist_logsmf(_trafo_logcdf, d, x, x > 0)
+        @inline MeasureBase.logcsmf(d::$D, x::Real) = _dist_logsmf(_trafo_logccdf, d, x, x < 0)
+    end
+end
+
+# The cdf is the Stieltjes measure function of a distribution, the quantile
+# its inverse, the ccdf and the complementary quantile their complements,
+# also in the interval forms:
+for f in (:smf, :csmf, :logsmf, :logcsmf)
+    @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate}, x) = MeasureBase.$f(m.obj, x)
+end
+for f in (:invsmf, :invcsmf, :invlogsmf, :invlogcsmf)
+    @eval @inline MeasureBase.$f(m::DistributionMeasure{Univariate,Continuous}, p) = MeasureBase.$f(m.obj, p)
+end
+@inline MeasureBase.smf(m::DistributionMeasure{Univariate}, a, x) = MeasureBase.smf(m.obj, a, x)
+@inline MeasureBase.invsmf(m::DistributionMeasure{Univariate,Continuous}, a, p) = MeasureBase.invsmf(m.obj, a, p)
+
+# Infinite arguments give exact values, also for derivatives with respect to
+# the parameters. The foreign functions only see finite arguments, since
+# their derivatives at infinite ones are NaN, which reverse-mode AD would
+# propagate from the unselected branch:
+@inline MeasureBase.smf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.cdf, d, x, x > 0)
+@inline MeasureBase.csmf(d::Distribution{Univariate}, x::Real) = _dist_smf(Distributions.ccdf, d, x, x < 0)
+@inline MeasureBase.logsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logcdf, d, x, x > 0)
+@inline MeasureBase.logcsmf(d::Distribution{Univariate}, x::Real) = _dist_logsmf(Distributions.logccdf, d, x, x < 0)
+
+@inline function _dist_smf(f::F, d, x, at_one) where {F}
+    y = _dist_call(f, d, _finite_arg(x))
+    ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), oftype(y, at_one), y))
+end
+@inline function _dist_logsmf(f::F, d, x, at_zero) where {F}
+    y = _dist_call(f, d, _finite_arg(x))
+    ifelse(isnan(x), oftype(y, NaN), ifelse(isinf(x), ifelse(at_zero, zero(y), oftype(y, -Inf)), y))
+end
+
+# One, not zero, as the placeholder keeps `log` finite (e.g. for LogNormal):
+@inline _finite_arg(x) = ifelse(isfinite(x), x, one(x))
+
+# `f(d, x)` for the tail functions (`cdf`, `logccdf`, ...) and quantiles
+# (`_dist_quantile`, `_dist_cquantile`) of `d`. The ForwardDiff extension
+# takes dual numbers, which Distributions doesn't support for all families,
+# through the transport hooks:
+@inline _dist_call(f::F, d, x) where {F} = f(d, x)
+
+@inline MeasureBase.invsmf(d::Distribution{Univariate,Continuous}, p::Real) =
+    _nan_outside(StdUniform, p, _dist_call(_dist_quantile, d, _quantile_arg(p)))
+@inline MeasureBase.invcsmf(d::Distribution{Univariate,Continuous}, p::Real) =
+    _nan_outside(StdUniform, p, _dist_call(_dist_cquantile, d, _quantile_arg(p)))
+@inline MeasureBase.invlogsmf(d::Distribution{Univariate,Continuous}, logp::Real) =
+    _nan_above_zero(logp, Distributions.invlogcdf(d, _logquantile_arg(logp)))
+@inline MeasureBase.invlogcsmf(d::Distribution{Univariate,Continuous}, logp::Real) =
+    _nan_above_zero(logp, Distributions.invlogccdf(d, _logquantile_arg(logp)))
+
+
+# Location-scale families of standard measures transport by their affine map:
+
+@inline function _affine_to_std(d::Distribution{Univariate}, x::Number)
+    z = (x - Distributions.location(d)) / Distributions.scale(d)
+    convert(_result_numtype(d, x), z)
+end
+
+@inline function _std_to_affine(d::Distribution{Univariate}, z::Number)
+    x = muladd(z, Distributions.scale(d), Distributions.location(d))
+    convert(_result_numtype(d, z), x)
+end
+
+# Transports outside the support of the source give NaN, the formulas
+# must not throw outside the support (see `MeasureBase._nan_outside`):
+@inline _nan_outside(d::Distribution, x, y) = MeasureBase._nan_outside(asmeasure(d), x, y)
+@inline _nan_outside(::Type{S}, z, y) where {S<:StdMeasure} = MeasureBase._nan_outside(S(), z, y)
+
+# The foreign cdfs and quantiles may hang or throw for NaN arguments, so
+# these are replaced before the calls and the results masked afterwards:
+@inline _nonnan(x, y) = ifelse(isnan(x), oftype(x, y), x)
+@inline _quantile_arg(p) = _nonnan(_unit_interior(p), 1 // 2)
+@inline _logquantile_arg(logp) = _nonnan(min(logp, zero(logp)), -log(oftype(float(logp), 2)))
+@inline _nan_above_zero(logp, y) = ifelse(logp <= zero(logp), y, oftype(y, NaN))
+
+# The normal and logistic families transport by their affine maps, their
+# interval masses `μ((a, x])` and the inverses (see `MeasureBase.smf(μ, a,
+# x)`) are those of the standard measures:
+for (D, S) in [
+    (Logistic, StdLogistic),
+    (Normal, StdNormal)
+]
+    @eval begin
+        @inline MeasureBase.preferred_stdmeasure(::Type{<:$D}) = $S
+        @inline MeasureBase.transport_to_std(::Type{$S}, d::$D, x) = _nan_outside(d, x, _affine_to_std(d, x))
+        @inline MeasureBase.transport_from_std(::Type{$S}, d::$D, z) = _std_to_affine(d, z)
+        @inline MeasureBase.smf(d::$D, a::Real, x::Real) = MeasureBase.smf($S(), _interval_end_to_std(d, a), _interval_end_to_std(d, x))
+        @inline MeasureBase.invsmf(d::$D, a::Real, p::Real) = _std_to_affine(d, MeasureBase.invsmf($S(), _interval_end_to_std(d, a), p))
+    end
+end
+
+# Infinite interval ends stay exact, also for derivatives with respect to the
+# parameters (the affine map gives them NaN partials):
+@inline function _interval_end_to_std(d::Distribution{Univariate}, x::Real)
+    z = _affine_to_std(d, _finite_arg(x))
+    endpoint = ifelse(Distributions.scale(d) < 0, -x, x)
+    ifelse(isfinite(x), z, oftype(z, endpoint))
+end
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Uniform}) = StdUniform
+@inline MeasureBase.transport_to_std(::Type{StdUniform}, d::Uniform, x) = _nan_outside(d, x, _affine_to_std(d, x))
+@inline MeasureBase.transport_from_std(::Type{StdUniform}, d::Uniform, z) = _nan_outside(StdUniform, z, _std_to_affine(d, z))
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:Exponential}) = StdExponential
+@inline MeasureBase.transport_to_std(::Type{StdExponential}, d::Exponential, x) =
+    _nan_outside(d, x, convert(_result_numtype(d, x), Distributions.scale(d) \ x))
+@inline MeasureBase.transport_from_std(::Type{StdExponential}, d::Exponential, z) =
+    _nan_outside(StdExponential, z, convert(_result_numtype(d, z), Distributions.scale(d) * z))
+
+
+# Affine transformed distributions transport via the underlying distribution:
+
+const _AffineDist = Distributions.AffineDistribution
+
+# Keep the underlying family's differentiable kernels and both tails. A
+# negative scale exchanges the lower and upper tails for continuous laws.
+for (f, fc) in ((:smf, :csmf), (:csmf, :smf), (:logsmf, :logcsmf), (:logcsmf, :logsmf))
+    @eval @inline function MeasureBase.$f(d::_AffineDist{<:Any,Continuous}, x::Real)
+        z = _interval_end_to_std(d, x)
+        if d.σ > 0
+            MeasureBase.$f(d.ρ, z)
+        else
+            MeasureBase.$fc(d.ρ, z)
+        end
+    end
+end
+for (f, fc) in (
+    (:invsmf, :invcsmf),
+    (:invcsmf, :invsmf),
+    (:invlogsmf, :invlogcsmf),
+    (:invlogcsmf, :invlogsmf),
+)
+    @eval @inline function MeasureBase.$f(d::_AffineDist{<:Any,Continuous}, p::Real)
+        z = if d.σ > 0
+            MeasureBase.$f(d.ρ, p)
+        else
+            MeasureBase.$fc(d.ρ, p)
+        end
+        _std_to_affine(d, z)
+    end
+end
+
+@inline MeasureBase.preferred_stdmeasure(::Type{<:_AffineDist{<:Any,<:Any,D}}) where {D} =
+    MeasureBase.preferred_stdmeasure(D)
+
+@inline function MeasureBase.transport_to_std(::Type{S}, d::_AffineDist, x) where {S<:StdMeasure}
+    transport_to_std(S, d.ρ, d.σ \ (x - d.μ))
+end
+@inline function MeasureBase.transport_from_std(::Type{S}, d::_AffineDist, z) where {S<:StdMeasure}
+    muladd(d.σ, transport_from_std(S, d.ρ, z), d.μ)
+end
+# Disambiguation with the generic univariate transports:
+@inline function MeasureBase.transport_to_std(::Type{StdLogistic}, d::_AffineDist, x)
+    transport_to_std(StdLogistic, d.ρ, d.σ \ (x - d.μ))
+end
+@inline function MeasureBase.transport_from_std(::Type{StdLogistic}, d::_AffineDist, z)
+    muladd(d.σ, transport_from_std(StdLogistic, d.ρ, z), d.μ)
+end

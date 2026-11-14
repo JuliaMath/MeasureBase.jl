@@ -2,27 +2,40 @@ import LinearAlgebra: normalize
 
 import Base
 
+"""
+    abstract type MeasureBase.AbstractUnknownMass <: Number
+
+Supertype of [`UnknownFiniteMass`](@ref) and [`UnknownMass`](@ref), the
+results of [`massof`](@ref) when the mass of a measure is not known.
+"""
 abstract type AbstractUnknownMass <: Number end
 
 """
-    struct UnknownFiniteMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownFiniteMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is finite but unknown. See [`massof`](@ref).
 """
 struct UnknownFiniteMass <: AbstractUnknownMass end
 
 """
-    struct UnknownMass <: AbstractUnknownMass end
+    struct MeasureBase.UnknownMass <: AbstractUnknownMass
 
-See `massof`
+The mass of a measure is unknown, possibly infinite. See [`massof`](@ref).
 """
 struct UnknownMass <: AbstractUnknownMass end
 
 for T in (:UnknownFiniteMass, :UnknownMass)
     @eval begin
         Base.:+(::$T, ::$T) = $T()
+        Base.:+(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:+(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
         Base.:*(::$T, ::$T) = $T()
-        Base.:^(::$T, k::Number) = isfinite(k) ? $T() : UnknownMass()
+        Base.:*(x::Real, ::$T) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:*(::$T, x::Real) = isfinite(dynamic(x)) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Real) = isfinite(k) ? $T() : UnknownMass()
+        # Disambiguation:
+        Base.:^(::$T, k::Integer) = isfinite(k) ? $T() : UnknownMass()
+        Base.:^(::$T, k::Rational) = isfinite(k) ? $T() : UnknownMass()
     end
 end
 
@@ -44,8 +57,6 @@ export massof
 
 Get the _mass_ of a measure - that is, integrate the measure over its support.
 
-`massof` 
-
 ----------
 
     massof(m, dom)
@@ -58,30 +69,28 @@ should *not* add new "call" methods, but instead extend `MeasureBase.massof`.
 
 For example, for many univariate measures `m` with `rootmeasure(m) ==
 LebesgueBase()`, users can call `massof(m, a_b)` where
-`a_b::IntervalSets.Interval`.
+`a_b::IntervalSets.Interval`. Interval masses come from the Stieltjes
+measure function (see [`smf`](@ref)), they are exact for left-open,
+right-closed intervals `Interval{:open,:closed}(a, b)`. Other intervals
+are treated alike (they differ by the masses of the ends) and require a
+root measure without atoms.
 
 `massof` often returns a `Real`. But in many cases we may only know the mass is
 finite, or we may know nothing at all about it. For these cases, it will return
-`UnknownFiniteMass` or `UnknownMass`, respectively. When no `massof` method
-exists, it defaults to `UnknownMass`.
+[`UnknownFiniteMass()`](@ref UnknownFiniteMass) or [`UnknownMass()`](@ref UnknownMass),
+respectively. When no `massof` method exists, it defaults to `UnknownMass()`.
+
+`massof` must be type stable. Types of normalized measures should return
+`static(1.0)`, [`normalize`](@ref) then returns them as they are. Transport
+Jacobians are density ratios of normalized measures, they require known
+masses.
 """
-massof(m::AbstractMeasure) = UnknownMass(m)
+massof(::AbstractMeasure) = UnknownMass()
 
-struct NormalizedMeasure{P,M} <: AbstractMeasure
-    parent::P
-    parent_mass::M
-end
-
-massof(m::NormalizedMeasure) = static(1.0)
-
-normalize(m::AbstractMeasure) = _normalize(m, massof(m))
-
-_normalize(m::AbstractMeasure, mass::AbstractUnknownMass) = NormalizedMeasure(m, mass)
-
-function _normalize(m::AbstractMeasure, mass)
-    isinf(mass) && error("Measure cannot be normalized: $m")
-    inv(mass) * m
-end
+# The log of a known mass, densities that involve unknown masses are unknown:
+@inline _logmass(mass::Real) = log(dynamic(mass))
+@noinline _logmass(::AbstractUnknownMass) =
+    throw(ArgumentError("Density depends on a measure of unknown mass"))
 
 export isnormalized
 
@@ -102,10 +111,10 @@ Check whether `norm(x, p) == 1`.
 """
 isnormalized(x, p::Real = 2) = isone(norm(x, p))
 
-isone(::AbstractUnknownMass) = false
+Base.isone(::AbstractUnknownMass) = false
 
 function massof(m, s)
-    _massof(m, s, rootmeasure(m))
+    _default_massof_impl(m, s, rootmeasure(m))
 end
 
 """
@@ -116,4 +125,24 @@ in this way, users should add the corresponding `massof` method.
 """
 (m::AbstractMeasure)(s) = massof(m, s)
 
-massof(μ, a_b::AbstractInterval) = smf(μ, rightendpoint(a_b)) - smf(μ, leftendpoint(a_b))
+# Stieltjes measure functions give the masses of left-open, right-closed
+# intervals. Other intervals differ from them by the masses of their ends,
+# which only vanish for measures without atoms:
+massof(μ, a_b::AbstractInterval) = _interval_massof(μ, a_b, _atom_free(rootmeasure(μ)))
+_interval_massof(μ, a_b::Interval{:open,:closed}, ::Bool) = _smf_interval_massof(μ, a_b)
+_interval_massof(μ, a_b::AbstractInterval, atom_free::Bool) =
+    atom_free ? _smf_interval_massof(μ, a_b) : _throw_atomic_interval_massof(μ)
+@noinline _throw_atomic_interval_massof(μ) = throw(
+    ArgumentError(
+        "Masses of intervals other than left-open, right-closed ones require a root measure without atoms, the root measure of a measure of type $(nameof(typeof(μ))) has atoms",
+    ),
+)
+
+_smf_interval_massof(μ, a_b::AbstractInterval) = _checked_interval_mass(μ, smf(μ, endpoints(a_b)...))
+
+@inline _checked_interval_mass(μ, m) = m
+@noinline _checked_interval_mass(μ, ::NoSMF) = throw(
+    ArgumentError(
+        "Can't compute the mass over an interval for a measure of type $(nameof(typeof(μ))), no statistical measure function available",
+    ),
+)
