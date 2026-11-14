@@ -37,16 +37,35 @@ _logdet_cov(Σ::PDMats.ScalMat) = Σ.dim * log(Σ.value)
 _logdet_cov(Σ) = logdet(Σ)
 
 # Infinite values lie outside the support:
-for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
-    @eval function MeasureBase.$bhead(m::MvNormalMeasure, X::AbstractArray)
-        d = m.obj
-        Xc = _as_columns(X)
-        Z = _cholesky_L(d.Σ) \ (Xc .- d.μ)
-        ld = _logdet_cov(d.Σ)
-        ℓ = -_column_sums(abs2, Z) ./ 2 .- (ld + log2π * oftype(ld, length(d))) / 2
-        _batch_results(_masked(ℓ, _column_all(isfinite.(Xc))), X)
-    end
+function _gaussian_density_parts(m::MvNormalMeasure, X::AbstractArray)
+    d = m.obj
+    Xc = _as_columns(X)
+    factor = _cholesky_L(d.Σ)
+    Z = factor \ (Xc .- d.μ)
+    ld = _logdet_cov(d.Σ)
+    ℓ = -_column_sums(abs2, Z) ./ 2 .- (ld + log2π * oftype(ld, length(d))) / 2
+    _batch_results(_masked(ℓ, _column_all(isfinite.(Xc))), X), Z, factor
 end
+for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
+    @eval MeasureBase.$bhead(m::MvNormalMeasure, X::AbstractArray) =
+        first(_gaussian_density_parts(m, X))
+end
+
+function MeasureBase._gaussian_logdensity_score(m::MvNormalMeasure, X::AbstractMatrix)
+    values, Z, factor = _gaussian_density_parts(m, X)
+    score = adjoint(factor) \ Z
+    score .= ifelse.(_as_row(isfinite.(values)), .-score, zero(eltype(score)))
+    return values, score
+end
+function MeasureBase._gaussian_logdensity_score(
+    m::MeasureBase.StdPowerMeasure{StdNormal,1},
+    X::AbstractMatrix,
+)
+    values = MeasureBase.logdensities(m, X)
+    score = ifelse.(_as_row(isfinite.(values)), .-X, zero(eltype(X)))
+    return values, score
+end
+
 MeasureBase.logdensity_def(m::MvNormalMeasure, x::AbstractVector) = MeasureBase.batched_logdensity_def(m, x)
 MeasureBase.unsafe_logdensityof(m::MvNormalMeasure, x::AbstractVector) = MeasureBase.batched_logdensityof_impl(m, x)
 
@@ -68,6 +87,27 @@ MeasureBase.transport_from_std(::Type{StdNormal}, d::MvNormal, z) = MeasureBase.
 # path, including its nonfinite conventions.
 const GaussianTransportMeasure = Union{MvNormalMeasure,MeasureBase.StdPowerMeasure{StdNormal}}
 const GaussianTransport = MeasureBase.TransportFunction{<:GaussianTransportMeasure,<:GaussianTransportMeasure}
+
+const VectorGaussianMeasure =
+    Union{MvNormalMeasure,MeasureBase.StdPowerMeasure{StdNormal,1}}
+const VectorGaussianTransport =
+    MeasureBase.TransportFunction{<:VectorGaussianMeasure,<:VectorGaussianMeasure}
+_gaussian_score_to(m::MvNormalMeasure, G) = adjoint(_cholesky_L(m.obj.Σ)) * G
+_gaussian_score_to(::MeasureBase.StdPowerMeasure{StdNormal,1}, G) = G
+_gaussian_score_from(m::MvNormalMeasure, G) = adjoint(_cholesky_L(m.obj.Σ)) \ G
+_gaussian_score_from(::MeasureBase.StdPowerMeasure{StdNormal,1}, G) = G
+function MeasureBase._gaussian_transport_pullback(
+    f::VectorGaussianTransport,
+    G::AbstractMatrix,
+)
+    _gaussian_score_from(f.μ, _gaussian_score_to(f.ν, G))
+end
+function MeasureBase._gaussian_transport_matrix(
+    f::VectorGaussianTransport,
+    X::AbstractMatrix,
+)
+    MeasureBase._flat_storage(MeasureBase.transports(f, X))
+end
 
 _gaussian_partype(m::MvNormalMeasure, T) = Distributions.partype(m.obj)
 _gaussian_partype(::MeasureBase.StdPowerMeasure{StdNormal}, T) = T

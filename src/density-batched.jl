@@ -35,6 +35,10 @@ See [`transports`](@ref) for batches of transports.
 """
 function logdensities end
 
+# Shared Gaussian batch values and coordinate scores for sampling adapters.
+function _gaussian_logdensity_score end
+function _device_logdensity_value_gradient! end
+
 @inline logdensities(μ::AbstractMeasure, X) = _materialize(_batched_ld(logdensityof_impl, μ, X))
 
 """

@@ -3,9 +3,20 @@
 module MeasureBaseDistributionsEnzymeCoreExt
 
 using EnzymeCore: EnzymeRules
+import MeasureBase
+using EnzymeCore:
+    Const, Duplicated, Active, autodiff_deferred, WithPrimal, ReverseWithPrimal
+
 using MeasureBase: _gamma_cdf, _gamma_ccdf, _gamma_quantile, _gamma_cquantile
 using MeasureBase: _beta_cdf, _beta_quantile_pair, _gamma_logpdf, _beta_logpdf
 using MeasureBase: _gamma_cdf_dshape, _beta_cdf_dshape
+
+# Combined pointwise reverse mode releases each likelihood tape within its GPU thread.
+function MeasureBase._device_logdensity_value_gradient!(mode, density, x, gradient)
+    effective = isnothing(mode) ? ReverseWithPrimal : WithPrimal(mode)
+    _, value = autodiff_deferred(effective, Const(density), Active, Duplicated(x, gradient))
+    return value
+end
 
 # Differentiate the scalar kernels analytically, including the inverse
 # functions by implicit differentiation, rather than their iterative solvers.
