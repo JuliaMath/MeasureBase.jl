@@ -7,6 +7,10 @@
 # `stream_ndims`), structural measures implement them once in terms of the
 # kernels of their components.
 
+# Coordinate pullback of a constant affine Gaussian transport.
+function _gaussian_transport_pullback end
+function _gaussian_transport_matrix end
+
 """
     MeasureBase.batched_transport_to_std(::Type{S}, μ, X)
 
