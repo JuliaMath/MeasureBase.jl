@@ -109,13 +109,8 @@ _plain(x::Tuple) = map(_plain, x)
             xd = rand(d, 20)
             test_cuda(x -> logdensities(m, x), xd)
             f = transport_to(StdNormal(), m)
-            if d isa Beta
-                # SpecialFunctions' incomplete beta function doesn't compile for GPUs:
-                @test_broken Array(f.(CuArray(xd))) ≈ f.(xd)
-            else
-                test_cuda(x -> f.(x), xd)
-                test_cuda(z -> inverse(f).(z), randn(20))
-            end
+            test_cuda(x -> f.(x), xd)
+            test_cuda(z -> inverse(f).(z), randn(20))
         end
         for d in (Poisson(2.7), Bernoulli(0.3))
             test_cuda(x -> logdensities(asmeasure(d), x), Float64.(rand(d, 20)))
@@ -139,7 +134,7 @@ _plain(x::Tuple) = map(_plain, x)
         md = asmeasure(dir)
         Xd = rand(dir, 20)
         test_cuda((m, X) -> logdensities(m, X), md, Xd)
-        @test_broken flatview(transport_to(StdUniform()^3, cu_copy(md)).(sliced(CuArray(Xd), Val(1)))) isa CuArray
+        test_cuda((m, X) -> flatview(transport_to(StdUniform()^3, m).(sliced(X, Val(1)))), md, Xd)
     end
 
     @testset "random variates" begin
