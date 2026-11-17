@@ -225,14 +225,10 @@ are shorthands. Batches of variates are drawn as variates of powers,
 `rand(ctx, μ^n)`. By default, standard variates are drawn in bulk on the
 compute unit and transported to `μ`.
 
-Variates that only host code can generate are drawn on the host and moved
-to the compute unit of the context. That holds for Poisson and other
-distributions without a standard transport, and for array products of
-such distributions.
-The host draws use a random number generator seeded from the generator of
-the context, which advances, so the context determines these draws as
-well. Compiled code (Reactant) can't draw on the host and refuses such
-measures.
+Variates are generated on the compute unit of the context, there is no
+fallback to the host. Measures that have neither a standard transport nor
+a sampler for other compute units, e.g. wrapped Poisson distributions,
+draw for host contexts only and throw an `ArgumentError` for others.
 
 Measures draw from the generator of the context in sequence. Generators
 with stream keys (`rootrng`, `subrng` and `subcontext` in

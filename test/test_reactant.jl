@@ -209,13 +209,9 @@ _plain(x::Number) = Float64(x)
         b = @jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Bernoulli(0.3)), (2000,)))(ctx)
         @test Reactant.unwrapped_eltype(b) == Bool && isapprox(count(Array(b)) / 2000, 0.3, atol = 0.05)
         @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Bernoulli(0.3))))(ctx)) == Bool
-        # Distributions without standard transports draw on the host, which
-        # compiled code can't do. Outside of it their variates are moved to
-        # the compute unit:
-        @test_throws "compiled code" @jit (c -> rand(c, asmeasure(Poisson(2.0))))(ctx)
-        @test_throws "compiled code" @jit (c -> rand(c, MeasureBase.productmeasure(asmeasure.(Poisson.([1.0, 2.0])))))(ctx)
-        Xp = MeasureBase.batched_rand_impl(ctx, asmeasure(Poisson(2.0)), (2000,))
-        @test Reactant.unwrapped_eltype(Xp) == Int && isapprox(mean(Array(Xp)), 2, atol = 0.2)
+        # Distributions without a standard transport or a sampler of their
+        # own are refused on other compute units:
+        @test_throws "host compute units" @jit (c -> rand(c, asmeasure(Poisson(2.0))))(ctx)
         # RNGs with stream keys draw in compiled code like the RNGs they
         # wrap, the same key reproduces the draws:
         keyed_ctx(seed) = GenContext{Float32}(get_compute_unit(ctx), rootrng(get_compute_unit(ctx), seed))

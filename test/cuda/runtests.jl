@@ -8,7 +8,6 @@ using Test
 using CUDA
 using Adapt: adapt
 using HeterogeneousComputing: GenContext, AbstractComputeUnit, rootrng
-using Statistics: mean
 using MeasureBase
 using MeasureBase: StdNormal, StdUniform, StdExponential, Dirac, asmeasure
 using MeasureBase: productmeasure, pushfwd, mcombine, weightedmeasure, superpose
@@ -150,18 +149,13 @@ _plain(x::Tuple) = map(_plain, x)
         @test Xt isa Tuple && all(x -> x isa CuArray{Float32}, Xt)
         @test size(Xt[2]) == (2, 50)
 
-        # Distributions without standard transports draw on the host, from
-        # an RNG derived from the RNG of the context, also for rates on the
-        # device. RNGs with stream keys reproduce the draws:
+        # Distributions without a standard transport or a sampler of their
+        # own are refused on the device:
+        @test_throws "host compute units" batched_rand_impl(ctx, asmeasure(Poisson(2.7)), (100,))
+
+        # RNGs with stream keys reproduce the draws:
         cunit = AbstractComputeUnit(CUDA.device())
         keyed_ctx(seed) = GenContext{Float32}(cunit, rootrng(cunit, seed))
-        rates = Float32[0.5, 2.0, 30.0]
-        counts = cu_copy(productmeasure(asmeasure.(Poisson.(rates))))
-        Xp = flatview(rand(keyed_ctx(1), counts^(10^4)))
-        @test Xp isa CuArray{Int,2} && size(Xp) == (3, 10^4)
-        @test all(abs.(vec(mean(Array(Xp); dims = 2)) .- rates) .< 5 .* sqrt.(rates ./ 10^4))
-        @test Array(flatview(rand(keyed_ctx(1), counts^(10^4)))) == Array(Xp)
-        @test batched_rand_impl(ctx, asmeasure(Poisson(2.7)), (100,)) isa CuArray{Int,1}
         Xn = batched_rand_impl(keyed_ctx(1), StdNormal(), (100,))
         @test Array(batched_rand_impl(keyed_ctx(1), StdNormal(), (100,))) == Array(Xn)
         @test Array(batched_rand_impl(keyed_ctx(2), StdNormal(), (100,))) != Array(Xn)

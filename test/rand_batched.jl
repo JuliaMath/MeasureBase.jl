@@ -10,7 +10,7 @@ using ArraysOfArrays: flatview
 
 using MeasureBase
 using MeasureBase: GenContext, get_precision
-using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
+using MeasureBase.HeterogeneousComputing: AbstractComputeUnit, get_compute_unit, rootrng
 using MeasureBase: StdUniform, StdExponential, StdLogistic, StdNormal, Dirac
 using MeasureBase: weightedmeasure, superpose, mcombine, mbind, productmeasure, pushfwd
 using MeasureBase: rand_impl, batched_rand_impl, asmeasure, logdensities
@@ -185,15 +185,16 @@ struct NoRandMeasure <: AbstractMeasure end
         @test Xb.a isa JLArray{Float32,1} && Xb.b isa JLArray{Float32,1}
         @test rand(dctx, NoBatchRandMeasure()^3) isa JLArray{Float32,1}
 
-        # Array products of marginals that only host code can sample draw
-        # as a whole in a host context derived from the context:
-        P = productmeasure(asmeasure.(Poisson.([0.5, 2.0, 30.0])))
-        @test rand(dctx, P) isa JLArray{Int,1}
-        @test batched_rand_impl(dctx, P, ()) isa JLArray{Int,1}
-        Xp = batched_rand_impl(dctx, P, (n,))
-        @test Xp isa JLArray{Int,2} && size(Xp) == (3, n) && isapprox(mean(Array(Xp)), 32.5 / 3, atol = 0.2)
-        # Other products draw marginal by marginal with the context:
+        # Array products without fused kernels draw marginal by marginal
+        # with the context:
         @test rand(dctx, productmeasure([StdNormal()^3, StdNormal()^3])) isa Vector{<:JLArray{Float32,1}}
+
+        # RNGs with stream keys reproduce the draws on the compute unit:
+        cunit = get_compute_unit(dctx)
+        keyed_ctx(seed) = GenContext{Float32}(cunit, rootrng(cunit, seed))
+        Xk = Array(batched_rand_impl(keyed_ctx(1), StdNormal()^2, (8,)))
+        @test Array(batched_rand_impl(keyed_ctx(1), StdNormal()^2, (8,))) == Xk
+        @test Array(batched_rand_impl(keyed_ctx(2), StdNormal()^2, (8,))) != Xk
     end
 
     @testset "fill marginals" begin

@@ -8,8 +8,7 @@ using Test
 using Distributions, LinearAlgebra, StableRNGs, Statistics
 using MeasureBase
 using MeasureBase: asmeasure, GenContext, StdUniform, StdNormal, StdExponential, StdLogistic
-using MeasureBase: batched_rand_impl, logdensities, insupportof, static, productmeasure
-using MeasureBase.HeterogeneousComputing: rootrng
+using MeasureBase: batched_rand_impl, logdensities, insupportof, productmeasure
 using MeasureBase.InverseFunctions: inverse
 using MeasureBase.ChangesOfVariables: with_logabsdet_jacobian
 using ArraysOfArrays: sliced, flatview
@@ -99,65 +98,25 @@ using StructArrays: StructArray
         @test !any(Array(batched_rand_impl(jl32, asmeasure(Bernoulli(0.0)), (100,))))
     end
 
-    @testset "host draws for other compute units" begin
+    @testset "distributions without samplers for other compute units" begin
         jlunit = MeasureBase.HeterogeneousComputing.AbstractComputeUnit(JLBackend())
         jl32 = GenContext{Float32}(jlunit)
-        # Distributions without standard transports are sampled on the host
-        # and moved to the compute unit, integer variates stay exact:
-        for d in (Poisson(2.0), Categorical([0.2, 0.8]), Binomial(5, 0.3))
+        # Distributions' samplers run on the host. Distributions without a
+        # standard transport or a sampler of their own are refused on other
+        # compute units, also as marginals of products:
+        for d in (Poisson(2.0), Categorical([0.2, 0.8]), Binomial(5, 0.3), Multinomial(5, [0.2, 0.3, 0.5]),
+                  Wishart(3.0, [1.0 0.2; 0.2 1.0]), LKJCholesky(3, 2.0))
             m = asmeasure(d)
-            @test rand(jl32, m) isa Int
-            X = batched_rand_impl(jl32, m, (10^4,))
-            @test X isa JLArray{Int,1}
-            @test mean(Array(X)) ≈ mean(d) atol = 5 * std(d) / 100
-            @test rand(jl32, m^static(3)) isa JLArray{Int,1}
-            @test rand(jl32, m^(2, 3)) isa JLArray{Int,2}
+            @test_throws "host compute units" rand(jl32, m)
+            @test_throws "host compute units" batched_rand_impl(jl32, m, (5,))
+            @test_throws "host compute units" rand(jl32, productmeasure(fill(m, 2)))
         end
-        mn = asmeasure(Multinomial(5, [0.2, 0.3, 0.5]))
-        @test rand(jl32, mn) isa JLArray{Int,1}
-        Xmn = flatview(rand(jl32, mn^4))
-        @test Xmn isa JLArray{Int,2} && size(Xmn) == (3, 4) && all(==(5), sum(Array(Xmn); dims = 1))
-        w = asmeasure(Wishart(3.0, [1.0 0.2; 0.2 1.0]))
-        @test rand(jl32, w) isa JLArray{Float32,2}
-        Xw = flatview(rand(jl32, w^4))
-        @test Xw isa JLArray{Float32,3} && size(Xw) == (2, 2, 4)
-
-        # The draws follow from the RNG of the context, which advances:
-        keyed_ctx(seed) = GenContext{Float32}(jlunit, rootrng(jlunit, seed))
-        pois = asmeasure(Poisson(20.0))^8
-        ctx = keyed_ctx(1)
-        x1, x2 = Array(rand(ctx, pois)), Array(rand(ctx, pois))
-        @test x1 != x2
-        ctx = keyed_ctx(1)
-        @test Array(rand(ctx, pois)) == x1 && Array(rand(ctx, pois)) == x2
-        @test Array(rand(keyed_ctx(2), pois)) != x1
-        # Host contexts draw from their RNG directly:
-        @test rand(GenContext{Float64}(stblrng()), pois) == rand(stblrng(), Poisson(20.0), 8)
-
-        # Array products of such distributions draw on the host as a whole,
-        # also with parameter columns on the compute unit:
-        rates = Float32[0.5, 2.0, 30.0]
-        counts = productmeasure(asmeasure.(Poisson.(rates)))
-        for p in (counts, Adapt.adapt(jlunit, counts))
-            @test rand(jl32, p) isa JLArray{Int,1}
-            X = flatview(rand(keyed_ctx(3), p^(10^4)))
-            @test X isa JLArray{Int,2} && size(X) == (3, 10^4)
-            @test all(abs.(vec(mean(Array(X); dims = 2)) .- rates) .< 5 .* sqrt.(rates ./ 10^4))
-        end
-        @test rand(jl32, productmeasure(asmeasure.(Bernoulli.(Float32[0.1, 0.9])))) isa JLArray{Bool,1}
-        # Products of array variates are arrays of variates on the compute
-        # unit, flat batches of them are device arrays:
-        pmn = productmeasure([mn, mn])
-        @test rand(jl32, pmn) isa Vector{<:JLArray{Int,1}}
-        @test batched_rand_impl(jl32, pmn, (4,)) isa JLArray{Int}
-        # Products of distributions with standard transports keep drawing
-        # on the compute unit, also with parameters on it:
+        # Host contexts draw with Distributions' samplers:
+        @test rand(GenContext{Float64}(stblrng()), asmeasure(Poisson(20.0))^8) == rand(stblrng(), Poisson(20.0), 8)
+        # Products of distributions with standard transports draw on the
+        # compute unit, also with parameters on it:
         mvn = Adapt.adapt(jlunit, asmeasure(MvNormal(zeros(Float32, 2), Matrix{Float32}(I, 2, 2))))
         @test rand(jl32, productmeasure([mvn, mvn])) isa Vector{<:JLArray{Float32,1}}
-
-        # Variates that can't be moved to the compute unit are refused:
-        @test_throws "host compute units" rand(jl32, asmeasure(LKJCholesky(3, 2.0)))
-        @test_throws "host compute units" rand(jl32, productmeasure(fill(asmeasure(LKJCholesky(3, 2.0)), 2)))
     end
 
     @testset "parameter batches of distributions" begin
