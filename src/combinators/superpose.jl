@@ -210,12 +210,14 @@ function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::
     thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, k)
     draws = map(c -> _component_draws(ctx, c, sz), components)
     T = mapreduce(eltype, promote_type, draws)
-    Xs = map(X -> _convert_draws(T, X), draws)
+    Xs = _promote_draws(T, draws)
     return _select_draws(thresholds, first(Xs), first(masses), _tail(masses), _tail(Xs))
 end
 
 @inline _component_draws(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
 @inline _component_draws(ctx::GenContext, μ, sz::SizeLike) = batched_rand_impl(ctx, μ, sz)
+
+@inline _promote_draws(::Type{T}, draws) where {T} = map(X -> _convert_draws(T, X), draws)
 
 @inline _convert_draws(::Type{T}, X::T) where {T<:Number} = X
 @inline _convert_draws(::Type{T}, x::Number) where {T} = convert(T, x)

@@ -150,6 +150,8 @@ end
 # Relative densities between products evaluate marginal-wise. Support
 # checks happen at the logdensity_rel level for the whole products, so the
 # unsafe marginal evaluation suffices here:
+@inline logdensity_def(μ::ProductMeasure, ν::ProductMeasure, x) =
+    logdensity_rel_def(μ, ν, x)
 @inline function logdensity_rel_def(μ::ProductMeasure, ν::ProductMeasure, x)
     mapreduce(unsafe_logdensity_rel, +, marginals(μ), marginals(ν), x)
 end
@@ -412,7 +414,7 @@ function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
     isempty(mar) && return _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
-    sum(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), CartesianIndices(mar))
+    mapreduce(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), +, CartesianIndices(mar))
 end
 
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))

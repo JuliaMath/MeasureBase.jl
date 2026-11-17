@@ -116,6 +116,7 @@ end
 end
 
 @testset "powers" begin
+    @test massof((Dirac(0) + Dirac(1))^3) == 8
     @test logdensityof(Lebesgue()^3, [2, 2, 2]) == logdensityof(Lebesgue()^(3,), fill(2, 3))
     @test logdensityof(Lebesgue()^3, fill(2, 3)) ==
           logdensityof(Lebesgue()^(3, 1), fill(2, 3, 1))

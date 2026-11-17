@@ -391,7 +391,7 @@ end
 checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
 massof(m::PowerMeasure) = _pwr_mass(massof(m.parent), size2length(pwr_size(m)))
-@inline _pwr_mass(mass, n::IntegerLike) = mass^dynamic(n)
+@inline _pwr_mass(mass, n::IntegerLike) = dynamic(mass)^dynamic(n)
 # Unit masses stay static, independent of the dynamic exponent:
 @inline _pwr_mass(mass::StaticFloat64{1.0}, ::IntegerLike) = mass
 
