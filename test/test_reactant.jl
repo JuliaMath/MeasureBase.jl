@@ -1,7 +1,7 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 # Reactant tests. Reactant isn't a static test dependency (it only
-# supports 64-bit Linux and macOS), runtests.jl adds it on the fly where
+# supports 64-bit Linux and macOS), runtests.jl adds it before imports where
 # supported. The backend defaults to the CPU, set the environment variable
 # `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it; the file can
 # also be run standalone in an environment that provides Reactant.

@@ -1,3 +1,11 @@
+# Resolve Reactant before loading Enzyme or LLVM. Adding it can change
+# their versions. Reactant is only tested on supported stable platforms.
+const TEST_REACTANT = Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
+if TEST_REACTANT && Base.identify_package("Reactant") === nothing
+    import Pkg
+    Pkg.add("Reactant")
+end
+
 using Test
 using Base.Iterators: take
 using Random
@@ -56,13 +64,5 @@ include("rand_batched.jl")
 
 include("distributions/test_distributions.jl")
 
-# Reactant only supports 64-bit Linux and macOS, and some of its
-# dependencies break already during precompilation on other platforms,
-# so it can't be a static test dependency:
-if Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
-    import Pkg
-    Base.identify_package("Reactant") === nothing && Pkg.add("Reactant")
-    include("test_reactant.jl")
-end
-
+TEST_REACTANT && include("test_reactant.jl")
 include("test_docs.jl")
