@@ -3,9 +3,10 @@
 module MeasureBaseTestExt
 
 using Test
+using Random: AbstractRNG, Xoshiro
 
 using MeasureBase
-using MeasureBase: basemeasure_depth, proxy, insupportof, transport_to
+using MeasureBase: basemeasure_depth, proxy, insupportof, transport_to, AbstractUnknownMass
 import MeasureBase.Interface: test_interface, test_transport, test_smf
 
 using DensityInterface: logdensityof
@@ -121,12 +122,22 @@ function test_transport(ν, μ)
     end
 end
 
-function test_smf(μ, n = 100)
+# The range of the Stieltjes measure function of `μ` is `[0, massof(μ)]`.
+# Measures of unknown or infinite mass are probed over the unit interval:
+function _smf_range(μ)
+    m = massof(μ)
+    m isa AbstractUnknownMass && return 1.0
+    m_plain = Float64(MeasureBase.asnonstatic(m))
+    return isfinite(m_plain) ? m_plain : 1.0
+end
+
+function test_smf(μ, n = 100; rng::AbstractRNG = Xoshiro(0x6d62736d66))
     @testset "smf($μ)" begin
-        # Get `n` sorted uniforms in O(n) time
-        p = rand(n)
+        m = _smf_range(μ)
+        # `n` sorted points in `[0, m)`, in O(n) time:
+        p = rand(rng, n)
         p .+= 0:(n-1)
-        p .*= inv(n)
+        p .*= m / n
 
         F(x) = smf(μ, x)
         Finv(p) = invsmf(μ, p)
@@ -152,9 +163,7 @@ function test_smf(μ, n = 100)
         end
 
         for j in 1:n
-            a = rand()
-            b = rand()
-            a, b = minmax(a, b)
+            a, b = minmax(m * rand(rng), m * rand(rng))
             x = Finv(a)
             y = Finv(b)
             @test μ(Interval{:open,:closed}(x, y)) ≈ (F(y) - F(x))

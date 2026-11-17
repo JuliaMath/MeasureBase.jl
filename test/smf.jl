@@ -11,6 +11,7 @@ smf_measures = [
     Half(StdNormal())
     Half(StdLogistic())
     Half(2 * StdNormal())
+    0.5 * StdNormal()
 ]
 
 @testset "smf" begin

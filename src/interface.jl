@@ -45,11 +45,13 @@ agree with the point transport at random variates of `μ`. Requires
 function test_transport end
 
 """
-    test_smf(μ, n = 100)
+    test_smf(μ, n = 100; rng::AbstractRNG = ...)
 
 Test the Stieltjes measure function `smf(μ, x)` and its inverse against
 each other and against the measure of intervals, likewise the interval
-forms `smf(μ, a, x)` and `invsmf(μ, a, p)`. Requires `using Test`.
+forms `smf(μ, a, x)` and `invsmf(μ, a, p)`, at `n` random points over the
+range of `smf(μ, x)`. `rng` generates the points. By default it is seeded
+with a fixed value, so test runs are reproducible. Requires `using Test`.
 """
 function test_smf end
 
