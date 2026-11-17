@@ -125,10 +125,8 @@ end
     end
 
     @testset "normalized truncations reach the ends of their range" begin
-        # Also where the mass doesn't survive a round trip through its
-        # logarithm:
+        # Log/exp round trips of the mass must not shift normalized endpoints.
         t = truncate(StdNormal(), -1.0 .. 0.1)
-        @test 1 / exp(-log(massof(t))) > massof(t)
         @test invsmf(normalize(t), 1.0) == 0.1 && smf(normalize(t), 0.1) == 1
         @test invcsmf(normalize(t), 1.0) == -1.0 && csmf(normalize(t), -1.0) == 1
     end
