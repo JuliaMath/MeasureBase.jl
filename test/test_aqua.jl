@@ -13,5 +13,9 @@ Test.@testset "Aqua tests" begin
         MeasureBase,
         # Only used by package extensions:
         stale_deps = (ignore = [:ArgCheck, :ArraysOfArrays],),
+        # The check installs the package into a fresh environment, which
+        # can't resolve while HeterogeneousComputing 0.3 is unregistered.
+        # Enable it again once that is released:
+        persistent_tasks = false,
     )
 end # testset
