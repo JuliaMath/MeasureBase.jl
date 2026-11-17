@@ -74,6 +74,24 @@ using StructArrays: StructArray
         @test with_logabsdet_jacobian(f, 1f0) isa Tuple{Float32,Float32}
     end
 
+    @testset "single precision kernels of concentrated distributions" begin
+        # Around the mode the terms of the densities cancel to a small
+        # fraction of their size, the kernels keep their absolute accuracy:
+        zs = -8:0.5:8
+        for λ in (100.0f0, 1.0f4, 1.6f7)
+            ks = round.(Int, λ .+ zs .* sqrt(λ))
+            ℓ = logdensityof.(asmeasure(Poisson(λ)), ks)
+            @test ℓ isa Vector{Float32}
+            @test ℓ ≈ logpdf.(Poisson(Float64(λ)), ks) atol = 1e-4
+        end
+        for α in (100.0f0, 1.0f4, 1.0f7)
+            ys = α .+ Float32.(zs) .* sqrt(α)
+            ℓ = logdensityof.(asmeasure(Gamma(α, 1.0f0)), ys)
+            @test ℓ isa Vector{Float32}
+            @test ℓ ≈ logpdf.(Gamma(Float64(α), 1.0), Float64.(ys)) atol = 1e-4
+        end
+    end
+
     @testset "discrete families" begin
         for d in (Poisson(2.7), Bernoulli(0.3))
             m = asmeasure(d)

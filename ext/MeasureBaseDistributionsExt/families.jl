@@ -47,6 +47,20 @@ const _concentrated = 10
 # relative precision:
 @inline _log1p_of(t, r) = ifelse(t < -one(t) / 2, log(r), log1p(t))
 
+# `log1p(t) - t` for `t = r - 1`. Close to zero the difference cancels,
+# there it is `w (2 v (1/3 + v/5 + v^2/7 + ...) - t)` with `w = t / (2 + t)`
+# and `v = w^2`, from `log1p(t) = 2 atanh(w)`:
+@inline function _log1pmx_of(t, r)
+    o = one(t)
+    near = abs(t) < o / 4
+    tn = ifelse(near, t, zero(t))
+    w = tn / (2 + tn)
+    v = w * w
+    series = w * (2 * v * evalpoly(v, (o / 3, o / 5, o / 7, o / 9, o / 11, o / 13, o / 15, o / 17, o / 19)) - tn)
+    tf, rf = ifelse(near, zero(t), t), ifelse(near, one(r), r)
+    ifelse(near, series, _log1p_of(tf, rf) - tf)
+end
+
 # Log-density of the gamma distribution with unit scale at `y >= 0`:
 @inline function _gamma_logd(α, y)
     direct = _clog(α - 1, y) - y - loggamma(α)
@@ -55,7 +69,7 @@ const _concentrated = 10
     yc = ifelse(inside, y, a)
     t = (yc - a) / a
     lt = _log1p_of(t, yc / a)
-    expanded = a * (lt - t) - lt - (log(a) + log2π) / 2 - _stirling_err(a)
+    expanded = a * _log1pmx_of(t, yc / a) - lt - (log(a) + log2π) / 2 - _stirling_err(a)
     ifelse(α >= _concentrated, ifelse(inside, expanded, oftype(expanded, -Inf)), direct)
 end
 
@@ -68,8 +82,7 @@ end
     xc = ifelse(inside, x, one(x) / 2)
     nx, ny = n * xc, n * (1 - xc)
     u, v = (nx - a) / a, (ny - b) / b
-    lu, lv = _log1p_of(u, nx / a), _log1p_of(v, ny / b)
-    expanded = a * (lu - u) + b * (lv - v) - log(xc) - log1p(-xc) +
+    expanded = a * _log1pmx_of(u, nx / a) + b * _log1pmx_of(v, ny / b) - log(xc) - log1p(-xc) +
         (log(a) + log(b) - log(n) - log2π) / 2 - (_stirling_err(a) + _stirling_err(b) - _stirling_err(n))
     ifelse(min(α, β) >= _concentrated, ifelse(inside, expanded, oftype(expanded, -Inf)), direct)
 end
@@ -79,9 +92,7 @@ end
     kf = abs(k) + zero(float(λ))
     direct = _clog(kf, λ) - λ - loggamma(kf + 1)
     kc, λc = _atleast_concentrated(kf), _atleast_concentrated(λ)
-    t = (kc - λc) / λc
-    lt = _log1p_of(t, kc / λc)
-    expanded = (kc - λc) - kc * lt - (log(kc) + log2π) / 2 - _stirling_err(kc)
+    expanded = kc * _log1pmx_of((λc - kc) / kc, λc / kc) - (log(kc) + log2π) / 2 - _stirling_err(kc)
     ifelse((kf >= _concentrated) & (λ >= _concentrated), expanded, direct)
 end
 
