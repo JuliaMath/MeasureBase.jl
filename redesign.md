@@ -408,7 +408,13 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   Reactant, the discrete set first (Poisson, Binomial, Categorical,
   DiscreteUniform, Geometric, NegativeBinomial, Multinomial), also for
   array products with parameter columns on the compute unit. Matrix-variate
-  and von Mises-Fisher samplers later. Device arrays of measures
+  and von Mises-Fisher samplers later. In progress since 2026-11-17
+  (O. Schulz): the discrete samplers and a Marsaglia-Tsang Gamma
+  sampler as device draw path for Gamma (needed by NegativeBinomial), in a
+  new file of the Distributions extension. They are masked rejection
+  loops in the precision of the context (no Float64 inside Float32
+  contexts), compiled as a traced `while` loop under Reactant, and don't
+  touch the transports. Device arrays of measures
   (`asmeasure.(Poisson.(λ))` on a device array) can't be turned into
   products directly, build the product on the host and `adapt` it.
 - Stream keys (HeterogeneousComputing `rootrng`/`subrng`/`subcontext`):
