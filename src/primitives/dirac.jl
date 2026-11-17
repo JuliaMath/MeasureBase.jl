@@ -6,6 +6,10 @@ export Dirac
 
 The point mass at `x`, its own base measure. Its log-density is zero at `x`
 and `-Inf` elsewhere.
+
+Distributions exports a distribution of the same name. With both packages
+loaded, import the name explicitly (`using MeasureBase: Dirac`) or qualify
+it. `asmeasure(Distributions.Dirac(x))` is `MeasureBase.Dirac(x)`.
 """
 struct Dirac{X} <: AbstractMeasure
     x::X

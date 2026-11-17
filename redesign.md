@@ -500,8 +500,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   `params` are renamed to `insupportof` and `paramsof`, the old names stay
   as deprecations for one release. Deprecated names (also `pullback` and
   `density_def`) aren't exported (decided 2026-11-09, review B13). The one
-  name both packages still export is `Dirac`, so `using MeasureBase,
-  Distributions` requires qualifying it (open: rename, don't export, or
-  leave).
+  name both packages still export is `Dirac`. The export stays (decided
+  2026-11-17), next to Distributions the name is imported explicitly
+  (`using MeasureBase: Dirac`) or qualified.
 - Polish before merge: final docs and release notes pass, history curation,
   version bump, remove this file.
