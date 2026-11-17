@@ -50,6 +50,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
+      - name: Install development dependency
+        run: julia --project=. .github/prepare-dev-deps.jl
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:
@@ -71,6 +73,10 @@ jobs:
         with:
           version: '1'
       - uses: julia-actions/cache@v3
+      - name: Install development dependency
+        run: |
+          julia --project=. .github/prepare-dev-deps.jl
+          julia --project=docs .github/prepare-dev-deps.jl
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
