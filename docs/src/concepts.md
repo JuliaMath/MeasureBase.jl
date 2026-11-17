@@ -254,9 +254,18 @@ are shorthands. Batches of variates are drawn as variates of powers,
 compute unit and transported to `μ`.
 
 Variates are generated on the compute unit of the context, there is no
-fallback to the host. Measures that have neither a standard transport nor
-a sampler for other compute units, e.g. wrapped Poisson distributions,
-draw for host contexts only and throw an `ArgumentError` for others.
+fallback to the host. Wrapped Bernoulli and Poisson distributions have
+samplers for other compute units and for compiled code, also as marginals
+of array products with their parameters on the compute unit. Measures that
+have neither a standard transport nor such a sampler, e.g. wrapped
+binomial distributions, draw for host contexts only and throw an
+`ArgumentError` for others.
+
+These samplers compute in the precision of the context, so they resolve
+probabilities as far as its uniform variates do. In `Float32` contexts
+Poisson rates are limited to `2^24 - 2^16`, and the distribution function
+of the variates is accurate to about `1e-7`. Host contexts draw with the
+samplers of Distributions.
 
 Measures draw from the generator of the context in sequence. Generators
 with stream keys (`rootrng`, `subrng` and `subcontext` in

@@ -18,10 +18,12 @@ using MeasureBase.InverseFunctions: inverse
 using ArraysOfArrays: sliced, flatview
 using AffineMaps: Mul, MulAdd
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
-using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
+using Distributions: Poisson, Bernoulli, Binomial, MvNormal, Dirichlet
 import PDMats
 
 CUDA.allowscalar(false)
+
+include(joinpath(@__DIR__, "..", "distributions", "pmf_checks.jl"))
 
 # Evaluates `f` on device copies of `args` and compares with the plain
 # result, the result must live on the device:
@@ -169,9 +171,32 @@ _plain(x::Tuple) = map(_plain, x)
         @test Xt isa Tuple && all(x -> x isa CuArray{Float32}, Xt)
         @test size(Xt[2]) == (2, 50)
 
+        # Poisson variates are sampled on the device, by inversion for
+        # small rates and by rejection for larger ones. The statistical
+        # tests may fail by chance with a probability of about 1e-8 each:
+        for λ in (2.7, 250.0)
+            d = Poisson(Float64(Float32(λ)))
+            x = batched_rand_impl(ctx, asmeasure(Poisson(λ)), (10^5,))
+            @test x isa CuArray{Int,1}
+            @test pmf_pvalue(Array(x), d) > 1e-8
+            @test abs(mean_zscore(Array(x), d)) < 6 && abs(var_zscore(Array(x), d)) < 6
+            @test rand(ctx, asmeasure(Poisson(λ))) isa Int
+        end
+        # Array products draw with the rates of their marginals as a
+        # parameter array on the device:
+        rates = [0, 0.9, 9.99, 10, 61.5, 1.0e3]
+        Pp = cu_copy(productmeasure(asmeasure.(Poisson.(rates))))
+        Xp = batched_rand_impl(ctx, Pp, (10^5,))
+        @test Xp isa CuArray{Int,2} && size(Xp) == (6, 10^5)
+        for (i, λ) in enumerate(rates)
+            @test pmf_pvalue(Array(Xp)[i, :], Poisson(Float64(Float32(λ)))) > 1e-8
+        end
+        @test rand(ctx, Pp) isa CuArray{Int,1}
+        @test_throws "supports rates from 0 to" rand(ctx, asmeasure(Poisson(2.0e7)))
+
         # Distributions without a standard transport or a sampler of their
         # own are refused on the device:
-        @test_throws "host compute units" batched_rand_impl(ctx, asmeasure(Poisson(2.7)), (100,))
+        @test_throws "host compute units" batched_rand_impl(ctx, asmeasure(Binomial(5, 0.3)), (100,))
 
         # RNGs with stream keys reproduce the draws:
         cunit = AbstractComputeUnit(CUDA.device())

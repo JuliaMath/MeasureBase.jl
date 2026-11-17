@@ -2,9 +2,9 @@
 
 module MeasureBaseReactantExt
 
-using Reactant: Reactant, TracedRNumber
+using Reactant: Reactant, TracedRNumber, TracedRArray, @trace
 import MeasureBase
-using MeasureBase: RealValues, IntegerValues
+using MeasureBase: RealValues, IntegerValues, GenContext
 
 Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
@@ -25,6 +25,26 @@ function MeasureBase._reject_counting_bits!(ctx, bits::Reactant.TracedRArray, th
         MeasureBase._redraw_counting_bits!(ctx, bits, threshold)
     end
     return bits
+end
+
+MeasureBase._values_known(::Union{TracedRNumber,AbstractArray{<:TracedRNumber}}) = false
+
+# Rejection loops over traced batches are compiled as loops:
+function MeasureBase._rejection_loop(round::F, ctx::GenContext, result, pending::TracedRArray{Bool}, param) where {F}
+    @trace while any(pending)
+        candidate, accepted = round(ctx, param)
+        result = ifelse.(pending .& accepted, candidate, result)
+        pending = pending .& .!accepted
+    end
+    return result
+end
+function MeasureBase._rejection_loop(round::F, ctx::GenContext, result, pending::TracedRNumber{Bool}, param) where {F}
+    @trace while pending
+        candidate, accepted = round(ctx, param)
+        result = ifelse(pending & accepted, candidate, result)
+        pending = pending & !accepted
+    end
+    return result
 end
 
 # Traced floating-point numbers aren't `AbstractFloat`s, so the context

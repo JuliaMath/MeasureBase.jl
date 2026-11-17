@@ -19,11 +19,13 @@ using StructArrays: StructArray
 using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
-using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet, logpdf
+using Distributions: Poisson, Bernoulli, Binomial, MvNormal, Dirichlet, logpdf
 using MeasureBase.InverseFunctions: inverse
 using MeasureBase.HeterogeneousComputing: get_compute_unit, rootrng
 
 Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
+
+include(joinpath(@__DIR__, "distributions", "pmf_checks.jl"))
 
 # Compiles `f` for traced copies of `args` and compares with the plain
 # result. Array results are copied inside the compiled function, so that
@@ -256,9 +258,40 @@ _plain(x::Number) = Float64(x)
         counting_ctx = GenContext{Float16}(rootrng(get_compute_unit(ctx), 981))
         k = Array(@jit (c -> rand(c, large_range^4096))(counting_ctx))
         @test abs(count(<=(Int64(1) << 62), k) / length(k) - 2 / 3) < 0.045
+        # Poisson variates are sampled in compiled code, by inversion for
+        # small rates and in a compiled rejection loop for larger ones. The
+        # statistical tests may fail by chance with a probability of about
+        # 1e-8 each:
+        for λ in (2.7, 250.0)
+            d = Poisson(Float64(Float32(λ)))
+            xp = Array(@jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Poisson(λ)), (100_000,)))(ctx))
+            @test eltype(xp) == Int && pmf_pvalue(xp, d) > 1e-8
+            @test abs(mean_zscore(xp, d)) < 6 && abs(var_zscore(xp, d)) < 6
+            @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Poisson(λ))))(ctx)) == Int
+        end
+        # Array products draw with the rates of their marginals as a
+        # parameter array. With traced rates one compiled function serves
+        # other rates as well, variates of unsupported rates are -1 then:
+        poisson_product(λ) = MeasureBase.productmeasure(
+            StructArray{MeasureBase.AsMeasure{Poisson{Float32}}}((obj = StructArray{Poisson{Float32}}((λ = λ,)),))
+        )
+        draw_product(c, λ) = MeasureBase.batched_rand_impl(c, poisson_product(λ), (100_000,))
+        rates = Float32[0, 0.9, 9.99, 10, 61.5, 1.0e3]
+        traced_rates = Reactant.to_rarray(rates)
+        compiled_draw = @compile draw_product(ctx, traced_rates)
+        Xp = Array(compiled_draw(ctx, traced_rates))
+        @test all(i -> pmf_pvalue(Xp[i, :], Poisson(Float64(rates[i]))) > 1e-8, eachindex(rates))
+        other_rates = Float32[3, 30, 0, 1.0e6, 12, 2.0e7]
+        Xo = Array(compiled_draw(ctx, Reactant.to_rarray(other_rates)))
+        @test all(i -> pmf_pvalue(Xo[i, :], Poisson(Float64(other_rates[i]))) > 1e-8, 1:5)
+        @test all(==(-1), Xo[6, :])
+        host_product = MeasureBase.productmeasure(asmeasure.(Poisson.(Float64.(rates))))
+        Xh = Array(@jit (c -> MeasureBase.batched_rand_impl(c, host_product, (100_000,)))(ctx))
+        @test all(i -> pmf_pvalue(Xh[i, :], Poisson(Float64(rates[i]))) > 1e-8, eachindex(rates))
+        @test size(@jit (c -> rand(c, host_product))(ctx)) == (6,)
         # Distributions without a standard transport or a sampler of their
         # own are refused on other compute units:
-        @test_throws "host compute units" @jit (c -> rand(c, asmeasure(Poisson(2.0))))(ctx)
+        @test_throws "host compute units" @jit (c -> rand(c, asmeasure(Binomial(5, 0.3))))(ctx)
         # RNGs with stream keys draw in compiled code like the RNGs they
         # wrap, the same key reproduces the draws:
         keyed_ctx(seed) = GenContext{Float32}(get_compute_unit(ctx), rootrng(get_compute_unit(ctx), seed))

@@ -122,7 +122,7 @@ using StructArrays: StructArray
         # Distributions' samplers run on the host. Distributions without a
         # standard transport or a sampler of their own are refused on other
         # compute units, also as marginals of products:
-        for d in (Poisson(2.0), Categorical([0.2, 0.8]), Binomial(5, 0.3), Multinomial(5, [0.2, 0.3, 0.5]),
+        for d in (Categorical([0.2, 0.8]), Binomial(5, 0.3), Multinomial(5, [0.2, 0.3, 0.5]),
                   Wishart(3.0, [1.0 0.2; 0.2 1.0]), LKJCholesky(3, 2.0))
             m = asmeasure(d)
             @test_throws "host compute units" rand(jl32, m)

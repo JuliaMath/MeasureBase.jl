@@ -54,6 +54,7 @@ using ConstantRNGs: ConstantRNG
 using Static: True, False, static
 using StaticThings: SizeLike, StaticSizeLike, asnonstatic, canonical_size, staticarray_type, maybestatic_fill
 using StaticArrays: similar_type
+using StructArrays: StructArray
 using FillArrays: Fill
 
 using ArgCheck: @argcheck
@@ -67,6 +68,7 @@ include("distribution_measure.jl")
 include("dist_vartransform.jl")
 include("univariate.jl")
 include("families.jl")
+include("discrete_samplers.jl")
 include("beta_transport.jl")
 include("standardmv.jl")
 include("product.jl")

@@ -186,6 +186,41 @@ end
 
 @inline _on_host(ctx::GenContext) = is_host_unit(get_compute_unit(ctx))
 
+# Masked rejection sampling for batches. `round(ctx, param)` draws a batch
+# of candidates and returns it with the mask of the accepted ones, each lane
+# keeps its first accepted candidate. Lanes that are not `active` take the
+# candidate of the first round and don't keep the loop going, so `round`
+# has to give them a valid value. Single variates are batches of one
+# number. Compiled code runs the loop as a traced loop (see the Reactant
+# extension), which needs the parameter arrays of `round` as `param`
+# instead of captured in it. Other compute units sync once per round:
+function _rejection_draw(round::F, ctx::GenContext, active, param) where {F}
+    result, accepted = round(ctx, param)
+    _rejection_rest(get_rng(ctx), round, ctx, result, active .& .!accepted, param)
+end
+
+@inline _rejection_rest(::AbstractRNG, round::F, ctx::GenContext, result, pending, param) where {F} =
+    _rejection_loop(round, ctx, result, pending, param)
+# The rounds of a constant RNG (for test values) all repeat the first, so
+# its candidates are taken as they are:
+@inline _rejection_rest(::ConstantRNG, round::F, ctx::GenContext, result, pending, param) where {F} = result
+
+function _rejection_loop(round::F, ctx::GenContext, result, pending, param) where {F}
+    while _any_pending(pending)
+        candidate, accepted = round(ctx, param)
+        result = ifelse.(pending .& accepted, candidate, result)
+        pending = pending .& .!accepted
+    end
+    return result
+end
+
+@inline _any_pending(pending::Bool) = pending
+@inline _any_pending(pending::AbstractArray{Bool}) = any(pending)
+
+# Whether the values of `x` are available to host code (they are not while
+# code is traced for compilation):
+@inline _values_known(x) = true
+
 # Constant fills keep the type of the constant (point masses are exact):
 @inline _const_bulk(ctx::GenContext, x, sz::SizeLike) = fill_array(get_compute_unit(ctx), x, asnonstatic(sz))
 @inline _const_bulk(ctx::GenContext, x, sz::StaticSizeLike) =

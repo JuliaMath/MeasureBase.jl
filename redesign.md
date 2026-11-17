@@ -408,24 +408,77 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   convenience. A host round trip for distributions without standard
   transports (derived host context, result moved to the unit) was added on
   2026-11-13 and removed again. Bernoulli draws on all compute units
-  (`rand(ctx, sz) .< p`, exact `Bool`s). Poisson, Categorical, Binomial,
-  Multinomial, matrix-variate and other distributions without standard
-  transports draw with Distributions' samplers on host compute units only;
-  on others they throw an `ArgumentError` naming the limit, also as
-  marginals of products. Planned: samplers of our own for
-  `AsMeasure`-wrapped distributions that run on GPU arrays and under
-  Reactant, the discrete set first (Poisson, Binomial, Categorical,
-  DiscreteUniform, Geometric, NegativeBinomial, Multinomial), also for
-  array products with parameter columns on the compute unit. Matrix-variate
-  and von Mises-Fisher samplers later. In progress since 2026-11-17
-  (O. Schulz): the discrete samplers and a Marsaglia-Tsang Gamma
-  sampler as device draw path for Gamma (needed by NegativeBinomial), in a
-  new file of the Distributions extension. They are masked rejection
-  loops in the precision of the context (no Float64 inside Float32
-  contexts), compiled as a traced `while` loop under Reactant, and don't
-  touch the transports. Device arrays of measures
-  (`asmeasure.(Poisson.(λ))` on a device array) can't be turned into
-  products directly, build the product on the host and `adapt` it.
+  (`rand(ctx, sz) .< p`, exact `Bool`s), Poisson has a sampler for other
+  compute units (next item). Categorical, Binomial, Multinomial,
+  matrix-variate and other distributions without standard transports draw
+  with Distributions' samplers on host compute units only; on others they
+  throw an `ArgumentError` naming the limit, also as marginals of
+  products. Planned: samplers of our own for `AsMeasure`-wrapped
+  distributions that run on GPU arrays and under Reactant, the discrete
+  set first (after Poisson: Binomial, Categorical, DiscreteUniform,
+  Geometric, NegativeBinomial, Multinomial), also for array products with
+  parameter columns on the compute unit. Matrix-variate and von
+  Mises-Fisher samplers later. In progress since 2026-11-17 (O. Schulz):
+  the remaining discrete samplers and a Marsaglia-Tsang Gamma sampler as
+  device draw path for Gamma (needed by NegativeBinomial). Device arrays
+  of measures (`asmeasure.(Poisson.(λ))` on a device array) can't be
+  turned into products directly, build the product on the host and
+  `adapt` it.
+- Samplers of discrete distributions for other compute units
+  (`discrete_samplers.jl` in the Distributions extension, 2026-11-17).
+  Host contexts keep Distributions' samplers.
+  - Kernels are scalar functions of parameters and of uniform variates in
+    `[0, 1)`, broadcast over batches, so parameters are numbers or arrays
+    on the compute unit. They compute in the precision of the context (no
+    Float64 inside Float32 contexts) and return `Int` counts.
+  - Rejection driver `_rejection_draw(round, ctx, active, param)`: masked
+    rounds over the whole batch, each lane keeps its first accepted
+    candidate, never a rejected one. Concrete arrays loop on the host with
+    one sync per round, Reactant compiles a `while` loop (`@trace` in the
+    Reactant extension). Parameter arrays of a round go through `param`:
+    Reactant's loop fails for closures that capture traced arrays. Constant
+    RNGs take the candidates of the first round.
+  - Poisson: inversion below rate 10 (64 terms; counts with a probability
+    below half the spacing of the uniform variates are not reached), PTRS
+    (Hörmann 1993) from rate 10. Two deviations from the algorithm as it
+    is commonly implemented (e.g. in NumPy): the envelope is raised by
+    0.8 %, because those constants leave it up to 0.58 % below the
+    probabilities of some counts
+    for rates up to about 1e4 (4e-7 of the probability mass at rate 10,
+    found by a scan over rates 10 to 1.7e7), and the squeeze and tail
+    tests are left out, since batched code evaluates the probability for
+    every lane anyway (the squeeze is also exceeded by up to 0.6 % at some
+    rates). Candidates are formed as offsets from `floor(λ)` and added in
+    integers. Acceptance compares with `_poisson_logd`.
+  - Limits: counts are `Int`s and exact in the precision `T` of the
+    context, rates go from 0 to 16 standard deviations below the largest
+    such count (1.67e7 for Float32, 9.0e15 for Float64, 2.1e9 with 32-bit
+    integers). Other rates throw, in
+    compiled code with traced rates their variates are -1. Measured on the
+    grid of the 2^24 Float32 uniform variates: the distribution function is
+    within 1e-7 of the exact one at all rates. Probabilities of single
+    counts within four standard deviations deviate by 1e-5 (relative) at
+    rate 10, 2e-4 at 1e3, 2e-3 at 1e5 and 3e-2 at 1e7 (total variation
+    2e-4), since few of the 2^24 variates fall on each count there. Float64
+    arithmetic on the same grid gives the same numbers, the limit is the
+    spacing of the uniform variates. A third uniform variate per trial
+    could dither the candidates if that matters.
+  - Array products of Poisson marginals draw in one batch with the rates
+    of the struct array as parameter array, host columns are moved to the
+    compute unit. `Poisson` can't hold traced numbers, so in compiled code
+    with traced rates the struct array is built from the column
+    (`StructArray{AsMeasure{Poisson{T}}}((obj = StructArray{Poisson{T}}((λ = λ,)),))`).
+  - The concentrated-parameter log-densities of the gamma, beta and
+    Poisson families use `_log1pmx_of` for `log1p(t) - t`, which cancelled
+    for large parameters (Float32: 4e-3 absolute at a Poisson rate of
+    1.6e7, now 1e-5).
+  - Open: both regimes are evaluated for all lanes of rate arrays. Test
+    values (constant RNGs) aren't available on device units, uniform
+    draws with a constant RNG fail in HeterogeneousComputing there.
+    Finite counting measures have a rejection loop of their own for their
+    exact draws from random bits (`_device_counting_draw`), the two loops
+    could share the driver. Those draws are also what a sampler for
+    DiscreteUniform needs.
 - Stream keys (HeterogeneousComputing `rootrng`/`subrng`/`subcontext`):
   measures draw from the RNG of the context in sequence and derive no
   child streams per call (the same key replays the same stream, and
