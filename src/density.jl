@@ -238,6 +238,9 @@ localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base,
 @inline stream_ndims(::Type{<:DensityMeasure{<:Any,B}}) where {B} = stream_ndims(B)
 @inline fixed_stream_size(::Type{<:DensityMeasure{<:Any,B}}) where {B} = fixed_stream_size(B)
 
+@inline _pwr_variate(μ::DensityMeasure, X::Union{Tuple,NamedTuple}) =
+    _pwr_variate(μ.base, _components_storage(X))
+
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 
 # Density measures evaluate the base measure and the integrand directly,

@@ -31,6 +31,18 @@ struct _RandImplOnly <: AbstractMeasure end
 MeasureBase.rand_impl(ctx::GenContext, ::_RandImplOnly) = 2 * rand(ctx)
 struct _NoSampler <: AbstractMeasure end
 
+_positive_named_logdensity(x) = ifelse(first(x.b) > 0, log(2.0), -Inf)
+function MeasureBase.rand_impl(
+    ctx::GenContext,
+    μ::MeasureBase.DensityMeasure{
+        <:MeasureBase.LogFuncDensity{typeof(_positive_named_logdensity)},
+    },
+)
+    x = rand(ctx, μ.base)
+    b = ifelse(first(x.b) < 0, -x.b, x.b)
+    (a = x.a, b = b)
+end
+
 @testset "rand" begin
     stblrng() = StableRNG(789990641)
 
@@ -123,6 +135,15 @@ struct _NoSampler <: AbstractMeasure end
         @test logdensityof((StdNormal()^2)^3, xn) ≈ logdensityof(StdNormal()^6, vec(flatview(xn)))
         @test batched_rand_impl(GenContext{Float64}(stblrng()), StdNormal()^2, (4, 5)) isa Array{Float64,3}
         @test size(batched_rand_impl(GenContext{Float64}(stblrng()), (StdNormal()^2)^3, (4,))) == (2, 3, 4)
+    end
+
+    @testset "powers of density measures with named variates" begin
+        for b in (StdNormal(), StdNormal()^2)
+            base = productmeasure((a = StdUniform(), b = b))
+            μ = MeasureBase.normalize(mintegrate_exp(_positive_named_logdensity, base))
+            rng = stblrng()
+            @test rand(stblrng(), μ^(2, 3)) == [rand(rng, μ) for _ in 1:2, _ in 1:3]
+        end
     end
 
     @testset "test values" begin
