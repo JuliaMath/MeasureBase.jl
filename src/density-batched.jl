@@ -397,6 +397,7 @@ end
     s = a + b
     ifelse(isneginf(a), oftype(s, a), ifelse(isneginf(b), oftype(s, b), s))
 end
+Base.reduce_empty(::typeof(_add_logdensities), ::Type{T}) where {T} = zero(T)
 
 @inline _lazy_add(a::Number, b::Number) = _add_logdensities(a, b)
 @inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(_add_logdensities, a, b))

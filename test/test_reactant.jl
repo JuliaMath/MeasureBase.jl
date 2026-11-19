@@ -48,6 +48,8 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensityof(StdNormal()^10, x), x)
         test_traced(X -> logdensities(StdNormal(), X), X)
         test_traced(X -> logdensities(StdNormal()^3, X), X)
+        μ = mintegrate_exp(identity, Lebesgue())^2
+        test_traced(X -> logdensities(μ, X), [1.0 Inf Inf; 2.0 -Inf 1.0])
         test_traced(X -> logdensities(StdNormal()^3, sliced(X, 1)), X)
         test_traced(X -> logdensities((StdNormal()^3)^4, reshape(X[:, 1:16], 3, 4, 4)), X)
         test_traced(x -> logdensityof(StdUniform()^10, x), rand(10))
