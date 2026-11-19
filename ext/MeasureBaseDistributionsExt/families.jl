@@ -109,11 +109,11 @@ end
     z = abs((x - d.μ) / d.σ)
     big = z > 1
     a, b = ifelse(big, z, one(z)), ifelse(big, one(z), z)
-    -2 * log(a) - log1p(abs2(b / a)) - log(π * d.σ)
+    -2 * log(a) - log1p(abs2(b / a)) - logπ - log(d.σ)
 end
 @inline _family_insupport(::Cauchy, x) = true
 
-@inline _family_logd(d::Laplace, x) = -abs((x - d.μ) / d.θ) - log(2 * d.θ)
+@inline _family_logd(d::Laplace, x) = -abs((x - d.μ) / d.θ) - logtwo - log(d.θ)
 @inline _family_insupport(::Laplace, x) = true
 
 @inline function _family_logd(d::LogNormal, x)
@@ -126,7 +126,7 @@ end
 
 @inline function _family_logd(d::Weibull, x)
     xθ = abs(x / d.θ)
-    ℓ = log(d.α / d.θ) + _clog(d.α - 1, xθ) - xθ^d.α
+    ℓ = (log(d.α) - log(d.θ)) + _clog(d.α - 1, xθ) - xθ^d.α
     ifelse(isinf(xθ), oftype(ℓ, -Inf), ℓ)
 end
 @inline _family_insupport(::Weibull, x) = x >= 0

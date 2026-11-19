@@ -226,6 +226,17 @@ const _derivatives = (
             @test logdensityof(asmeasure(d), x) ≈ Float32(-log1p(z^2) - log(big(π) * d.σ)) rtol = 4 * eps(Float32)
         end
         @test logdensityof(asmeasure(Cauchy(0f0, 1f0)), 1f20) ≈ logpdf(Cauchy(0.0, 1.0), 1e20)
+        for T in (Float32, Float64)
+            s = floatmax(T)
+            for (d, x, expected) in (
+                (Cauchy(zero(T), s), zero(T), -log(big(π) * s)),
+                (Laplace(zero(T), s), zero(T), -log(2big(s))),
+                (Weibull(s, inv(s)), inv(s), log(big(s) / inv(s)) - 1),
+            )
+                @test logdensityof(asmeasure(d), x) ≈ T(expected)
+                @test logdensities(asmeasure(d), [x, x]) ≈ fill(T(expected), 2)
+            end
+        end
 
         # Quantiles of the other family kernels (Distributions' Float64
         # quantiles serve as references, but not for Cauchy):
