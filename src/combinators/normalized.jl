@@ -7,9 +7,9 @@ The measure `base` divided by its mass, see [`normalize`](@ref).
 `basemeasure(μ)` returns `base`.
 
 `logmass::L` is the log of the mass of `base`, or an
-[`AbstractUnknownMass`](@ref) if it is unknown. Normalized measures of
-unknown mass have no density, but support `rand`, transports and
-`insupportof`, which only need the normalized law.
+[`AbstractUnknownMass`](@ref) if it is unknown. Sampling and transport
+require a sampler or transport for the normalized law. Support queries
+use the support of `base`.
 """
 struct NormalizedMeasure{M,L} <: AbstractWeightedMeasure
     base::M
@@ -24,9 +24,9 @@ The normalized measure `μ / massof(μ)`, a [`NormalizedMeasure`](@ref).
 Measures of statically known unit mass (see [`massof`](@ref)), like
 standard measures and distributions, are returned as they are. `normalize`
 strips weights, `normalize(weightedmeasure(w, μ)) == normalize(μ)`, and is
-idempotent. If the mass of `μ` is unknown, the result has no density but
-can still be sampled and transported. Throws an `ArgumentError` for
-measures of zero or infinite mass.
+idempotent. With unknown mass the normalized density is unavailable.
+Sampling and transport are available when implemented for the normalized
+law. Throws an `ArgumentError` for measures of zero or infinite mass.
 """
 normalize(μ::AbstractMeasure) = _normalize(μ, massof(μ))
 # Zero and infinite weights are rejected before they are stripped:

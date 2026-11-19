@@ -193,8 +193,8 @@ their log-abs-det Jacobian (`ChangesOfVariables.with_logabsdet_jacobian`,
 batched [`transports_with_ladj`](@ref)). Transports map normalized laws:
 weights don't change them, and the log-abs-det Jacobian is the density
 ratio of the normalized measures, which requires their masses
-([`massof`](@ref)). Measures of unknown mass have transports but no
-transport Jacobians.
+([`massof`](@ref)). With unknown mass, a transport or its Jacobian can
+still be available from the structure of the measure.
 
 Transport goes through standard measures (`StdUniform`, `StdNormal`,
 `StdExponential`, `StdLogistic` and their powers) as pivots. Each measure

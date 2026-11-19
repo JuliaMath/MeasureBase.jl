@@ -182,6 +182,9 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
     end
 
     @testset "unknown mass" begin
+        halfnormal = normalize(restrict(>(0.0), StdNormal()))
+        @test insupportof(halfnormal, 1.0)
+        @test_throws ArgumentError rand(Xoshiro(1), halfnormal)
         ν = normalize(b)
         x = rand(ν)
         @test x isa Tuple{Float64,Float64}
