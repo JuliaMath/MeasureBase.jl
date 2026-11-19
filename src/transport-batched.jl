@@ -301,8 +301,15 @@ export transports
     _transports(f, X, _flat_storage(X), k, _stream_ndims(f.ν))
 end
 
-function _transports(f::TransportFunction, X, X_flat::AbstractArray, ::StaticInteger, ::StaticInteger)
+function _transports(
+    f::TransportFunction,
+    X,
+    X_flat::AbstractArray{<:Any,N},
+    ::StaticInteger{K},
+    ::StaticInteger,
+) where {N,K}
     _check_flatsize(X_flat, mspace_flatsize(f.μ))
+    0 < K == N && return f(X)
     _transported_batch(f, X, X_flat)
 end
 # Batches of tuple and named tuple variates are tuples of batches:

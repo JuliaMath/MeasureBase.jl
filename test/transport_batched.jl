@@ -216,6 +216,19 @@ using JLArrays
         @test batched_transport_to_std(StdUniform, Dirac(1.0), 1.0) == SVector{0,Bool}()
         @test batched_transport_from_std(StdUniform, Dirac(2.0), SVector{0,Bool}()) == 2.0
         @test_throws ArgumentError transport_to_std(StdUniform, StdNormal()^3, randn(3, 2))
+
+        p = productmeasure((left = StdNormal()^2, right = StdExponential()))
+        f = transport_to(p, StdNormal()^3)
+        z = [-1.0, 0.3, 1.5]
+        x, ladj = with_logabsdet_jacobian(f, z)
+        @test transports(f, z) == x
+        @test f.(z) == x
+        @test begin
+            y, ℓ = transports_with_ladj(f, z)
+            y == x && ℓ ≈ ladj
+        end
+        ys = transports(f, reshape(z, 3, 1, 1))
+        @test size(ys) == (1, 1) && only(ys) == x
     end
 
     @testset "transports" begin
