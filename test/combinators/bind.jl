@@ -322,6 +322,26 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         @test massof(mbind(x -> 3D(1.0), 2D(0.0), OneTwoMany.firstarg)) ≈ 6
         @test logdensityof(mbind(x -> 2 * StdNormal(), α, OneTwoMany.firstarg), 0.3) ≈ log(2) + logdensityof(α, 0.3)
         @test massof(mbind(f_β, α)) isa MeasureBase.UnknownMass
+
+        for w in (98f0, -110f0, 800.0, -800.0)
+            prior = D(0) + D(1)
+            kernel = a -> weightedmeasure(w + a, D(a))
+            b = mbind(kernel, prior, tuple)
+            projected = mbind(kernel, prior, OneTwoMany.firstarg)
+            prob = exp(1) / (1 + exp(1))
+            @test massof(b) ≈ exp(Float64(w)) * (1 + exp(1))
+            @test logdensityof(projected, 1) ≈ w + 1
+            @test densityof(normalize(projected), 1) ≈ prob
+            @test densityof(normalize(b), (1, 1)) ≈ prob
+            mix = normalize(superpose(b, weightedmeasure(w, D((2, 2)))))
+            @test densityof(mix, (2, 2)) ≈ inv(2 + exp(1))
+            draws = rand(Xoshiro(981), normalize(b)^4096)
+            @test count(==((1, 1)), draws) / length(draws) ≈ prob atol = 0.04
+        end
+        for w in (-Inf, Inf)
+            bad = mbind(a -> weightedmeasure(w, D(a)), D(0) + D(1), tuple)
+            @test_throws ArgumentError normalize(bad)
+        end
         # Ancestral sampling of the normalized laws of the components, the
         # primary variates follow the normalized law of `a`:
         p = normalize(mbind(x -> (1 + 9x) * D(x), D(0) + D(1), tuple))

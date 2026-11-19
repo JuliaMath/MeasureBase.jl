@@ -334,11 +334,23 @@ end
 @inline _unweighted(μ::Bind) = mbind(_unweighted ∘ μ.f_β, _unweighted(μ.α), μ.f_c)
 
 # The mass of a bind is linear in the primary measure:
-massof(μ::Bind) = _bind_mass(μ, μ.α)
+massof(μ::Bind) = _recover_bind_mass(μ, _bind_mass(μ, μ.α))
+_recover_bind_mass(μ, m) = m
+_recover_bind_mass(μ, m::AbstractFloat) =
+    _normal_bind_mass(m) ? m : exp(_sampling_logmass(μ))
+_normal_bind_mass(m) = isfinite(m) && m >= floatmin(typeof(m))
 _bind_mass(::Bind, ::AbstractMeasure) = UnknownMass()
 _bind_mass(μ::Bind, α::Dirac) = massof(_get_β_a(μ, α.x))
 _bind_mass(μ::Bind, α::WeightedMeasure) = exp(α.logweight) * _bind_mass(μ, α.base)
 _bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), α.components)
+
+_normalizing_logmass(μ::Bind, m::AbstractFloat) = _normal_bind_mass(m) ? log(m) : _sampling_logmass(μ)
+_sampling_logmass(μ::Bind) = _bind_logmass(μ, μ.α)
+_bind_logmass(::Bind, ::AbstractMeasure) = _logmass(UnknownMass())
+_bind_logmass(μ::Bind, α::Dirac) = _sampling_logmass(_get_β_a(μ, α.x))
+_bind_logmass(μ::Bind, α::WeightedMeasure) = _add_logweight(α.logweight, _bind_logmass(μ, α.base))
+_bind_logmass(μ::Bind, α::SuperpositionMeasure) =
+    _logsumexp_components(map(Base.Fix1(_bind_logmass, μ), α.components))
 
 @inline getdof(μ::Bind) = NoDOF{typeof(μ)}()
 @inline fast_dof(μ::Bind) = NoDOF{typeof(μ)}()
@@ -399,7 +411,7 @@ end
 # Projections onto the primary variate weight it with the mass of the
 # secondary measure:
 function _bind_ld_impl(::typeof(firstarg), μ::Bind, a)
-    _bind_ld(logdensityof(μ.α, a), () -> _logmass(massof(_get_β_a(μ, a))))
+    _bind_ld(logdensityof(μ.α, a), () -> _sampling_logmass(_get_β_a(μ, a)))
 end
 
 # Other value combination functions split via `tpmeasure_split_combined`:
