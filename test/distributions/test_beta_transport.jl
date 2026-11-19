@@ -1,4 +1,5 @@
 using Test, Distributions, MeasureBase
+import ForwardDiff, Zygote
 using MeasureBase: asmeasure, StdUniform, transport_to, smf, csmf, invsmf
 
 @testset "Beta transport accuracy ($T)" for T in (Float32, Float64)
@@ -30,4 +31,15 @@ using MeasureBase: asmeasure, StdUniform, transport_to, smf, csmf, invsmf
 
     concentrated = asmeasure(Beta(T(1e5), T(1e5)))
     @test transport_to(concentrated, StdUniform())(T(0.5)) ≈ T(0.5) rtol=64eps(T)
+end
+
+@testset "Sparse Beta quantiles near the median" begin
+    m = asmeasure(Beta(1f-5, 1f-5))
+    ps = [prevfloat(0.5f0), 0.5f0, nextfloat(0.5f0)]
+    # From the incomplete beta power series and bisection at 256 bits.
+    @test invsmf.(Ref(m), ps) ≈ Float32[0.4985098675974319, 0.5, 0.5029802383349887] rtol = 4eps(Float32)
+
+    median_at(a) = invsmf(asmeasure(Beta(a, a)), 0.5)
+    @test ForwardDiff.derivative(median_at, 1e-6) == 0
+    @test only(Zygote.gradient(median_at, 1e-6)) == 0
 end

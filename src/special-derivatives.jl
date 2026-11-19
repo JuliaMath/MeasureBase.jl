@@ -138,6 +138,9 @@ function _beta_cdf_dshape_impl(α::T, β::T, x::T) where {T<:Real}
         _beta_cdf_dshape_cf(α, β, x, log(x), log1p(-x), logS)
     else
         dβ, dα = _beta_cdf_dshape_cf(β, α, y, log(y), log(x), logS)
+        # I_{1/2}(a,b) + I_{1/2}(b,a) = 1, so the two partials
+        # are opposites at equal shapes, even when individually large.
+        α == β && x == y && return (-dα, dα)
         (-dα, -dβ)
     end
 end

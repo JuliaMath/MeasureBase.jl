@@ -59,12 +59,19 @@ end
 @inline function _portable_beta_quantiles(a::T, b::T, p::T) where {T}
     p == 0 && return (zero(T), one(T))
     p == 1 && return (one(T), zero(T))
+    a == b && p == T(0.5) && return (p, p)
     if a == 1
         logy = log1p(-p) / b
         return (-expm1(logy), exp(logy))
     elseif b == 1
         logx = log(p) / a
         return (exp(logx), -expm1(logx))
+    end
+    # A few ulps of CDF error across a sparse law's flat interior can move
+    # the quantile by many Float32 grid points.
+    if T === Float32 && a < 1 && b < 1
+        x, y = _portable_beta_quantiles(Float64(a), Float64(b), Float64(p))
+        return (T(x), T(y))
     end
     reflected = p > one(T) / 2
     a, b, p = reflected ? (b, a, one(T) - p) : (a, b, p)
@@ -91,12 +98,12 @@ end
         prefactor = _beta_logprefactor(a, b, x, y, logbeta_ab)
         value = _beta_logcdf(a, b, x, y, prefactor)
         residual = value - logp
-        if abs(residual) <= 8eps(T) * max(one(T), abs(logp))
+        slope = exp(prefactor - value)
+        step = residual / slope
+        if abs(step) <= 8eps(T) * max(one(T), abs(t))
             return reflected ? (y, x) : (x, y)
         end
         lo, hi = residual < 0 ? (t, hi) : (lo, t)
-        slope = exp(prefactor - value)
-        step = residual / slope
         # Halley's correction uses d(log(S/I))/dt = a*y - b*x - S/I.
         correction = one(T) - step * (a * y - b * x - slope) / 2
         candidate = t - (abs(correction - one(T)) < one(T) / 2 ? step / correction : step)
