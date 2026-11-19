@@ -73,6 +73,12 @@ struct NoRandMeasure <: AbstractMeasure end
         @test n isa Int && length(x) == n
         @test logdensityof(m, (n, x)) ≈ logpdf(Poisson(3.0), n) + sum(logdensityof.(StdNormal(), x))
         @test length(rand(stblrng(), mbind(n -> StdNormal()^n, P))) isa Int
+        for λ in (0.0, 3.0)
+            process = mbind(n -> StdUniform()^n, asmeasure(Poisson(λ)), vcat)
+            events = rand(Xoshiro(981), process)
+            @test first(events) == length(events) - 1
+            @test all(t -> 0 <= t <= 1, events[2:end])
+        end
     end
 
     @testset "structured batches" begin

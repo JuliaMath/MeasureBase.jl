@@ -128,6 +128,25 @@ not evaluated there. Traced and device evaluation, and binds whose variates
 are part of the streams of enclosing combinators (`mcombine`, nested binds,
 powers) do evaluate `f_β` at such `a`, the kernel must not throw for them.
 
+For a homogeneous Poisson process of rate `λ` on the unit interval,
+draw the count first, then draw that many independent uniform locations.
+With `vcat`, the count is the first entry of each draw.
+
+```jldoctest
+julia> using Distributions: Poisson
+
+julia> using Random: Xoshiro
+
+julia> μ = StdUniform(); λ = 3.0;
+
+julia> process = mbind(n -> μ^n, asmeasure(Poisson(λ)), vcat);
+
+julia> x = rand(Xoshiro(981), process);
+
+julia> first(x) == length(x) - 1 && all(t -> 0 <= t <= 1, x[2:end])
+true
+```
+
 # Extended help
 
 Bayesian example with a correlated prior: Mathematically, let
