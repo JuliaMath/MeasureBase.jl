@@ -54,6 +54,22 @@ end
         @test _simpson(x -> exp(logdensityof(n, x)), a, b) ≈ 1 rtol = 1e-10
     end
 
+    @testset "normalized tail below linear floating-point range" begin
+        for (a, b) in ((39.0, 39.5), (-39.5, -39.0))
+            n = normalize(truncate(StdNormal(), a .. b))
+            @test n.logmass ≈ -765.0831565673387
+            @test _simpson(x -> densityof(n, x), a, b) ≈ 1 rtol = 1e-10
+            median = invsmf(n, 0.5)
+            @test _simpson(x -> densityof(n, x), a, median) ≈ 0.5 rtol = 1e-10
+            @test smf(n, median) ≈ 0.5 && csmf(n, median) ≈ 0.5
+            @test invcsmf(n, 0.5) ≈ median
+            @test smf(n, a, median) ≈ 0.5 && invsmf(n, a, 0.5) ≈ median
+            draws = rand(StableRNG(981), n^4096)
+            @test all(x -> a < x < b, draws)
+            @test count(<(median), draws) / length(draws) ≈ 0.5 atol = 0.04
+        end
+    end
+
     @testset "open and closed intervals" begin
         @test truncate(StdNormal(), OpenInterval(-1.0, 2.0)) == truncate(StdNormal(), -1.0 .. 2.0)
         @test truncate(StdNormal(), Interval{:closed,:open}(-1.0, 2.0)) == truncate(StdNormal(), -1.0 .. 2.0)

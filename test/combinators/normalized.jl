@@ -109,6 +109,12 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test rand(MeasureBase.GenContext{Float32}(MersenneTwister(1)), u) isa Float32
         @test_throws ArgumentError rand(Lebesgue(0.0 .. Inf))
 
+        for w in (90f0, -110f0, 710.0, -750.0)
+            shifted = normalize(superpose(weightedmeasure(w, Dirac(11)), weightedmeasure(w, Dirac(17))))
+            @test densityof(shifted, 11) ≈ 0.5
+            @test densityof(shifted, 17) ≈ 0.5
+            @test rand(MersenneTwister(1), shifted^256) == rand(MersenneTwister(1), (Dirac(11) + Dirac(17))^256)
+        end
         K = rand(MersenneTwister(1), normalize(Counting(1:6))^60_000)
         @test eltype(K) == Int
         @test [count(==(k), K) for k in 1:6] ≈ fill(10_000, 6) rtol = 0.05

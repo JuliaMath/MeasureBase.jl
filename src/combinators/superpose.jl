@@ -184,6 +184,7 @@ function _component_masses(μ::SuperpositionMeasure)
     return masses, sum(masses)
 end
 
+_normalizing_logmass(μ::SuperpositionMeasure, mass) = _sampling_logmass(μ)
 _sampling_logmass(μ::WeightedMeasure) = μ.logweight + _sampling_logmass(μ.base)
 _sampling_logmass(μ::SuperpositionMeasure) = _logsumexp_components(map(_sampling_logmass, values(μ.components)))
 function _sampling_logmass(μ)

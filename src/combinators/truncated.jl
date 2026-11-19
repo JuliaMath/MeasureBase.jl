@@ -103,6 +103,8 @@ function _log_interval_mass(μ, a, b)
     end
     log(m)
 end
+_normalizing_logmass(t::TruncatedMeasure, mass) = _tiny_truncation_mass(t) ? _log_interval_mass(t.parent, t.lo, t.hi) : _logmass(mass)
+_sampling_logmass(t::TruncatedMeasure) = _normalizing_logmass(t, t.mass)
 logsmf(t::TruncatedMeasure, x) = _log_interval_mass(t.parent, t.lo, _clamp_to(t, x))
 logcsmf(t::TruncatedMeasure, x) = _log_interval_mass(t.parent, _clamp_to(t, x), t.hi)
 
@@ -139,9 +141,67 @@ end
 @noinline _truncation_inverse(t::TruncatedMeasure, p, ::NoSMFInverse) =
     throw(ArgumentError("Measures of type $(nameof(typeof(t.parent))) have no inverse Stieltjes measure function"))
 
+# Scale interval probabilities in log space when the retained mass is subnormal.
+_tiny_truncation_mass(t) = t.mass < floatmin(float(typeof(t.mass)))
+function _truncated_probability(t, x, upper)
+    if _tiny_truncation_mass(t)
+        y = _clamp_to(t, x)
+        p = upper ? _truncated_interval_probability(t, y, t.hi) : _truncated_interval_probability(t, t.lo, y)
+        return oftype(float(y) + t.mass, p)
+    end
+    return (upper ? csmf(t, x) : smf(t, x)) / t.mass
+end
+function _truncated_interval_probability(t, a, b)
+    F, G = logsmf(t.parent, t.hi), logcsmf(t.parent, t.lo)
+    if !(F isa NoSMF) && (G isa NoSMF || F <= G)
+        high, low = logsmf(t.parent, b), logsmf(t.parent, a)
+    elseif !(G isa NoSMF)
+        high, low = logcsmf(t.parent, a), logcsmf(t.parent, b)
+    else
+        return smf(t.parent, a, b) / t.mass
+    end
+    p = exp((high - _sampling_logmass(t)) + log(-expm1(min(low - high, zero(high)))))
+    return ifelse(high == low, zero(p), p)
+end
+function _truncated_quantile(t, p, upper)
+    if _tiny_truncation_mass(t)
+        u = clamp(p, zero(p), one(p))
+        left, right = upper ? (u, 1 - u) : (1 - u, u)
+        F, G = logsmf(t.parent, t.hi), logcsmf(t.parent, t.lo)
+        # Interpolate the endpoint probabilities on the better-resolved tail.
+        if !(F isa NoSMF) && (G isa NoSMF || F <= G)
+            lp = F + log(right + left * exp(logsmf(t.parent, t.lo) - F))
+            x = invlogsmf(t.parent, lp)
+        elseif !(G isa NoSMF)
+            lp = G + log(left + right * exp(logcsmf(t.parent, t.hi) - G))
+            x = invlogcsmf(t.parent, lp)
+        else
+            return upper ? invcsmf(t, p * t.mass) : invsmf(t, p * t.mass)
+        end
+        return _nan_outside(StdUniform(), p, _clamp_to(t, x))
+    end
+    return upper ? invcsmf(t, p * t.mass) : invsmf(t, p * t.mass)
+end
+
+smf(n::NormalizedMeasure{<:TruncatedMeasure}, x) = _truncated_probability(n.base, x, false)
+csmf(n::NormalizedMeasure{<:TruncatedMeasure}, x) = _truncated_probability(n.base, x, true)
+invsmf(n::NormalizedMeasure{<:TruncatedMeasure}, p) = _truncated_quantile(n.base, p, false)
+invcsmf(n::NormalizedMeasure{<:TruncatedMeasure}, p) = _truncated_quantile(n.base, p, true)
+function smf(n::NormalizedMeasure{<:TruncatedMeasure}, a, x)
+    t = n.base
+    _tiny_truncation_mass(t) || return smf(t, a, x) / t.mass
+    lo, hi = minmax(_clamp_to(t, a), _clamp_to(t, x))
+    return copysign(_truncated_interval_probability(t, lo, hi), x - a)
+end
+function invsmf(n::NormalizedMeasure{<:TruncatedMeasure}, a, p)
+    t = n.base
+    _tiny_truncation_mass(t) || return invsmf(t, a, p * t.mass)
+    return p < 0 ? invcsmf(n, csmf(n, a) - p) : invsmf(n, smf(n, a) + p)
+end
+
 # The conditional Stieltjes measure function maps to the unit interval:
-@inline transport_to_std(::Type{StdUniform}, t::TruncatedMeasure, x) = _nan_outside(t, x, smf(t, x) / t.mass)
+@inline transport_to_std(::Type{StdUniform}, t::TruncatedMeasure, x) = _nan_outside(t, x, _truncated_probability(t, x, false))
 @inline transport_from_std(::Type{StdUniform}, t::TruncatedMeasure, u) =
-    _nan_outside(StdUniform(), u, invsmf(t, _unit_interior(u) * t.mass))
+    _nan_outside(StdUniform(), u, _truncated_quantile(t, _unit_interior(u), false))
 
 Pretty.quoteof(t::TruncatedMeasure) = :(truncate($(Pretty.quoteof(t.parent)), $(t.lo) .. $(t.hi)))

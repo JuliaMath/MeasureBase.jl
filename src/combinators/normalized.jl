@@ -36,10 +36,11 @@ function normalize(μ::AbstractWeightedMeasure)
 end
 normalize(μ::NormalizedMeasure) = μ
 
-@inline _normalize(μ, mass) = NormalizedMeasure(μ, _checked_logmass(μ, log(dynamic(mass))))
+@inline _normalize(μ, mass) = NormalizedMeasure(μ, _checked_logmass(μ, _normalizing_logmass(μ, mass)))
 @inline _normalize(μ, ::Union{StaticInt{1},StaticFloat64{1.0}}) = μ
 @inline _normalize(μ, mass::AbstractUnknownMass) = NormalizedMeasure(μ, mass)
 
+@inline _normalizing_logmass(μ, mass) = _logmass(mass)
 @inline _checked_logmass(μ, ℓ) = (_check_normalizable(μ, isfinite(ℓ)); ℓ)
 @inline _check_normalizable(μ, finite::Bool) = finite || _throw_not_normalizable(μ)
 # Traced or device values can't be checked:
