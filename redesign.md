@@ -324,8 +324,8 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   functions don't compile for GPUs or Reactant, so Beta and Dirichlet
   transports and draws (Gamma under Reactant too) stay on the CPU;
   ChangesOfVariables has no rules for `Base.Fix1`/`Fix2` arithmetic;
-  HeterogeneousComputing has no splittable per-stream RNGs yet and
-  doesn't allocate FixedSizeArrays; JLArrays has no triangular solves;
+  HeterogeneousComputing doesn't allocate FixedSizeArrays;
+  JLArrays has no triangular solves;
   Reactant rejects traced `VectorOfArrays` and empty batches.
 - Out-of-support convention (decided 2026-09-19): structural errors (wrong
   rank, size, container or element kind) throw an `ArgumentError` from
