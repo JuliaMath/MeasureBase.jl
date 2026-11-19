@@ -8,6 +8,7 @@ end
 
 
 Distributions.Distribution(m::MeasureBase.Dirac{<:Real}) = Distributions.Dirac(m.x)
+Base.convert(::Type{Distribution}, m::MeasureBase.Dirac) = Distribution(m)
 
 function Distributions.Distribution(@nospecialize(m::MeasureBase.Dirac{T})) where T
     throw(ArgumentError("Can only convert MeasureBase.Dirac{<:Real} to Distributions.Dirac, but not MeasureBase.Dirac{<:$(nameof(T))}"))

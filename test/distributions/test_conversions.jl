@@ -47,14 +47,18 @@ using MeasureBase: logdensityof, massof, insupportof
         @test m === MeasureBase.Dirac(4.2)
         @test_throws ArgumentError AsMeasure{typeof(d)}(d)
         @test @inferred(Distributions.Distribution(m)) === d
+        @test @inferred(convert(Distribution, m)) === d
+        @test_throws ArgumentError convert(Distribution, MeasureBase.Dirac([3]))
     end
 
     @testset "products" begin
         test_conversion(product_distribution(Weibull.([0.7, 1.1, 1.3])), ProductMeasure)
         test_conversion(product_distribution(Poisson.([0.7, 1.4])), ProductMeasure)
+        test_conversion(product_distribution([Poisson(3), Distributions.Dirac(3)]), ProductMeasure)
 
         if isdefined(Distributions, :ProductDistribution)
             test_conversion(product_distribution(Weibull(0.7), Exponential(1.3)), ProductMeasure)
+            test_conversion(product_distribution(Poisson(3), Distributions.Dirac(3)), ProductMeasure)
         end
     end
 

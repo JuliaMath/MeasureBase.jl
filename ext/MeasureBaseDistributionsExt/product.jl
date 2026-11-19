@@ -30,18 +30,11 @@ _product_root(d, ::Type{Discrete}) = Counting()^size(d)
 MeasureBase.testvalue(d::_ArrayProductDistribution) = map(testvalue, _marginal_dists(d))
 MeasureBase.testvalue(::Type{T}, d::_ArrayProductDistribution) where {T} = map(c -> testvalue(T, c), _marginal_dists(d))
 
-function Distributions.Distribution(
-    m::MeasureBase.ProductMeasure{<:AbstractArray{<:AsMeasure{<:Distribution{Univariate}}}},
-)
-    Distributions.product_distribution(map(x -> x.obj, MeasureBase.marginals(m)))
+function Distributions.Distribution(m::MeasureBase.ProductMeasure{<:AbstractArray})
+    Distributions.product_distribution(map(Distribution, MeasureBase.marginals(m)))
 end
 
-function Base.convert(
-    ::Type{Distribution},
-    m::MeasureBase.ProductMeasure{<:AbstractArray{<:AsMeasure{<:Distribution{Univariate}}}},
-)
-    Distributions.Distribution(m)
-end
+Base.convert(::Type{Distribution}, m::MeasureBase.ProductMeasure{<:AbstractArray}) = Distribution(m)
 
 @static if isdefined(Distributions, :ProductDistribution)
     MeasureBase.AbstractMeasure(obj::Distributions.ProductDistribution) = productmeasure(map(asmeasure, obj.dists))
@@ -54,29 +47,9 @@ end
         throw(ArgumentError("Don't wrap Distributions.ProductDistribution into MeasureBase.AsMeasure, use asmeasure to convert instead."))
     end
 
-    function Distributions.Distribution(
-        m::MeasureBase.ProductMeasure{<:AbstractArray{<:AsMeasure{<:Distribution}}},
-    )
-        Distributions.product_distribution(map(x -> x.obj, MeasureBase.marginals(m)))
+    function Distributions.Distribution(m::MeasureBase.ProductMeasure{<:Tuple})
+        Distributions.product_distribution(map(Distribution, MeasureBase.marginals(m))...)
     end
 
-    function Distributions.Distribution(
-        m::MeasureBase.ProductMeasure{<:Tuple{Vararg{AsMeasure{<:Distribution}}}},
-    )
-        Distributions.product_distribution(map(x -> x.obj, MeasureBase.marginals(m))...)
-    end
-
-    function Base.convert(
-        ::Type{Distribution},
-        m::MeasureBase.ProductMeasure{<:AbstractArray{<:AsMeasure{<:Distribution}}},
-    )
-        Distributions.Distribution(m)
-    end
-
-    function Base.convert(
-        ::Type{Distribution},
-        m::MeasureBase.ProductMeasure{<:Tuple{Vararg{AsMeasure{<:Distribution}}}},
-    )
-        Distributions.Distribution(m)
-    end
+    Base.convert(::Type{Distribution}, m::MeasureBase.ProductMeasure{<:Tuple}) = Distribution(m)
 end
