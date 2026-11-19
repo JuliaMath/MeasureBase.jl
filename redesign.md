@@ -376,10 +376,14 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
 - Bind sampling and masses (decided 2026-10-22): `rand` of a bind samples
   ancestrally from the normalized laws of its components (the primary
   variate from the normalized primary measure, the secondary one from the
-  normalized kernel measure), the normalized law of the bind only for
-  kernels of constant mass. The mass of a bind integrates the kernel
-  masses over the primary measure, known for weighted and superposed point
-  masses, unknown otherwise. Projections (`mcombine` and `mbind` with
+  normalized kernel measure). For a variable-mass kernel,
+  `rand(normalize(b))` reweights each primary atom by its conditional
+  mass. Other primaries require a kernel of known constant mass. The
+  mass of a bind integrates the kernel masses over the primary measure.
+  For combinations of weighted, normalized or superposed point masses
+  with known component masses, this is a finite sum. For a constant
+  kernel `Returns(β)` and primary `α`, it is `massof(α) * massof(β)`.
+  Projections (`mcombine` and `mbind` with
   `firstarg`/`secondarg`) weight the kept measure with the mass of the
   dropped one (`massof(α) * massof(β)`), pointwise for binds; where that
   mass is unknown, so are the mass and the density of the projection.
