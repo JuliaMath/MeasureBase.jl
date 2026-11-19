@@ -43,3 +43,14 @@ end
     @test ForwardDiff.derivative(median_at, 1e-6) == 0
     @test only(Zygote.gradient(median_at, 1e-6)) == 0
 end
+
+@testset "Concentrated Beta CDF near the mean" begin
+    d = asmeasure(Beta(1e9, 1e9))
+    # Integrating the beta density at 256 bits on both sides of the mean.
+    x = [0.4999999, 0.5, 0.5000001]
+    @test smf.(Ref(d), x) ≈ [0.49643179934411, 0.5, 0.5035682006539093] rtol=16eps()
+    @test invsmf(d, 0.5035682006539093) ≈ x[3] rtol=8eps()
+    skewed = asmeasure(Beta(1e8, 2.3e8))
+    @test smf(skewed, 1e8 / 3.3e8) ≈ 0.5000062749646685 rtol=16eps()
+    @test smf(asmeasure(Beta(8f9, 8f9)), 0.5f0) == 0.5f0
+end

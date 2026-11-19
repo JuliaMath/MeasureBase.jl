@@ -8,7 +8,9 @@
     d = y + ((one(T) - b) / (a + one(T))) * x
     d = inv(ifelse(abs(d) < tiny, copysign(tiny, d), d))
     h = d
-    for m in 1:4096
+    # Near the mean of a concentrated law, many more convergents are
+    # needed. Elsewhere the residual test terminates the fraction early.
+    for m in 1:100_000
         k = T(m)
         r = a + 2k
         even = (k / r) * ((b - k) / (r - one(T))) * x
@@ -38,9 +40,40 @@ end
     a * logx + b * logy - logbeta_ab
 end
 
+# Near the mean of a highly concentrated law the continued fraction also
+# loses precision in its first denominator. Use the standardized cumulants
+# through fifth order in the Edgeworth CDF there. The first omitted terms
+# are of order min(a, b)^(-2) for bounded standardized coordinates.
+@inline function _beta_central_logcdf(a, b, x, y)
+    s = a + b
+    # Recover the rounding error in s for the centered coordinate s*x - a.
+    e = min(a, b) - (s - max(a, b))
+    centered = x <= y ? fma(x, s, -a) + x * e : -(fma(y, s, -b) + y * e)
+    scale = sqrt(a * (b / (s + 1)))
+    z = centered / scale
+    abs(z) <= 4 || return nothing
+    h = (b - a) / scale
+    k3 = 2h / (s + 2)
+    k4 = 3 * (h * k3 - 2) / (s + 3)
+    k5 = 4 * (h * k4 - 6k3) / (s + 4)
+    H2 = z * z - 1
+    H3 = z * H2 - 2z
+    H4 = z * H3 - 3H2
+    H5 = z * H4 - 4H3
+    H6 = z * H5 - 5H4
+    H8 = z * (z * H6 - 6H5) - 7H6
+    correction = k3 * H2 / 6 + k4 * H3 / 24 + k3^2 * H5 / 72 +
+        k5 * H4 / 120 + k3 * k4 * H6 / 144 + k3^3 * H8 / 1296
+    log(MeasureBase.Φ(z) - exp(-z^2 / 2) * invsqrt2π * correction)
+end
+
 @inline function _beta_logcdf(a, b, x, y, prefactor)
     x == 0 && return oftype(x, -Inf)
     y == 0 && return zero(y)
+    if min(a, b) >= 1e8
+        central = _beta_central_logcdf(a, b, x, y)
+        isnothing(central) || return central
+    end
     if x <= (a + one(a)) / (a + b + 2one(a))
         return min(zero(x), prefactor + log(_beta_fraction(a, b, x, y) / a))
     end
@@ -49,6 +82,10 @@ end
 end
 
 @inline function _portable_beta_cdf(a::T, b::T, x::T) where {T}
+    a == b && x == T(0.5) && return x
+    if T === Float32 && min(a, b) >= 1f5
+        return T(_portable_beta_cdf(Float64(a), Float64(b), Float64(x)))
+    end
     a == 1 && return -expm1(b * log1p(-x))
     b == 1 && return exp(a * log(x))
     y = one(T) - x
@@ -68,8 +105,9 @@ end
         return (exp(logx), -expm1(logx))
     end
     # A few ulps of CDF error across a sparse law's flat interior can move
-    # the quantile by many Float32 grid points.
-    if T === Float32 && a < 1 && b < 1
+    # its quantile by many grid points. For concentrated laws use the same
+    # working precision as the forward CDF.
+    if T === Float32 && ((a < 1 && b < 1) || min(a, b) >= 1f5)
         x, y = _portable_beta_quantiles(Float64(a), Float64(b), Float64(p))
         return (T(x), T(y))
     end

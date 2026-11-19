@@ -44,7 +44,7 @@ using Distributions: ReshapedDistribution, AbstractMixtureModel
 import Statistics
 import PDMats
 
-using IrrationalConstants: log2π, logtwo
+using IrrationalConstants: log2π, logtwo, invsqrt2π
 using LogExpFunctions: logistic, log1pexp, logsubexp, logsumexp
 using SpecialFunctions: loggamma, logbeta, gamma_inc, gamma_inc_inv, beta_inc, beta_inc_inv
 
