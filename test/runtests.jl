@@ -65,4 +65,18 @@ include("rand_batched.jl")
 include("distributions/test_distributions.jl")
 
 TEST_REACTANT && include("test_reactant.jl")
+
+@testset "Loaded extension ambiguities" begin
+    import Pkg
+    names = keys(Pkg.TOML.parsefile(pkgdir(MeasureBase, "Project.toml"))["extensions"])
+    extensions = Module[]
+    for name in names
+        name == "MeasureBaseReactantExt" && !TEST_REACTANT && continue
+        ext = Base.get_extension(MeasureBase, Symbol(name))
+        @test ext isa Module
+        isnothing(ext) || push!(extensions, ext)
+    end
+    @test isempty(Test.detect_ambiguities(MeasureBase, extensions...; recursive = true))
+end
+
 include("test_docs.jl")
