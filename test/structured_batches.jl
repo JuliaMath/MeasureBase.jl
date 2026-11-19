@@ -8,11 +8,12 @@ using MeasureBase: weightedmeasure, mintegrate_exp, mcombine
 using MeasureBase.InverseFunctions: inverse
 using StructArrays: StructArray
 import StructArrays
-using ArraysOfArrays: flatview
+using ArraysOfArrays: flatview, sliced
 using FillArrays: Fill
 using Distributions: Normal, cdf
 using Random: Xoshiro
 using MeasureBase: Dirac
+using JLArrays: JLArray
 
 @testset "structured batches" begin
     Pt = productmeasure((StdNormal(), StdExponential()^2))
@@ -91,6 +92,18 @@ using MeasureBase: Dirac
         @test flatview(U) ≈ reshape(cdf.(Normal(), Xd.a), 1, 4)
         Xr = transports(inverse(fd), U)
         @test Xr.c isa Fill && Xr.a ≈ Xd.a
+    end
+
+    @testset "empty batches with array-valued fields" begin
+        p = productmeasure((left = StdNormal()^2, right = StdExponential()))
+        xs = [(left = [0.0, 2.0], right = 1.0)]
+        empty = xs[1:0]
+        @test logdensities(p, empty) == logdensities(p, rand(Xoshiro(11), p^0))
+        @test size(logdensities(p, reshape(empty, 0, 2))) == (0, 2)
+        @test isempty(logdensities(p, StructArray(empty)))
+        @test isempty(logdensities(p, (left = Vector{Float64}[], right = Float64[])))
+        device = StructArray((left = sliced(JLArray(zeros(2, 0)), Val(1)), right = JLArray(zeros(0))))
+        @test logdensities(p, device) isa JLArray
     end
 
     @test insupportof(StdUniform()^3, [0.1, 0.5, 0.9]) && !insupportof(StdUniform()^3, [0.1, 1.5, 0.9])

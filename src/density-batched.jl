@@ -269,16 +269,32 @@ end
 @inline _flatten_stacked_component(c::AbstractArray{<:AbstractArray}) = _component_storage(c)
 @inline _uniform_size(c::AbstractArray) = isempty(c) || all(x -> size(x) == size(first(c)), c)
 
+@inline _unknown_empty_layout(X::Union{Tuple,NamedTuple}) = any(_unknown_empty_layout, X)
+@inline _unknown_empty_layout(X::StructArray{<:Union{Tuple,NamedTuple}}) =
+    _unknown_empty_layout(StructArrays.components(X))
+@inline _unknown_empty_layout(X::AbstractArray{<:Union{Tuple,NamedTuple}}) = isempty(X)
+@inline _unknown_empty_layout(X::AbstractArray{<:AbstractArray}) =
+    isempty(X) && _flat_storage(X) isa NoFlatStorage
+@inline _unknown_empty_layout(::Any) = false
+
 # Entry: arrays of numbers are flat storage, arrays of variates are fused
 # into their flat storage (else evaluated variate by variate), tuples and
 # named tuples of batches go to the kernels directly.
 @inline _batched_ld(f::F, μ, X::AbstractArray{<:Number}) where {F} = _checked_batched_kernel(f, μ, X)
 @inline _batched_ld(f::F, μ, x::Number) where {F} = _point_ld(f, μ, x)
-@inline _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F} = _batched_ld_tuple(f, μ, X, _components_storage(X))
+@inline function _batched_ld(f::F, μ, X::Union{Tuple,NamedTuple}) where {F}
+    storage = _unknown_empty_layout(X) ? NoFlatStorage() : _components_storage(X)
+    _batched_ld_tuple(f, μ, X, storage)
+end
 @inline _batched_ld_tuple(f::F, μ, X, X_flat::Union{Tuple,NamedTuple}) where {F} = _batched_kernel(f, μ, X_flat)
 # Tuples of ragged batches are evaluated variate by variate:
 @inline _batched_ld_tuple(f::F, μ, X, ::NoFlatStorage) where {F} = _batched_ld(f, μ, StructArray(X))
 @inline _batched_ld(f::F, μ, X::AbstractArray) where {F} = _batched_ld_nested(f, μ, X, _flat_storage(X), _stream_ndims(μ))
+@inline function _batched_ld(f::F, μ, X::AbstractArray{<:Union{Tuple,NamedTuple}}) where {F}
+    # There is no point from which to infer the sizes of empty array-valued fields.
+    storage = isempty(X) && _unknown_empty_layout(X) ? NoFlatStorage() : _flat_storage(X)
+    _batched_ld_nested(f, μ, X, storage, _stream_ndims(μ))
+end
 @inline function _batched_ld_nested(f::F, μ, X::AbstractArray, X_flat::AbstractArray, ::StaticInteger) where {F}
     _check_batch_shape(_checked_batched_kernel(f, μ, X_flat), X)
 end
