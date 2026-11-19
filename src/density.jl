@@ -318,4 +318,3 @@ function _integrand_lds_at(f, ::Any, ::Any, Θ, ℓ_base)
 end
 
 _integrand_lds(f, Θ::AbstractArray) = broadcast(Base.Fix1(logdensityof, f), Θ)
-

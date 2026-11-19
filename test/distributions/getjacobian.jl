@@ -17,7 +17,7 @@ end
 torv_and_back(A::AbstractArray{<:Real}) = vec(A), V -> reshape(V, size(A))
 
 function torv_and_back(A::AbstractArray{Complex{T}, N}) where {T<:Real, N}
-    RA = cat(real.(A), imag.(A), dims = N+1) 
+    RA = cat(real.(A), imag.(A), dims = N+1)
     V, to_array = torv_and_back(RA)
     function back_to_complex(V)
         RA = to_array(V)

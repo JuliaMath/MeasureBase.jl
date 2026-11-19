@@ -360,4 +360,3 @@ weightedmeasure(ℓ, b) = _weightedmeasure(ℓ, asmeasure(b))
 
 _weightedmeasure(ℓ::R, b::M) where {R,M} = WeightedMeasure{R,M}(ℓ, b)
 _weightedmeasure(ℓ, b::WeightedMeasure) = _weightedmeasure(ℓ + _logweight(b), b.base)
-

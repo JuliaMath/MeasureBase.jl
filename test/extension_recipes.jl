@@ -214,4 +214,3 @@ MeasureBase.mspace_ndims(::Type{<:_RecipeChain}) = 1
         @test all(isfinite, logdensities(μ, xs))
     end
 end
-
