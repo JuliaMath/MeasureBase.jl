@@ -128,7 +128,10 @@ in this way, users should add the corresponding `massof` method.
 # Stieltjes measure functions give the masses of left-open, right-closed
 # intervals. Other intervals differ from them by the masses of their ends,
 # which only vanish for measures without atoms:
-massof(μ, a_b::AbstractInterval) = _interval_massof(μ, a_b, _atom_free(rootmeasure(μ)))
+function massof(μ, a_b::AbstractInterval)
+    isempty(a_b) && return zero(float(eltype(a_b)))
+    return _interval_massof(μ, a_b, _atom_free(rootmeasure(μ)))
+end
 _interval_massof(μ, a_b::Interval{:open,:closed}, ::Bool) = _smf_interval_massof(μ, a_b)
 _interval_massof(μ, a_b::AbstractInterval, atom_free::Bool) =
     atom_free ? _smf_interval_massof(μ, a_b) : _throw_atomic_interval_massof(μ)
