@@ -65,6 +65,11 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensities(StdUniform(), x), xu)
         test_traced(x -> logdensities(StdExponential(), x), xu)
         test_traced(x -> logdensities(restrict(x -> x > 0, StdNormal()), x), xu)
+        r = restrict(x -> sum(x) > 0, StdNormal()^2)
+        Xr = Float32[0.25 -1.5 0.5 -2.0; 0.5 0.25 -0.5 3.0]
+        ℓ = test_traced(X -> logdensities(r, sliced(X, Val(1))), Xr)
+        @test ℓ isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(ℓ)[2:3] == [-Inf32, -Inf32]
     end
 
     @testset "relative densities" begin
@@ -87,6 +92,11 @@ _plain(x::Number) = Float64(x)
         @test Array(result) ≈ -Float32(log(2π)) .- 1.5f0 .* vec(sum(abs2, W; dims = 1))
         masked = mintegrate_exp(x -> -sum(abs2, x), StdExponential()^2)
         test_traced(X -> logdensities(masked, X), reshape(W, 2, 1, 3))
+        mx = superpose(0.4f0 * StdUniform()^2, 0.6f0 * StdExponential()^2)
+        Xm = Float32[0.5 -0.5 -1.0 2.5; 0.25 0.25 -0.5 0.25]
+        scores = test_traced(X -> logdensities(mx, X), Xm)
+        @test scores isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(scores) ≈ Float32[log(0.4f0 + 0.6f0 * exp(-0.75f0)), -Inf, -Inf, log(0.6f0) - 2.75f0]
         sm = 0.2 * StdNormal() + 0.8 * Dirac(0.0)
         test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
     end

@@ -27,8 +27,14 @@ of a batch (an array of numbers with the variate dimensions leading, see
 batches for measures with tuple resp. `NamedTuple` variates. Returns an
 array over the batch dimensions (a number for a single variate),
 semantically equivalent to `logdensityof.(Ref(μ), X)` for arrays of
-variates. Batches with flat storage are evaluated in fused operations,
-compatible with GPU and traced arrays.
+variates. Batched kernels can operate on GPU and traced arrays. Measures
+that use the default array-variate point fallback may loop over the
+variates and return host storage even when the batch has flat device
+storage. This includes array-variate superpositions with unequal roots
+or components that return host densities.
+
+Device and traced array-variate restrictions with a device base kernel
+evaluate that kernel on the whole batch before applying the predicate mask.
 
 Measure types implement [`MeasureBase.batched_logdensityof_impl`](@ref).
 See [`transports`](@ref) for batches of transports.

@@ -112,6 +112,11 @@ import AffineMaps
         @test logdensities(r, [-1.0, 1.0]) ≈ [-Inf, logdensityof(StdNormal(), 0.0)]
         @test logdensities(r^2, [-1.0 1.0; 1.0 1.0]) ≈ [-Inf, 2 * logdensityof(StdNormal(), 0.0)]
         @test logdensityof(productmeasure((p, StdExponential())), (1.0, -1.0)) == -Inf
+
+        # The host predicate guards a base density undefined on rejected points.
+        q = mintegrate_exp(x -> log(sum(x)), StdNormal()^2)
+        rq = restrict(x -> sum(x) > 0, q)
+        @test logdensities(rq, [-1.0 1.0; -2.0 2.0]) ≈ [-Inf, log(3) - log(2π) - 2.5]
     end
 
     @testset "wrong shapes throw" begin

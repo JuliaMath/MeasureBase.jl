@@ -75,6 +75,19 @@ _plain(x::Tuple) = map(_plain, x)
         W = Float32[0.1 -0.5 1.0; 0.3 0.2 2.0]
         ℓ = test_cuda(X -> logdensities(q, X), W)
         @test Array(ℓ) ≈ -Float32(log(2π)) .- 1.5f0 .* vec(sum(abs2, W; dims = 1))
+
+        r = restrict(x -> sum(x) > 0, StdNormal()^2)
+        Xr = Float32[0.25 -1.5 0.5 -2.0; 0.5 0.25 -0.5 3.0]
+        expected = -Float32(log(2π)) .- 0.5f0 .* vec(sum(abs2, Xr; dims = 1))
+        expected[2:3] .= -Inf32
+        ℓ = test_cuda(X -> logdensities(r, X), reshape(Xr, 2, 2, 2))
+        @test size(ℓ) == (2, 2)
+        @test vec(Array(ℓ)) ≈ expected
+
+        mx = superpose(0.4f0 * StdUniform()^2, 0.6f0 * StdExponential()^2)
+        Xm = Float32[0.5 -0.5 -1.0 2.5; 0.25 0.25 -0.5 0.25]
+        ℓ = test_cuda(X -> logdensities(mx, X), Xm)
+        @test Array(ℓ) ≈ Float32[log(0.4f0 + 0.6f0 * exp(-0.75f0)), -Inf, -Inf, log(0.6f0) - 2.75f0]
     end
 
     @testset "transports" begin

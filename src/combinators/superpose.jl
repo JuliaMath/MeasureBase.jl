@@ -130,6 +130,23 @@ end
 # equal roots add their densities:
 logdensity_def(s::SuperpositionMeasure, x) = _superpos_logd(values(s.components), basemeasure(s), x)
 
+# When the roots agree, the batched component densities already have the
+# same reference measure. Keep the pointwise join for the other cases.
+@inline function batched_logdensityof_impl(s::SuperpositionMeasure, X::AbstractArray{<:Number})
+    k = _stream_ndims(s)
+    if k isa StaticInteger && 0 < k < ndims(X) && !_is_host_array(X) && _all_roots_equal(basemeasure(s))
+        scores = map(c -> logdensities(c, X), values(s.components))
+        if all(a -> a isa AbstractArray && !_is_host_array(a), scores)
+            return broadcast((ℓs...) -> _logsumexp_components(ℓs), scores...)
+        end
+    end
+    _default_batched_kernel(logdensityof_impl, s, X, k)
+end
+
+@inline _all_roots_equal(::AbstractMeasure) = true
+@inline _all_roots_equal(J::MeasureJoin) =
+    J.equal_roots || all(Base.Fix1(_equal_roots, first(J.roots)), J.roots)
+
 _superpos_logd(cs, ::Any, x) = _logsumexp_components(map(c -> _component_logd(c, x), cs))
 function _superpos_logd(cs, J::MeasureJoin, x)
     J.equal_roots && return _superpos_logd(cs, J.roots[begin], x)

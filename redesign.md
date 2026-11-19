@@ -391,10 +391,15 @@ locally on the GB10, green at HEAD except one expected-broken CUDA case
   pushforwards are only defined on the image of their map, the inverse may
   throw outside of it (`logdensityof(pushfwd(exp, StdNormal()), -1.0)`
   throws a `DomainError` from `log`). Documented, not masked.
-- Array-variate superpositions have no batched kernel: their densities
-  loop over the variates on the host with per-variate base-chain masks
-  (host results for device batches, Reactant unrolls the trace), and
-  support checks of powers allocate (review A43).
+- Array-variate superpositions with equal roots combine the component
+  densities on the device when each component returns device densities.
+  Other cases use the pointwise join over variates, including the
+  base-chain masks. That path can return host results for device batches,
+  and Reactant unrolls it. Support checks of powers allocate (review A43).
+- Array-variate restrictions on devices or under tracing use a
+  device-compatible predicate and a base kernel defined for every
+  variate in the batch. Host restrictions evaluate the base only where
+  the predicate holds.
 - Relative densities between unequal roots of the "other" kind (simplex
   coordinate measures of different charts, products of mixed kinds) throw
   instead of relating them.

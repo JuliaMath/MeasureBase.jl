@@ -18,6 +18,20 @@ end
     _select(μ.predicate(x), () -> logdensityof(μ.base, x), () -> _neg_inf_logd(x))
 end
 
+# Device batches combine a slice-wise predicate with the bulk base density.
+# Both must be defined on every variate in the batch.
+@inline function batched_logdensityof_impl(μ::RestrictedMeasure, X::AbstractArray{<:Number})
+    k = _stream_ndims(μ)
+    if k isa StaticInteger && 0 < k < ndims(X) && !_is_host_array(X)
+        ℓ = logdensities(μ.base, X)
+        if ℓ isa AbstractArray && !_is_host_array(ℓ)
+            mask = _broadcast_variate_slices(μ.predicate, X, ℓ)
+            return Broadcast.instantiate(Broadcast.broadcasted(_checksupport, mask, ℓ))
+        end
+    end
+    _default_batched_kernel(logdensityof_impl, μ, X, k)
+end
+
 basemeasure(μ::RestrictedMeasure) = μ.base
 localmeasure(μ::RestrictedMeasure, x) = RestrictedMeasure(μ.predicate, localmeasure(μ.base, x))
 
