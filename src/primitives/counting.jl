@@ -29,6 +29,10 @@ struct Counting{T} <: AbstractMeasure
     Counting(supp) = new{Core.Typeof(supp)}(supp)
 end
 
+Base.:(==)(a::Counting, b::Counting) = a.support == b.support
+Base.isequal(a::Counting, b::Counting) = isequal(a.support, b.support)
+Base.hash(a::Counting, h::UInt) = hash(a.support, hash(:Counting, h))
+
 @inline function logdensityof_impl(μ::Counting, x::Number)
     R = float(typeof(x))
     _checksupport(insupportof(μ, x), zero(R))

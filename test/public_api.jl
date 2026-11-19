@@ -107,6 +107,11 @@ end
 end
 
 @testset "hash follows equality" begin
+    a, b = Counting([1, 2]), Counting([1, 2])
+    @test a == b && isequal(a, b) && hash(a) == hash(b)
+    @test Dict(a => :counting)[b] === :counting
+    @test length(Set((a, b, Counting([1, 3])))) == 2
+    @test !isequal(Counting([-0.0]), Counting([0.0]))
     negative, positive = Dirac(-0.0), Dirac(0.0)
     @test negative == positive && !isequal(negative, positive)
     @test length(Set((negative, positive))) == 2
