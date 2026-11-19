@@ -120,9 +120,29 @@ Fused evaluation, also on GPUs:
   evaluate it everywhere and mask the result.
 
 Other measures with array variates and measures with tuple variates are
-evaluated measure by measure, each with its own batched kernel. Under
-Reactant, arrays of measures with traced parameters can't be built, so
-only the likelihood path above runs traced.
+evaluated measure by measure, each with its own batched kernel.
+
+### Backend support
+
+- On CUDA, batched Gamma and Beta densities and transports to and from
+  `StdNormal()` run on the device. Dirichlet densities and the transport
+  from the simplex to the unit cube are also tested. A matrix-affine
+  pushforward can transport variates on CUDA, but evaluating its density
+  requires a device log-abs-det Jacobian that AffineMaps does not provide.
+- Under Reactant, batched Gamma, Beta and Dirichlet densities compile with
+  fixed distribution parameters. Gamma and Beta transports to `StdNormal()`
+  require incomplete gamma and beta functions that SpecialFunctions does
+  not implement for traced inputs. Capture a fixed `Dirichlet` or
+  dense-covariance `MvNormal` when tracing over the variates. Their
+  parameter structs cannot store traced arrays. Products of scalar
+  `Normal` marginals accept traced variates with captured or
+  device-resident mean and scale columns.
+- On JLArrays, Dirichlet batches support density evaluation. Use host
+  arrays for the transport from standard logistic coordinates to the
+  simplex, since its stick-breaking setup requires a `reverse` kernel
+  unavailable on the JLArrays CPU backend. For `MvNormal`, use diagonal
+  or scalar covariances on JLArrays. Dense covariances depend on
+  triangular matrix operations and are tested on CUDA.
 
 ## Support and shape conventions
 
@@ -283,7 +303,7 @@ gives zeros for them. Mooncake is recommended for these distributions.
   over the flat storage.
 - `productmeasure(μs)` for arrays, tuples and named tuples of measures.
   Arrays of isbits parameterized marginals are stored as struct arrays and
-  evaluated in fused kernels, also on GPUs and under Reactant.
+  evaluated in fused kernels on supported backends (see [Backend support](@ref)).
 - `mcombine(vcat, α, β)` and `mcombine(merge, α, β)`, `mbind(k, μ)`
   (flat stream variates for `vcat`, merged named tuples for `merge`).
 - `pushfwd(f, μ)` and `pullbck(f, μ)`, with batched application for
