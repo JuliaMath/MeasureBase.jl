@@ -59,6 +59,15 @@ function MeasureBase.batched_rand_impl(ctx::GenContext, d::_RecipeDiagNormal, sz
     d.σ .* MeasureBase.batched_rand_impl(ctx, StdNormal()^length(d.σ), sz)
 end
 
+# A bounded leaf defining only its density relative to the base measure:
+struct _RecipeUnitSquare <: AbstractMeasure end
+MeasureBase.mspace_ndims(::Type{_RecipeUnitSquare}) = 1
+MeasureBase.mspace_flatsize(::_RecipeUnitSquare) = (2,)
+MeasureBase.basemeasure(::_RecipeUnitSquare) = Lebesgue()^2
+MeasureBase.insupportof(::_RecipeUnitSquare, x) = all(t -> 0 <= t <= 1, x)
+MeasureBase.batched_logdensity_def(::_RecipeUnitSquare, x::AbstractVector) = zero(eltype(x))
+MeasureBase.batched_logdensity_def(::_RecipeUnitSquare, X::AbstractArray) = zeros(eltype(X), Base.tail(size(X)))
+
 # A measure with variates of value-dependent size, x = [a; b] with
 # a ~ StdExponential() and b ~ StdNormal()^k for k = max(1, ceil(Int, a)):
 struct _RecipeChain <: AbstractMeasure end
@@ -104,6 +113,16 @@ MeasureBase.mspace_ndims(::Type{<:_RecipeChain}) = 1
 
 
 @testset "extension recipes" begin
+    @testset "bounded leaf with a batched base density" begin
+        μ = _RecipeUnitSquare()
+        inside, outside = [0.5, 0.75], [-0.5, 0.75]
+        X = hcat(inside, outside)
+        @test logdensityof(μ, inside) == 0
+        @test logdensityof(μ, outside) == logdensity_rel(μ, basemeasure(μ), outside) == -Inf
+        @test logdensities(μ, X) == [0, -Inf]
+        @test logdensityof(μ^2, X) == -Inf
+    end
+
     @testset "scalar-variate leaf" begin
         L = _RecipeLaplace()
         ℓ(x) = -abs(x) - log(2.0)

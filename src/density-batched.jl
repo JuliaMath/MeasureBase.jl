@@ -94,7 +94,12 @@ function batched_logdensityof_impl end
         _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
     end
 end
-@inline _ld_from_batched_def(μ, X, β) = _lazy_add(batched_logdensity_def(μ, X), _batched_kernel(logdensityof_impl, β, X))
+@inline function _ld_from_batched_def(μ, X, β)
+    ℓ = _lazy_add(batched_logdensity_def(μ, X), _batched_kernel(logdensityof_impl, β, X))
+    mask = _default_batched_kernel(_leaf_support_mask, μ, X, _stream_ndims(μ))
+    return _checksupport.(mask, ℓ)
+end
+@inline _leaf_support_mask(μ, x) = _insupport_mask(insupportof(μ, x))
 # Root measures are their own base:
 @inline _ld_from_batched_def(μ::M, X, ::M) where {M} = _default_batched_kernel(logdensityof_impl, μ, X, _stream_ndims(μ))
 
