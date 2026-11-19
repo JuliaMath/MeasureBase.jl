@@ -346,12 +346,20 @@ derived.
 
 | Aspect | Scalar-variate leaf | Array-variate leaf | Composed measure |
 |:--- |:--- |:--- |:--- |
-| Density | `logdensity_def` (or `logdensityof_impl`), `basemeasure`, `insupportof` | the same, plus `batched_logdensityof_impl` (or only `batched_logdensity_def`) | kernels via components, with-rest forms |
+| Density | `logdensity_def`, `basemeasure`, `insupportof` | the same, plus `batched_logdensityof_impl`, or define `batched_logdensity_def` for both point and batch inputs | kernels via components, with-rest forms |
 | Mass | `massof` | the same | derived, `massof` for value-dependent sizes |
 | Transport | `preferred_stdmeasure`, `transport_to_std`, `transport_from_std` | also `batched_transport_to_std`, `batched_transport_from_std` | with-rest forms, `fixed_stream_size` |
 | Random | `batched_rand_impl` or `rand_impl` (derived from a transport) | `batched_rand_impl` (derived from a transport) | derived, `rand_impl` for value-dependent sizes |
 | Declarations | `mspace_flatsize` | `mspace_ndims`, optionally `mspace_flatsize` | derived, `mspace_ndims` for value-dependent sizes |
 | Degrees of freedom | `getdof` and `fast_dof` where they differ from those of the base measure (e.g. over counting measures) | the same | derived |
+
+`logdensity_def(μ, x)` supplies the log density relative to
+`basemeasure(μ)` for the base-measure descent in `logdensity_rel`.
+A leaf can specialize `logdensityof_impl(μ, x)` for its density relative
+to the root. Relative-density evaluation still needs the base-density
+hook or a method for the pair of measures. Move pairwise specializations
+of `logdensity_def(μ, ν, x)` to `MeasureBase.logdensity_rel_def(μ, ν, x)`
+so descent can find them along the base chains.
 
 All of these are declared `public` (see the [Extension API](@ref) page) and
 must be qualified with `MeasureBase.` when extended. Methods for new

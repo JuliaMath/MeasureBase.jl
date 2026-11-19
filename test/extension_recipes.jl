@@ -128,6 +128,8 @@ MeasureBase.mspace_ndims(::Type{<:_RecipeChain}) = 1
         ℓ(x) = -abs(x) - log(2.0)
         xs = [-1.5, 0.3, 2.0]
         @test logdensityof(L, 0.3) ≈ ℓ(0.3)
+        @test logdensity_rel(L, basemeasure(L), 0.3) ≈ -0.3
+        @test logdensity_rel(L, Lebesgue(), 0.3) ≈ ℓ(0.3)
         @test logdensities(L, xs) ≈ ℓ.(xs)
         @test logdensityof(L^3, xs) ≈ sum(ℓ, xs)
         @test logdensityof(productmeasure((L, StdNormal())), (0.3, 0.1)) ≈ ℓ(0.3) + logdensityof(StdNormal(), 0.1)
