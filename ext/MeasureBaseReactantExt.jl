@@ -9,6 +9,15 @@ using MeasureBase: RealValues, IntegerValues
 Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
 
+MeasureBase._counting_scalar(samples::Reactant.TracedRArray) = Reactant.@allowscalar only(samples)
+
+function MeasureBase._reject_counting_bits!(ctx, bits::Reactant.TracedRArray, threshold)
+    Reactant.@trace while any(<(threshold), bits)
+        MeasureBase._redraw_counting_bits!(ctx, bits, threshold)
+    end
+    return bits
+end
+
 # Traced floating-point numbers aren't `AbstractFloat`s, so the context
 # precision would pass them by. Traced integers stay as they are:
 MeasureBase.convert_realtype(::Type{T}, x::TracedRNumber{<:AbstractFloat}) where {T<:Real} =

@@ -209,6 +209,12 @@ _plain(x::Number) = Float64(x)
         b = @jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Bernoulli(0.3)), (2000,)))(ctx)
         @test Reactant.unwrapped_eltype(b) == Bool && isapprox(count(Array(b)) / 2000, 0.3, atol = 0.05)
         @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Bernoulli(0.3))))(ctx)) == Bool
+        # One quarter of the random bit patterns need rejection for this range.
+        # Reducing every pattern modulo its length would give 3/4 instead of 2/3.
+        large_range = Counting(1:(Int64(3) << 61))
+        counting_ctx = GenContext{Float16}(rootrng(get_compute_unit(ctx), 981))
+        k = Array(@jit (c -> rand(c, large_range^4096))(counting_ctx))
+        @test abs(count(<=(Int64(1) << 62), k) / length(k) - 2 / 3) < 0.045
         # Distributions without a standard transport or a sampler of their
         # own are refused on other compute units:
         @test_throws "host compute units" @jit (c -> rand(c, asmeasure(Poisson(2.0))))(ctx)

@@ -103,6 +103,10 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         K = rand(MersenneTwister(1), normalize(Counting(1:6))^60_000)
         @test eltype(K) == Int
         @test [count(==(k), K) for k in 1:6] ≈ fill(10_000, 6) rtol = 0.05
+        # Integer indices use the full support even when it exceeds the float grid.
+        K16 = rand(MersenneTwister(1), Float16, Counting(1:4096)^1024)
+        @test abs(count(iseven, K16) - 512) < 96
+        @test rand(MeasureBase.ConstantRNG(), Counting(2:6)^3) == fill(4, 3)
         @test rand(MersenneTwister(1), Counting(Set([2, 5, 7]))) in (2, 5, 7)
         @test all(in(2:4), rand(MersenneTwister(1), Counting(BoundedInts(2, 4))^100))
     end

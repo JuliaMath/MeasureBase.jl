@@ -86,7 +86,14 @@ function batched_rand_impl(ctx::GenContext, μ::_FiniteCounting, sz::SizeLike)
     vals = _counting_values(μ.support)
     n = length(vals)
     n > 0 || throw(ArgumentError("Can't draw random variates from counting measure on an empty set"))
-    return _values_at(vals, min.(floor.(Int, _rand_bulk(ctx, sz) .* n), n - 1) .+ 1)
+    if get_rng(ctx) isa ConstantRNG
+        x = vals[n ÷ 2 + 1]
+        return isempty(sz) ? x : _const_bulk(ctx, x, sz)
+    elseif _on_host(ctx)
+        return _host_counting_draw(get_rng(ctx), vals, sz)
+    else
+        return _device_counting_draw(ctx, vals, sz)
+    end
 end
 _counting_values(r::AbstractRange) = r
 _counting_values(s::AbstractSet) = collect(s)
@@ -95,5 +102,33 @@ function _counting_values(b::BoundedInts)
         throw(ArgumentError("Random variates of counting measure require a finite support, got $b"))
     Int(dynamic(b.lower)):Int(dynamic(b.upper))
 end
-@inline _values_at(vals, i::Integer) = vals[i]
-@inline _values_at(vals, idxs::AbstractArray) = map(i -> vals[i], idxs)
+_host_counting_draw(rng, vals, ::Tuple{}) = rand(rng, vals)
+_host_counting_draw(rng, vals, sz::SizeLike) = rand(rng, vals, asnonstatic(sz))
+function _host_counting_draw(rng, vals, sz::StaticSizeLike)
+    A = staticarray_type(eltype(vals), canonical_size(sz))
+    A(ntuple(_ -> rand(rng, vals), Val(length(A))))
+end
+
+function _device_counting_draw(ctx, vals, sz)
+    n = UInt64(length(vals))
+    bits = rand!(ctx, allocate_array(ctx, UInt64, isempty(sz) ? (1,) : asnonstatic(sz)))
+    # [threshold, 2^64) contains equally many representatives of each residue.
+    threshold = -n % n
+    iszero(threshold) || _reject_counting_bits!(ctx, bits, threshold)
+    support = _on_compute_unit(ctx, vals)
+    samples = map(x -> support[signed(x % n) + 1], bits)
+    return isempty(sz) ? _counting_scalar(samples) : samples
+end
+
+_counting_scalar(samples) = only(Array(samples))
+
+function _reject_counting_bits!(ctx, bits, threshold)
+    while any(<(threshold), bits)
+        _redraw_counting_bits!(ctx, bits, threshold)
+    end
+    return bits
+end
+function _redraw_counting_bits!(ctx, bits, threshold)
+    fresh = rand!(ctx, similar(bits))
+    bits .= ifelse.(bits .< threshold, fresh, bits)
+end
