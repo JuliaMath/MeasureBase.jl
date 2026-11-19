@@ -1,10 +1,7 @@
-# Resolve Reactant before loading Enzyme or LLVM. Adding it can change
-# their versions. Reactant is only tested on supported stable platforms.
-const TEST_REACTANT = Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
-if TEST_REACTANT && Base.identify_package("Reactant") === nothing
-    import Pkg
-    Pkg.add("Reactant")
-end
+import Pkg
+# Reactant, Enzyme and LLVM must come from the same resolved test environment.
+const TEST_REACTANT = haskey(Pkg.project().dependencies, "Reactant") &&
+    Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
 
 using Test
 using Base.Iterators: take
@@ -67,7 +64,6 @@ include("distributions/test_distributions.jl")
 TEST_REACTANT && include("test_reactant.jl")
 
 @testset "Loaded extension ambiguities" begin
-    import Pkg
     names = keys(Pkg.TOML.parsefile(pkgdir(MeasureBase, "Project.toml"))["extensions"])
     extensions = Module[]
     for name in names

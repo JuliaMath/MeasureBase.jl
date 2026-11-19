@@ -52,6 +52,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - name: Install development dependency
         run: julia --project=. .github/prepare-dev-deps.jl
+      - name: Select Reactant tests on supported platforms
+        run: julia .github/enable-reactant-tests.jl
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:

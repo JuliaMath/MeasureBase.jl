@@ -1,8 +1,10 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 # Reactant tests. Reactant isn't a static test dependency (it only
-# supports 64-bit Linux and macOS), runtests.jl adds it before imports where
-# supported. The backend defaults to the CPU, set the environment variable
+# supports 64-bit Linux and macOS). CI selects it before Pkg.test resolves
+# the test environment. For a local Reactant-enabled Pkg.test, run
+# `julia .github/enable-reactant-tests.jl` first to add it to test/Project.toml.
+# The backend defaults to the CPU, set the environment variable
 # `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it; the file can
 # also be run standalone in an environment that provides Reactant.
 
