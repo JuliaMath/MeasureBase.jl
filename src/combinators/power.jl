@@ -553,6 +553,11 @@ end
 @inline _pwr_variate(μ::PowerMeasure, A::AbstractArray) = _pwr_variate_impl(μ, A)
 @inline _pwr_variate(μ::PowerMeasure, A::Union{Tuple,NamedTuple}) = _pwr_variate_impl(μ, A)
 @inline _pwr_variate_impl(μ::PowerMeasure, A) = _pwr_nest(pwr_base(μ), _pwr_variate(pwr_base(μ), A))
+# A pointwise batch of structured powers can be an array of component batches.
+@inline _pwr_variate(
+    μ::DensityMeasure{<:Any,<:PowerMeasure},
+    X::AbstractArray{<:Union{Tuple,NamedTuple}},
+) = _pwr_variate(μ.base, _flat_storage(X))
 @inline _pwr_variate(ν, A::AbstractArray) = _nest_leaf(A, _static_ndims(ν))
 @inline function _pwr_variate(ν::ProductMeasure{<:Tuple}, X::Tuple)
     StructArray(map(_pwr_marginal_variate, marginals(ν), X))

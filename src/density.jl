@@ -240,6 +240,8 @@ localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base,
 
 @inline _pwr_variate(μ::DensityMeasure, X::Union{Tuple,NamedTuple}) =
     _pwr_variate(μ.base, _components_storage(X))
+@inline _pwr_variate(μ::DensityMeasure, X::AbstractArray) = _pwr_variate(μ.base, X)
+@inline _pwr_nest(μ::DensityMeasure, X::AbstractArray) = _pwr_nest(μ.base, X)
 
 logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
 

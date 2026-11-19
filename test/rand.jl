@@ -3,6 +3,7 @@
 using Test
 
 using Random, Statistics
+using LinearAlgebra: normalize
 using StableRNGs: StableRNG
 using Static: static
 using ArraysOfArrays: flatview
@@ -41,6 +42,14 @@ function MeasureBase.rand_impl(
     x = rand(ctx, μ.base)
     b = ifelse(first(x.b) < 0, -x.b, x.b)
     (a = x.a, b = b)
+end
+
+_layout_logdensity(x) = 0.0
+function MeasureBase.rand_impl(
+    ctx::GenContext,
+    μ::MeasureBase.DensityMeasure{<:MeasureBase.LogFuncDensity{typeof(_layout_logdensity)}},
+)
+    rand(ctx, μ.base)
 end
 
 @testset "rand" begin
@@ -141,6 +150,16 @@ end
         for b in (StdNormal(), StdNormal()^2)
             base = productmeasure((a = StdUniform(), b = b))
             μ = MeasureBase.normalize(mintegrate_exp(_positive_named_logdensity, base))
+            rng = stblrng()
+            @test rand(stblrng(), μ^(2, 3)) == [rand(rng, μ) for _ in 1:2, _ in 1:3]
+        end
+    end
+
+    @testset "density powers keep the base's nested layout" begin
+        nested = (StdNormal()^2)^3
+        named = productmeasure((a = StdUniform(), b = StdNormal()^2))
+        for base in (nested, productmeasure((a = StdUniform(), b = nested)), named^3)
+            μ = normalize(mintegrate_exp(_layout_logdensity, base))
             rng = stblrng()
             @test rand(stblrng(), μ^(2, 3)) == [rand(rng, μ) for _ in 1:2, _ in 1:3]
         end
