@@ -107,6 +107,12 @@ end
 end
 
 @testset "hash follows equality" begin
+    negative, positive = Dirac(-0.0), Dirac(0.0)
+    @test negative == positive && !isequal(negative, positive)
+    @test length(Set((negative, positive))) == 2
+    atoms = Dict(negative => :negative, positive => :positive)
+    @test atoms[Dirac(-0.0)] === :negative && atoms[Dirac(0.0)] === :positive
+    @test haskey(Dict(Dirac([NaN]) => true), Dirac([NaN]))
     makers = (
         () -> StdNormal()^(2, 3),
         () -> weightedmeasure(0.5, StdNormal()),
