@@ -396,7 +396,7 @@ function Base.in(x::AbstractArray, s::CartesianPower)
     isempty(x) ? true : all(Base.Fix2(in, pwr_base(s)), x)::Bool
 end
 
-Base.isempty(s::CartesianPower) = isempty(pwr_base(s)) || size2length(pwr_size(s)) == 0
+Base.isempty(s::CartesianPower) = !any(isempty, pwr_axes(s)) && isempty(pwr_base(s))
 
 function Base.union(s::CartesianPower, others::CartesianPower...)
     axs = pwr_axes(s)

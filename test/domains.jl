@@ -12,6 +12,15 @@ using OneTwoMany: firstarg, secondarg
 using AffineMaps: Mul
 
 @testset "domains" begin
+    @testset "empty factors in Cartesian powers" begin
+        for base in (Set{Int}(), Set([1])), dims in ((0,), (2, 0))
+            s = setcartpower(base, dims)
+            @test !isempty(s)
+            @test Array{Int}(undef, dims) in s
+        end
+        @test isempty(setcartpower(Set{Int}(), (2,)))
+    end
+
     @testset "unions of Cartesian sets" begin
         for wrap in (identity, NamedTuple{(:a, :b)}, collect)
             singleton_product(k) = setcartprod(wrap((Set([k]), Set([k]))))
