@@ -298,7 +298,10 @@ gives zeros for them. Mooncake is recommended for these distributions.
   standard measures and wrapped normal and logistic distributions also
   resolve variates close to an interior bound. `normalize(truncate(μ,
   a..b))` is the conditional law. [`logsmf`](@ref) and [`logcsmf`](@ref) (with their
-  inverses) resolve tails beyond floating-point underflow.
+  inverses) can resolve probabilities beyond floating-point underflow when
+  the parent implements the corresponding log tail and log quantile.
+  The defaults take the logarithm of a linear probability or exponentiate
+  the input before inversion.
 
 The operators `⋄` (pushforward), `⊙` (pullback), `▷` (bind), `⊗`
 (product), `∫`, `∫exp`, `𝒹` and `log𝒹` are shorthands for these, see

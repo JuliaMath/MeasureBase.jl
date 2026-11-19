@@ -1,5 +1,7 @@
 export TruncatedMeasure
 
+using LogExpFunctions: logaddexp, logsubexp
+
 """
     struct TruncatedMeasure <: AbstractMeasure
 
@@ -90,11 +92,43 @@ smf(t::TruncatedMeasure, x) = smf(t.parent, t.lo, _clamp_to(t, x))
 csmf(t::TruncatedMeasure, x) = smf(t.parent, _clamp_to(t, x), t.hi)
 smf(t::TruncatedMeasure, a, x) = smf(t.parent, _clamp_to(t, a), _clamp_to(t, x))
 
+function _log_interval_mass(μ, a, b)
+    m = smf(μ, a, b)
+    (a == b || !(m < floatmin(float(typeof(m))))) && return log(m)
+    F, G = logsmf(μ, b), logcsmf(μ, a)
+    if !(F isa NoSMF) && (G isa NoSMF || F <= G)
+        return logsubexp(F, logsmf(μ, a))
+    elseif !(G isa NoSMF)
+        return logsubexp(G, logcsmf(μ, b))
+    end
+    log(m)
+end
+logsmf(t::TruncatedMeasure, x) = _log_interval_mass(t.parent, t.lo, _clamp_to(t, x))
+logcsmf(t::TruncatedMeasure, x) = _log_interval_mass(t.parent, _clamp_to(t, x), t.hi)
+
 # The inverses are NaN outside of the range `[0, mass]` of the Stieltjes
 # measure functions, within it the arguments passed to the parent and the
 # results stay within the truncation despite rounding:
 invsmf(t::TruncatedMeasure, p) = _truncation_inverse(t, p, invsmf(t.parent, t.lo, _in_smf_range(t, p)))
 invcsmf(t::TruncatedMeasure, p) = _truncation_inverse(t, p, invsmf(t.parent, t.hi, -_in_smf_range(t, p)))
+
+function _truncated_invlog(t, lp, upper)
+    if !isfinite(lp) || lp >= log(floatmin(float(typeof(lp))))
+        return upper ? invcsmf(t, exp(lp)) : invsmf(t, exp(lp))
+    end
+    lp > _log_interval_mass(t.parent, t.lo, t.hi) && return oftype(float(lp), NaN)
+    edge = upper ? t.hi : t.lo
+    F, G = logsmf(t.parent, edge), logcsmf(t.parent, edge)
+    F isa NoSMF && G isa NoSMF && return upper ? invcsmf(t, exp(lp)) : invsmf(t, exp(lp))
+    x = if !(F isa NoSMF) && (G isa NoSMF || F <= G)
+        invlogsmf(t.parent, upper ? logsubexp(F, lp) : logaddexp(F, lp))
+    else
+        invlogcsmf(t.parent, upper ? logaddexp(G, lp) : logsubexp(G, lp))
+    end
+    clamp(x, t.lo, t.hi)
+end
+invlogsmf(t::TruncatedMeasure, lp) = _truncated_invlog(t, lp, false)
+invlogcsmf(t::TruncatedMeasure, lp) = _truncated_invlog(t, lp, true)
 
 @inline _in_smf_range(t::TruncatedMeasure, p) = clamp(p, zero(t.mass), t.mass)
 

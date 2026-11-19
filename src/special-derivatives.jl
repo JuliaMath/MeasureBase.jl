@@ -51,7 +51,7 @@ _gamma_cdf_dshape_impl(α::T, x::T) where {T<:Union{Float16,Float32}} = T(_gamma
 function _gamma_cdf_dshape_impl(α::T, x::T) where {T<:Real}
     valid_α = (α > 0) & (α < Inf)
     valid_α & (x > 0) & (x < Inf) || return ifelse(valid_α & ((x == 0) | (x == Inf)), zero(T), convert(T, NaN))
-    (x > 1) & (x > α) ? -_gamma_ccdf_dshape_cf(α, x) : _gamma_cdf_dshape_series(α, x)
+    (x > 1) & (x > α) ? -_gamma_upper_fraction(α, x, false) : _gamma_lower_series(α, x, false)
 end
 
 # log(x^α e^(-x) / Γ(α + k)) and log(x) - ψ(α + k) for k = 0, 1, for large
@@ -69,7 +69,7 @@ function _gamma_log_terms(α::T, x::T, k::Integer) where {T<:Real}
 end
 
 # P(α, x) = x^α e^(-x) / Γ(α + 1) * ∑ₙ cₙ with c₀ = 1, cₙ = cₙ₋₁ x / (α + n):
-function _gamma_cdf_dshape_series(α::T, x::T) where {T<:Real}
+function _gamma_lower_series(α::T, x::T, logprob::Bool) where {T<:Real}
     tol = eps(T)
     logK, L = _gamma_log_terms(α, x, 1)
     c, dc = one(T), zero(T)
@@ -81,7 +81,7 @@ function _gamma_cdf_dshape_series(α::T, x::T) where {T<:Real}
         s += c
         ds += dc
         if (c <= tol * s) & (abs(dc) <= tol * (abs(ds) + s * abs(L)))
-            return exp(logK) * (s * L + ds)
+            return logprob ? logK + log(s) : exp(logK) * (s * L + ds)
         end
     end
     return convert(T, NaN)
@@ -89,7 +89,7 @@ end
 
 # Q(α, x) = 1 - P(α, x) = x^α e^(-x) / Γ(α) * F with the continued fraction
 # F = 1 / (b₀ + a₁ / (b₁ + a₂ / (b₂ + ...))), aₖ = k (α - k), bₖ = x + 2k + 1 - α:
-function _gamma_ccdf_dshape_cf(α::T, x::T) where {T<:Real}
+function _gamma_upper_fraction(α::T, x::T, logprob::Bool) where {T<:Real}
     tol = eps(T)
     logK, L = _gamma_log_terms(α, x, 0)
     # Convergents Aₙ / Bₙ and their derivatives by the Wallis recurrences,
@@ -109,7 +109,7 @@ function _gamma_ccdf_dshape_cf(α::T, x::T) where {T<:Real}
         F_prev, dF_prev = F, dF
         F, dF = A₁, dA₁ - A₁ * dB₁
         if (abs(F - F_prev) <= tol * abs(F)) & (abs(dF - dF_prev) <= tol * (abs(dF) + abs(F * L)))
-            return exp(logK) * (F * L + dF)
+            return logprob ? logK + log(F) : exp(logK) * (F * L + dF)
         end
     end
     return convert(T, NaN)

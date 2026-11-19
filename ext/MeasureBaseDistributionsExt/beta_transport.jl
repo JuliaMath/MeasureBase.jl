@@ -6,7 +6,7 @@
     tiny = floatmin(T) / eps(T)
     c = one(T)
     d = y + ((one(T) - b) / (a + one(T))) * x
-    d = inv(ifelse(abs(d) < tiny, copysign(tiny, d), d))
+    d = inv(ifelse(abs(d) < tiny, ifelse(signbit(d), -tiny, tiny), d))
     h = d
     # Near the mean of a concentrated law, many more convergents are
     # needed. Elsewhere the residual test terminates the fraction early.
@@ -18,8 +18,8 @@
         for coefficient in (even, odd)
             d = muladd(coefficient, d, one(T))
             c = muladd(coefficient, inv(c), one(T))
-            d = inv(ifelse(abs(d) < tiny, copysign(tiny, d), d))
-            c = ifelse(abs(c) < tiny, copysign(tiny, c), c)
+            d = inv(ifelse(abs(d) < tiny, ifelse(signbit(d), -tiny, tiny), d))
+            c = ifelse(abs(c) < tiny, ifelse(signbit(c), -tiny, tiny), c)
             h *= d * c
         end
         abs(d * c - one(T)) <= 4eps(T) && return h

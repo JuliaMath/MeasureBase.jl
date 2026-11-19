@@ -219,6 +219,62 @@ end
 # The (log) probability arguments of the inverse SMFs in both tails:
 @inline _probs_of_logp(logp) = (lp = _logquantile_arg(logp); (exp(lp), -expm1(lp)))
 
+# Keep the log prefactor of the incomplete integral when exponentiating it
+# would discard the tail. The ordinary kernels retain their AD rules in the bulk.
+@inline function _gamma_logtail(α, x, upper)
+    p, q = _gamma_cdf(α, x), _gamma_ccdf(α, x)
+    t, other = upper ? (q, p) : (p, q)
+    t >= floatmin(typeof(t)) && return _log_tail(t, other)
+    a, z = promote(float(α), float(x))
+    upper ? MeasureBase._gamma_upper_fraction(a, z, true) : MeasureBase._gamma_lower_series(a, z, true)
+end
+
+@inline function _beta_logtail(α, β, x, upper)
+    y = 1 - x
+    p, q = _beta_tails(α, β, x, y)
+    t, other = upper ? (q, p) : (p, q)
+    t >= floatmin(typeof(t)) && return _log_tail(t, other)
+    a, b, u, v = upper ? promote(float(β), float(α), y, x) : promote(float(α), float(β), x, y)
+    _beta_logcdf(a, b, u, v, _beta_logprefactor(a, b, u, v, logbeta(a, b)))
+end
+
+# Invert a positive variate's log tail in log coordinates when its
+# probability cannot be passed to a linear-space quantile. The final
+# Newton step also gives the implicit derivative of the inverse.
+function _bracket_logquantile(d::Union{Beta,Gamma}, lp, logtail, upper)
+    T = typeof(eps(float(promote_type(typeof(lp), Distributions.partype(d)))))
+    xmin = nextfloat(zero(T))
+    lo = log(xmin)
+    hi = d isa Beta ? zero(lo) : log(floatmax(T))
+    if !upper
+        lmin = logtail(d, xmin)
+        lp < lmin && return lp < lmin - d.α * log(T(2)) ? zero(T) : xmin
+    end
+    for _ in 1:80
+        mid = (lo + hi) / 2
+        (mid == lo || mid == hi) && break
+        value = logtail(d, exp(mid))
+        if upper ? value > lp : value < lp
+            lo = mid
+        else
+            hi = mid
+        end
+    end
+    exp((lo + hi) / 2)
+end
+
+function _small_logquantile(d::Union{Beta,Gamma}, lp, upper)
+    logtail = upper ? MeasureBase.logcsmf : MeasureBase.logsmf
+    x = @_adignore _bracket_logquantile(d, lp, logtail, upper)
+    (iszero(x) || (d isa Beta && isone(x))) && return x
+    ℓ = logtail(d, x)
+    isfinite(ℓ) || return x
+    dx = (lp - ℓ) * exp(ℓ - _family_logd(d, x))
+    upper ? x - dx : x + dx
+end
+
+@inline _small_logprob(lp) = isfinite(lp) && lp < log(floatmin(float(typeof(lp))))
+
 # Cauchy: `atan(z) / π + 1/2` cancels in the tails, the angles
 # `atan(1, -z)` and `atan(1, z)` don't. `tan(π(p - 1/2))` loses small
 # probabilities in `p - 1/2`, the cotangent of the smaller tail probability
@@ -380,17 +436,21 @@ end
 @inline function MeasureBase.logsmf(d::Gamma, x::Real)
     z = x / d.θ
     u = _gamma_arg(z)
-    _nan_or(x, _log_support_select(z > 0, z < Inf, _log_tail(_gamma_cdf(d.α, u), _gamma_ccdf(d.α, u)), false))
+    _nan_or(x, _log_support_select(z > 0, z < Inf, _gamma_logtail(d.α, u, false), false))
 end
 @inline function MeasureBase.logcsmf(d::Gamma, x::Real)
     z = x / d.θ
     u = _gamma_arg(z)
-    _nan_or(x, _log_support_select(z > 0, z < Inf, _log_tail(_gamma_ccdf(d.α, u), _gamma_cdf(d.α, u)), true))
+    _nan_or(x, _log_support_select(z > 0, z < Inf, _gamma_logtail(d.α, u, true), true))
 end
 @inline MeasureBase.invsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_quantile(d.α, _quantile_arg(p)))
 @inline MeasureBase.invcsmf(d::Gamma, p::Real) = _nan_outside(StdUniform, p, d.θ * _gamma_cquantile(d.α, _quantile_arg(p)))
-@inline MeasureBase.invlogsmf(d::Gamma, logp::Real) = _nan_above_zero(logp, d.θ * _gamma_tail_quantile(d.α, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogsmf(d::Gamma, logp::Real)
+    _small_logprob(logp) && return _small_logquantile(d, logp, false)
+    _nan_above_zero(logp, d.θ * _gamma_tail_quantile(d.α, _probs_of_logp(logp)...))
+end
 @inline function MeasureBase.invlogcsmf(d::Gamma, logq::Real)
+    _small_logprob(logq) && return _small_logquantile(d, logq, true)
     q, p = _probs_of_logp(logq)
     _nan_above_zero(logq, d.θ * _gamma_tail_quantile(d.α, p, q))
 end
@@ -404,17 +464,20 @@ end
 end
 @inline function MeasureBase.logsmf(d::Beta, x::Real)
     u = _beta_arg(x)
-    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(_beta_tails(d.α, d.β, u, 1 - u)...), false))
+    _nan_or(x, _log_support_select(x > 0, x < 1, _beta_logtail(d.α, d.β, u, false), false))
 end
 @inline function MeasureBase.logcsmf(d::Beta, x::Real)
     u = _beta_arg(x)
-    p, q = _beta_tails(d.α, d.β, u, 1 - u)
-    _nan_or(x, _log_support_select(x > 0, x < 1, _log_tail(q, p), true))
+    _nan_or(x, _log_support_select(x > 0, x < 1, _beta_logtail(d.α, d.β, u, true), true))
 end
 @inline MeasureBase.invsmf(d::Beta, p::Real) = _nan_outside(StdUniform, p, _beta_tail_quantile(d.α, d.β, p, 1 - p))
 @inline MeasureBase.invcsmf(d::Beta, q::Real) = _nan_outside(StdUniform, q, _beta_tail_quantile(d.α, d.β, 1 - q, q))
-@inline MeasureBase.invlogsmf(d::Beta, logp::Real) = _nan_above_zero(logp, _beta_tail_quantile(d.α, d.β, _probs_of_logp(logp)...))
+@inline function MeasureBase.invlogsmf(d::Beta, logp::Real)
+    _small_logprob(logp) && return _small_logquantile(d, logp, false)
+    _nan_above_zero(logp, _beta_tail_quantile(d.α, d.β, _probs_of_logp(logp)...))
+end
 @inline function MeasureBase.invlogcsmf(d::Beta, logq::Real)
+    _small_logprob(logq) && return 1 - _small_logquantile(Beta(d.β, d.α; check_args = false), logq, false)
     q, p = _probs_of_logp(logq)
     _nan_above_zero(logq, _beta_tail_quantile(d.α, d.β, p, q))
 end

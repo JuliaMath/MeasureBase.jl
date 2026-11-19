@@ -148,6 +148,16 @@ end
 end
 
 @testset "truncated distributions" begin
+    halfline = truncate(StdNormal(), 0.0 .. Inf)
+    @test logcsmf(halfline, 40.0) ≈ logccdf(Normal(), 40.0)
+    @test invlogcsmf(halfline, -800.0) ≈ invlogccdf(Normal(), -800.0)
+    for (d, x, tail, quantile, ref) in (
+        (Gamma(2.0), 1000.0, logcsmf, invlogcsmf, log1p(1000.0) - 1000),
+        (Beta(2.0, 2.0), 1e-200, logsmf, invlogsmf, 2log(1e-200) + log(3.0 - 2e-200)),
+    )
+        @test tail(asmeasure(d), x) ≈ ref rtol=8eps()
+        @test quantile(asmeasure(d), ref) ≈ x rtol=256eps()
+    end
     for (d, a, b) in [
         (Normal(1.0, 2.0), -0.5, 2.5),
         (Normal(1.0, 2.0), 0.0, Inf),

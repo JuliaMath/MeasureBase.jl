@@ -83,9 +83,9 @@ export invcsmf
 """
     logsmf(μ, x)
 
-The logarithm of the Stieltjes measure function [`smf`](@ref), accurate
-also where `smf(μ, x)` underflows (the far lower tail). Defaults to
-`log(smf(μ, x))`, see also [`invlogsmf`](@ref).
+The logarithm of the Stieltjes measure function [`smf`](@ref). Specialized
+methods can resolve the far lower tail where `smf(μ, x)` underflows.
+Defaults to `log(smf(μ, x))`, see also [`invlogsmf`](@ref).
 """
 function logsmf end
 
@@ -95,8 +95,8 @@ export logsmf
     logcsmf(μ, x)
 
 The logarithm of the complementary Stieltjes measure function
-[`csmf`](@ref), accurate also where `csmf(μ, x)` underflows (the far upper
-tail). Defaults to `log(csmf(μ, x))`, see also [`invlogcsmf`](@ref).
+[`csmf`](@ref). Specialized methods can resolve the far upper tail where
+`csmf(μ, x)` underflows. Defaults to `log(csmf(μ, x))`, see also [`invlogcsmf`](@ref).
 """
 function logcsmf end
 
