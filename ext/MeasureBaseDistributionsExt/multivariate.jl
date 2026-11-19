@@ -183,7 +183,16 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
     @eval function MeasureBase.$bhead(m::DirichletMeasure, X::AbstractArray)
         d = m.obj
         Xc = _as_columns(X)
-        ℓ = _column_sums(identity, _clog.(d.alpha .- 1, abs.(Xc))) .- d.lmnB
+        # Near the mode of a concentrated law the log kernel and normalizer
+        # nearly cancel. Recompute both before rounding to the output type.
+        ℓ = if eps(float(typeof(d.lmnB))) >= eps(Float32) && d.alpha0 >= 1024
+            α = d.alpha .+ 0.0
+            logB = sum(loggamma, α) - loggamma(sum(α))
+            T = promote_type(typeof(d.lmnB), eltype(Xc))
+            T.(_column_sums(identity, _clog.(α .- 1, abs.(Xc))) .- logB)
+        else
+            _column_sums(identity, _clog.(d.alpha .- 1, abs.(Xc))) .- d.lmnB
+        end
         _batch_results(_masked(ℓ, _simplex_mask(Xc)), X)
     end
 end

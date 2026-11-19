@@ -176,6 +176,12 @@ const _derivatives = (
         gamma_ref(α, θ, x) = (α - 1) * log(x / θ) - x / θ - loggamma(α) - log(θ)
         beta_ref(α, β, x) = (α - 1) * log(x) + (β - 1) * log1p(-x) - logbeta(α, β)
         poisson_ref(λ, k) = k * log(λ) - λ - loggamma(k + 1)
+        a = 1f5
+        d = asmeasure(Dirichlet([a, a]))
+        midpoint = Float32[0.5, 0.5]
+        expected = Float32(ref(beta_ref, a, a, 0.5f0))
+        @test logdensityof(d, midpoint) ≈ expected rtol=2eps(Float32)
+        @test logdensities(d, hcat(midpoint, midpoint)) ≈ fill(expected, 2) rtol=2eps(Float32)
         for T in (Float32, Float64), s in (10, 1e3, 1e5, 1e7), z in (-3, 0, 2)
             tol = 16 * sqrt(s) * eps(T)
             α, θ = T(s), T(1.5)
