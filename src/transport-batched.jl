@@ -367,6 +367,8 @@ end
 end
 
 Broadcast.broadcasted(f::TransportFunction, X::AbstractArray) = transports(f, X)
+Broadcast.broadcasted(f::TransportFunction, bc::Broadcast.Broadcasted{Broadcast.Style{Tuple}}) =
+    Broadcast.broadcasted(_Pointwise(f), bc)
 
 # Fused broadcast arguments are materialized once, arrays of fixed-size
 # array variates directly into flat storage:
@@ -376,7 +378,10 @@ end
 @inline _materialized_arg(bc::Broadcast.Broadcasted, ::True) = _materialized_arg(bc, Broadcast.combine_eltypes(bc.f, bc.args))
 @inline _materialized_arg(bc::Broadcast.Broadcasted{<:StaticArrays.StaticArrayStyle}, ::True) = Broadcast.materialize(bc)
 @inline _materialized_arg(bc::Broadcast.Broadcasted, ::Any) = Broadcast.materialize(bc)
-@inline _materialized_arg(bc::Broadcast.Broadcasted, ::Type{<:AbstractArray{<:Number}}) = stack(bc)
+@inline function _materialized_arg(bc::Broadcast.Broadcasted, ::Type{<:AbstractArray{<:Number}})
+    arg = Broadcast.instantiate(bc)
+    isempty(arg) ? Broadcast.materialize(arg) : stack(arg)
+end
 
 # Flat batches of array variates are mapped over their variate slices:
 _map_variates(f::TransportFunction, X, ::Any) = map(_Pointwise(f), X)
@@ -413,6 +418,7 @@ end
     _nest_batch(marginal_variates, Val(N))
 end
 @inline _batch_variates(Y::AbstractArray, ν, ::StaticInteger{K}) where {K} = _nest_batch(Y, Val(K))
+@inline _batch_variates(Y::Number, ν, ::StaticInteger{0}) = Y
 @inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν, ::Any) = _batch_variates_via(basemeasure(ν), ν, Y)
 @inline _batch_variates_via(β, ::Any, Y) = _batch_variates(Y, β)
 @noinline function _batch_variates_via(::M, ::M, Y) where {M}

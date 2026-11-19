@@ -426,6 +426,20 @@ using JLArrays
         @test transports(transport_to(pu^2, pn^2), [X[1:2], X[3:4]]) == [map(g, X[1:2]), map(g, X[3:4])]
     end
 
+    @testset "broadcast preserves empty, tuple and scalar layouts" begin
+        f = transport_to(StdUniform()^2, StdNormal()^2)
+        empty = sliced(zeros(2, 0, 2), Val(1))
+        @test size(f.(identity.(empty))) == size(f.(empty)) == (0, 2)
+        vectors = ([0.5, 0.7],)
+        @test f.(identity.(vectors)) == f.(vectors) == (f(only(vectors)),)
+
+        g = transport_to(StdExponential(), StdNormal())
+        @test g.(identity.((0.5,))) == (g(0.5),)
+        scalar = fill(0.5)
+        @test g.(scalar) ≈ g.(Ref(0.5))
+        @test transports(g, scalar) ≈ g(0.5)
+    end
+
     @testset "batch layouts" begin
         f = transport_to(StdNormal()^3, StdUniform()^3)
         @test_throws ArgumentError f.(rand(6, 2))
