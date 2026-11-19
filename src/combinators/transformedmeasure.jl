@@ -278,8 +278,23 @@ end
 # the base measure of their origin as their base measure:
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     @eval function $head(ν::PushforwardMeasure{F,I,M,<:PushfwdRootMeasure}, y) where {F,I,M}
-        return $func(ν.origin, unwrap(ν.finv)(y))
+        return $func(ν.origin, _pushfwd_preimage(ν, y))
     end
+end
+
+@inline _pushfwd_preimage(ν, y) = _pushfwd_preimage(ν, y, unwrap(ν.finv)(y))
+@inline _pushfwd_preimage(ν, y, x) = x
+@inline function _pushfwd_preimage(ν, y, x::AbstractFloat)
+    _has_basemeasure(typeof(ν.origin)) || return x
+    return _lattice_preimage(rootmeasure(ν.origin), unwrap(ν.f), y, x)
+end
+@inline _lattice_preimage(root, f, y, x) = x
+const _IntegerCounting = Counting{<:Union{IntegerValues,BoundedInts,AbstractRange{<:Integer},AbstractSet{<:Integer},AbstractVector{<:Integer}}}
+@inline function _lattice_preimage(root::_IntegerCounting, f, y, x)
+    k = round(x)
+    # Only an exact forward image carries mass, including when the inverse
+    # rounds a neighboring target value to an integer.
+    return insupportof(root, k) && f(k) == y ? k : oftype(x, NaN)
 end
 
 # Pushforwards by elementwise functions evaluate densities over flat
@@ -292,9 +307,12 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
 end
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function $bhead(ν::_ElementwisePushfwd{M,<:PushfwdRootMeasure}, Y) where {M}
-        _batched_kernel($head, ν.origin, broadcast(ν.finv.f, Y))
+        X = _batched_pushfwd_preimage(ν, Y, _stream_ndims(ν))
+        _batched_kernel($head, ν.origin, X)
     end
 end
+@inline _batched_pushfwd_preimage(ν, Y, n) = _apply_batched(ν.finv, Y, ν)
+@inline _batched_pushfwd_preimage(ν, Y, ::StaticInteger{0}) = broadcast(Base.Fix1(_pushfwd_preimage, ν), Y)
 
 function _elementwise_pushfwd_ld(f::F, ν::PushforwardMeasure, Y, k::StaticInteger) where {F}
     f_inv = ν.finv.f
@@ -322,7 +340,7 @@ insupportof(m::PushforwardMeasure, x) = NoFastInsupport{typeof(m)}()
 @inline function insupportof(ν::PushforwardMeasure{F,I,M,PushfwdRootMeasure}, y) where {F,I,M}
     _pushfwd_insupport(_root_kind(rootmeasure(ν.origin)), ν, y)
 end
-@inline _pushfwd_insupport(::_AtomicRoot, ν::PushforwardMeasure, y) = insupportof(ν.origin, unwrap(ν.finv)(y))
+@inline _pushfwd_insupport(::_AtomicRoot, ν::PushforwardMeasure, y) = insupportof(ν.origin, _pushfwd_preimage(ν, y))
 @inline _pushfwd_insupport(::_AtomicRoot, ν::_NonBijectivePusfwdMeasure, y) = NoFastInsupport{typeof(ν)}()
 @inline _pushfwd_insupport(::Any, ν::PushforwardMeasure, y) = NoFastInsupport{typeof(ν)}()
 

@@ -103,6 +103,21 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
     end
 
     @testset "pushed-forward counting roots" begin
+        P3 = asmeasure(Poisson(3.0))
+        f = Mul(0.1)
+        y = f(3)
+        for g in (f, Base.BroadcastFunction(f))
+            p = pushfwd(g, P3)
+            @test insupportof(p, y)
+            @test densityof(p, y) ≈ pdf(Poisson(3.0), 3)
+            @test !insupportof(p, nextfloat(y))
+            @test logdensities(p, [prevfloat(y), y, nextfloat(y)]) ≈ [-Inf, logpdf(Poisson(3.0), 3), -Inf]
+        end
+        # The inverse of 0.9 rounds to exactly 3, but its forward image is
+        # the previous float.
+        p = pushfwd(Mul(0.3), P3)
+        @test !insupportof(p, 0.9)
+        @test densityof(p, 0.9) == 0
         pp = pushfwd(Mul(2.0), P)
         @test logdensityof(pp, 2.0) ≈ logpdf(Poisson(2.0), 1)
         @test logdensityof(pp, 3.0) == -Inf

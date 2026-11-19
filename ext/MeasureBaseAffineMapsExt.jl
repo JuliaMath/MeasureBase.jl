@@ -36,7 +36,8 @@ for bhead in (:batched_logdensityof_impl, :batched_logdensity_def)
 end
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval function MeasureBase.$bhead(ν::_AffinePushfwd{M,<:PushfwdRootMeasure}, Y::AbstractArray) where {M}
-        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, MeasureBase._apply_batched(ν.finv, Y, ν))
+        X = MeasureBase._batched_pushfwd_preimage(ν, Y, MeasureBase._stream_ndims(ν))
+        MeasureBase._batched_kernel(MeasureBase.$head, ν.origin, X)
     end
 end
 
