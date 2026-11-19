@@ -124,10 +124,19 @@ invlogcsmf(μ::Lebesgue{<:AbstractInterval}, logp) = invcsmf(μ, exp(logp))
 function batched_rand_impl(ctx::GenContext, μ::Lebesgue{<:AbstractInterval}, sz::SizeLike)
     a, b = endpoints(μ.support)
     _check_finite_support(μ, isfinite(a) & isfinite(b))
+    T = get_precision(ctx)
+    l, r = convert_realtype(T, float(a)), convert_realtype(T, float(b))
+    lo = ifelse((l < a) | ((l == a) & isleftopen(μ.support)), nextfloat(l), l)
+    hi = ifelse((r > b) | ((r == b) & isrightopen(μ.support)), prevfloat(r), r)
+    _check_interval_grid(μ, T, (a < b) & isfinite(l) & isfinite(r) & (lo <= hi))
     U = _rand_bulk(ctx, sz)
-    T = eltype(U)
-    return T(a) .+ T(b - a) .* U
+    return clamp.(oftype.(U, float(a) .* (one(T) .- U) .+ float(b) .* U), lo, hi)
 end
+
+@inline _check_interval_grid(μ, T, usable::Bool) = usable || throw(
+    ArgumentError("The interval $(μ.support) cannot be sampled at precision $T"),
+)
+@inline _check_interval_grid(μ, T, ::Any) = nothing
 
 @inline _check_finite_support(μ, finite::Bool) = finite || _throw_infinite_support(μ)
 # Traced or device values can't be checked:

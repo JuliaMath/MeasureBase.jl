@@ -1,5 +1,5 @@
 using Test
-using Random: MersenneTwister
+using Random: MersenneTwister, Xoshiro
 
 using MeasureBase
 using MeasureBase: StdNormal, StdExponential, StdUniform, NormalizedMeasure, BoundedInts
@@ -108,6 +108,15 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test 0 <= rand(Lebesgue(0.0 .. 2.0)) <= 2
         @test rand(MeasureBase.GenContext{Float32}(MersenneTwister(1)), u) isa Float32
         @test_throws ArgumentError rand(Lebesgue(0.0 .. Inf))
+        for interval in (OpenInterval(0.0, 1.0), Interval{:closed,:open}(0.0, 1.0))
+            draws = rand(Xoshiro(11792), Float16, normalize(Lebesgue(interval))^16384)
+            @test eltype(draws) == Float16 && all(in(interval), draws)
+            @test any(iszero, draws) == isleftclosed(interval)
+        end
+        narrow = OpenInterval(1.0, Float64(nextfloat(Float16(1))))
+        @test_throws ArgumentError rand(Xoshiro(1), Float16, Lebesgue(narrow))
+        rounded = OpenInterval(1.0001, 1.003)
+        @test all(in(rounded), rand(Xoshiro(42), Float16, Lebesgue(rounded)^256))
 
         for w in (90f0, -110f0, 710.0, -750.0)
             shifted = normalize(superpose(weightedmeasure(w, Dirac(11)), weightedmeasure(w, Dirac(17))))
