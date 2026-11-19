@@ -373,6 +373,19 @@ end
 @inline _materialize(bc::_LazyBroadcast) = copy(bc)
 @inline _materialize(x) = x
 
+# The output's broadcast style places the slice computation on the backend
+# of the density batch. CartesianIndices supplies the positions without a buffer.
+@inline function _broadcast_variate_slices(
+    f::F,
+    X::AbstractArray{<:Any,N},
+    out::AbstractArray{<:Any,B},
+) where {F,N,B}
+    lead = ntuple(_ -> Colon(), Val(N - B))
+    apply_slice(x, i) = f(view(x, lead..., Tuple(i)...))
+    style = Broadcast.BroadcastStyle(typeof(out))
+    Broadcast.instantiate(Broadcast.broadcasted(style, apply_slice, Ref(X), CartesianIndices(axes(out))))
+end
+
 # `sum_leading_dims` of log-densities. Partial sums of lazy broadcasts over
 # host arrays don't materialize the elementwise log-densities (Base can't
 # reduce selected dimensions of a `Broadcasted`):

@@ -288,7 +288,10 @@ end
 @inline _integrand_lds_insupport(f, μ, X, Θ, ℓ_base) =
     _integrand_lds_insupport(f, μ, X, Θ, ℓ_base, _is_host_array(ℓ_base))
 function _integrand_lds_insupport(f, μ, X, Θ, ℓ_base, on_host::Bool)
-    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, μ, X, Θ, ℓ_base) : _integrand_lds(f, Θ)
+    if on_host
+        return any(isneginf, ℓ_base) ? _integrand_lds_at(f, μ, X, Θ, ℓ_base) : _integrand_lds(f, Θ)
+    end
+    _integrand_lds_device(f, X, Θ, ℓ_base)
 end
 
 @inline _is_host_array(A) = _is_host_unit(get_compute_unit(A))
@@ -318,3 +321,12 @@ function _integrand_lds_at(f, ::Any, ::Any, Θ, ℓ_base)
 end
 
 _integrand_lds(f, Θ::AbstractArray) = broadcast(Base.Fix1(logdensityof, f), Θ)
+@inline _integrand_lds_device(f, X, Θ, ℓ_base) = _integrand_lds(f, Θ)
+@inline function _integrand_lds_device(
+    f,
+    X::AbstractArray{<:Number},
+    ::AbstractArray{<:AbstractArray},
+    ℓ_base,
+)
+    _broadcast_variate_slices(Base.Fix1(logdensityof, f), X, ℓ_base)
+end

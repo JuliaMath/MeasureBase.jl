@@ -80,6 +80,13 @@ _plain(x::Number) = Float64(x)
         test_traced(x -> logdensityof(mix^10, x), x)
         dm = mintegrate_exp(x -> -abs(x), StdNormal())
         test_traced(x -> logdensities(dm, x), x)
+        W = Float32[0.1 -0.5 1.0; 0.3 0.2 2.0]
+        q = mintegrate_exp(x -> -sum(abs2, x), StdNormal()^2)
+        result = test_traced(X -> logdensities(q, X), W)
+        @test result isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(result) ≈ -Float32(log(2π)) .- 1.5f0 .* vec(sum(abs2, W; dims = 1))
+        masked = mintegrate_exp(x -> -sum(abs2, x), StdExponential()^2)
+        test_traced(X -> logdensities(masked, X), reshape(W, 2, 1, 3))
         sm = 0.2 * StdNormal() + 0.8 * Dirac(0.0)
         test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
     end

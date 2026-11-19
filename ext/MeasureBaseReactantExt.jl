@@ -15,6 +15,11 @@ MeasureBase._convert_draw_array(::Type{TracedRNumber{T}}, X::AbstractArray{<:Any
 
 MeasureBase._counting_scalar(samples::Reactant.TracedRArray) = Reactant.@allowscalar only(samples)
 
+function MeasureBase._broadcast_variate_slices(f, X::Reactant.AnyTracedRArray, out::AbstractArray)
+    dims = collect(1:(ndims(X) - ndims(out)))
+    reshape(mapslices(f, X; dims), size(out))
+end
+
 function MeasureBase._reject_counting_bits!(ctx, bits::Reactant.TracedRArray, threshold)
     Reactant.@trace while any(<(threshold), bits)
         MeasureBase._redraw_counting_bits!(ctx, bits, threshold)

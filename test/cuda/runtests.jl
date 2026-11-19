@@ -70,6 +70,11 @@ _plain(x::Tuple) = map(_plain, x)
         # on the host, the marginals stay host arrays:
         Pv = productmeasure([weightedmeasure(log(i), StdNormal()^2) for i in 1:3])
         test_cuda(X -> logdensities(Pv, X), randn(2, 3, 5))
+
+        q = mintegrate_exp(x -> -sum(abs2, x), StdNormal()^2)
+        W = Float32[0.1 -0.5 1.0; 0.3 0.2 2.0]
+        ℓ = test_cuda(X -> logdensities(q, X), W)
+        @test Array(ℓ) ≈ -Float32(log(2π)) .- 1.5f0 .* vec(sum(abs2, W; dims = 1))
     end
 
     @testset "transports" begin
