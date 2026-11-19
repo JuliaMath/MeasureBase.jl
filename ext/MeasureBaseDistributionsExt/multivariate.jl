@@ -211,13 +211,8 @@ end
 function MeasureBase.batched_transport_from_std(::Type{StdLogistic}, d::Dirichlet, L::AbstractArray)
     αs, βs = _stick_breaking_params(d)
     Lc = _as_columns(L)
-    # The break fractions and their complements, the smaller one of them
-    # from the quantile of its tail (see `_beta_quantiles`):
-    Y1 = _beta_quantile.(αs, βs, _quantile_arg.(logistic.(Lc)))
-    Y2 = _beta_quantile.(βs, αs, _quantile_arg.(logistic.(.-Lc)))
-    small = Y1 .<= Y2
-    z = ifelse.(small, Y1, 1 .- Y2)
-    r = ifelse.(small, 1 .- Y1, Y2)
+    fractions = _beta_quantiles.(αs, βs, logistic.(Lc), logistic.(.-Lc))
+    z, r = first.(fractions), last.(fractions)
     # Each component takes its fraction of the remaining stick, the last one
     # all of it:
     X = vcat(z, _ones_row(z)) .* vcat(_ones_row(r), cumprod(r; dims = 1))

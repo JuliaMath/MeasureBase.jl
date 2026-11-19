@@ -328,6 +328,19 @@ Base.getindex(A::_DensePDMat, i::Int, j::Int) = A.mat[i, j]
     end
 
     @testset "Dirichlet stick-breaking orientation" begin
+        # For Beta(30, 1) the first share is logistic(l)^(1/30).
+        # At l = -18 its complement probability rounds to one in Float32.
+        f_tail = transport_to(Dirichlet(Float32[30, 1]), StdLogistic()^1)
+        L = reshape(Float32[-18, 18], 1, :)
+        logx = -log1p.(exp.(-Float64.(L))) ./ 30
+        shares = Float32.(vcat(exp.(logx), -expm1.(logx)))
+        @test all(isapprox.(flatview(transports(f_tail, L)), shares; rtol = 8eps(Float32)))
+        @test f_tail(L[:, 1]) ≈ shares[:, 1] rtol = 8eps(Float32)
+        first_share(l) = first(f_tail([l]))
+        derivative = shares[1, 1] / (30 * (1 + exp(first(L))))
+        @test ForwardDiff.derivative(first_share, first(L)) ≈ derivative rtol = 16eps(Float32)
+        @test only(Zygote.gradient(first_share, first(L))) ≈ derivative rtol = 16eps(Float32)
+
         α = [2.0, 3.0, 4.0, 1.5]
         d = Dirichlet(α)
         f = transport_to(d, StdUniform()^3)
