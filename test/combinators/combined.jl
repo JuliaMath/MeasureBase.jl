@@ -129,6 +129,12 @@ using AffineMaps: Mul
     end
 
     @testset "relative densities of vcat combinations and binds" begin
+        singular = mintegrate_exp(x -> -log(abs(x)) / 2, StdUniform())
+        @test logdensityof(productmeasure((StdUniform(), singular)), (-1.0, 0.0)) == -Inf
+        X = [-1.0 0.5; 0.0 0.0]
+        @test logdensities(mcombine(vcat, StdUniform(), singular), X) == [-Inf, Inf]
+        @test logdensities(singular^2, X) == [-Inf, Inf]
+
         bounded = mcombine(vcat, StdUniform(), StdNormal())
         full = mcombine(vcat, StdNormal(), StdNormal())
         outside = [2.0, 0.0]

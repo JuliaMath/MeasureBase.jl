@@ -253,11 +253,11 @@ logdensityof_impl(μ::CombinedMeasure, ab) = _combined_ld_impl(μ.f_c, μ, ab)
 unsafe_logdensityof(μ::CombinedMeasure, ab) = logdensityof_impl(μ, ab)
 
 function _combined_ld_impl(::typeof(tuple), μ::CombinedMeasure, ab::Tuple{Vararg{Any,2}})
-    logdensityof(μ.α, ab[1]) + logdensityof(μ.β, ab[2])
+    _add_logdensities(logdensityof(μ.α, ab[1]), logdensityof(μ.β, ab[2]))
 end
 
 function _combined_ld_impl(::Type{Pair}, μ::CombinedMeasure, ab::Pair)
-    logdensityof(μ.α, ab.first) + logdensityof(μ.β, ab.second)
+    _add_logdensities(logdensityof(μ.α, ab.first), logdensityof(μ.β, ab.second))
 end
 
 function _combined_ld_impl(::typeof(vcat), μ::CombinedMeasure, ab::AbstractVector)
@@ -278,7 +278,7 @@ end
 
 function _combined_ld_impl(f_c, μ::CombinedMeasure, ab)
     tpm_α, a, b = tpmeasure_split_combined(f_c, μ.α, ab)
-    return logdensityof(tpm_α, a) + logdensityof(μ.β, b)
+    return _add_logdensities(logdensityof(tpm_α, a), logdensityof(μ.β, b))
 end
 
 @inline mspace_ndims(::Type{<:CombinedMeasure{typeof(vcat)}}) = 1
@@ -333,7 +333,7 @@ function logdensityof_with_rest(μ::CombinedMeasure{typeof(vcat)}, x::AbstractVe
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
     x_μ, _ = maybestatic_split(x, maybestatic_length(x) - maybestatic_length(x_rest))
-    return ℓ_a + ℓ_b, x_μ, x_rest
+    return _add_logdensities(ℓ_a, ℓ_b), x_μ, x_rest
 end
 
 # Batches of merge-combined variates are named tuples of batches, split by
@@ -348,7 +348,7 @@ end
 function logdensityof_with_rest(μ::CombinedMeasure{typeof(merge)}, x::NamedTuple)
     ℓ_a, a, x2 = logdensityof_with_rest(μ.α, x)
     ℓ_b, b, x_rest = logdensityof_with_rest(μ.β, x2)
-    return ℓ_a + ℓ_b, merge(a, b), x_rest
+    return _add_logdensities(ℓ_a, ℓ_b), merge(a, b), x_rest
 end
 
 

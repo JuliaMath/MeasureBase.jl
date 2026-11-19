@@ -59,7 +59,7 @@ end
 for (head, func) in [(:logdensityof_impl, :logdensityof), (:logdensity_def, :logdensity_def)]
     @eval @inline function $head(d::AbstractProductMeasure, x)
         _check_marginal_count(marginals(d), x)
-        mapreduce($func, +, marginals(d), x)
+        mapreduce($func, _add_logdensities, marginals(d), x)
     end
 end
 
@@ -215,7 +215,7 @@ end
     end
     for k in Base.tail(N)
         k = QuoteNode(k)
-        qk = :(ℓ += $func(getproperty(m, $k), getproperty(x, $k)))
+        qk = :(ℓ = _add_logdensities(ℓ, $func(getproperty(m, $k), getproperty(x, $k))))
         push!(q.args, qk)
     end
 
@@ -254,7 +254,7 @@ end
 # For tuples, `mapreduce` has trouble with type inference
 @inline function _marginalwise_ld(func::F, d::ProductMeasure{<:Tuple}, x) where {F}
     _check_marginal_count(marginals(d), x)
-    sum(map(func, marginals(d), x))
+    reduce(_add_logdensities, map(func, marginals(d), x))
 end
 
 @inline function _stream_point_ld(head::F, ::Any, d, x::AbstractVector, fixed::True) where {F}
@@ -354,7 +354,7 @@ function _array_product_ld_with_rest(μ::ProductMeasure, x::AbstractVector, ::No
     x_rest = x
     as = [begin
         ℓ_i, a_i, x_rest = logdensityof_with_rest(m, x_rest)
-        ℓ += ℓ_i
+        ℓ = _add_logdensities(ℓ, ℓ_i)
         _stream_variate(m, a_i)
     end for m in marginals(μ)]
     return ℓ, as, x_rest
@@ -414,7 +414,7 @@ function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
     isempty(mar) && return _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
-    mapreduce(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), +, CartesianIndices(mar))
+    mapreduce(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), Broadcast.BroadcastFunction(_add_logdensities), CartesianIndices(mar))
 end
 
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
@@ -438,7 +438,7 @@ end
 end
 @inline function _array_product_ld_nested(f::F, μ::ProductMeasure, x::AbstractArray) where {F}
     _check_marginal_count(marginals(μ), x)
-    mapreduce(_PointLogd(f, nothing), +, marginals(μ), x)
+    mapreduce(_PointLogd(f, nothing), _add_logdensities, marginals(μ), x)
 end
 @inline (k::_PointLogd{F,Nothing})(m, x) where {F} = _point_ld(k.f, m, x)
 
@@ -620,7 +620,7 @@ end
 function _marginals_point_ld_with_rest(ms::Tuple, x::AbstractVector)
     ℓ1, a1, x2 = logdensityof_with_rest(first(ms), x)
     ℓ_rest, as, x_rest = _marginals_point_ld_with_rest(Base.tail(ms), x2)
-    return ℓ1 + ℓ_rest, (_stream_variate(first(ms), a1), as...), x_rest
+    return _add_logdensities(ℓ1, ℓ_rest), (_stream_variate(first(ms), a1), as...), x_rest
 end
 
 # The variate of a measure in the layout its `rand` and `transport_from_std`

@@ -355,23 +355,46 @@ end
 # `sum_leading_dims` of log-densities. Partial sums of lazy broadcasts over
 # host arrays don't materialize the elementwise log-densities (Base can't
 # reduce selected dimensions of a `Broadcasted`):
-@inline _sum_leading_logd(ℓ, n::StaticInteger; kw...) = sum_leading_dims(ℓ, n; kw...)
+@inline function _sum_leading_logd(ℓ, n::StaticInteger{N}; kw...) where {N}
+    N == ndims(ℓ) && return _total_logd(ℓ, n; kw...)
+    N == 0 && return ℓ
+    A = _materialize(ℓ)
+    isempty(A) && return sum_leading_dims(A, n; kw...)
+    if _is_host_array(A)
+        sums = sum_leading_dims(A, n; kw...)
+        any(isnan, sums) || return sums
+    end
+    reduced = reduce(_add_logdensities, merge_leading_dims(A, n); dims = 1, init = zero(eltype(A)), kw...)
+    drop_leading_dims(reduced, static(1))
+end
+@inline function _total_logd(ℓ, n; kw...)
+    s = sum_leading_dims(ℓ, n; kw...)
+    _select(isnan(s), () -> ifelse(any(isneginf, _materialize(ℓ)), oftype(s, -Inf), s), () -> s)
+end
 function _sum_leading_logd(ℓ::Broadcast.Broadcasted{<:Broadcast.DefaultArrayStyle}, n::StaticInteger{N}; kw...) where {N}
     axs = axes(ℓ)
-    (0 < N < length(axs) && !isempty(ℓ)) || return sum_leading_dims(ℓ, n; kw...)
+    (N == 0 || isempty(ℓ)) && return sum_leading_dims(ℓ, n; kw...)
+    N == length(axs) && return _total_logd(ℓ, n; kw...)
     lead = CartesianIndices(ntuple(i -> axs[i], Val(N)))
     map(CartesianIndices(ntuple(i -> axs[N + i], Val(length(axs) - N)))) do j
         s = zero(ℓ[CartesianIndex(first(lead), j)])
         @inbounds @simd for i in lead
             s += ℓ[CartesianIndex(i, j)]
         end
-        s
+        isnan(s) && any(i -> isneginf(ℓ[CartesianIndex(i, j)]), lead) ? oftype(s, -Inf) : s
     end
 end
 
 
-@inline _lazy_add(a::Number, b::Number) = a + b
-@inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(+, a, b))
+# A zero-density factor makes a product zero, including when another
+# factor has an infinite density at its boundary.
+@inline function _add_logdensities(a, b)
+    s = a + b
+    ifelse(isneginf(a), oftype(s, a), ifelse(isneginf(b), oftype(s, b), s))
+end
+
+@inline _lazy_add(a::Number, b::Number) = _add_logdensities(a, b)
+@inline _lazy_add(a, b) = Broadcast.instantiate(Broadcast.broadcasted(_add_logdensities, a, b))
 
 # Zero log-densities over the batch dimensions of a flat batch of variates
 # with `n` variate dimensions:

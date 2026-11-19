@@ -242,7 +242,7 @@ end
 end
 function _powered_point_nested(f::F, μ::PowerMeasure, x::AbstractArray, ::NoFlatStorage) where {F}
     ν = pwr_base(μ)
-    sum(_PointLogd(f, ν), x; init = zero(_logd_numtype(x)))
+    mapreduce(_PointLogd(f, ν), _add_logdensities, x; init = zero(_logd_numtype(x)))
 end
 @noinline _powered_point(::F, ::PowerMeasure, x) where {F} = _throw_pwr_variate_not_array()
 
@@ -276,7 +276,7 @@ function _powered_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::Tuple{}, :
     x_rest = x
     for _ in 1:length(marginals(μ))
         ℓ_i, _, x_rest = logdensityof_with_rest(ν, x_rest)
-        ℓ += ℓ_i
+        ℓ = _add_logdensities(ℓ, ℓ_i)
     end
     return ℓ, x_rest
 end
@@ -306,7 +306,7 @@ function _pwr_point_ld_with_rest(μ::PowerMeasure, x::AbstractVector, ::False, :
     x_rest = x
     as = map(_cartidxs(pwr_axes(μ))) do _
         ℓ_i, a_i, x_rest = logdensityof_with_rest(ν, x_rest)
-        ℓ += ℓ_i
+        ℓ = _add_logdensities(ℓ, ℓ_i)
         _stream_variate(ν, a_i)
     end
     return ℓ, as, x_rest
