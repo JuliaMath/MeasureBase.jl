@@ -103,6 +103,7 @@ end
     # intervals:
     p = asmeasure(Poisson(2.0))
     @test massof(p, Interval{:open,:closed}(1, 5)) ≈ sum(k -> pdf(Poisson(2.0), k), 2:5)
+    @test massof(p, Interval{:open,:closed}(2, 5)) ≈ sum(k -> pdf(Poisson(2.0), k), 3:5)
     @test massof(StdNormal(), 1.0 .. 0.0) == 0
     @test smf(StdNormal(), 1.0, 0.0) ≈ cdf(Normal(), 0) - cdf(Normal(), 1)
     @test massof(p, 1 .. 0) == 0

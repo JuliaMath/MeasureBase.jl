@@ -72,8 +72,15 @@ LebesgueBase()`, users can call `massof(m, a_b)` where
 `a_b::IntervalSets.Interval`. Interval masses come from the Stieltjes
 measure function (see [`smf`](@ref)), they are exact for left-open,
 right-closed intervals `Interval{:open,:closed}(a, b)`. Other intervals
-are treated alike (they differ by the masses of the ends) and require a
-root measure without atoms.
+can differ by the masses of the ends and require a root measure without
+atoms when nonempty. For example, the probability of the integers 3, 4
+and 5 under a Poisson law is
+
+```julia
+using MeasureBase, Distributions, IntervalSets
+m = asmeasure(Poisson(2))
+massof(m, Interval{:open,:closed}(2, 5))  # ≈ 0.3067599753
+```
 
 `massof` often returns a `Real`. But in many cases we may only know the mass is
 finite, or we may know nothing at all about it. For these cases, it will return
