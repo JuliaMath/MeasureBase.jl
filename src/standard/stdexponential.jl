@@ -10,7 +10,8 @@ export StdExponential
 
 insupportof(::StdExponential, x) = x ≥ zero(x)
 
-@inline function logdensityof_impl(d::StdExponential, x)
+@inline function logdensityof_impl(d::StdExponential, y)
+    x = checked_arg(d, y)
     _checksupport(insupportof(d, x), logdensity_def(d, x))
 end
 

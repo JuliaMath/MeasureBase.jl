@@ -14,7 +14,7 @@ export StdNormal
 @inline insupportof(::StdNormal, x) = true
 
 # Integer variates are converted before squaring, which could overflow:
-@inline logdensityof_impl(::StdNormal, x) = (-float(x)^2 - log2π) / 2
+@inline logdensityof_impl(d::StdNormal, x) = (-float(checked_arg(d, x))^2 - log2π) / 2
 
 @inline logdensity_def(::StdNormal, x) = -float(x)^2 / 2
 @inline basemeasure(::StdNormal) = WeightedMeasure(static(-0.5 * log2π), LebesgueBase())

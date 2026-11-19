@@ -23,6 +23,7 @@ StdMeasure(::typeof(randn)) = StdNormal()
 # the recursion over base measures (and its boxed arguments) out of the
 # kernels:
 @inline checked_arg(::StdMeasure, x::Real) = x
+@noinline checked_arg(μ::StdMeasure, x) = throw(ArgumentError("$(nameof(typeof(μ))) requires a real scalar variate, got $(typeof(x))"))
 
 @inline massof(::StdMeasure) = static(1.0)
 

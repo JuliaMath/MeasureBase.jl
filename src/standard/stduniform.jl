@@ -10,7 +10,8 @@ export StdUniform
 
 insupportof(::StdUniform, x) = (zero(x) ≤ x) & (x ≤ one(x))
 
-@inline function logdensityof_impl(d::StdUniform, x)
+@inline function logdensityof_impl(d::StdUniform, y)
+    x = checked_arg(d, y)
     R = float(typeof(x))
     _checksupport(insupportof(d, x), zero(R))
 end

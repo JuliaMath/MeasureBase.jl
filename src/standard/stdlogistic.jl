@@ -10,7 +10,7 @@ export StdLogistic
 
 @inline insupportof(d::StdLogistic, x) = true
 
-@inline logdensityof_impl(::StdLogistic, x) = (u = -abs(x); u - 2 * log1pexp(u))
+@inline logdensityof_impl(d::StdLogistic, x) = (u = -abs(checked_arg(d, x)); u - 2 * log1pexp(u))
 
 @inline logdensity_def(::StdLogistic, x) = logdensityof(StdLogistic(), x)
 @inline basemeasure(::StdLogistic) = LebesgueBase()

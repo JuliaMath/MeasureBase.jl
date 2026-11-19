@@ -8,6 +8,7 @@ using MeasureBase: RealValues, IntegerValues
 
 Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
+MeasureBase.checked_arg(::MeasureBase.StdMeasure, x::Reactant.RNumber{<:Real}) = x
 MeasureBase._draw_numbertype(::Type{TracedRNumber{T}}) where {T} = T
 
 MeasureBase._counting_scalar(samples::Reactant.TracedRArray) = Reactant.@allowscalar only(samples)

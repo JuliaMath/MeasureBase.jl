@@ -144,10 +144,11 @@ only the likelihood path above runs traced.
   Transports don't return `NaN` for their out-of-support values, which
   show only in densities and as a `-Inf` log-abs-det Jacobian. Other
   discrete measures have no transports.
-- Variates of the wrong shape (rank, size, container or element kind,
+- Variates of the wrong shape (rank, size, container or
   tuple arity) throw an `ArgumentError` at the entry points, raised by
   [`MeasureBase.checked_arg`](@ref) and, for densities, by comparing flat
   batches with [`MeasureBase.mspace_flatsize`](@ref) where it is known.
+  Standard measures require real scalar elements in points and batches.
   A correctly shaped point can still lie outside the domain of a
   pushforward's inverse. Inside an enclosing stream, a [`mbind`](@ref)
   conditional kernel must accept primary values outside their support
