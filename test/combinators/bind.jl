@@ -362,6 +362,19 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
             @test count(_ -> event(rand(rng, p_m)), 1:4096) / 4096 ≈ prob atol = 0.03
             @test count(event, rand(Xoshiro(733), p_m^4096)) / 4096 ≈ prob atol = 0.03
         end
+        atomic_prior = superpose(normalize(D(0) + D(1)), D(2))
+        for (prior, kernel, total, prob) in (
+            (atomic_prior, Returns(StdUniform()), 2, 1/2),
+            (D(2.0) + StdUniform(), Returns(2 * StdUniform()), 4, 1/2),
+            (atomic_prior, a -> (1 + a) * StdUniform(), 4.5, 2/3),
+        )
+            bind = mbind(kernel, prior, tuple)
+            @test massof(bind) ≈ total
+            law = normalize(bind)
+            @test densityof(law, (2, 0.5)) ≈ prob
+            draws = rand(Xoshiro(981), law^4096)
+            @test count(t -> first(t) == 2, draws) / length(draws) ≈ prob atol = 0.04
+        end
         varying = normalize(mbind(x -> (1 + x) * D(x), StdUniform(), tuple))
         @test_throws ArgumentError rand(varying)
         @test_throws ArgumentError rand(varying^2)

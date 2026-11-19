@@ -105,10 +105,11 @@ weighted or superposed point masses. Other primary measures require a
 kernel whose mass is known to be constant, for both draws and transports.
 
 The mass of `μ` integrates the masses of the `β_a` over `α`. It is known
-where `α` is a weighted or superposed combination of point masses, and
-unknown otherwise. With `f_c = OneTwoMany.firstarg`, `μ` is `α` reweighted
-by the mass of `β_a`, its density is that of `α` plus the log-mass of
-`β_a`.
+for combinations of weighted, normalized or superposed point masses with
+known component masses. For a constant kernel `Returns(β)` it is the
+product of the masses of `α` and `β`. With `f_c = OneTwoMany.firstarg`,
+the primary measure `α` is weighted by the mass of `β_a`. The resulting
+log-density is the log-density of `α` plus the log-mass of `β_a`.
 
 The measure `α` that went into the bind can be retrieved via
 `boundmeasure(mbind(f_β, α, f_c)) == α` and the kernel via
@@ -335,6 +336,7 @@ end
 
 # The mass of a bind is linear in the primary measure:
 massof(μ::Bind) = _recover_bind_mass(μ, _bind_mass(μ, μ.α))
+massof(μ::Bind{<:Returns}) = _recover_bind_mass(μ, massof(μ.α) * massof(asmeasure(μ.f_β.value)))
 _recover_bind_mass(μ, m) = m
 _recover_bind_mass(μ, m::AbstractFloat) =
     _normal_bind_mass(m) ? m : exp(_sampling_logmass(μ))
@@ -342,13 +344,15 @@ _normal_bind_mass(m) = isfinite(m) && m >= floatmin(typeof(m))
 _bind_mass(::Bind, ::AbstractMeasure) = UnknownMass()
 _bind_mass(μ::Bind, α::Dirac) = massof(_get_β_a(μ, α.x))
 _bind_mass(μ::Bind, α::WeightedMeasure) = exp(α.logweight) * _bind_mass(μ, α.base)
+_bind_mass(μ::Bind, α::NormalizedMeasure{<:Any,<:Real}) = exp(-α.logmass) * _bind_mass(μ, α.base)
 _bind_mass(μ::Bind, α::SuperpositionMeasure) = sum(Base.Fix1(_bind_mass, μ), α.components)
 
 _normalizing_logmass(μ::Bind, m::AbstractFloat) = _normal_bind_mass(m) ? log(m) : _sampling_logmass(μ)
 _sampling_logmass(μ::Bind) = _bind_logmass(μ, μ.α)
+_sampling_logmass(μ::Bind{<:Returns}) = _sampling_logmass(μ.α) + _sampling_logmass(asmeasure(μ.f_β.value))
 _bind_logmass(::Bind, ::AbstractMeasure) = _logmass(UnknownMass())
 _bind_logmass(μ::Bind, α::Dirac) = _sampling_logmass(_get_β_a(μ, α.x))
-_bind_logmass(μ::Bind, α::WeightedMeasure) = _add_logweight(α.logweight, _bind_logmass(μ, α.base))
+_bind_logmass(μ::Bind, α::AbstractWeightedMeasure) = _add_logweight(_logweight(α), _bind_logmass(μ, basemeasure(α)))
 _bind_logmass(μ::Bind, α::SuperpositionMeasure) =
     _logsumexp_components(map(Base.Fix1(_bind_logmass, μ), α.components))
 
@@ -501,18 +505,20 @@ batched_rand_impl(ctx::GenContext, μ::Bind, sz::SizeLike) = _batched_rand_point
 function rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind})
     μ = ν.base
     A = Core.Compiler.return_type(rand_impl, Tuple{typeof(ctx),typeof(μ.α)})
-    a = rand_impl(ctx, _normalized_bind_primary(A, μ, μ.α))
+    a = rand_impl(ctx, _normalized_bind_primary(A, μ))
     b = rand_impl(ctx, normalize(_get_β_a(μ, a)))
     return _combine_variates(μ.f_c, a, b)
 end
 batched_rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind}, sz::SizeLike) = _batched_rand_pointwise(ctx, ν, sz)
 
-_normalized_bind_primary(A, μ, α::Dirac) = weightedmeasure(_sampling_logmass(_get_β_a(μ, α.x)), α)
-_normalized_bind_primary(A, μ, α::WeightedMeasure) = weightedmeasure(α.logweight, _normalized_bind_primary(A, μ, α.base))
-_normalized_bind_primary(A, μ, α::NormalizedMeasure) = _normalized_bind_primary(A, μ, α.base)
-_normalized_bind_primary(A, μ, α::SuperpositionMeasure) = superpose(map(c -> _normalized_bind_primary(A, μ, c), α.components))
-function _normalized_bind_primary(A, μ, α)
-    _constant_kernel_mass(μ.f_β, A) && return normalize(α)
+function _normalized_bind_primary(A, μ)
+    _constant_kernel_mass(μ.f_β, A) && return normalize(μ.α)
+    return _tilted_bind_primary(μ, μ.α)
+end
+_tilted_bind_primary(μ, α::Dirac) = weightedmeasure(_sampling_logmass(_get_β_a(μ, α.x)), α)
+_tilted_bind_primary(μ, α::AbstractWeightedMeasure) = weightedmeasure(_logweight(α), _tilted_bind_primary(μ, basemeasure(α)))
+_tilted_bind_primary(μ, α::SuperpositionMeasure) = superpose(map(c -> _tilted_bind_primary(μ, c), α.components))
+function _tilted_bind_primary(μ, α)
     throw(ArgumentError("The normalized bind requires a primary law weighted by the conditional mass; this primary cannot be reweighted automatically"))
 end
 
@@ -528,7 +534,7 @@ function _transport_base(ν::NormalizedMeasure{<:Bind}, x)
     μ = ν.base
     T = float(real_numtype(typeof(x)))
     A = Core.Compiler.return_type(testvalue, Tuple{Type{T},typeof(μ.α)})
-    return mbind(normalize ∘ asmeasure ∘ μ.f_β, _normalized_bind_primary(A, μ, μ.α), μ.f_c)
+    return mbind(normalize ∘ asmeasure ∘ μ.f_β, _normalized_bind_primary(A, μ), μ.f_c)
 end
 
 
