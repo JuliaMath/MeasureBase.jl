@@ -209,14 +209,17 @@ inside the support of `m2` it is `-Inf`. If `x` is known to be in the support
 of both, it can be more efficient to call `unsafe_logdensity_rel`.
 """
 @inline function logdensity_rel(μ, ν, x)
-    inμ = _insupport_mask(insupportof(μ, x))
-    inν = _insupport_mask(insupportof(ν, x))
+    inμ = _relative_support(μ, x)
+    inν = _relative_support(ν, x)
     _select(
         inμ & inν,
         () -> _dynamic_logd(unsafe_logdensity_rel(μ, ν, x), x),
         () -> _logd_rel_outside(inμ, inν, _logd_numtype(x)),
     )
 end
+
+@inline _relative_support(μ, x) = _relative_support(μ, x, insupportof(μ, x))
+@inline _relative_support(μ, x, ins) = _insupport_mask(ins)
 
 @inline _logd_rel_outside(inμ, inν, ::Type{T}) where {T} = ifelse(inμ, T(Inf), ifelse(inν, T(-Inf), T(NaN)))
 

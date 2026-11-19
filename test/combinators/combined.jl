@@ -129,6 +129,16 @@ using AffineMaps: Mul
     end
 
     @testset "relative densities of vcat combinations and binds" begin
+        bounded = mcombine(vcat, StdUniform(), StdNormal())
+        full = mcombine(vcat, StdNormal(), StdNormal())
+        outside = [2.0, 0.0]
+        @test logdensity_rel(bounded, full, outside) == -Inf
+        @test logdensity_rel(full, bounded, outside) == Inf
+        @test isnan(logdensity_rel(bounded, bounded, outside))
+        unchanged = restrict(Returns(true), bounded)
+        @test logdensityof(unchanged, outside) == -Inf
+        @test logdensity_rel(unchanged, full, outside) == -Inf
+
         ℓN(x, m = 0.0, s = 1.0) = -((x - m) / s)^2 / 2 - log(s) - log(2π) / 2
         c1 = mcombine(vcat, StdNormal(), StdExponential()^2)
         c2 = mcombine(vcat, pushfwd(Mul(2.0), StdNormal()), StdNormal()^2)

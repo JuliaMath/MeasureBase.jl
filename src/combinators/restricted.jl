@@ -14,10 +14,15 @@ end
 # is handled by `insupportof`:
 @inline logdensity_def(::RestrictedMeasure, x) = zero(_logd_numtype(x))
 
+@inline function logdensityof_impl(μ::RestrictedMeasure, x)
+    _select(μ.predicate(x), () -> logdensityof(μ.base, x), () -> _neg_inf_logd(x))
+end
+
 basemeasure(μ::RestrictedMeasure) = μ.base
 localmeasure(μ::RestrictedMeasure, x) = RestrictedMeasure(μ.predicate, localmeasure(μ.base, x))
 
 insupportof(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupportof(μ.base, x))
+@inline _relative_support(μ::RestrictedMeasure, x) = μ.predicate(x) & _relative_support(μ.base, x)
 
 function Pretty.quoteof(d::RestrictedMeasure)
     qf = Pretty.quoteof(d.predicate)

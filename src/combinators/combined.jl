@@ -193,6 +193,10 @@ end
 
 @inline insupportof(μ::CombinedMeasure, ab) = NoFastInsupport{typeof(μ)}()
 
+# Relative descent needs the support of both components before it can
+# combine their unmasked density definitions.
+@inline _relative_support(μ, ab, ::NoFastInsupport{<:CombinedMeasure}) = !isneginf(logdensityof(μ, ab))
+
 @inline function mspace_flatsize(μ::CombinedMeasure{typeof(vcat)})
     _vcat_flatsize(mspace_flatsize(μ.α), mspace_flatsize(μ.β))
 end
