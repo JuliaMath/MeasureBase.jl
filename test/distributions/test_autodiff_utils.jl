@@ -223,8 +223,9 @@ end
     # Transports from StdNormal^4 shift by μ, so the pullback of P is StdNormal^4:
     f = transport_to(P, StdNormal()^4)
     Z = reshape(collect(0.1:0.1:1.2), 4, 3)
-    @test ForwardDiff.gradient(Z -> sum(sum, transports(f, Z)), Z) ≈ ones(4, 3)
-    @test Zygote.gradient(Z -> sum(sum, transports(f, Z)), Z)[1] ≈ ones(4, 3)
+    transported_sum(Z) = sum(flatview(flatview(transports(f, Z))))
+    @test ForwardDiff.gradient(transported_sum, Z) ≈ ones(4, 3)
+    @test Zygote.gradient(transported_sum, Z)[1] ≈ ones(4, 3)
     @test Zygote.gradient(z -> sum(sum, f(z)), Z[:, 1])[1] ≈ ones(4)
     @test Zygote.gradient(z -> logdensityof(pullbck(f, P), z), Z[:, 1])[1] ≈ -Z[:, 1]
 
