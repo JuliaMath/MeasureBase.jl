@@ -179,6 +179,13 @@ end
     @testset "finite draws" begin
         # Uniform draws can be exactly zero, standard draws must stay finite:
         zero_rng = ZeroRNG()
+        for components in ((0 * Dirac(37), Dirac(12)), [0 * Dirac(37), Dirac(12)])
+            μ = superpose(components)
+            @test rand(zero_rng, μ) == 12
+            @test rand(zero_rng, μ^4) == fill(12, 4)
+        end
+        @test rand(MeasureBase.ConstantRNG(), Dirac(1) + Dirac(2)) == 2
+        @test rand(zero_rng, 0 * Dirac([37]) + Dirac([12, 13])) == [12, 13]
         @test rand(zero_rng, StdUniform()) == 0
         @test isfinite(rand(zero_rng, StdLogistic()))
         @test all(isfinite, rand(zero_rng, StdLogistic()^3))

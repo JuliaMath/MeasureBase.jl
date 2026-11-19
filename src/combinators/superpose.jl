@@ -193,7 +193,7 @@ function _draw_selected_component(ctx, components, masses, total)
     csum = zero(threshold)
     for (mass, c) in zip(masses, components)
         csum += mass
-        selected = csum >= threshold
+        selected = threshold < csum
         selected isa Bool || throw(ArgumentError("A traced superposition draw requires a common variate shape"))
         selected && return rand_impl(ctx, c)
     end
@@ -263,15 +263,15 @@ end
 @inline _tail(xs::Tuple) = Base.tail(xs)
 @inline _tail(xs::AbstractVector) = view(xs, firstindex(xs)+1:lastindex(xs))
 
-# The first component whose cumulative mass reaches the threshold:
+# The first component whose cumulative mass exceeds the threshold:
 @inline _select_draws(thresholds, X, ::Any, ::Tuple{}, ::Tuple{}) = X
 @inline function _select_draws(thresholds, X, csum, masses::Tuple, Ys::Tuple)
-    X_new = ifelse.(thresholds .<= csum, X, first(Ys))
+    X_new = ifelse.(thresholds .< csum, X, first(Ys))
     _select_draws(thresholds, X_new, csum + first(masses), Base.tail(masses), Base.tail(Ys))
 end
 function _select_draws(thresholds, X, csum, masses::AbstractVector, Ys::AbstractVector)
     for (mass, Y) in zip(masses, Ys)
-        X = ifelse.(thresholds .<= csum, X, Y)
+        X = ifelse.(thresholds .< csum, X, Y)
         csum += mass
     end
     return X
