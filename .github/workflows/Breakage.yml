@@ -63,10 +63,8 @@ jobs:
           VERSION: ${{ matrix.pkgversion }}
           TAG: ${{ steps.downstream.outputs.tag || matrix.pkgversion }}
           OUTCOME: ${{ steps.downstream.outcome }}
-          PR_NUMBER: ${{ github.event.number }}
         run: |
           mkdir -p pr
-          echo "$PR_NUMBER" > pr/NR
           badge=Fail-red
           if [ "$OUTCOME" = success ]; then badge=Pass-green; fi
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
@@ -74,7 +72,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: pr
+          name: downstream-${{ strategy.job-index }}
           path: pr/
 
   upload:
@@ -82,38 +80,33 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-
       - uses: actions/download-artifact@v8
         with:
-          name: pr
+          pattern: downstream-*
+          merge-multiple: true
           path: pr/
 
-      - run: ls
-      - run: |
+      - name: Render downstream report
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
           cd pr
-          echo "| Package name | latest | stable |" > MSG
-          echo "|--|--|--|" >> MSG
-          count=0
-          for file in *
-          do
-            [ "$file" == "NR" ] && continue
-            [ "$file" == "MSG" ] && continue
-            if [ $count == "0" ]; then
-              name=$(echo $file | cut -f1 -d-)
-              echo -n "| $name | "
-            else
-              echo -n "| "
-            fi
-            cat $file
-            if [ $count == "0" ]; then
-              echo -n " "
-              count=1
-            else
-              echo " |"
-              count=0
-            fi
-          done >> MSG
+          echo "$PR_NUMBER" > NR
+          {
+            echo '| Package name | latest | stable |'
+            echo '|--|--|--|'
+            for file in *-latest *-stable; do
+              if [ -f "$file" ]; then echo "${file%-*}"; fi
+            done | sort -u | while IFS= read -r pkg; do
+              printf '| %s ' "$pkg"
+              for version in latest stable; do
+                printf '| '
+                if [ -s "$pkg-$version" ]; then cat "$pkg-$version"; else printf 'Missing result'; fi
+                printf ' '
+              done
+              echo '|'
+            done
+          } > MSG
 
       - uses: actions/upload-artifact@v7
         with:
