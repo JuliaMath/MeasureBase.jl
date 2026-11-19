@@ -116,6 +116,11 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         K16 = rand(MersenneTwister(1), Float16, Counting(1:4096)^1024)
         @test abs(count(iseven, K16) - 512) < 96
         @test rand(MeasureBase.ConstantRNG(), Counting(2:6)^3) == fill(4, 3)
+        full = typemin(Int):typemax(Int)
+        @test massof(Counting(full)) == big(2)^(8 * sizeof(Int))
+        @test rand(MersenneTwister(981), normalize(Counting(full))^5) == rand(MersenneTwister(981), full, 5)
+        @test rand(MeasureBase.ConstantRNG(), Counting(full)) == 0
+        @test_throws ArgumentError rand(Counting(1:0))
         @test rand(MersenneTwister(1), Counting(Set([2, 5, 7]))) in (2, 5, 7)
         @test all(in(2:4), rand(MersenneTwister(1), Counting(BoundedInts(2, 4))^100))
     end

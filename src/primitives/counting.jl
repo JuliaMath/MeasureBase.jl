@@ -70,14 +70,16 @@ insupportof(μ::Counting, x) = x ∈ μ.support
 insupportof(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 
 massof(::Counting{IntegerValues}) = static(Inf)
-function massof(μ::Counting{<:BoundedInts})
-    lo, hi = minimum(μ.support), maximum(μ.support)
+massof(μ::Counting{<:BoundedInts}) = _integer_cardinality(minimum(μ.support), maximum(μ.support))
+function _integer_cardinality(lo, hi)
     count = _integer_count(lo, hi)
     ifelse(_empty_integer_bounds(lo, hi), zero(count), count)
 end
 _integer_count(lo, hi) = hi - lo + static(1)
 _integer_count(lo::Integer, hi::Integer) = widen(hi) - widen(lo) + 1
-massof(μ::Counting{<:Union{AbstractSet,AbstractRange}}) = length(μ.support)
+massof(μ::Counting{<:Union{AbstractSet,AbstractRange}}) = _counting_size(μ.support)
+_counting_size(s) = length(s)
+_counting_size(s::AbstractUnitRange{<:Integer}) = _integer_cardinality(first(s), last(s))
 
 massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupportof(c), s))
 
@@ -90,10 +92,9 @@ massof(::CountingBase, s::Set) = length(s)
 const _FiniteCounting = Counting{<:Union{AbstractRange,BoundedInts,AbstractSet}}
 function batched_rand_impl(ctx::GenContext, μ::_FiniteCounting, sz::SizeLike)
     vals = _counting_values(μ.support)
-    n = length(vals)
-    n > 0 || throw(ArgumentError("Can't draw random variates from counting measure on an empty set"))
+    isempty(vals) && throw(ArgumentError("Can't draw random variates from counting measure on an empty set"))
     if get_rng(ctx) isa ConstantRNG
-        x = vals[n ÷ 2 + 1]
+        x = _counting_midpoint(vals)
         return isempty(sz) ? x : _const_bulk(ctx, x, sz)
     elseif _on_host(ctx)
         return _host_counting_draw(get_rng(ctx), vals, sz)
@@ -107,8 +108,13 @@ function _counting_values(b::BoundedInts)
     lo, hi = minimum(b), maximum(b)
     isfinite(lo) && isfinite(hi) ||
         throw(ArgumentError("Random variates of counting measure require a finite support, got $b"))
-    Int(dynamic(lo)):Int(dynamic(hi))
+    _counting_endpoint(dynamic(lo)):_counting_endpoint(dynamic(hi))
 end
+_counting_endpoint(x::Integer) = x
+_counting_endpoint(x) = Int(x)
+_counting_midpoint(vals) = vals[length(vals) ÷ 2 + 1]
+_counting_midpoint(vals::AbstractUnitRange{T}) where {T<:Integer} =
+    convert(T, first(vals) + _counting_size(vals) ÷ 2)
 _host_counting_draw(rng, vals, ::Tuple{}) = rand(rng, vals)
 _host_counting_draw(rng, vals, sz::SizeLike) = rand(rng, vals, asnonstatic(sz))
 function _host_counting_draw(rng, vals, sz::StaticSizeLike)
@@ -117,17 +123,26 @@ function _host_counting_draw(rng, vals, sz::StaticSizeLike)
 end
 
 function _device_counting_draw(ctx, vals, sz)
-    n = UInt64(length(vals))
+    count = _counting_size(vals)
+    count <= (UInt128(1) << 64) || throw(ArgumentError("Device counting supports at most 2^64 atoms"))
+    n = count % UInt64  # Zero represents the full 64-bit range.
     bits = rand!(ctx, allocate_array(ctx, UInt64, isempty(sz) ? (1,) : asnonstatic(sz)))
     # [threshold, 2^64) contains equally many representatives of each residue.
-    threshold = -n % n
-    iszero(threshold) || _reject_counting_bits!(ctx, bits, threshold)
+    if !iszero(n)
+        threshold = -n % n
+        iszero(threshold) || _reject_counting_bits!(ctx, bits, threshold)
+    end
     support = _on_compute_unit(ctx, vals)
-    samples = map(x -> support[signed(x % n) + 1], bits)
+    samples = map(x -> _counting_value(support, iszero(n) ? x : x % n), bits)
     return isempty(sz) ? _counting_scalar(samples) : samples
 end
 
 _counting_scalar(samples) = only(Array(samples))
+
+_counting_value(vals, offset) = vals[signed(offset) + 1]
+# Index arithmetic on full-width ranges wraps in the type of the atoms.
+_counting_value(vals::AbstractUnitRange{Int64}, offset) = first(vals) + signed(offset)
+_counting_value(vals::AbstractUnitRange{UInt64}, offset) = first(vals) + offset
 
 function _reject_counting_bits!(ctx, bits, threshold)
     while any(<(threshold), bits)
