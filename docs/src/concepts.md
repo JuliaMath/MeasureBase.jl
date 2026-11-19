@@ -148,7 +148,10 @@ only the likelihood path above runs traced.
   tuple arity) throw an `ArgumentError` at the entry points, raised by
   [`MeasureBase.checked_arg`](@ref) and, for densities, by comparing flat
   batches with [`MeasureBase.mspace_flatsize`](@ref) where it is known.
-  Variates of the right shape never throw.
+  A correctly shaped point can still lie outside the domain of a
+  pushforward's inverse. Inside an enclosing stream, a [`mbind`](@ref)
+  conditional kernel must accept primary values outside their support
+  because the stream splitter needs the secondary variate's size there.
 - Kernels are branch-free where a condition may be a device or traced
   value (support masks evaluate both branches), so implementations must
   not throw outside the support.
