@@ -208,6 +208,7 @@ end
 
 massof(μ::CombinedMeasure) = massof(μ.α) * massof(μ.β)
 
+_normalized_sampling_base(μ::CombinedMeasure) = CombinedMeasure(μ.f_c, normalize(μ.α), normalize(μ.β))
 @inline _unweighted(μ::CombinedMeasure) = mcombine(μ.f_c, _unweighted(μ.α), _unweighted(μ.β))
 
 @inline getdof(μ::CombinedMeasure) = getdof(μ.α) + getdof(μ.β)

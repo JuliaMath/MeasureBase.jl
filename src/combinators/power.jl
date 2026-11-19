@@ -396,6 +396,7 @@ massof(m::PowerMeasure) = _pwr_mass(massof(m.parent), size2length(pwr_size(m)))
 # Unit masses stay static, independent of the dynamic exponent:
 @inline _pwr_mass(mass::StaticFloat64{1.0}, ::IntegerLike) = mass
 
+_normalized_sampling_base(μ::PowerMeasure) = PowerMeasure(normalize(pwr_base(μ)), pwr_axes(μ))
 @inline _unweighted(μ::PowerMeasure) = powermeasure(_unweighted(pwr_base(μ)), pwr_axes(μ))
 
 

@@ -47,6 +47,14 @@ normalize(μ::NormalizedMeasure) = μ
 @noinline _throw_not_normalizable(μ) =
     throw(ArgumentError("Can't normalize a measure of type $(nameof(typeof(μ))), its mass is zero or infinite"))
 
+# Products and pushforwards draw from the normalized laws of their parts.
+# For a bind this can differ from its ancestral sampler.
+_normalized_sampling_base(μ) = μ
+_normalized_sampling_base(μ::WeightedMeasure) = normalize(μ.base)
+rand_impl(ctx::GenContext, ν::NormalizedMeasure) = rand_impl(ctx, _normalized_sampling_base(ν.base))
+batched_rand_impl(ctx::GenContext, ν::NormalizedMeasure, sz::SizeLike) =
+    batched_rand_impl(ctx, _normalized_sampling_base(ν.base), sz)
+
 massof(::NormalizedMeasure) = static(1.0)
 
 _logweight(μ::NormalizedMeasure) = -μ.logmass

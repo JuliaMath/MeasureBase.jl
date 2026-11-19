@@ -168,6 +168,13 @@ basemeasure(μ::SuperpositionMeasure) = _measure_join(map(rootmeasure, values(μ
 # Superpositions of the local measures of the components (e.g. of binds):
 localmeasure(μ::SuperpositionMeasure{<:Union{Tuple,NamedTuple}}, x) = SuperpositionMeasure(map(Base.Fix2(localmeasure, x), μ.components))
 
+# Preserve each component's mixing weight while sampling its normalized law.
+_normalized_sampling_base(μ::SuperpositionMeasure) = SuperpositionMeasure(map(_normalized_mixture_component, μ.components))
+function _normalized_mixture_component(μ)
+    ℓ = _sampling_logmass(μ)
+    return WeightedMeasure(ℓ, NormalizedMeasure(μ, ℓ))
+end
+
 # Relative component masses are unchanged by a common log weight.
 function _component_masses(μ::SuperpositionMeasure)
     logs = map(_sampling_logmass, values(μ.components))

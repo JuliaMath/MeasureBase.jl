@@ -329,6 +329,19 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         @test count(==((1, 1)), rand(Xoshiro(981), p^16384)) / 16384 ≈ 10 / 11 atol = 0.012
         rng = Xoshiro(771)
         @test count(_ -> rand(rng, normalize(μ))[1] == 1, 1:8192) / 8192 ≈ 27 / 29 atol = 0.016
+        joint = mbind(x -> (1 + 9x) * D(x), D(0) + D(1), tuple)
+        for (m, event, prob) in (
+            (joint^1, v -> only(v) == (1, 1), 10 / 11),
+            (productmeasure((D(2), joint)), v -> last(v) == (1, 1), 10 / 11),
+            (pushfwd(first, joint), isone, 10 / 11),
+            (joint + D((2, 2)), v -> v == (1, 1), 10 / 12),
+            (2joint + D((2, 2)), v -> v == (1, 1), 20 / 23),
+        )
+            rng = Xoshiro(981)
+            p_m = normalize(m)
+            @test count(_ -> event(rand(rng, p_m)), 1:4096) / 4096 ≈ prob atol = 0.03
+            @test count(event, rand(Xoshiro(733), p_m^4096)) / 4096 ≈ prob atol = 0.03
+        end
         varying = normalize(mbind(x -> (1 + x) * D(x), StdUniform(), tuple))
         @test_throws ArgumentError rand(varying)
         @test_throws ArgumentError rand(varying^2)

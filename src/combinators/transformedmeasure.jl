@@ -434,6 +434,7 @@ end
 @inline _pwr_nest(ν::_ElementwisePushfwd, B::AbstractArray) = _pwr_nest(ν.origin, B)
 
 massof(m::PushforwardMeasure) = massof(m.origin)
+_normalized_sampling_base(ν::PushforwardMeasure) = PushforwardMeasure(ν.f, ν.finv, normalize(ν.origin), ν.style, ν.varsize)
 @inline _unweighted(ν::PushforwardMeasure) = PushforwardMeasure(ν.f, ν.finv, _unweighted(ν.origin), ν.style, ν.varsize)
 
 rand_impl(ctx::GenContext, ν::PushforwardMeasure) = _pushfwd_draw(ctx, ν.origin, _apply_to_variate(unwrap(ν.f), rand_impl(ctx, ν.origin)))

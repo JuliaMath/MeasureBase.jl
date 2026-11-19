@@ -314,6 +314,7 @@ end
 
 marginals(μ::ProductMeasure) = μ.marginals
 
+_normalized_sampling_base(μ::ProductMeasure) = ProductMeasure(map(normalize, marginals(μ)))
 @inline _unweighted(μ::ProductMeasure{<:Union{Tuple,NamedTuple}}) = productmeasure(map(_unweighted, marginals(μ)))
 
 @inline mspace_elsize(μ::ProductMeasure{<:AbstractArray}) = maybestatic_size(marginals(μ))
