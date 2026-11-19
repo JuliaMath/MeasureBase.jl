@@ -1,8 +1,10 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
 # CUDA tests, not part of the default test suite (they need a CUDA GPU).
-# Run with `julia --project=test/cuda test/cuda/runtests.jl` after
-# instantiating that project.
+# From the repository root, Julia 1.11+ uses the local MeasureBase and the
+# HeterogeneousComputing source revision declared in test/cuda/Project.toml:
+#   julia --project=test/cuda -e 'using Pkg; Pkg.instantiate()'
+#   julia --project=test/cuda test/cuda/runtests.jl
 
 using Test
 using CUDA

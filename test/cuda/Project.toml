@@ -6,8 +6,10 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
 MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
+PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
+HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "81c0392723ae2cdf4ae4a805dcc9d336752e9eff"}
 MeasureBase = {path = "../.."}
