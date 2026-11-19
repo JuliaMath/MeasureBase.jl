@@ -54,6 +54,15 @@ struct NoRandMeasure <: AbstractMeasure end
         @test_throws ArgumentError batched_rand_impl(ctx(), NoRandMeasure(), (3,))
     end
 
+    @testset "large static host draws" begin
+        for (f, μ) in ((rand, StdUniform()), (randn, StdNormal()), (randexp, StdExponential()))
+            samples = @inferred rand(Xoshiro(981), μ^static(256))
+            @test samples isa SVector{256,Float64}
+            rng = Xoshiro(981)
+            @test samples == [f(rng, Float64) for _ in 1:256]
+        end
+    end
+
     @testset "integer draws" begin
         # Integer variates stay integers, also as sizes in binds:
         P = asmeasure(Poisson(3.0))

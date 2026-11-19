@@ -72,7 +72,9 @@ CPU, bulk draws of a fully static size are static arrays and stream splits
 and reshapes keep them static: `rand`, `transport_to` and `logdensityof`
 of a measure whose variate sizes are all static are type stable and
 allocation-free, for powers, tuple and named tuple products and binds
-over them. Other compute units allocate their own arrays.
+over them. Each static size compiles separately. Large static draws fill
+the array in a loop to limit first-call compilation time. Other compute
+units allocate their own arrays.
 
 ## Parameter batches
 

@@ -172,7 +172,19 @@ end
 # of statically sized measures are allocation-free:
 @inline _maybestatic_draw(f::F, ctx::GenContext, sz::SizeLike) where {F} = f(ctx, asnonstatic(sz))
 @inline function _maybestatic_draw(f::F, ctx::GenContext, sz::StaticSizeLike) where {F}
-    _on_host(ctx) ? f(get_rng(ctx), staticarray_type(get_precision(ctx), canonical_size(sz))) : f(ctx, asnonstatic(sz))
+    _on_host(ctx) || return f(ctx, asnonstatic(sz))
+    _static_draw(f, get_rng(ctx), staticarray_type(get_precision(ctx), canonical_size(sz)))
+end
+
+# StaticArrays unrolls every RNG call. A loop keeps compilation bounded
+# for large, fixed-size batches and preserves the scalar draw sequence.
+@inline function _static_draw(f, rng, ::Type{A}) where {S,T,N,L,A<:SArray{S,T,N,L}}
+    (L <= 16 || !isbitstype(T)) && return f(rng, A)
+    values = StaticArrays.MArray{S,T,N,L}(undef)
+    for i in eachindex(values)
+        values[i] = f(rng, T)
+    end
+    return A(values)
 end
 
 @inline _on_host(ctx::GenContext) = is_host_unit(get_compute_unit(ctx))
