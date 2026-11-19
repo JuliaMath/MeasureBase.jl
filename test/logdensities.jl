@@ -249,6 +249,14 @@ include("testutils.jl")
         @test @inferred(logdensityof(pp, Xp)) ≈ sum(stdnormal_ld, Xp)
         A3 = randn(2, 2, 3)
         @test @inferred(logdensities(pp, A3)) ≈ [sum(stdnormal_ld, A3[:, :, i]) for i in 1:3]
+
+        for d in (4, 32)
+            weighted = MeasureBase.ProductMeasure([weightedmeasure(-i / 100, StdNormal()^static(2)) for i in 1:d])
+            batch = randn(2, d, 256)
+            expected = [logdensityof(weighted, x) for x in eachslice(batch; dims = 3)]
+            @test logdensities(weighted, batch) ≈ expected
+            @test allocations_of(logdensities, weighted, batch) < 2 * sizeof(expected)
+        end
     end
 
     @testset "products with mixed marginal types" begin
@@ -328,6 +336,10 @@ using ArraysOfArrays: flatview
     m = cat([1.0, 1.0], [0.0, 0.0]; dims = 2)
     XP = reshape(collect(range(-1, 2, length = 12)), 2, 2, 3)
     @test only(Zygote.gradient(X -> sum(logdensities(P, X)), XP)) ≈ -(XP .- m)
+    weighted = MeasureBase.ProductMeasure([weightedmeasure(-i / 10, StdNormal()^static(2)) for i in 1:2])
+    weighted_ld(X) = sum(logdensities(weighted, X))
+    @test only(Zygote.gradient(weighted_ld, XP)) ≈ -XP
+    @test ForwardDiff.gradient(weighted_ld, XP) ≈ -XP
     ld_θ(θ) = sum(logdensities(productmeasure([mvn(fill(θ, 2)), mvn(fill(zero(θ), 2))]), XP))
     @test ForwardDiff.derivative(ld_θ, 0.5) ≈ sum(XP[:, 1, :] .- 0.5)
     @test eltype(logdensities(P, Float32.(XP))) == typeof(logdensityof(P, Float32.(XP[:, :, 1])))

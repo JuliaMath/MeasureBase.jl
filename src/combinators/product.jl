@@ -322,8 +322,10 @@ _normalized_sampling_base(μ::ProductMeasure) = ProductMeasure(map(normalize, ma
 @inline mspace_elsize(μ::ProductMeasure{<:AbstractArray}) = maybestatic_size(marginals(μ))
 
 @inline function mspace_flatsize(μ::ProductMeasure{<:AbstractArray{M}}) where {M}
-    _cat_sizes(mspace_flatsize(M), maybestatic_size(marginals(μ)))
+    _cat_sizes(_marginal_flatsize(M), maybestatic_size(marginals(μ)))
 end
+
+@inline _marginal_flatsize(::Type{M}) where {M} = _adignore_call(() -> mspace_flatsize(M))
 
 @inline function mspace_ndims(::Type{<:ProductMeasure{<:AbstractArray{M,N}}}) where {M,N}
     _add_ndims(mspace_ndims(M), N)
@@ -385,8 +387,7 @@ end
 # Batched kernels over flat storage `(marginal variate dims..., product
 # dims..., batch dims...)`. Marginals with scalar variates align with the
 # leading dimensions of the batch, so one broadcast evaluates all marginal
-# densities. Marginals with array variates are evaluated one by one over
-# their slices of the batch.
+# densities. Array variates use slices over the leading marginal dimensions.
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval @inline function $bhead(μ::ProductMeasure{<:AbstractArray{M}}, X::AbstractArray) where {M}
         _array_product_kernel($head, μ, X, _static_ndims_of(stream_ndims(M)))
@@ -416,10 +417,32 @@ function _marginal_slices_ld(f::F, mar::AbstractArray{<:Any,N}, A::AbstractArray
     if ndims(A) != K + N + B || ntuple(i -> size(A, K + i), Val(N)) != size(mar)
         _throw_size_mismatch()
     end
+    sz = _marginal_flatsize(eltype(mar))
+    if B > 0 && sz isa SizeLike && !isempty(A) && _is_host_array(A) && _is_host_array(mar)
+        points = sliced(A, Val(K))
+        _check_flatsize(A, sz)
+        kernel = _marginal_point_kernel(f, eltype(A), sz)
+        # Reduce the lazy pointwise broadcast directly into the output batch.
+        style = Broadcast.DefaultArrayStyle{N + B}()
+        ℓ = Broadcast.instantiate(Broadcast.broadcasted(style, kernel, mar, points))
+        return _sum_leading_logd(ℓ, static(N); init = zero(_logd_numtype(A)))
+    end
     lead = ntuple(_ -> Colon(), Val(K))
     trail = ntuple(_ -> Colon(), Val(B))
     isempty(mar) && return _zero_logd(A, ntuple(i -> size(A, K + N + i), Val(B)))
     mapreduce(i -> _materialize(_checked_batched_kernel(f, mar[i], view(A, lead..., Tuple(i)..., trail...))), Broadcast.BroadcastFunction(_add_logdensities), CartesianIndices(mar))
+end
+
+_marginal_point_kernel(f, T, sz) = _PointLogd(f, nothing)
+function _marginal_point_kernel(f::F, ::Type{T}, sz::StaticSizeLike) where {F,T}
+    n = Int(size2length(sz))
+    0 < n <= 16 || return _PointLogd(f, nothing)
+    S = staticarray_type(T, canonical_size(sz))
+    return _static_marginal_kernel(f, S, Val(n))
+end
+
+@inline function _static_marginal_kernel(f::F, ::Type{S}, ::Val{N}) where {F,S,N}
+    return (m, x) -> _point_ld(f, m, S(ntuple(i -> x[firstindex(x) + i - 1], Val(N))...))
 end
 
 @inline _zero_logd(A::AbstractArray, ::Tuple{}) = zero(_logd_numtype(A))
