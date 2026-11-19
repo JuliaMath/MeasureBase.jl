@@ -230,7 +230,9 @@ end
     (1 <= N <= 3 && K > 1) || return _checked_batched_kernel(f, μ, X)
     _check_flatsize(X, mspace_flatsize(μ))
     rows = ntuple(i -> selectdim(X, 1, i), Val(N))
-    Broadcast.instantiate(Broadcast.broadcasted((xs...) -> f(μ, SVector(xs)), rows...))
+    # Julia 1.10 boxes variadic arguments here without the static arity.
+    point(xs::Vararg{Any,N}) = f(μ, SVector{N}(xs))
+    Broadcast.instantiate(Broadcast.broadcasted(point, rows...))
 end
 
 # Point evaluation: flat variates are batches with zero batch dimensions,
