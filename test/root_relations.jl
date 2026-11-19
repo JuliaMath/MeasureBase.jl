@@ -155,6 +155,14 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
     end
 
     @testset "pushforwards of mixed measures" begin
+        to_uniform = transport_to(StdUniform(), StdNormal())
+        mixed = StdNormal() + 2 * Dirac(0.0)
+        uniform_spike = pushfwd(to_uniform, mixed)
+        @test density_rel(uniform_spike, Dirac(0.5), 0.5) ≈ 2
+        @test densityof(uniform_spike, 0.75) ≈ 1
+        @test density_rel(pushfwd(to_uniform, MeasureBase.normalize(mixed)), Dirac(0.5), 0.5) ≈ 2 / 3
+        @test density_rel(pushfwd(to_uniform, P), Dirac(0.5), 0.5) ≈ pdf(Poisson(2.0), 0)
+
         ps = pushfwd(Mul(2.0), StdNormal() + Dirac(0.5))
         @test rootmeasure(ps) == MeasureBase.MeasureJoin((MeasureBase.LebesgueBase(), Dirac(1.0)))
         @test logdensityof(ps, 1.0) == 0

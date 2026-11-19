@@ -158,13 +158,9 @@ end
 @inline logdensity_rel_def(J::MeasureJoin, s::SuperpositionMeasure, x) = -_superpos_logdensity_rel(s, J, x)
 
 # Pushforward is linear, superpositions push forward component by component,
-# so that each component keeps or adapts its own root measure. Pushforwards
-# by transports need the whole origin (see `basemeasure` of pushforwards):
+# so that each component keeps or adapts its own root measure:
 function _pushfwd_impl(f, μ::SuperpositionMeasure, style::PushFwdStyle, varsize)
     superpose(map(c -> _pushfwd_impl(f, c, style, varsize), μ.components))
-end
-function _pushfwd_impl(f::TransportFunction, μ::SuperpositionMeasure, style::PushFwdStyle, varsize)
-    _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
 end
 
 basemeasure(μ::SuperpositionMeasure) = _measure_join(map(rootmeasure, values(μ.components)))

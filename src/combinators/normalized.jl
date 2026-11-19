@@ -81,13 +81,9 @@ invcsmf(μ::NormalizedMeasure, p) = invcsmf(μ.base, p * _basemass(μ))
 insupportof(μ::NormalizedMeasure, x) = insupportof(μ.base, x)
 localmeasure(μ::NormalizedMeasure, x) = NormalizedMeasure(localmeasure(μ.base, x), μ.logmass)
 
-# Pushforwards preserve masses, normalization and pushforward commute
-# (except for transports, which map the normalized law already):
+# Pushforwards preserve masses, normalization and pushforward commute:
 function _pushfwd_impl(f, μ::NormalizedMeasure, style::PushFwdStyle, varsize)
     NormalizedMeasure(_pushfwd_impl(f, μ.base, style, varsize), μ.logmass)
-end
-function _pushfwd_impl(f::TransportFunction, μ::NormalizedMeasure, style::PushFwdStyle, varsize)
-    _pushfwd_with_style(f, μ, _pushfwd_style(style, f, μ), varsize)
 end
 
 Pretty.tile(μ::NormalizedMeasure) = Pretty.list_layout([Pretty.tile(μ.base)]; prefix = :normalize)

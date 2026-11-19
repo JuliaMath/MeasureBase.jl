@@ -176,8 +176,8 @@ _pushfwd_impl(f, μ::Dirac, ::PushFwdStyle, ::Any) = Dirac(f(μ.x))
 # (see `StdSimplex`) is the image of Lebesgue measure under a chart, maps of
 # the ambient space have no volume element for it. Measures with such root
 # measures push their root measure forward instead of adapting it with a
-# volume element. Transports adapt the root measure to the one of their
-# target, whatever the origin's (see `basemeasure` of pushforwards):
+# volume element. A transport's Jacobian relates its source and target
+# roots, so it applies to measures with the same root as the source.
 # Opaque roots have no volume element for maps of the ambient space, they
 # can only be pushed forward. The marker dominates in the folds over the
 # roots of components:
@@ -189,7 +189,12 @@ Base.:&(::Union{Bool,StaticBool}, b::_NoAmbientVolume) = b
 @inline _pushfwd_root(::M) where {M<:OpaqueRoot} = _NoAmbientVolume{M}()
 
 @inline _pushfwd_style(style::PushFwdStyle, f, μ) = _style_for_root(style, _pushfwd_root(μ))
-@inline _pushfwd_style(style::PushFwdStyle, ::TransportFunction, μ) = style
+@inline _pushfwd_style(style::PushfwdRootMeasure, ::TransportFunction, μ) = style
+@inline function _pushfwd_style(style::AdaptRootMeasure, f::TransportFunction, μ)
+    source = transport_source(f)
+    μ === source && return style
+    _equal_roots(rootmeasure(μ), rootmeasure(source)) ? style : PushfwdRootMeasure()
+end
 @inline _style_for_root(::AdaptRootMeasure, ::True) = PushfwdRootMeasure()
 @inline _style_for_root(::AdaptRootMeasure, ::_NoAmbientVolume{M}) where {M} = _throw_no_ambient_volume(M)
 @inline _style_for_root(style::PushFwdStyle, ::Any) = style
