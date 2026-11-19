@@ -10,6 +10,8 @@ Base.in(::TracedRNumber{<:Real}, ::RealValues) = true
 Base.in(::TracedRNumber{<:Integer}, ::IntegerValues) = true
 MeasureBase.checked_arg(::MeasureBase.StdMeasure, x::Reactant.RNumber{<:Real}) = x
 MeasureBase._draw_numbertype(::Type{TracedRNumber{T}}) where {T} = T
+MeasureBase._convert_draw_array(::Type{TracedRNumber{T}}, X::AbstractArray{<:Any,N}) where {T,N} =
+    Reactant.TracedUtils.promote_to(Reactant.TracedRArray{T,N}, X)
 
 MeasureBase._counting_scalar(samples::Reactant.TracedRArray) = Reactant.@allowscalar only(samples)
 

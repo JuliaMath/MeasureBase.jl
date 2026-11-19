@@ -230,9 +230,13 @@ _plain(x::Number) = Float64(x)
         @test keyed_draw(keyed_ctx(1)) != keyed_draw(keyed_ctx(2))
         # Single variates of scalar and array superpositions, drawn
         # branch-free:
-        for μ in (superpose(StdNormal(), Dirac(0.5f0)), superpose(StdNormal()^3, Dirac(fill(0.5f0, 3))))
+        scalar = superpose(StdNormal(), Dirac(0.5f0))
+        y = @jit (c -> rand(c, scalar))(ctx)
+        @test Reactant.unwrapped_eltype(y) == Float32 && size(y) == () && isfinite(_plain(y))
+        for T in (Float32, Float64)
+            μ = superpose(StdNormal()^3, Dirac(fill(T(0.5), 3)))
             y = @jit (c -> rand(c, μ))(ctx)
-            @test Reactant.unwrapped_eltype(y) == Float32 && size(y) == size(rand(μ)) && all(isfinite, _plain(y))
+            @test y isa Reactant.ConcreteRArray{T,1} && size(y) == (3,) && all(isfinite, Array(y))
         end
     end
 end

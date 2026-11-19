@@ -277,7 +277,8 @@ end
 @inline _convert_draws(::Type{T}, X::T) where {T<:Number} = X
 @inline _convert_draws(::Type{T}, x::Number) where {T} = _convert_draw_element(T, x)
 @inline _convert_draws(::Type{T}, X::AbstractArray{T}) where {T} = X
-@inline _convert_draws(::Type{T}, X) where {T} = broadcast(x -> _convert_draw_element(T, x), X)
+@inline _convert_draws(::Type{T}, X) where {T} = _convert_draw_array(T, X)
+@inline _convert_draw_array(::Type{T}, X) where {T} = broadcast(x -> _convert_draw_element(T, x), X)
 @inline _convert_draw_element(::Type{T}, x) where {T} = convert(T, x)
 @inline _convert_draw_element(::Type{T}, x::Integer) where {T<:Integer} = x % T
 
