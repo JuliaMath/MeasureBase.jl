@@ -73,8 +73,11 @@ end
         simplex = Lebesgue(StdSimplex(n))
         volume = Float64(1 // factorial(big(n - 1)))
         @test massof(simplex) ≈ volume rtol = 4eps()
-        volume > 0 && @test massof(MeasureBase.normalize(simplex)) == 1
+        @test massof(MeasureBase.normalize(simplex)) == 1
     end
+    simplex = Lebesgue(StdSimplex(200))
+    @test iszero(massof(simplex))
+    @test logdensityof(MeasureBase.normalize(simplex), fill(1 / 200, 200)) ≈ Float64(log(factorial(big(199))))
     @test logdensityof(L, [0.2, 0.3, 0.5]) == 0 && logdensityof(L, [0.2, 0.3, 0.6]) == -Inf
     @test logdensities(L, [0.2 0.5 -0.1; 0.3 0.6 0.6; 0.5 0.1 0.5]) == [0, -Inf, -Inf]
     @test_throws ArgumentError logdensityof(L, [0.5, 0.5])

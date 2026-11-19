@@ -167,6 +167,8 @@ rootmeasure(μ::_SimplexLebesgue) = μ
 @inline fast_dof(μ::_SimplexLebesgue) = getdof(μ)
 
 massof(μ::_SimplexLebesgue) = foldl(/, 1:(dynamic(μ.support.n) - 1); init = 1.0)
+_sampling_logmass(μ::_SimplexLebesgue) = -loggamma(float(dynamic(μ.support.n)))
+_normalizing_logmass(μ::_SimplexLebesgue, mass) = _sampling_logmass(μ)
 
 testvalue(::Type{T}, μ::_SimplexLebesgue) where {T} = testvalue(T, μ.support)
 
