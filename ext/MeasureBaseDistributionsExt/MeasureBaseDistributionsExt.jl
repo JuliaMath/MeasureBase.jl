@@ -59,6 +59,8 @@ using FillArrays: Fill
 using ArgCheck: @argcheck
 
 using ArraysOfArrays: ArrayOfSimilarArrays, flatview
+using StructArrays: StructArray
+using MappedArrays: mappedarray, ReadonlyMultiMappedArray
 
 include("measure_interface.jl")
 include("distribution_measure.jl")

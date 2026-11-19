@@ -19,7 +19,7 @@ using StructArrays: StructArray
 using Statistics: mean
 using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
 using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
-using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet
+using Distributions: Poisson, Bernoulli, MvNormal, Dirichlet, logpdf
 using MeasureBase.InverseFunctions: inverse
 using MeasureBase.HeterogeneousComputing: get_compute_unit, rootrng
 
@@ -108,8 +108,28 @@ _plain(x::Number) = Float64(x)
         test_traced((w, s) -> logdensityof.(Ref(ℒ), StructArray((w = w, s = s))), randn(5), rand(5))
     end
 
-    # Products over arrays of marginals are not covered: Reactant can't
-    # broadcast over arrays of measures together with traced arrays.
+    @testset "captured Normal marginal arrays" begin
+        for T in (Float32, Float64)
+            ds = [Normal(T(0), T(1)), Normal(T(1), T(2))]
+            ms = asmeasure.(ds)
+            batch = T[0.2 -0.2 0.3; 0.4 -0.4 0.1]
+            input = Reactant.to_rarray(batch)
+            expected = [sum(logpdf.(ds, col)) for col in eachcol(batch)]
+            for p in (productmeasure(ms), productmeasure(Tuple(ms)))
+                f = x -> copy(logdensities(p, x))
+                result = @jit f(input)
+                @test result isa Reactant.ConcreteRArray{T,1}
+                @test get_compute_unit(result) == get_compute_unit(input)
+                @test Array(result) ≈ expected
+            end
+            on_device = Reactant.to_rarray(productmeasure(ms))
+            @test get_compute_unit(marginals(on_device).obj.μ) == get_compute_unit(input)
+            @test get_compute_unit(marginals(on_device).obj.σ) == get_compute_unit(input)
+            evaluate = (p, x) -> copy(logdensities(p, x))
+            @test Array(@jit evaluate(on_device, input)) ≈ expected
+        end
+    end
+
     @testset "structural batched kernels" begin
         w = weightedmeasure(log(0.3), StdNormal()^3)
         test_traced(X -> logdensities(w, X), X)

@@ -1,5 +1,21 @@
 # This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
 
+# Keep the numeric buffers as the captured state. Reactant can trace them
+# independently even though Normal requires its scalar parameters to be Real.
+struct _WrapNormal{D} end
+(::_WrapNormal{D})(μ, σ) where {D} = asmeasure(D(μ, σ))
+const _NormalMarginals{D} = ReadonlyMultiMappedArray{AsMeasure{D},N,A,_WrapNormal{D}} where {N,A}
+const _NormalFields{D} = NamedTuple{(:obj,),<:Tuple{StructArray{D}}}
+function MeasureBase.ProductMeasure(mar::StructArray{AsMeasure{D},N,<:_NormalFields{D}}) where {D<:Normal,N}
+    MeasureBase.ProductMeasure(mappedarray(_WrapNormal{D}(), mar.obj.μ, mar.obj.σ))
+end
+
+# Expose the same writable marginal view over the original buffers.
+function MeasureBase.marginals(p::MeasureBase.ProductMeasure{<:_NormalMarginals{D}}) where {D}
+    μ, σ = parent(p.marginals)
+    StructArray{AsMeasure{D}}((obj = StructArray{D}((μ = μ, σ = σ)),))
+end
+
 @static if isdefined(Distributions, :Product)
     MeasureBase.AbstractMeasure(obj::Distributions.Product) = productmeasure(map(asmeasure, obj.v))
 

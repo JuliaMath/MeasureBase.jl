@@ -87,11 +87,21 @@ end
 
 # Constants stay irrational, so that they take the precision of the variates
 # and parameters:
-@inline function _family_logd(d::Normal, x)
-    z = (x - d.μ) / d.σ
-    -(z * z + log2π) / 2 - log(d.σ)
+@inline function _normal_logd(μ, σ, x)
+    z = (x - μ) / σ
+    -(z * z + log2π) / 2 - log(σ)
 end
+@inline _family_logd(d::Normal, x) = _normal_logd(d.μ, d.σ, x)
 @inline _family_insupport(::Normal, x) = true
+
+# A fused broadcast receives the parameter columns of the wrapped Normals.
+# Evaluate them directly: traced parameters cannot be stored in a Normal.
+const _NormalColumnLogd{F} = MeasureBase._WithElement{
+    <:StructArray{<:AsMeasure{<:Normal}},<:MeasureBase._DynamicPointLogd{F}}
+@inline (::_NormalColumnLogd{typeof(MeasureBase.logdensity_def)})(μ, σ, x) = _normal_logd(μ, σ, x)
+@inline function (::_NormalColumnLogd{<:Union{typeof(MeasureBase.logdensityof_impl),typeof(logdensityof)}})(μ, σ, x)
+    MeasureBase._checksupport(isfinite(x), _normal_logd(μ, σ, x))
+end
 
 @inline _family_logd(d::Uniform, x) = -log(d.b - d.a) + zero(x)
 @inline _family_insupport(d::Uniform, x) = (d.a <= x) & (x <= d.b)
