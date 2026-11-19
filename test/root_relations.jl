@@ -181,5 +181,13 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
         f = setinverse(x -> (2 * x[1], x[2] + 1), y -> (y[1] / 2, y[2] - 1))
         mp = pushfwd(f, productmeasure((StdNormal(), P)))
         @test logdensityof(mp, (1.0, 3.0)) ≈ logpdf(Normal(), 0.5) + logpdf(Poisson(2.0), 2)
+
+        line = mcombine(vcat, Dirac(1.0), StdNormal())
+        for scale in ([2.0 0.0; 0.0 1.0], [1.0 0.0; 0.0 2.0])
+            image = pushfwd(Mul(scale), line)
+            y = scale * [1.0, 0.5]
+            @test logdensityof(rootmeasure(image), y) == 0
+            @test logdensityof(image, y) ≈ logpdf(Normal(), 0.5)
+        end
     end
 end
