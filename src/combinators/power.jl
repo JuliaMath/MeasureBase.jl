@@ -561,6 +561,7 @@ end
     StructArray(NamedTuple{names}(map(_pwr_marginal_variate, values(marginals(ν)), values(X))))
 end
 @inline _pwr_marginal_variate(m, X::AbstractArray) = _nest_leaf(X, _static_ndims(m))
+@inline _pwr_marginal_variate(m::PowerMeasure, X::AbstractArray) = _batch_variates(X, m)
 @inline _pwr_marginal_variate(m, X::Union{Tuple,NamedTuple}) = _pwr_variate(m, X)
 @inline _nest_leaf(A::AbstractArray, ::StaticInteger{0}) = A
 @inline _nest_leaf(A::AbstractArray, ::NoMSpaceElementSize) = A

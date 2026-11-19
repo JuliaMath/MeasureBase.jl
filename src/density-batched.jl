@@ -256,7 +256,12 @@ end
 @inline _component_storage(c::AbstractArray{<:AbstractArray}) = _component_flat(c, _flat_storage(c))
 @inline _component_storage(c::AbstractArray{<:Union{Tuple,NamedTuple}}) = _flat_storage(c)
 @inline _component_flat(c, c_flat::AbstractArray) = c_flat
-@inline _component_flat(c, ::NoFlatStorage) = _uniform_size(c) ? stacked(c) : NoFlatStorage()
+@inline function _component_flat(c, ::NoFlatStorage)
+    _uniform_size(c) ? _flatten_stacked_component(stacked(c)) : NoFlatStorage()
+end
+# A stacked field can still have array-valued elements when its variates are nested.
+@inline _flatten_stacked_component(c::AbstractArray) = c
+@inline _flatten_stacked_component(c::AbstractArray{<:AbstractArray}) = _component_storage(c)
 @inline _uniform_size(c::AbstractArray) = isempty(c) || all(x -> size(x) == size(first(c)), c)
 
 # Entry: arrays of numbers are flat storage, arrays of variates are fused

@@ -11,6 +11,7 @@ import StructArrays
 using ArraysOfArrays: flatview
 using FillArrays: Fill
 using Distributions: Normal, cdf
+using Random: Xoshiro
 using MeasureBase: Dirac
 
 @testset "structured batches" begin
@@ -119,6 +120,24 @@ using MeasureBase: Dirac
             end
             @test_throws ArgumentError logdensities(P, S[1:2, :])
         end
+    end
+
+    @testset "named product with a nested power field" begin
+        p = productmeasure((inner = (StdNormal()^2)^3, positive = StdExponential()))
+        f = transport_to(p, StdNormal()^7)
+        Z = reshape(collect(range(-2, 2, length = 21)), 7, 3)
+        X = map(f, eachcol(Z))
+        Y = transports(f, Z)
+        @test Y == X
+        @test inverse(f).(Y) ≈ collect(eachcol(Z))
+
+        ℓ = map(x -> logdensityof(p, x), X)
+        @test logdensities(p, X) ≈ ℓ
+        @test logdensityof(p^3, Y) ≈ sum(ℓ)
+
+        rng = Xoshiro(203846)
+        draw, draws = rand(rng, p), rand(rng, p^3)
+        @test all(x -> map(size, x.inner) == map(size, draw.inner), draws)
     end
 
     @testset "nested powers of tuple products with array-valued fields" begin
