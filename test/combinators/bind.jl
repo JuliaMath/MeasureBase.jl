@@ -345,6 +345,22 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         varying = normalize(mbind(x -> (1 + x) * D(x), StdUniform(), tuple))
         @test_throws ArgumentError rand(varying)
         @test_throws ArgumentError rand(varying^2)
+        varying_joint = normalize(mbind(x -> (1 + x) * StdUniform(), StdUniform(), vcat))
+        f = transport_to(StdUniform()^2, varying_joint)
+        @test_throws ArgumentError f([0.5, 0.5])
+        @test_throws ArgumentError inverse(f)([5/12, 0.5])
+        @test_throws ArgumentError transport_to((StdUniform()^2)^1, varying_joint^1)([[0.5, 0.5]])
+        atomic = normalize(mbind(x -> (1 + x) * StdUniform(), 2D(0.5), vcat))
+        h = transport_to(StdUniform()^1, atomic)
+        @test h([0.5, 0.3]) == [0.3]
+        @test inverse(h)([0.3]) == [0.5, 0.3]
+        for kernel in (x -> 2 * StdUniform(), Returns(3 * StdUniform()), x -> 2 * pushfwd(Add(x), StdUniform()))
+            raw = mbind(kernel, StdUniform(), vcat)
+            g = transport_to(StdUniform()^2, normalize(raw))
+            x = [0.25, 0.5]
+            @test g(x) ≈ transport_to(StdUniform()^2, raw)(x)
+            @test inverse(g)(g(x)) ≈ x
+        end
         rng = stblrng()
         @test count(_ -> rand(rng, μ)[1] == 1, 1:2000) / 2000 ≈ 3 / 5 atol = 0.05
     end

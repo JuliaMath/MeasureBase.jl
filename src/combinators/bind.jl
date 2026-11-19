@@ -102,7 +102,7 @@ This is the normalized law of `μ` if the mass of `β_a` doesn't depend on
 normalized law of `μ` reweights `α` by the mass of `β_a`, which `rand`
 does not do. A draw from `normalize(μ)` applies this reweighting for
 weighted or superposed point masses. Other primary measures require a
-kernel whose mass is statically known to be one.
+kernel whose mass is known to be constant, for both draws and transports.
 
 The mass of `μ` integrates the masses of the `β_a` over `α`. It is known
 where `α` is a weighted or superposed combination of point masses, and
@@ -469,21 +469,35 @@ batched_rand_impl(ctx::GenContext, μ::Bind, sz::SizeLike) = _batched_rand_point
 # The normalized joint law weights each primary atom by its secondary mass.
 function rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind})
     μ = ν.base
-    a = rand_impl(ctx, _normalized_bind_primary(ctx, μ, μ.α))
+    A = Core.Compiler.return_type(rand_impl, Tuple{typeof(ctx),typeof(μ.α)})
+    a = rand_impl(ctx, _normalized_bind_primary(A, μ, μ.α))
     b = rand_impl(ctx, normalize(_get_β_a(μ, a)))
     return _combine_variates(μ.f_c, a, b)
 end
 batched_rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind}, sz::SizeLike) = _batched_rand_pointwise(ctx, ν, sz)
 
-_normalized_bind_primary(ctx, μ, α::Dirac) = weightedmeasure(_sampling_logmass(_get_β_a(μ, α.x)), α)
-_normalized_bind_primary(ctx, μ, α::WeightedMeasure) = weightedmeasure(α.logweight, _normalized_bind_primary(ctx, μ, α.base))
-_normalized_bind_primary(ctx, μ, α::NormalizedMeasure) = _normalized_bind_primary(ctx, μ, α.base)
-_normalized_bind_primary(ctx, μ, α::SuperpositionMeasure) = superpose(map(c -> _normalized_bind_primary(ctx, μ, c), α.components))
-function _normalized_bind_primary(ctx, μ, α)
-    A = Core.Compiler.return_type(rand_impl, Tuple{typeof(ctx),typeof(α)})
-    M = Core.Compiler.return_type(massof ∘ asmeasure ∘ μ.f_β, Tuple{A})
-    M <: Union{StaticFloat64{1.0},StaticInt{1}} && return normalize(α)
-    throw(ArgumentError("Sampling a normalized bind with this primary measure requires a kernel of statically known unit mass"))
+_normalized_bind_primary(A, μ, α::Dirac) = weightedmeasure(_sampling_logmass(_get_β_a(μ, α.x)), α)
+_normalized_bind_primary(A, μ, α::WeightedMeasure) = weightedmeasure(α.logweight, _normalized_bind_primary(A, μ, α.base))
+_normalized_bind_primary(A, μ, α::NormalizedMeasure) = _normalized_bind_primary(A, μ, α.base)
+_normalized_bind_primary(A, μ, α::SuperpositionMeasure) = superpose(map(c -> _normalized_bind_primary(A, μ, c), α.components))
+function _normalized_bind_primary(A, μ, α)
+    _constant_kernel_mass(μ.f_β, A) && return normalize(α)
+    throw(ArgumentError("The normalized bind requires a primary law weighted by the conditional mass; this primary cannot be reweighted automatically"))
+end
+
+# The kernel can vary while its mass is constant. A concrete Val proves
+# constancy for all primary values of type A without probing individual points.
+_kernel_mass_val(f, a) = Val(massof(asmeasure(f(a))))
+_constant_kernel_mass(f, ::Type{A}) where {A} = _positive_constant_mass(Core.Compiler.return_type(_kernel_mass_val, Tuple{typeof(f),A}))
+_constant_kernel_mass(::Returns, ::Type) = true
+_positive_constant_mass(::Type{Val{m}}) where {m} = m isa Real && 0 < dynamic(m) < Inf
+_positive_constant_mass(::Any) = false
+
+function _transport_base(ν::NormalizedMeasure{<:Bind}, x)
+    μ = ν.base
+    T = float(real_numtype(typeof(x)))
+    A = Core.Compiler.return_type(testvalue, Tuple{Type{T},typeof(μ.α)})
+    return mbind(normalize ∘ asmeasure ∘ μ.f_β, _normalized_bind_primary(A, μ, μ.α), μ.f_c)
 end
 
 

@@ -105,25 +105,26 @@ invlogcsmf(μ::AbstractWeightedMeasure, logp) = invlogcsmf(basemeasure(μ), logp
 
 # Weighted measures transport like their base:
 @inline _unweighted(μ::AbstractWeightedMeasure) = _unweighted(basemeasure(μ))
+@inline _transport_base(μ::AbstractWeightedMeasure, x) = basemeasure(μ)
 @inline transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, x) where {S<:StdMeasure} =
-    transport_to_std(S, basemeasure(μ), x)
+    transport_to_std(S, _transport_base(μ, x), x)
 @inline transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, z) where {S<:StdMeasure} =
-    transport_from_std(S, basemeasure(μ), z)
+    transport_from_std(S, _transport_base(μ, z), z)
 @inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::AbstractVector) where {S<:StdMeasure} =
-    transport_to_std_with_rest(S, basemeasure(μ), x)
+    transport_to_std_with_rest(S, _transport_base(μ, x), x)
 @inline transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, x::NamedTuple) where {S<:StdMeasure} =
-    transport_to_std_with_rest(S, basemeasure(μ), x)
+    transport_to_std_with_rest(S, _transport_base(μ, x), x)
 @inline transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, z::AbstractVector) where {S<:StdMeasure} =
-    transport_from_std_with_rest(S, basemeasure(μ), z)
+    transport_from_std_with_rest(S, _transport_base(μ, z), z)
 
 @inline batched_transport_to_std(::Type{S}, μ::AbstractWeightedMeasure, X) where {S<:StdMeasure} =
-    batched_transport_to_std(S, basemeasure(μ), X)
+    batched_transport_to_std(S, _transport_base(μ, X), X)
 @inline batched_transport_from_std(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray) where {S<:StdMeasure} =
-    batched_transport_from_std(S, basemeasure(μ), Z)
+    batched_transport_from_std(S, _transport_base(μ, Z), Z)
 @inline batched_transport_to_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, X::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
-    batched_transport_to_std_with_rest(S, basemeasure(μ), X, sz)
+    batched_transport_to_std_with_rest(S, _transport_base(μ, X), X, sz)
 @inline batched_transport_from_std_with_rest(::Type{S}, μ::AbstractWeightedMeasure, Z::AbstractArray, sz::SizeLike) where {S<:StdMeasure} =
-    batched_transport_from_std_with_rest(S, basemeasure(μ), Z, sz)
+    batched_transport_from_std_with_rest(S, _transport_base(μ, Z), Z, sz)
 
 # Weighted measures have the variate layout of their base, also as bases of
 # (nested) powers and as marginals of products:

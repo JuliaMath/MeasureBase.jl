@@ -50,6 +50,7 @@ normalize(μ::NormalizedMeasure) = μ
 
 # Products and pushforwards draw from the normalized laws of their parts.
 # For a bind this can differ from its ancestral sampler.
+_transport_base(ν::NormalizedMeasure, x) = _normalized_sampling_base(ν.base)
 _normalized_sampling_base(μ) = μ
 _normalized_sampling_base(μ::WeightedMeasure) = normalize(μ.base)
 rand_impl(ctx::GenContext, ν::NormalizedMeasure) = rand_impl(ctx, _normalized_sampling_base(ν.base))
