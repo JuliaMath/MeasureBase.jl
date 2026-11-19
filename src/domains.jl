@@ -228,17 +228,24 @@ end
 
 @inline Base.in(x, b::BoundedInts) = x ∈ ℤ && b.lower <= x <= b.upper
 
-Base.isempty(b::BoundedInts) = b.lower > b.upper
+Base.isempty(b::BoundedInts) = _empty_integer_bounds(minimum(b), maximum(b))
+_empty_integer_bounds(lo, hi) = !(lo <= hi && lo < Inf && hi > -Inf)
 
-Base.minimum(b::BoundedInts) = b.lower
-Base.maximum(b::BoundedInts) = b.upper
+Base.minimum(b::BoundedInts) = _integer_bound(ceil, b.lower)
+Base.maximum(b::BoundedInts) = _integer_bound(floor, b.upper)
+_integer_bound(f, x) = f(x)
+_integer_bound(f, x::StaticInteger) = x
+_integer_bound(f, x::StaticFloat64) = static(f(dynamic(x)))
 
 function Base.show(io::IO, b::BoundedInts)
     io = IOContext(io, :compact => true)
     print(io, "ℤ[", b.lower, ":", b.upper, "]")
 end
 
-testvalue(b::BoundedInts) = convert(Int, clamp(0, dynamic(b.lower), dynamic(b.upper)))
+function testvalue(b::BoundedInts)
+    isempty(b) && throw(ArgumentError("No test value exists for an empty integer support"))
+    convert(Int, clamp(0, dynamic(minimum(b)), dynamic(maximum(b))))
+end
 testvalue(::Type{T}, b::BoundedInts) where {T} = convert(T, testvalue(b))
 
 Base.getindex(::typeof(ℤ), r::AbstractUnitRange) = BoundedInts(extrema(r)...)

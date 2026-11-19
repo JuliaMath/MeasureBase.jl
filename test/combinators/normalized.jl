@@ -36,6 +36,15 @@ MeasureBase.massof(::_TwiceStdExp{true}) = 2.0
         @test massof(Counting(BoundedInts(3, 2))) == 0
         @test @inferred(massof(Counting(BoundedInts(static(1), static(4))))) === static(4)
         @test massof(Counting(BoundedInts(static(0), static(Inf)))) == Inf
+        fractional = BoundedInts(0.5, 2.5)
+        @test (minimum(fractional), maximum(fractional)) == (1, 2)
+        @test massof(Counting(fractional)) == 2
+        @test Set(rand(MersenneTwister(981), Counting(fractional)^32)) == Set((1, 2))
+        empty_integers = BoundedInts(0.2, 0.7)
+        @test isempty(empty_integers) && iszero(massof(Counting(empty_integers)))
+        @test_throws ArgumentError rand(Counting(empty_integers))
+        halfline = BoundedInts(0.2, Inf)
+        @test MeasureBase.testvalue(halfline) == 1 && massof(Counting(halfline)) == Inf
         @test massof(Counting(1:4)) == 4 && massof(Counting(Set([1, 3]))) == 2
         @test massof(Counting()) == Inf
         @test @inferred(massof(3 * StdNormal())) ≈ 3

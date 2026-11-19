@@ -70,7 +70,13 @@ insupportof(μ::Counting, x) = x ∈ μ.support
 insupportof(μ::Counting{T}, x) where {T<:Type} = x isa μ.support
 
 massof(::Counting{IntegerValues}) = static(Inf)
-massof(μ::Counting{<:BoundedInts}) = max(μ.support.upper - μ.support.lower + static(1), static(0))
+function massof(μ::Counting{<:BoundedInts})
+    lo, hi = minimum(μ.support), maximum(μ.support)
+    count = _integer_count(lo, hi)
+    ifelse(_empty_integer_bounds(lo, hi), zero(count), count)
+end
+_integer_count(lo, hi) = hi - lo + static(1)
+_integer_count(lo::Integer, hi::Integer) = widen(hi) - widen(lo) + 1
 massof(μ::Counting{<:Union{AbstractSet,AbstractRange}}) = length(μ.support)
 
 massof(c::Counting, s::Set) = massof(CountingBase(), filter(insupportof(c), s))
@@ -98,9 +104,10 @@ end
 _counting_values(r::AbstractRange) = r
 _counting_values(s::AbstractSet) = collect(s)
 function _counting_values(b::BoundedInts)
-    isfinite(b.lower) && isfinite(b.upper) ||
+    lo, hi = minimum(b), maximum(b)
+    isfinite(lo) && isfinite(hi) ||
         throw(ArgumentError("Random variates of counting measure require a finite support, got $b"))
-    Int(dynamic(b.lower)):Int(dynamic(b.upper))
+    Int(dynamic(lo)):Int(dynamic(hi))
 end
 _host_counting_draw(rng, vals, ::Tuple{}) = rand(rng, vals)
 _host_counting_draw(rng, vals, sz::SizeLike) = rand(rng, vals, asnonstatic(sz))
