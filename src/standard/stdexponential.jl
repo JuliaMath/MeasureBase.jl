@@ -17,15 +17,15 @@ end
 @inline logdensity_def(::StdExponential, x) = -float(x)
 @inline basemeasure(::StdExponential) = LebesgueBase()
 
-@inline transport_def(::StdUniform, μ::StdExponential, x) = _nan_outside(μ, x, -expm1(-x))
+@inline transport_def(::StdUniform, μ::StdExponential, x) = _nan_outside(μ, x, -expm1(-float(x)))
 @inline transport_def(::StdExponential, μ::StdUniform, x) = _nan_outside(μ, x, -log1p(-_unit_interior(x)))
 
 @inline rand_impl(ctx::GenContext, ::StdExponential) = randexp(ctx)
 @inline batched_rand_impl(ctx::GenContext, ::StdExponential, sz::SizeLike) = _randexp_bulk(ctx, sz)
 
-smf(::StdExponential, x) = -expm1(-max(x, zero(x)))
+smf(μ::StdExponential, x) = -expm1(logcsmf(μ, x))
 invsmf(μ::StdExponential, p) = transport_def(μ, StdUniform(), p)
-csmf(::StdExponential, x) = exp(-max(x, zero(x)))
+csmf(μ::StdExponential, x) = exp(logcsmf(μ, x))
 invcsmf(::StdExponential, p) = _nan_outside(StdUniform(), p, -log(_unit_interior(p)))
 logsmf(::StdExponential, x) = log1mexp(-max(float(x), zero(float(x))))
 logcsmf(::StdExponential, x) = -max(float(x), zero(float(x)))
@@ -36,14 +36,14 @@ invlogcsmf(::StdExponential, logp) = _nan_above_zero(logp, -float(logp))
 # cancellation, the inverses floored at the quantile of the smallest
 # positive float:
 function smf(::StdExponential, a, x)
-    a⁺, x⁺ = max(a, zero(a)), max(x, zero(x))
+    a⁺, x⁺ = float(max(a, zero(a))), float(max(x, zero(x)))
     lo, hi = min(a⁺, x⁺), max(a⁺, x⁺)
     m = exp(-lo) * -expm1(ifelse(lo == hi, zero(lo - hi), lo - hi))
     ifelse(x⁺ < a⁺, -m, m)
 end
 
 function invsmf(::StdExponential, a, p)
-    a⁺ = max(a, zero(a))
+    a⁺, p = float(max(a, zero(a))), float(p)
     valid = (expm1(-a⁺) <= p) & (p <= exp(-a⁺))
     # Arguments sanitized for invalid `p` and infinite `a`:
     finite = isfinite(a⁺)

@@ -156,6 +156,18 @@ end
         @test smf(μ, 0, 1) ≈ smf(μ, 0.0, 1.0)
     end
     @test -40 < invsmf(StdNormal(), 0.5, -smf(StdNormal(), 0.5)) < -37
+    e = StdExponential()
+    @test smf(e, UInt(2)) ≈ -expm1(-2.0)
+    @test csmf(e, UInt(2)) ≈ exp(-2.0)
+    for (a, x) in [(UInt(2), UInt(3)), (UInt(3), UInt(2))]
+        p = exp(-float(a)) - exp(-float(x))
+        @test smf(e, a, x) ≈ p
+        @test invsmf(e, a, p) ≈ x
+    end
+    for target in (StdNormal(), StdUniform(), StdLogistic())
+        f = transport_to(target, e)
+        @test f(UInt(2)) ≈ f(2.0)
+    end
     for (lo, hi, p) in [(-Inf, 0.0, 0.5), (0.0, Inf, 0.5), (-Inf, Inf, 1.0), (-800.0, 800.0, 1.0)]
         @test smf(StdLogistic(), lo, hi) == p
         @test smf(StdLogistic(), hi, lo) == -p

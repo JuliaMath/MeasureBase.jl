@@ -17,6 +17,7 @@
 end
 
 @inline function transport_def(::StdNormal, μ::StdExponential, x)
+    x = float(x)
     l2 = oftype(float(x), logtwo)
     lower = x < l2
     _nan_outside(μ, x, ifelse(lower, Φinv(_unit_interior(-expm1(-x))), -_norminvlogcdf(-ifelse(lower, l2, float(x)))))
@@ -28,7 +29,7 @@ end
     ifelse(l < zero(l), Φinv(_unit_interior(logistic(l))), -Φinv(_unit_interior(logistic(-l))))
 end
 
-@inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(_positive_prob(abs(expm1(-x)))) + x)
+@inline transport_def(::StdLogistic, μ::StdExponential, x) = _nan_outside(μ, x, log(_positive_prob(abs(expm1(-float(x))))) + x)
 
 @inline transport_def(::StdExponential, ::StdLogistic, l) = log1pexp(l)
 
