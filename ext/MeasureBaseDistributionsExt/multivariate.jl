@@ -83,8 +83,8 @@ MeasureBase.transport_from_std(::Type{StdNormal}, d::MvNormal, z) = MeasureBase.
 
 # Finite Gaussian transports are affine. Read the current factors once per
 # call, in the sample/parameter precision, rather than whitening every sample
-# again in two reference densities. Other storage and AD types keep the generic
-# path, including its nonfinite conventions.
+# again in two reference densities. Other storage and nonfinite variates
+# keep the density-ratio convention.
 const GaussianTransportMeasure = Union{MvNormalMeasure,MeasureBase.StdPowerMeasure{StdNormal}}
 const GaussianTransport = MeasureBase.TransportFunction{<:GaussianTransportMeasure,<:GaussianTransportMeasure}
 
@@ -126,11 +126,9 @@ function _gaussian_ladj(f::GaussianTransport, X, Y)
     Yf isa StridedArray || return nothing
     get_compute_unit(Xf) isa CPUnit || return nothing
     get_compute_unit(Yf) isa CPUnit || return nothing
-    isconcretetype(eltype(Xf)) && eltype(Xf) <: AbstractFloat || return nothing
-    T = promote_type(eltype(Xf), _gaussian_partype(f.μ, eltype(Xf)), _gaussian_partype(f.ν, eltype(Xf)))
-    T <: AbstractFloat || return nothing
+    isconcretetype(eltype(Xf)) && eltype(Xf) <: Real || return nothing
+    T = float(promote_type(eltype(Xf), _gaussian_partype(f.μ, eltype(Xf)), _gaussian_partype(f.ν, eltype(Xf))))
     _gaussian_finite(f.μ) && _gaussian_finite(f.ν) || return nothing
-    all(isfinite, Xf) && all(isfinite, Yf) || return nothing
     ladj = (_gaussian_logdet(f.ν, T) - _gaussian_logdet(f.μ, T)) / 2
     return isfinite(ladj) ? ladj : nothing
 end
@@ -138,7 +136,7 @@ end
 function ChangesOfVariables.with_logabsdet_jacobian(f::GaussianTransport, x)
     y = f(x)
     ladj = _gaussian_ladj(f, x, y)
-    if isnothing(ladj)
+    if isnothing(ladj) || !all(isfinite, MeasureBase._flat_storage(x)) || !all(isfinite, MeasureBase._flat_storage(y))
         ladj = MeasureBase._transport_ladj(logdensityof(f.μ, x), logdensityof(f.ν, y))
     end
     return y, ladj
@@ -150,8 +148,15 @@ function MeasureBase.transports_with_ladj(f::GaussianTransport, X)
     if isnothing(ladj)
         return Y, broadcast(MeasureBase._transport_ladj, MeasureBase.logdensities(f.μ, X), MeasureBase.logdensities(f.ν, Y))
     end
-    dims = Base.tail(size(MeasureBase._as_stream_batch(MeasureBase._flat_batch(X), f.μ)))
-    return Y, isempty(dims) ? ladj : fill(ladj, dims)
+    A = MeasureBase._as_stream_batch(MeasureBase._flat_batch(X), f.μ)
+    B = MeasureBase._as_stream_batch(MeasureBase._flat_batch(Y), f.ν)
+    dims = Base.tail(size(A))
+    if all(isfinite, A) && all(isfinite, B)
+        return Y, isempty(dims) ? ladj : fill(ladj, dims)
+    end
+    finite(A) = _batch_results(_column_all(isfinite.(_as_columns(A))), A)
+    fallback = MeasureBase._transport_ladj.(MeasureBase.logdensities(f.μ, X), MeasureBase.logdensities(f.ν, Y))
+    return Y, ifelse.(finite(A) .& finite(B), ladj, fallback)
 end
 
 # Parameters follow the batches to the device:

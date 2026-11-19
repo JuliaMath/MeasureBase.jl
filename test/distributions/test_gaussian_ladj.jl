@@ -18,6 +18,10 @@ using JLArrays: JLArray
         @test last(with_logabsdet_jacobian(inverse(f), first(Y))) ≈ -T(log(6)) rtol=8eps(T)
         _, huge_ladj = with_logabsdet_jacobian(f, fill(sqrt(floatmax(T)), 2))
         @test huge_ladj ≈ T(log(6)) rtol=8eps(T)
+        mixed = T[10000.25 Inf; 10000.25 0]
+        @test last(transports_with_ladj(f, mixed)) ≈ T[log(6), 0] rtol=8eps(T)
+        weighted_ladj(t) = t * last(with_logabsdet_jacobian(f, [t, t]))
+        @test ForwardDiff.derivative(weighted_ladj, T(10000)) ≈ T(log(6)) rtol=8eps(T)
     end
 
     source = asmeasure(MvNormal([0.2, -0.3], [4.0 2; 2 2]))
