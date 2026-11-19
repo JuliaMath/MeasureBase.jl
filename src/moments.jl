@@ -89,6 +89,17 @@ function _normal_truncated_moments_impl(a, b)
     short = @_adignore (b - a) * max(abs((a + b) / 2), one(a)) <= one(a)
     if short
         return _normal_short_moments((a + b) / 2, (b - a) / 2)
+    elseif a >= 8
+        excess, v = _normal_tail_moments(a)
+        isinf(b) && return a + excess, v
+        upper_excess, upper_v = _normal_tail_moments(b)
+        width = b - a
+        # Relative mass above b, using the ratio of the two Mills ratios.
+        r = exp(-width * (a / 2 + b / 2)) * ((a + excess) / (b + upper_excess))
+        iszero(r) && return a + excess, v
+        upper = width + upper_excess
+        m = (excess - r * upper) / (1 - r)
+        return a + m, (v + (excess - m)^2 - r * (upper_v + (upper - m)^2)) / (1 - r)
     end
     mass = _std_normal_smf(a, b)
     p = exp(-a^2 / 2) * invsqrt2π / mass
@@ -96,6 +107,18 @@ function _normal_truncated_moments_impl(a, b)
     m = p - q
     v = one(m) + (a - m) * p - (isinf(b) ? zero(q) : (b - m) * q)
     return m, v
+end
+
+# Laplace's continued fraction for E[Z - a | Z > a]. Its negative
+# derivative is Var[Z | Z > a]. Evaluate both without subtracting raw moments.
+function _normal_tail_moments(a)
+    excess, v = zero(a), zero(a)
+    for k in 32:-1:1
+        d = a + excess
+        excess = k / d
+        v = (excess / d) * (1 - v)
+    end
+    return excess, v
 end
 
 # Integrate the density about the midpoint, on [-1, 1], without subtracting

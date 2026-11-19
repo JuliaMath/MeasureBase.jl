@@ -46,6 +46,14 @@ using Static: static
             width = narrow.hi - narrow.lo
             @test mean(narrow) ≈ narrow.lo + width / 2
             @test var(narrow) ≈ width^2 / 12 rtol = sqrt(eps(T))
+            for (lo, hi, sign) in [(T(38.5), T(Inf), 1), (T(-Inf), T(-38.5), -1)]
+                tail = truncate(StdNormal(), lo .. hi)
+                @test mean(tail) ≈ T(sign * 38.52593909685449)
+                @test var(tail) ≈ T(0.0006719343563658814)
+            end
+            finite_tail = truncate(StdNormal(), T(100) .. T(101))
+            @test mean(finite_tail) ≈ T(100.00999800099926)
+            @test var(finite_tail) ≈ T(9.994004994826346e-5)
         end
         empty = truncate(StdNormal(), 1.0 .. 1.0)
         @test isnan(mean(empty)) && isnan(var(empty))
