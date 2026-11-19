@@ -339,25 +339,37 @@ end
 
 @inline Base.isempty(s::CartesianProduct) = any(isempty, componentsets(s))
 
+# A union of products retains the correlation between the component sets
+# of each operand.
+struct _CartesianUnion{S<:Tuple} <: ValueSet
+    sets::S
+end
+Base.in(x, s::_CartesianUnion) = any(Base.Fix1(in, x), s.sets)
+Base.isempty(s::_CartesianUnion) = all(isempty, s.sets)
+_cartesian_union(s, others...) = _CartesianUnion((s, others...))
+_cartesian_union(s) = s
+Base.union(s::_CartesianUnion, others::Union{_CartesianUnion,AbstractCartSetProd}...) = _cartesian_union(s, others...)
+Base.union(s::AbstractCartSetProd, t::_CartesianUnion) = _cartesian_union(s, t)
+
 @inline function Base.union(
     s::CartesianProduct{<:Tuple{Vararg{Any,N}}},
     others::CartesianProduct{<:Tuple{Vararg{Any,N}}}...,
 ) where {N}
-    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
+    _cartesian_union(s, others...)
 end
 
 @inline function Base.union(
     s::CartesianProduct{<:NamedTuple{names}},
     others::CartesianProduct{<:NamedTuple{names}}...,
 ) where {names}
-    CartesianProduct(map(union, componentsets(s), map(componentsets, others)...))
+    _cartesian_union(s, others...)
 end
 
 function Base.union(
     s::CartesianProduct{<:AbstractArray{<:Any,N}},
     others::CartesianProduct{<:AbstractArray{<:Any,N}}...,
 ) where {N}
-    CartesianProduct(union.(componentsets(s), map(componentsets, others)...))
+    _cartesian_union(s, others...)
 end
 
 """
@@ -393,7 +405,7 @@ function Base.union(s::CartesianPower, others::CartesianPower...)
         ArgumentError("Cannot create union of CartesianPower sets with different axes."),
     )
 
-    setcartpower(union(pwr_base(s), map(pwr_base, others)...), axs)
+    _cartesian_union(s, others...)
 end
 
 

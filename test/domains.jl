@@ -12,6 +12,19 @@ using OneTwoMany: firstarg, secondarg
 using AffineMaps: Mul
 
 @testset "domains" begin
+    @testset "unions of Cartesian sets" begin
+        for wrap in (identity, NamedTuple{(:a, :b)}, collect)
+            singleton_product(k) = setcartprod(wrap((Set([k]), Set([k]))))
+            s = union(singleton_product(0), singleton_product(1))
+            @test wrap((0, 0)) in s && wrap((1, 1)) in s
+            @test wrap((0, 1)) ∉ s
+            @test wrap((2, 2)) in union(s, singleton_product(2))
+        end
+        s = union(setcartpower(Set([0]), (2,)), setcartpower(Set([1]), (2,)))
+        @test [0, 0] in s && [1, 1] in s
+        @test [0, 1] ∉ s
+    end
+
     @testset "combinesets" begin
         @test combinesets(firstarg, ℝ, ℤ) === ℝ
         @test combinesets(secondarg, ℝ, ℤ) === ℤ
