@@ -9,6 +9,10 @@ import AffineMaps
 using MeasureBase: AbstractMeasure
 
 @testset "Measure interface" begin
+    normal = AbstractMeasure(Distributions.Normal())
+    for f in (MeasureBase.densityof, MeasureBase.logdensityof), x in (0.5, Inf, NaN)
+        @test isequal(f(normal)(x), f(normal, x))
+    end
     d = Distributions.Weibull()
     @test @inferred(AbstractMeasure(d)) isa AbstractMeasure
     @test @inferred(AbstractMeasure(d)) isa DistributionMeasure

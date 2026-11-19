@@ -147,9 +147,6 @@ function _flat_powrand_batch(rng::AbstractRNG, ::Type{T}, d::Distribution, sz::D
 end
 
 
-@inline DensityInterface.densityof(m::DistributionMeasure) = densityof(m.obj)
-@inline DensityInterface.logdensityof(m::DistributionMeasure) = logdensityof(m.obj)
-
 @inline MeasureBase.logdensity_def(m::DistributionMeasure, x) = DensityInterface.logdensityof(m.obj, x)
 
 # Distributions' densities may throw outside of the support (e.g.
