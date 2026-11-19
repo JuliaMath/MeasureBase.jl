@@ -25,7 +25,7 @@ MeasureBase.fast_dof(m::DirichletMeasure) = getdof(m.obj)
 @inline MeasureBase.rand_impl(ctx::GenContext, m::DirichletMeasure) = MeasureBase.batched_rand_impl(ctx, m, ())
 
 function MeasureBase.batched_rand_impl(ctx::GenContext, m::DirichletMeasure, sz::SizeLike)
-    MeasureBase._on_host(ctx) || return MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+    MeasureBase._on_host(ctx) || return MeasureBase._rand_default(ctx, m, sz)
     T = float(promote_type(get_precision(ctx), Distributions.partype(m.obj)))
     α = m.obj.alpha
     X = Array{T}(undef, length(α), asnonstatic(sz)...)

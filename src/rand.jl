@@ -87,9 +87,6 @@ function rand_impl end
 @inline batched_rand_impl(ctx::GenContext, μ, sz::SizeLike) = _rand_default(ctx, μ, sz)
 
 @inline _rand_default(ctx::GenContext, μ, sz::SizeLike) = _rand_via_std(ctx, μ, sz, preferred_stdmeasure(μ))
-# Transitional, for callers that still pass the former `rand_impl` marker:
-struct _NoRandImpl end
-@inline _rand_default(ctx::GenContext, μ, sz::SizeLike, ::_NoRandImpl) = _rand_default(ctx, μ, sz)
 
 @inline function _rand_via_std(ctx::GenContext, μ, sz::SizeLike, ::Type{S}) where {S<:StdMeasure}
     _rand_via_std_dof(ctx, μ, sz, S, _split_dof(μ))

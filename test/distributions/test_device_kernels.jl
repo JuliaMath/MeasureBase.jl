@@ -48,7 +48,7 @@ using StructArrays: StructArray
             X = batched_rand_impl(GenContext{Float64}(stblrng()), m, (5,))
             @test X isa Vector{Float64} && length(X) == 5
             # The transport-based generation used on devices, in single precision:
-            Xs = MeasureBase._rand_default(GenContext{Float32}(stblrng()), m, (2000,), MeasureBase._NoRandImpl())
+            Xs = MeasureBase._rand_default(GenContext{Float32}(stblrng()), m, (2000,))
             @test Xs isa Vector{Float32} && all(insupportof.(Ref(m), Xs))
             if isfinite(mean(d)) && isfinite(var(d))
                 @test isapprox(mean(Xs), mean(d), atol = 5 * sqrt(var(d) / 2000) + 1e-3)

@@ -45,7 +45,7 @@ end
 # runs on them, like the one for Bernoulli distributions below:
 function _nonnative_rand(ctx::GenContext, m::DistributionMeasure, sz::SizeLike)
     _check_std_transport(m.obj)
-    MeasureBase._rand_default(ctx, m, sz, MeasureBase._NoRandImpl())
+    MeasureBase._rand_default(ctx, m, sz)
 end
 # Bernoulli variates compare uniform variates with the success probability,
 # branch-free and exact:
