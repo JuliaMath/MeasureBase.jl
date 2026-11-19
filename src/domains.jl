@@ -330,11 +330,11 @@ setcartprod(sets::NamedTuple{names,<:Tuple{Vararg{SetLike}}}) where {names} =
 # ToDo: Allow this?
 # Base.in(x::AbstractVector, s::CartesianProduct{<:Tuple}) = all(in.(x,componentsets(s)))::Bool
 function Base.in(
-    x::AbstractArray{<:Any,N},
-    s::CartesianProduct{<:AbstractArray{<:Any,N}},
-) where {N}
+    x::AbstractArray,
+    s::CartesianProduct{<:AbstractArray},
+)
     sets = componentsets(s)
-    isempty(x) && isempty(sets) ? true : all(in.(x, sets))::Bool
+    return axes(x) == axes(sets) && all(in.(x, sets))
 end
 
 @inline Base.isempty(s::CartesianProduct) = any(isempty, componentsets(s))

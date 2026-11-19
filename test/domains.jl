@@ -12,6 +12,18 @@ using OneTwoMany: firstarg, secondarg
 using AffineMaps: Mul
 
 @testset "domains" begin
+    @testset "array Cartesian product coordinates" begin
+        s = setcartprod([Set([0]), Set([0])])
+        @test [0, 0] in s
+        @test [0] ∉ s
+        @test [0, 0, 0] ∉ setcartprod([Set([0])])
+        matrix = setcartprod(fill(Set([0]), 2, 2))
+        @test zeros(Int, 2, 2) in matrix
+        @test zeros(Int, 1, 2) ∉ matrix
+        @test zeros(Int, 4) ∉ matrix
+        @test zeros(Int, 0, 2) ∉ setcartprod(fill(Set([0]), 0, 3))
+    end
+
     @testset "empty factors in Cartesian powers" begin
         for base in (Set{Int}(), Set([1])), dims in ((0,), (2, 0))
             s = setcartpower(base, dims)
