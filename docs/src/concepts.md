@@ -124,8 +124,9 @@ only the likelihood path above runs traced.
 
 ## Support and shape conventions
 
-- Densities are `-Inf` outside of the support, including non-integer
-  values of measures over counting measures and infinite values. `NaN`
+- Log densities are `-Inf` outside of the support. Measures on integer
+  counts exclude non-integer values. Atoms can have infinite coordinates,
+  for example `logdensityof(Dirac(Inf), Inf) == 0`. `NaN`
   inputs give `NaN` or `-Inf`. Relative densities keep `+Inf`, `-Inf` and
   `NaN`.
 - `StdNormal` and `StdLogistic` include `±Inf` in their support,
@@ -134,9 +135,10 @@ only the likelihood path above runs traced.
   in `StdLogistic` to `37.5` in `StdNormal`). Wrapped continuous
   distributions don't include infinite values in their support.
 - Transports return `NaN` outside of the support of the source measure.
-  Finite inputs give finite results: uniform inputs are clamped into the
-  open unit interval before quantiles, tail probabilities of log-space
-  conversions floor at the smallest positive float.
+  Finite inputs can overflow when the transformed value exceeds the
+  result type's range. Uniform inputs are clamped into the open unit
+  interval before quantiles. Some tail conversions floor probabilities
+  at the smallest positive float.
 - Components without degrees of freedom, such as point masses in
   products, binds and combinations, contribute no standard coordinates.
   Transports don't return `NaN` for their out-of-support values, which
