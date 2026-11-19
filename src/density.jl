@@ -106,6 +106,11 @@ end
 # check doesn't need to evaluate it:
 @inline insupportof(d::DensityMeasure, x) = insupportof(d.base, x)
 
+Adapt.adapt_structure(to, μ::DensityMeasure) = DensityMeasure(_adapt_integrand(to, μ.f), Adapt.adapt(to, μ.base))
+_adapt_integrand(to, f) = Adapt.adapt(to, f)
+_adapt_integrand(to, f::FuncDensity) = funcdensity(Adapt.adapt(to, densityof(f)))
+_adapt_integrand(to, f::LogFuncDensity) = logfuncdensity(Adapt.adapt(to, logdensityof(f)))
+
 function Pretty.tile(μ::DensityMeasure{F,B}) where {F,B}
     result = Pretty.literal("mintegrate(")
     result *= Pretty.pair_layout(Pretty.tile(μ.f), Pretty.tile(μ.base); sep = ", ")

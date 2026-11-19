@@ -3,6 +3,8 @@
 using Test
 
 using Random, Statistics
+using LinearAlgebra: dot
+using Adapt: adapt
 using StableRNGs: StableRNG
 using StructArrays: StructArray
 using FillArrays: Fill
@@ -181,6 +183,19 @@ struct NoRandMeasure <: AbstractMeasure end
         @test rand(Dirac(x)) == point
         B = flatview(rand(dctx, spike^8))
         @test B isa JLArray{Float64,2} && Array(B) == repeat(point, 1, 8)
+
+        restricted = adapt(JLArray, restrict(==(point), spike))
+        @test restricted.base.x isa JLArray && restricted.predicate.x isa JLArray
+        @test logdensityof(restricted, x) == 0
+        with_density = adapt(JLArray, mintegrate_exp(Base.Fix2(dot, point), spike))
+        @test with_density.base.x isa JLArray && logdensityof(with_density.f).x isa JLArray
+        @test logdensityof(with_density, x) == dot(point, point)
+        for components in ((spike, Dirac(reverse(point))), [spike, Dirac(reverse(point))])
+            mix = adapt(JLArray, SuperpositionMeasure(components))
+            @test all(m -> m.x isa JLArray, mix.components)
+            samples = Array(flatview(rand(dctx, mix^16)))
+            @test all(v -> v == point || v == reverse(point), eachcol(samples))
+        end
 
         # Variates generated one by one on the host are moved to the device:
         b = mbind(a -> StdNormal(), StdNormal())

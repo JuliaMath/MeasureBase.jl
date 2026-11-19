@@ -95,6 +95,11 @@ struct SuperpositionMeasure{C} <: AbstractSuperpositionMeasure
     components::C
 end
 
+# Component collections are traversed by the host sampler; their measures
+# and the arrays stored in them move to the target compute unit.
+Adapt.adapt_structure(to, μ::SuperpositionMeasure) = SuperpositionMeasure(map(c -> Adapt.adapt(to, c), μ.components))
+Adapt.adapt_structure(to, J::MeasureJoin) = MeasureJoin(map(r -> Adapt.adapt(to, r), J.roots))
+
 massof(m::SuperpositionMeasure) = sum(massof, m.components)
 
 function Pretty.tile(d::SuperpositionMeasure)

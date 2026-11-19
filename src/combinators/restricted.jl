@@ -24,6 +24,8 @@ localmeasure(μ::RestrictedMeasure, x) = RestrictedMeasure(μ.predicate, localme
 insupportof(μ::RestrictedMeasure, x) = _insupport_and(μ.predicate(x), insupportof(μ.base, x))
 @inline _relative_support(μ::RestrictedMeasure, x) = μ.predicate(x) & _relative_support(μ.base, x)
 
+Adapt.adapt_structure(to, μ::RestrictedMeasure) = RestrictedMeasure(Adapt.adapt(to, μ.predicate), Adapt.adapt(to, μ.base))
+
 function Pretty.quoteof(d::RestrictedMeasure)
     qf = Pretty.quoteof(d.predicate)
     qbase = Pretty.quoteof(d.base)
