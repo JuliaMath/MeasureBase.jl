@@ -275,6 +275,12 @@ include("testutils.jl")
     end
 
     @testset "transport for products" begin
+        p = productmeasure((a = StdNormal(), b = StdUniform(), c = StdExponential()))
+        x = (a = 0.0, b = 0.0, c = 50.0)
+        @test transport_to(StdUniform()^3, p)(x) == [0.5, 0.0, -expm1(-50.0)]
+        z = transport_to(StdNormal()^3, p)(x)
+        @test z[3] == transport_to(StdNormal(), StdExponential())(50.0)
+
         test_transport(
             StdUniform()^(2, 2),
             productmeasure((StdExponential(), StdLogistic()^3)),

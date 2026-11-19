@@ -57,6 +57,9 @@ The type of an `N`-dimensional power of a standard measure of type `MU`.
 """
 const StdPowerMeasure{MU<:StdMeasure,N} = PowerMeasure{MU,<:NTuple{N,OneToLike}}
 
+# Independent marginals can produce the terminal uniform coordinates directly.
+@inline _transport_pivot(::StdPowerMeasure{StdUniform}, ::ProductMeasure) = StdUniform
+
 # Powers of standard measures transport directly, by elementwise conversion:
 function transport_def(ν::StdPowerMeasure{NU}, μ::StdPowerMeasure{MU}, x) where {NU<:StdMeasure,MU<:StdMeasure}
     _pwr_variate(ν, maybestatic_reshape(stdconvert(NU, MU, x), mspace_flatsize(ν)))
