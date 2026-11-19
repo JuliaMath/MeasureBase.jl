@@ -56,7 +56,8 @@ end
 
 @inline function _generic_powermeasure_stage2(μ::WeightedMeasure, exponent::Tuple)
     ν = μ.base^exponent
-    k = size2length(axes2size(exponent)) * μ.logweight
+    n = size2length(axes2size(exponent))
+    k = iszero(n) ? zero(μ.logweight) : n * μ.logweight
     return weightedmeasure(k, ν)
 end
 

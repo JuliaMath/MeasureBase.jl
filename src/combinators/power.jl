@@ -110,7 +110,7 @@ end
 # `_root_kind`), their densities relative to Lebesgue measure add up over
 # the elements. Powers of equal roots and equal sizes are equal, whether
 # the sizes are static or not:
-@inline _root_kind(μ::PowerMeasure) = _root_kind(pwr_base(μ))
+@inline _root_kind(μ::PowerMeasure) = any(isempty, pwr_axes(μ)) ? _AtomicRoot() : _root_kind(pwr_base(μ))
 @inline _lebesgue_logd(μ::PowerMeasure, x) = _pwr_lebesgue_logd(first(_pwr_unwrap(μ)), μ, x)
 @inline _pwr_lebesgue_logd(::LebesgueBase, ::PowerMeasure, x) = zero(_logd_numtype(x))
 function _pwr_lebesgue_logd(::Any, μ::PowerMeasure, x)
@@ -392,6 +392,7 @@ checked_arg(μ::PowerMeasure, x::Any) = _throw_size_mismatch()
 
 massof(m::PowerMeasure) = _pwr_mass(massof(m.parent), size2length(pwr_size(m)))
 @inline _pwr_mass(mass, n::IntegerLike) = dynamic(mass)^dynamic(n)
+@inline _pwr_mass(mass::AbstractUnknownMass, n::IntegerLike) = iszero(n) ? 1.0 : mass
 # Unit masses stay static, independent of the dynamic exponent:
 @inline _pwr_mass(mass::StaticFloat64{1.0}, ::IntegerLike) = mass
 

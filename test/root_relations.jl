@@ -47,6 +47,13 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
     end
 
     @testset "powers of primitive roots" begin
+        empty = Float64[]
+        @test densityof(StdUniform()^0 + Dirac(empty), empty) ≈ 2
+        @test massof(restrict(>(0), StdNormal())^0) == 1
+        zero_power = (0.0 * StdNormal())^(2, 0)
+        @test massof(zero_power) == 1
+        @test densityof(zero_power, zeros(2, 0)) == 1
+        @test MeasureBase.mspace_flatsize(zero_power) == (2, 0)
         x = [0.1, -0.2, 0.3]
         @test logdensity_rel(StdNormal()^static(3), StdNormal()^3, x) == 0
         @test logdensity_rel(StdNormal()^3, StdNormal()^static(3), SVector(x...)) == 0
