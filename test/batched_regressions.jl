@@ -127,6 +127,18 @@ include("testutils.jl")
         @test gs.(SVector{3}(v)) isa SVector{3,Float64}
     end
 
+    @testset "short static product fields share the result allocation" begin
+        m = productmeasure((a = StdNormal(), b = StdUniform()^static(2), c = StdExponential()^static(3)))
+        n = 1024
+        X = (a = zeros(n), b = fill(0.5, 2, n), c = ones(3, n))
+        X.b[1, 1] = -1
+        expected = fill(logdensityof(StdNormal(), 0.0) - 3, n)
+        expected[1] = -Inf
+        @test logdensities(m, X) ≈ expected
+        @test allocations_of(logdensities, m, X) < 2 * sizeof(expected)
+        @test_throws ArgumentError logdensities(m, merge(X, (c = ones(2, n),)))
+    end
+
     @testset "batched densities of powers and products don't materialize elementwise densities" begin
         X = randn(1000, 50)
         ℓ_ref = vec(sum(-X .^ 2 ./ 2 .- log(2π) / 2; dims = 1))

@@ -134,13 +134,14 @@ _tuple_product_stream_kernel(f::F, μ, X::AbstractArray, ::False) where {F} = _s
 # of batches, the marginal densities add up lazily:
 for (bhead, head) in [(:batched_logdensityof_impl, :logdensityof_impl), (:batched_logdensity_def, :logdensity_def)]
     @eval @inline function $bhead(μ::ProductMeasure{<:NTuple{N,Any}}, X::NTuple{N,Any}) where {N}
-        _lazy_sum(map((m, Xi) -> _checked_batched_kernel($head, m, Xi), marginals(μ), X))
+        _lazy_sum(map((m, Xi) -> _product_field_logd($head, m, Xi), marginals(μ), X))
     end
     @eval @inline function $bhead(μ::ProductMeasure{<:NamedTuple{names}}, X::NamedTuple{names}) where {names}
-        _lazy_sum(map((m, Xi) -> _checked_batched_kernel($head, m, Xi), values(marginals(μ)), values(X)))
+        _lazy_sum(map((m, Xi) -> _product_field_logd($head, m, Xi), values(marginals(μ)), values(X)))
     end
     @eval $bhead(::ProductMeasure{<:Union{Tuple,NamedTuple}}, ::Union{Tuple,NamedTuple}) = _throw_marginal_mismatch()
 end
+@inline _product_field_logd(f::F, m, X) where {F} = _checked_batched_kernel(f, m, X)
 # The marginal batches must have the same batch size, a singleton batch
 # would broadcast:
 @inline function _lazy_sum(ℓs::Tuple)

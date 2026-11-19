@@ -224,6 +224,15 @@ end
 @inline batched_logdensityof_impl(μ::PowerMeasure, X) = _powered_kernel(logdensityof_impl, μ, X)
 @inline batched_logdensity_def(μ::PowerMeasure, X) = _powered_kernel(logdensity_def, μ, X)
 
+# Short static fields can join the enclosing product's broadcast without
+# materializing their partial sums. Larger blocks use the column reduction.
+@inline function _product_field_logd(f::F, μ::PowerMeasure{<:StdMeasure,<:Tuple{StaticOneToLike{N}}}, X::StridedArray{<:Real,K}) where {F,N,K}
+    (1 <= N <= 3 && K > 1) || return _checked_batched_kernel(f, μ, X)
+    _check_flatsize(X, mspace_flatsize(μ))
+    rows = ntuple(i -> selectdim(X, 1, i), Val(N))
+    Broadcast.instantiate(Broadcast.broadcasted((xs...) -> f(μ, SVector(xs)), rows...))
+end
+
 # Point evaluation: flat variates are batches with zero batch dimensions,
 # nested variates without flat storage sum the point densities of the base.
 @inline _point_ld(f::F, μ::PowerMeasure, x::AbstractArray{<:Number}) where {F} = f(μ, x)
