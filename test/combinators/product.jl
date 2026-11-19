@@ -100,6 +100,19 @@ import Distributions
         Yj = f.(sliced(Xj, Val(1)))
         @test flatview(Yj) isa JLArray
         @test Array(flatview(Yj)) ≈ flatview(transport_to(StdUniform()^3, P).(sliced(X, Val(1))))
+
+        p = productmeasure([weightedmeasure(log(Float32(i)), StdNormal()^2) for i in 1:3])
+        batch = reshape(Float32.(1:24) ./ 10, 2, 3, 4)
+        device_batch = JLArray(batch)
+        reference = logdensities(p, batch)
+        @test Array(logdensities(p, device_batch)) ≈ reference
+        device_scores = logdensities(adapt(JLArray, p), device_batch)
+        @test device_scores isa JLArray && Array(device_scores) ≈ reference
+
+        atoms = MeasureBase.ProductMeasure([MeasureBase.Dirac(Float32[i, -i]) for i in 1:3])
+        moved = adapt(JLArray, atoms)
+        @test all(m -> m.x isa JLArray, marginals(moved))
+        @test all(m -> m.x isa Vector, marginals(adapt(Array, moved)))
     end
 end
 

@@ -1006,3 +1006,12 @@ end
 end
 
 Adapt.adapt_structure(to, μ::ProductMeasure) = ProductMeasure(Adapt.adapt(to, marginals(μ)))
+
+function Adapt.adapt_structure(to, μ::ProductMeasure{<:AbstractArray{M}}) where {M}
+    mar = marginals(μ)
+    if _static_ndims_of(stream_ndims(M)) isa StaticInteger{0}
+        return ProductMeasure(Adapt.adapt(to, mar))
+    end
+    # Array-variate marginals are visited on the host and operate on device slices.
+    ProductMeasure(map(m -> Adapt.adapt(to, m), Adapt.adapt(Array, mar)))
+end
