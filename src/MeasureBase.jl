@@ -133,6 +133,7 @@ ConstructionBase.constructorof(::Type{<:AsMeasure}) = _asmeasure
 _asmeasure(obj) = AsMeasure{typeof(obj)}(obj)
 
 Base.:(==)(a::AsMeasure, b::AsMeasure) = a.obj == b.obj
+Base.isequal(a::AsMeasure, b::AsMeasure) = isequal(a.obj, b.obj)
 Base.hash(a::AsMeasure, h::UInt) = hash(a.obj, hash(:AsMeasure, h))
 Base.isapprox(a::AsMeasure, b::AsMeasure; kwargs...) = isapprox(a.obj, b.obj; kwargs...)
 

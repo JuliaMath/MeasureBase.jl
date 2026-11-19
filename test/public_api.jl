@@ -113,6 +113,18 @@ end
     atoms = Dict(negative => :negative, positive => :positive)
     @test atoms[Dirac(-0.0)] === :negative && atoms[Dirac(0.0)] === :positive
     @test haskey(Dict(Dirac([NaN]) => true), Dirac([NaN]))
+
+    root(x) = MeasureBase.OpaqueRoot(x, (), 1)
+    for wrap in (x -> asmeasure(Distributions.Normal(x, 1.0)),
+                 x -> productmeasure((root(x), StdNormal())),
+                 x -> transport_to(StdNormal(), root(x)),
+                 x -> transport_to(root(x), StdNormal()))
+        a, b = wrap(-0.0), wrap(0.0)
+        @test a == b && !isequal(a, b)
+        @test length(Set((a, b, wrap(-0.0)))) == 2
+        d = Dict(a => :negative, b => :positive)
+        @test d[wrap(-0.0)] === :negative && d[wrap(0.0)] === :positive
+    end
     makers = (
         () -> StdNormal()^(2, 3),
         () -> weightedmeasure(0.5, StdNormal()),

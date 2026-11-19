@@ -36,6 +36,7 @@ function marginals end
 function Base.:(==)(a::AbstractProductMeasure, b::AbstractProductMeasure)
     marginals(a) == marginals(b)
 end
+Base.isequal(a::AbstractProductMeasure, b::AbstractProductMeasure) = isequal(marginals(a), marginals(b))
 Base.hash(a::AbstractProductMeasure, h::UInt) = hash(marginals(a), hash(:AbstractProductMeasure, h))
 Base.length(μ::AbstractProductMeasure) = length(marginals(μ))
 Base.size(μ::AbstractProductMeasure) = size(marginals(μ))

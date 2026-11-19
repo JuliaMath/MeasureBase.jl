@@ -131,6 +131,7 @@ export transport_target
 function Base.:(==)(a::TransportFunction, b::TransportFunction)
     return a.ν == b.ν && a.μ == b.μ
 end
+Base.isequal(a::TransportFunction, b::TransportFunction) = isequal(a.ν, b.ν) && isequal(a.μ, b.μ)
 Base.hash(f::TransportFunction, h::UInt) = hash(f.ν, hash(f.μ, hash(:TransportFunction, h)))
 
 Base.@propagate_inbounds function (f::TransportFunction)(x)
