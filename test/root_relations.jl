@@ -4,7 +4,7 @@ using MeasureBase
 using MeasureBase: StdNormal, Half, logdensities
 using MeasureBase: pushfwd, superpose, productmeasure, PushfwdRootMeasure
 import MeasureBase
-using Distributions: Normal, Poisson, Binomial, Dirichlet, MvNormal, logpdf, pdf
+using Distributions: Normal, Poisson, Binomial, Beta, Dirichlet, MvNormal, logpdf, pdf
 using AffineMaps: Mul, Add
 using InverseFunctions: InverseFunctions, setinverse
 using IntervalSets
@@ -78,6 +78,13 @@ MeasureBase.insupportof(::_OnSphere, x) = sum(abs2, x) ≈ 1
         @test logdensityof(v, [0.5, 0.0]) ≈ ℓ_cont
         @test logdensities(v, [0.0 0.5; 0.0 0.0]) ≈ [0, ℓ_cont]
         @test logdensityof(superpose(StdNormal(), Dirac(0.0)), 0.0) == 0
+
+        spike = 2 * Dirac(0.0)
+        slab = asmeasure(Beta(0.5, 1))
+        mixture = spike + slab
+        @test densityof(mixture, 0.0) ≈ 2
+        @test density_rel(mixture, spike, 0.0) ≈ 1
+        @test logdensities(mixture, [0.0, 0.25]) ≈ [log(2), 0]
 
         d3 = superpose(StdNormal()^3, Dirac(0.5)^3)
         @test logdensityof(d3, fill(0.5, 3)) == 0

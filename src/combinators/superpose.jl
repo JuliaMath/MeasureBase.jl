@@ -137,7 +137,7 @@ end
 
 # Components without mass at `x` contribute nothing, also where the join
 # has no density relative to their root:
-@inline _rel_to_join(ℓ, log_dJ) = ifelse(isneginf(ℓ), ℓ, ℓ - log_dJ)
+@inline _rel_to_join(ℓ, log_dJ) = ifelse(isneginf(ℓ) | isposinf(log_dJ), oftype(ℓ, -Inf), ℓ - log_dJ)
 
 function _superpos_logdensity_rel(s::SuperpositionMeasure, β, x)
     cs = values(s.components)

@@ -328,7 +328,10 @@ end
         prog.args,
         :(r_root = _root_logdensity_rel($(μsym(i)), $(νsym(j)), x)),
     )
-    ret = isempty(terms) ? :r_root : :(+($(terms...), r_root))
+    # A singular root ratio determines the result even where a density
+    # relative to a continuous root diverges at an atom.
+    roots_singular = :(_atomic_continuous_pair(_root_kind($(μsym(i))), _root_kind($(νsym(j)))))
+    ret = isempty(terms) ? :r_root : :(ifelse($roots_singular, r_root, +($(terms...), r_root)))
     push!(prog.args, :(return $ret))
     return prog
 end
@@ -343,6 +346,10 @@ end
 struct _AtomicRoot end
 struct _ContinuousRoot end
 struct _OtherRoot end
+
+@inline _atomic_continuous_pair(::Any, ::Any) = false
+@inline _atomic_continuous_pair(::_AtomicRoot, ::_ContinuousRoot) = true
+@inline _atomic_continuous_pair(::_ContinuousRoot, ::_AtomicRoot) = true
 
 @inline _root_kind(::Any) = _OtherRoot()
 
