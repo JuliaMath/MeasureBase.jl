@@ -133,6 +133,20 @@ using JLArrays: JLArray
         @test logdensities(post_e, Xe) ≈ [-0.8, -Inf, -6.0]
     end
 
+    @testset "density measures over flat named-product streams" begin
+        p = productmeasure((a = StdNormal(), b = StdExponential()))
+        q = mintegrate_exp(x -> x.b >= 0 ? 7x.a + 11x.b : error("outside support"), p)
+        W = [-2.1 -0.3 7.2; 1.4 2.8 3.6]
+        ℓ = [normal_ld(a, 0.0, 1.0) + 7a + 10b for (a, b) in eachcol(W)]
+        @test logdensities(q, (a = W[1, :], b = W[2, :])) ≈ ℓ
+        @test logdensities(q, W) ≈ ℓ
+        @test logdensityof(q, W[:, 1]) ≈ ℓ[1]
+        @test logdensities(q, W[:, 1]) ≈ ℓ[1]
+        W[2, 2] = -W[2, 2]
+        ℓ[2] = -Inf
+        @test logdensities(q, W) ≈ ℓ
+    end
+
     @testset "device arrays" begin
         JLArrays.allowscalar(false)
         ms_j = StructArray(ms)

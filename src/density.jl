@@ -243,7 +243,8 @@ localmeasure(μ::DensityMeasure, x) = DensityMeasure(μ.f, localmeasure(μ.base,
 @inline _pwr_variate(μ::DensityMeasure, X::AbstractArray) = _pwr_variate(μ.base, X)
 @inline _pwr_nest(μ::DensityMeasure, X::AbstractArray) = _pwr_nest(μ.base, X)
 
-logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, x)
+@inline _integrand_variate(μ, x) = x
+logdensity_def(μ::DensityMeasure, x) = logdensityof(μ.f, _integrand_variate(μ.base, x))
 
 # Density measures evaluate the base measure and the integrand directly,
 # the base measure validates array variates:
@@ -265,12 +266,13 @@ end
 
 function _density_measure_ld(μ::DensityMeasure, x, ℓ_base::Number)
     base_logval = dynamic(ℓ_base)
-    _select(isneginf(base_logval), () -> base_logval, () -> dynamic(logdensityof(μ.f, x)) + base_logval)
+    _select(isneginf(base_logval), () -> base_logval, () -> dynamic(logdensity_def(μ, x)) + base_logval)
 end
+
 function _density_measure_ld(μ::DensityMeasure, X, ℓ_base::AbstractArray)
     Θ = _variates_of_batch(μ.base, X)
     size(Θ) == size(ℓ_base) || _throw_batch_shape(size(ℓ_base), size(Θ))
-    broadcast(_add_unless_neginf, ℓ_base, _integrand_lds_insupport(μ.f, X, Θ, ℓ_base))
+    broadcast(_add_unless_neginf, ℓ_base, _integrand_lds_insupport(μ.f, μ.base, X, Θ, ℓ_base))
 end
 
 @inline function _add_unless_neginf(ℓ_base, ℓ_f)
@@ -278,9 +280,10 @@ end
     ifelse(isneginf(ℓ_base), oftype(ℓ, ℓ_base), ℓ)
 end
 
-@inline _integrand_lds_insupport(f, X, Θ, ℓ_base) = _integrand_lds_insupport(f, X, Θ, ℓ_base, _is_host_array(ℓ_base))
-function _integrand_lds_insupport(f, X, Θ, ℓ_base, on_host::Bool)
-    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, X, Θ, ℓ_base) : _integrand_lds(f, Θ)
+@inline _integrand_lds_insupport(f, μ, X, Θ, ℓ_base) =
+    _integrand_lds_insupport(f, μ, X, Θ, ℓ_base, _is_host_array(ℓ_base))
+function _integrand_lds_insupport(f, μ, X, Θ, ℓ_base, on_host::Bool)
+    on_host && any(isneginf, ℓ_base) ? _integrand_lds_at(f, μ, X, Θ, ℓ_base) : _integrand_lds(f, Θ)
 end
 
 @inline _is_host_array(A) = _is_host_unit(get_compute_unit(A))
@@ -292,16 +295,16 @@ end
 # those outside, the caller masks the results there. No mutation, so that
 # automatic differentiation works and the element type follows the
 # integrand. Flat batches replace the variates elementwise:
-function _integrand_lds_at(f, X::AbstractArray{<:Number}, ::AbstractArray, ℓ_base)
+function _integrand_lds_at(f, μ, X::AbstractArray{<:Number}, ::AbstractArray, ℓ_base)
     outside = map(isneginf, ℓ_base)
     i = findfirst(!, vec(outside))
     isnothing(i) && return zero(ℓ_base)
     K = ndims(X) - ndims(ℓ_base)
     x_in = view(X, ntuple(_ -> Colon(), K)..., Tuple(CartesianIndices(ℓ_base)[i])...)
     X_in = ifelse.(reshape(outside, (ntuple(_ -> 1, K)..., size(outside)...)), x_in, X)
-    _integrand_lds(f, _nest_batch(X_in, Val(K)))
+    _integrand_lds(f, _variates_of_batch(μ, X_in))
 end
-function _integrand_lds_at(f, ::Any, Θ, ℓ_base)
+function _integrand_lds_at(f, ::Any, ::Any, Θ, ℓ_base)
     outside = map(isneginf, ℓ_base)
     i = findfirst(!, vec(outside))
     isnothing(i) && return zero(ℓ_base)

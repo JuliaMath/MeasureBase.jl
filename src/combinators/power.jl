@@ -602,11 +602,27 @@ end
 
 # The variates of a batch as an array, for density measures over it,
 # numeric batches sliced by their stream rank:
-@inline _variates_of_batch(μ, X::AbstractArray{<:Number}) = _variates_of_flat_batch(X, _stream_ndims(μ))
-@inline _variates_of_flat_batch(X::AbstractArray, ::StaticInteger{K}) where {K} = _nest_batch(X, Val(K))
-@noinline function _variates_of_flat_batch(::AbstractArray, ::NoMSpaceElementSize{MU}) where {MU}
+@inline _variates_of_batch(μ, X::AbstractArray{<:Number}) = _variates_of_flat_batch(μ, X, _stream_ndims(μ))
+@inline _variates_of_flat_batch(μ, X::AbstractArray, ::StaticInteger{K}) where {K} = _nest_batch(X, Val(K))
+@noinline function _variates_of_flat_batch(μ, ::AbstractArray, ::NoMSpaceElementSize{MU}) where {MU}
     throw(ArgumentError("Batches of variates of measures of type $(nameof(MU)) need a declared variate rank (MeasureBase.mspace_ndims)"))
 end
 @inline _variates_of_batch(μ, X::Union{Tuple,NamedTuple}) = _batch_variates(X, μ)
+
+@inline function _variates_of_flat_batch(
+    μ::ProductMeasure{<:Union{Tuple,NamedTuple}},
+    X::AbstractArray,
+    ::StaticInteger{1},
+)
+    _batch_variates(_stream_batch(μ, X), μ)
+end
+
+@inline function _integrand_variate(
+    μ::ProductMeasure{<:Union{Tuple,NamedTuple}},
+    x::AbstractVector{<:Number},
+)
+    fixed_stream_size(μ) isa True || return x
+    only(_variates_of_batch(μ, maybestatic_reshape(x, (maybestatic_length(x), static(1)))))
+end
 
 Adapt.adapt_structure(to, μ::PowerMeasure) = PowerMeasure(Adapt.adapt(to, pwr_base(μ)), pwr_axes(μ))
