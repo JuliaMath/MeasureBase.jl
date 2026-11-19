@@ -108,6 +108,15 @@ end
     large_atom = Dirac(2^24 + 1) + Dirac(0.5f0)
     @test all(insupportof(large_atom), Array(rand(dctx, large_atom^32)))
 
+    reference = rand(Xoshiro(981), (Dirac(11) + Dirac(17))^1024)
+    for w in (90f0, -110f0, 710.0, -750.0)
+        shifted = superpose(weightedmeasure(w, Dirac(11)), weightedmeasure(w, Dirac(17)))
+        @test rand(Xoshiro(981), shifted^1024) == reference
+        @test rand(Xoshiro(981), shifted) == rand(Xoshiro(981), Dirac(11) + Dirac(17))
+    end
+    @test_throws ArgumentError rand(0 * Dirac(1) + 0 * Dirac(2))
+    @test_throws ArgumentError rand(Counting() + Dirac(2))
+
     # Components are selected by mass, single variates like batches:
     m = superpose(0.3 * StdNormal(), 0.7 * Dirac(2.0))
     X = rand(Xoshiro(1), m^100_000)

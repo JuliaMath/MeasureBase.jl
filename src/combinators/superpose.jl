@@ -168,13 +168,21 @@ basemeasure(μ::SuperpositionMeasure) = _measure_join(map(rootmeasure, values(μ
 # Superpositions of the local measures of the components (e.g. of binds):
 localmeasure(μ::SuperpositionMeasure{<:Union{Tuple,NamedTuple}}, x) = SuperpositionMeasure(map(Base.Fix2(localmeasure, x), μ.components))
 
+# Relative component masses are unchanged by a common log weight.
 function _component_masses(μ::SuperpositionMeasure)
-    masses = map(massof, values(μ.components))
-    total = sum(masses)
-    total isa AbstractUnknownMass && throw(
-        ArgumentError("Cannot sample from a superposition of measures of unknown mass"),
-    )
-    return map(dynamic, masses), dynamic(total)
+    logs = map(_sampling_logmass, values(μ.components))
+    scale = reduce(max, logs)
+    _check_normalizable(μ, isfinite(scale))
+    masses = map(ℓ -> exp(ℓ - scale), logs)
+    return masses, sum(masses)
+end
+
+_sampling_logmass(μ::WeightedMeasure) = μ.logweight + _sampling_logmass(μ.base)
+_sampling_logmass(μ::SuperpositionMeasure) = _logsumexp_components(map(_sampling_logmass, values(μ.components)))
+function _sampling_logmass(μ)
+    m = massof(μ)
+    m isa AbstractUnknownMass && throw(ArgumentError("Cannot sample from a superposition of measures of unknown mass"))
+    return _logmass(m)
 end
 
 # Single variates of superpositions with a variate rank are drawn like
