@@ -287,27 +287,9 @@ localmeasure(μ::Bind, x) = transportmeasure(μ, x)
 localmeasure(μ::ProductMeasure{<:AbstractArray{<:Bind}}, x::AbstractArray) = productmeasure(map(localmeasure, marginals(μ), x))
 localmeasure(μ::SuperpositionMeasure{<:AbstractArray{<:Bind}}, x) = SuperpositionMeasure(map(Base.Fix2(localmeasure, x), μ.components))
 
-tpmeasure_split_combined(f_c, μ::Bind, xy) = _bind_tpm_sc(f_c, μ, xy)
-
-function _bind_tpm_sc(::typeof(tuple), μ::Bind, xy::Tuple{Vararg{Any,2}})
-    x, y = xy[1], xy[2]
-    tpm_μ = transportmeasure(μ, x)
-    return tpm_μ, x, y
-end
-
-function _bind_tpm_sc(::Type{Pair}, μ::Bind, xy::Pair)
-    x, y = xy.first, xy.second
-    tpm_μ = transportmeasure(μ, x)
-    return tpm_μ, x, y
-end
-
 const _BindBy{FC} = Bind{<:Any,<:AbstractMeasure,FC}
 
 @inline preferred_stdmeasure(::Type{<:Bind{<:Any,M}}) where {M} = preferred_stdmeasure(M)
-_bind_tpm_sc(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector) =
-    _bind_tpm_sc_cat(f_c, μ, xy)
-_bind_tpm_sc(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple) =
-    _bind_tpm_sc_cat(f_c, μ, xy)
 
 function _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
     tpm_α, a, by = tpmeasure_split_combined(μ.f_c, μ.α, xy)
@@ -317,14 +299,14 @@ function _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, a, b, y, xy
 end
 
-function _bind_tpm_sc_cat(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector)
+function tpmeasure_split_combined(f_c::typeof(vcat), μ::_BindBy{typeof(vcat)}, xy::AbstractVector)
     tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
     # Don't use `x = f_c(a, b)` here, would allocate, splitting xy can use views:
     x, y = maybestatic_split(xy, maybestatic_length(a) + maybestatic_length(b))
     return tpm_μ, x, y
 end
 
-function _bind_tpm_sc_cat(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple)
+function tpmeasure_split_combined(f_c::typeof(merge), μ::_BindBy{typeof(merge)}, xy::NamedTuple)
     tpm_μ, a, b, y, xy = _bind_tpm_sc_cat_lμabyxy(f_c, μ, xy)
     return tpm_μ, f_c(a, b), y
 end

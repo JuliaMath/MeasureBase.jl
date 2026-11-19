@@ -279,6 +279,12 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         f = transport_to(StdUniform()^2, μ)
         @test f(ba) ≈ transport_to(StdUniform()^2, mbind(f_β, α, tuple))((ba[2], ba[1]))
         @test_throws ArgumentError logdensityof(mbind(f_β, α, (a, b) -> a + b), 1.0)
+
+        primary = mbind(Returns(StdNormal()), StdNormal(), tuple)
+        nested = mbind(Returns(StdNormal()), primary, _SwapCombine())
+        x = (0.2, (0.3, 0.4))
+        @test logdensityof(nested, x) ≈ sum(v -> logdensityof(StdNormal(), v), (0.2, 0.3, 0.4))
+        @test transport_to(StdNormal()^3, nested)(x) ≈ [0.3, 0.4, 0.2]
     end
 
     @testset "kernel accessors" begin
