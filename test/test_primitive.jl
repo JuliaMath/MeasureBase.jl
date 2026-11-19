@@ -69,6 +69,12 @@ end
     @test getdof(L) == 2
     # The coordinate measure of the triangle with unit legs, 1/(n - 1)! in general:
     @test massof(L) == 1 / 2 && massof(Lebesgue(StdSimplex(5))) ≈ 1 / 24
+    for n in (171, 172, 178, 179)
+        simplex = Lebesgue(StdSimplex(n))
+        volume = Float64(1 // factorial(big(n - 1)))
+        @test massof(simplex) ≈ volume rtol = 4eps()
+        volume > 0 && @test massof(MeasureBase.normalize(simplex)) == 1
+    end
     @test logdensityof(L, [0.2, 0.3, 0.5]) == 0 && logdensityof(L, [0.2, 0.3, 0.6]) == -Inf
     @test logdensities(L, [0.2 0.5 -0.1; 0.3 0.6 0.6; 0.5 0.1 0.5]) == [0, -Inf, -Inf]
     @test_throws ArgumentError logdensityof(L, [0.5, 0.5])

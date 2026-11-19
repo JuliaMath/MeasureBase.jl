@@ -157,7 +157,7 @@ rootmeasure(μ::_SimplexLebesgue) = μ
 @inline getdof(μ::_SimplexLebesgue) = μ.support.n - static(1)
 @inline fast_dof(μ::_SimplexLebesgue) = getdof(μ)
 
-massof(μ::_SimplexLebesgue) = inv(prod(float, 1:(dynamic(μ.support.n) - 1); init = 1.0))
+massof(μ::_SimplexLebesgue) = foldl(/, 1:(dynamic(μ.support.n) - 1); init = 1.0)
 
 testvalue(::Type{T}, μ::_SimplexLebesgue) where {T} = testvalue(T, μ.support)
 
