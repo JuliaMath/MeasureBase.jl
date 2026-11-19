@@ -170,7 +170,7 @@ end
     ν::ProductMeasure{<:Tuple},
     x,
 )
-    sum(map(unsafe_logdensity_rel, marginals(μ), marginals(ν), x))
+    sum(map(unsafe_logdensity_rel, marginals(μ), marginals(ν), _product_variate(μ, x)))
 end
 
 # Products of root measures are roots of the common kind of their marginals
@@ -180,7 +180,7 @@ end
 @inline _common_root_kind(mar) = isempty(mar) ? _OtherRoot() : mapreduce(_root_kind, _join_root_kinds, mar)
 @inline _join_root_kinds(a::K, ::K) where {K} = a
 @inline _join_root_kinds(::Any, ::Any) = _OtherRoot()
-@inline _lebesgue_logd(μ::ProductMeasure{<:Tuple}, x) = sum(map(_lebesgue_logd, marginals(μ), values(x)))
+@inline _lebesgue_logd(μ::ProductMeasure{<:Tuple}, x) = sum(map(_lebesgue_logd, marginals(μ), _product_variate(μ, x)))
 @inline _lebesgue_logd(μ::ProductMeasure{<:NamedTuple}, x) = sum(map(_lebesgue_logd, values(marginals(μ)), _named_values(μ, x)))
 _lebesgue_logd(μ::ProductMeasure, x) = sum(map(_lebesgue_logd, marginals(μ), x); init = zero(_logd_numtype(x)))
 
@@ -195,6 +195,7 @@ _mspace_names(μ::ProductMeasure{<:NamedTuple{names}}) where {names} = names
 # Local measures of products are products of the local measures of the
 # marginals (e.g. of binds), see also binds:
 localmeasure(μ::ProductMeasure{<:Tuple}, x::Tuple) = ProductMeasure(map(localmeasure, marginals(μ), x))
+localmeasure(μ::ProductMeasure{<:Tuple}, x::AbstractVector{<:Number}) = localmeasure(μ, _product_variate(μ, x))
 function localmeasure(μ::ProductMeasure{<:NamedTuple{names}}, x) where {names}
     ProductMeasure(NamedTuple{names}(map(localmeasure, values(marginals(μ)), _named_values(μ, x))))
 end
@@ -249,6 +250,7 @@ end
 end
 
 @inline _named_values(::ProductMeasure{<:NamedTuple{names}}, x::NamedTuple{names}) where {names} = values(x)
+@inline _named_values(d::ProductMeasure{<:NamedTuple{names}}, x::AbstractVector{<:Number}) where {names} = values(_product_variate(d, x))
 @inline _named_values(d::ProductMeasure{<:NamedTuple{names}}, x) where {names} = map(Base.Fix1(getproperty, _named_variate(d, x)), names)
 
 # For tuples, `mapreduce` has trouble with type inference
@@ -462,6 +464,7 @@ end
 @inline function insupportof(d::AbstractProductMeasure, x::AbstractArray)
     _all_insupport(broadcast(_insupport_bool ∘ insupportof, marginals(d), x))
 end
+@inline insupportof(d::ProductMeasure{<:Tuple}, x::AbstractVector{<:Number}) = insupportof(d, _product_variate(d, x))
 
 # Flat variates of array products pair the marginals with their variate
 # slices:
@@ -633,7 +636,22 @@ end
 # marginal batches:
 _stream_batch(μ, R::AbstractArray) = _stream_leaf_batch(R, mspace_flatsize(μ))
 _stream_leaf_batch(R::AbstractArray, ::Tuple{}) = _drop_stdstream_dim(R)
+_stream_leaf_batch(R::AbstractVector, ::Tuple{}) = only(R)
 _stream_leaf_batch(R::AbstractArray, vsz::SizeLike) = _reshape_consumed(R, size_tuple(vsz))
+
+# A flat point has the same marginal layout as a single stream of density
+# inputs. Value-dependent marginals determine their length as they consume it.
+@inline _product_variate(μ, x) = x
+@inline _product_variate(μ, x::AbstractVector{<:Number}) = _product_variate(μ, x, fixed_stream_size(μ))
+@inline function _product_variate(μ, x, fixed::True)
+    _check_stream_length(μ, x, fixed)
+    return _stream_batch(μ, x)
+end
+function _product_variate(μ, x, ::False)
+    _, value, rest = logdensityof_with_rest(μ, x)
+    isempty(rest) || _throw_stream_too_long()
+    return value
+end
 _stream_batch(μ::ProductMeasure{<:Tuple}, R::AbstractArray) = _marginal_stream_batches(marginals(μ), R)
 function _stream_batch(μ::ProductMeasure{<:NamedTuple{names}}, R::AbstractArray) where {names}
     NamedTuple{names}(_marginal_stream_batches(values(marginals(μ)), R))

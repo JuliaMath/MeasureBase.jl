@@ -103,6 +103,18 @@ import Distributions
     end
 end
 
+@testset "product support and relative density on flat streams" begin
+    for wrap in (identity, NamedTuple{(:a, :b)})
+        q = productmeasure(wrap((StdNormal(), StdUniform()^2)))
+        p = productmeasure(wrap((2 * StdNormal(), StdUniform()^2)))
+        x = [0.0, 0.25, 0.5]
+        @test insupportof(q, x)
+        @test !insupportof(q, [0.0, 0.25, 1.5])
+        @test density_rel(p, q, x) ≈ density_rel(p, q, wrap((0.0, [0.25, 0.5]))) ≈ 2
+        @test_throws ArgumentError insupportof(q, [x; 0.0])
+    end
+end
+
 # A non-NamedTuple container with properties, like shaped views of flat
 # vectors:
 struct _PropertyVariate
