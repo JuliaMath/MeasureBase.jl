@@ -12,6 +12,8 @@ using AffineMaps: MulAdd
 import StructArrays
 using StructArrays: StructArray
 using ArraysOfArrays: VectorOfSimilarVectors
+using Distributions: MvNormal, logpdf
+using LinearAlgebra: I
 import JLArrays
 using JLArrays: JLArray
 
@@ -85,6 +87,20 @@ using JLArrays: JLArray
         mixed = [ms[1]^2, ms[2]^3]
         @test logdensityof.(mixed, [[0.1, 0.2], [0.3, 0.4, 0.5]]) ≈
             [sum(normal_ld.([0.1, 0.2], μs[1], σs[1])), sum(normal_ld.([0.3, 0.4, 0.5], μs[2], σs[2]))]
+    end
+
+    @testset "flat variates and heterogeneous covariance storage" begin
+        d1 = MvNormal([0.1, 0.2], [1.5 0.2; 0.2 2.0])
+        d2 = MvNormal(zeros(2), I(2))
+        p, q = asmeasure(d1), asmeasure(d2)
+        X = [0.42 -1.2 2.4; -0.73 0.2 0.35]
+        flat = reshape(X, 2, 1, 3)
+        nested = reshape(collect(eachcol(X)), 1, 3)
+        expected = [logpdf(d, x) for d in (d1, d2), x in eachcol(X)]
+        for measures in ([p, q], AbstractMeasure[p, q])
+            @test logdensities(measures, flat) ≈ expected
+            @test logdensities(measures, nested) ≈ expected
+        end
     end
 
     @testset "likelihoods over parameter batches" begin

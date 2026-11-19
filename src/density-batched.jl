@@ -568,6 +568,17 @@ end
     ndims(X) >= k || _throw_size_mismatch()
     _measures_array_ld(ms, X, k)
 end
+
+# A joined element type can lose the rank shared by its concrete measures.
+@inline function _measures_ld(ms::AbstractArray, X::AbstractArray{<:Number}, ::NoMSpaceElementSize)
+    if !isempty(ms) && _is_host_array(ms)
+        k = _stream_ndims(first(ms))
+        if k isa StaticInteger && all(m -> _stream_ndims(m) === k, ms)
+            return _measures_ld(ms, X, k)
+        end
+    end
+    _measures_bc(ms, X)
+end
 # Array variates measure by measure, a single variate is shared by all:
 @inline _measures_array_ld(ms, X::AbstractArray, ::StaticInteger{K}) where {K} = _measures_bc(ms, _variates_arg(X, Val(K)))
 @inline _variates_arg(X::AbstractArray{<:Any,K}, ::Val{K}) where {K} = Ref(X)
