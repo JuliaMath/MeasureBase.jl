@@ -14,6 +14,7 @@ using ArraysOfArrays: sliced, flatview, nestedview, ArrayOfSimilarArrays
 using StaticArrays: SVector, SMatrix, @SMatrix
 using MeasureBase: logdensities
 using Distributions: MvNormal, LogNormal, Normal, logpdf, cdf, quantile
+using LinearAlgebra: Diagonal
 using ChangesOfVariables: with_logabsdet_jacobian
 using StructArrays: StructArray, StructArrays
 using MeasureBase: transports_with_ladj
@@ -91,7 +92,7 @@ using JLArrays
         @test batched_transport_from_std(StdUniform, P, Z) ≈ X
         Y = f.(sliced(X, Val(2)))
         @test flatview(Y) ≈ Z
-        @test flatview(inverse(f).(Y)) ≈ X
+        @test flatview(flatview(inverse(f).(Y))) ≈ X
         xs = [randn(2) for _ in 1:3]
         z = transport_to_std(StdUniform, P, xs)
         @test z ≈ f(stack(xs))
@@ -99,6 +100,19 @@ using JLArrays
         @test length(xn) == 3 && all(xn[i] ≈ xs[i] for i in 1:3)
         @test_throws ArgumentError batched_transport_to_std(StdUniform, P, randn(2, 2, 5))
         @test_throws ArgumentError batched_transport_from_std(StdUniform, P, rand(5, 5))
+
+        p = productmeasure([
+            asmeasure(MvNormal([0.1, 0.2], Diagonal([1.0, 2.0]))),
+            asmeasure(MvNormal([-1.0, -3.0], Diagonal([1.1, 3.2]))),
+        ])
+        g = transport_to(p, StdNormal()^4)
+        W = [-2.2 4.4; 0.7 3.1; 3.1 -0.5; -0.3 5.6]
+        point = map(g, eachcol(W))
+        batch = transports(g, W)
+        @test size(batch) == size(point)
+        @test all(zip(point, batch)) do (x, y)
+            size(x) == size(y) && all(map(≈, x, y))
+        end
     end
 
     @testset "streams with value-dependent sizes" begin

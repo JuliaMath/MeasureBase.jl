@@ -333,7 +333,8 @@ using ArraysOfArrays: flatview
     @test eltype(logdensities(P, Float32.(XP))) == typeof(logdensityof(P, Float32.(XP[:, :, 1])))
     f = transport_to(P, StdNormal()^4)
     Z = reshape(collect(range(-1, 1, length = 12)), 4, 3)
-    @test only(Zygote.gradient(Z -> sum(flatview(transports(f, Z))), Z)) ≈ ones(4, 3)
+    transported_sum(Z) = sum(flatview(flatview(transports(f, Z))))
+    @test only(Zygote.gradient(transported_sum, Z)) ≈ ones(4, 3)
     @test only(Zygote.gradient(z -> sum(flatview(f(z))), Z[:, 1])) ≈ ones(4)
     @test ForwardDiff.gradient(θ -> sum(transport_to(productmeasure([mvn(θ), mvn(θ)]), StdNormal()^4)(Z[:, 1]) |> flatview), [0.5, 0.3]) ≈ [2.0, 2.0]
 end

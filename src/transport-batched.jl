@@ -384,6 +384,13 @@ end
 @inline _batch_variates(Y, ν) = _batch_variates(Y, ν, _static_ndims(ν))
 @inline _batch_variates(Y, ν::PowerMeasure) = _nest_batch(_pwr_variate(ν, Y), Val(length(pwr_axes(ν))))
 @inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν::ProductMeasure{<:Union{Tuple,NamedTuple}}) = _single_or_batch(_pwr_variate(ν, Y))
+@inline function _batch_variates(
+    Y::AbstractArray,
+    ::ProductMeasure{<:AbstractArray{M,N}},
+) where {M,N}
+    marginal_variates = _nest_leaf(Y, _static_ndims_of(mspace_ndims(M)))
+    _nest_batch(marginal_variates, Val(N))
+end
 @inline _batch_variates(Y::AbstractArray, ν, ::StaticInteger{K}) where {K} = _nest_batch(Y, Val(K))
 @inline _batch_variates(Y::Union{Tuple,NamedTuple}, ν, ::Any) = _batch_variates_via(basemeasure(ν), ν, Y)
 @inline _batch_variates_via(β, ::Any, Y) = _batch_variates(Y, β)
