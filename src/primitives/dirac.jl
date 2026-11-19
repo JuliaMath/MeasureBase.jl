@@ -91,8 +91,18 @@ end
 
 # Dirac measures have no degrees of freedom:
 @inline transport_to_std(::Type{S}, ::Dirac, x) where {S<:StdMeasure} = SVector{0,Bool}()
-@inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x
-@inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} = μ.x, z
+@inline transport_from_std(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} =
+    _transport_dirac_atom(μ.x)
+@inline transport_from_std_with_rest(::Type{S}, μ::Dirac, z::AbstractVector) where {S<:StdMeasure} =
+    transport_from_std(S, μ, z), z
+
+# Flat numeric variates use the ordinary transport-result materialization.
+# For structured atoms, copy each array component for each transported variate.
+@inline _transport_dirac_atom(x::Union{Number,AbstractArray{<:Number}}) = x
+@inline _transport_dirac_atom(x) = _copy_atom_arrays(x)
+@inline _copy_atom_arrays(x) = x
+@inline _copy_atom_arrays(x::AbstractArray{<:Number}) = copy(x)
+@inline _copy_atom_arrays(x::Union{AbstractArray,Tuple,NamedTuple}) = map(_copy_atom_arrays, x)
 
 # Transports between scalar point masses map the atom to the atom and give
 # NaN elsewhere, like other transports outside the support of the source:

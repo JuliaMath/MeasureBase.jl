@@ -309,6 +309,21 @@ using JLArrays
         y_ref = copy(y)
         x .= NaN
         @test y == y_ref
+
+        atom = [[1.0, 2.0], [3.0, 4.0]]
+        g = transport_to(Dirac(atom), Dirac(atom))
+        y = g(atom)
+        @test y == atom
+        y[2][1] = 103.0
+        @test atom[2][1] == 3.0
+
+        inputs = [atom, deepcopy(atom)]
+        draws = transports(g, inputs)
+        @test draws == inputs
+        original = atom[2][1]
+        draws[2][2][1] = 107.0
+        @test all(x -> x[2][1] == original, inputs)
+        @test draws[1][2][1] == original
     end
 
     @testset "batched log-abs-det Jacobians" begin
