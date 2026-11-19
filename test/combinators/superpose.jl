@@ -116,6 +116,10 @@ end
     @test count(==(2.0), x) / length(x) ≈ 0.7 atol = 0.02
     v = rand(Xoshiro(1), superpose(StdNormal()^2, Dirac([0.0, 0.0])))
     @test v isa Vector{Float64} && length(v) == 2
+    ragged = Dirac([1.0]) + Dirac([2.0, 3.0])
+    @test insupportof(ragged, rand(Xoshiro(1), ragged))
+    R = rand(Xoshiro(1), ragged^(4, 8))
+    @test size(R) == (4, 8) && all(insupportof(ragged), R) && length(unique(R)) == 2
 end
 
 @testset "roots of superpositions" begin

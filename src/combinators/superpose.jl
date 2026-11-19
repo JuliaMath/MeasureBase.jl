@@ -185,11 +185,17 @@ _superpose_rand(ctx::GenContext, μ::SuperpositionMeasure, k::StaticInteger) = _
 function _superpose_rand(ctx::GenContext, μ::SuperpositionMeasure, ::NoMSpaceElementSize)
     components = values(μ.components)
     masses, total = _component_masses(μ)
+    return _draw_selected_component(ctx, components, masses, total)
+end
+
+function _draw_selected_component(ctx, components, masses, total)
     threshold = rand(ctx) * total
     csum = zero(threshold)
     for (mass, c) in zip(masses, components)
         csum += mass
-        csum >= threshold && return rand_impl(ctx, c)
+        selected = csum >= threshold
+        selected isa Bool || throw(ArgumentError("A traced superposition draw requires a common variate shape"))
+        selected && return rand_impl(ctx, c)
     end
     return rand_impl(ctx, last(components))
 end
@@ -203,12 +209,26 @@ end
 function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, k::StaticInteger)
     components = values(μ.components)
     masses, total = _component_masses(μ)
+    if !iszero(k) && !_common_draw_shape(components)
+        isempty(sz) && return _draw_selected_component(ctx, components, masses, total)
+        return map(_ -> _draw_selected_component(ctx, components, masses, total), CartesianIndices(asnonstatic(sz)))
+    end
     thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, k)
     draws = map(c -> _component_draws(ctx, c, sz), components)
     T = mapreduce(eltype, promote_type, draws)
     Xs = _promote_draws(ctx, T, draws, components)
     return _select_draws(thresholds, first(Xs), first(masses), _tail(masses), _tail(Xs))
 end
+
+function _common_draw_shape(components)
+    a = mspace_flatsize(first(components))
+    a isa SizeLike && all(c -> _same_draw_shape(a, mspace_flatsize(c)), components)
+end
+_same_draw_shape(a, b::SizeLike) = size_tuple(a) == size_tuple(b)
+_same_draw_shape(a, b) = false
+
+# A batch of varying-size variates already has the nested layout of a power.
+_pwr_variate(::SuperpositionMeasure, X::AbstractArray{<:AbstractArray}) = X
 
 @inline _component_draws(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
 @inline _component_draws(ctx::GenContext, μ, sz::SizeLike) = batched_rand_impl(ctx, μ, sz)
