@@ -156,6 +156,10 @@ end
         @test smf(μ, 0, 1) ≈ smf(μ, 0.0, 1.0)
     end
     @test -40 < invsmf(StdNormal(), 0.5, -smf(StdNormal(), 0.5)) < -37
+    for (lo, hi, p) in [(-Inf, 0.0, 0.5), (0.0, Inf, 0.5), (-Inf, Inf, 1.0), (-800.0, 800.0, 1.0)]
+        @test smf(StdLogistic(), lo, hi) == p
+        @test smf(StdLogistic(), hi, lo) == -p
+    end
 
     # Weights and normalization scale them, other measures use the
     # difference of their Stieltjes measure functions:

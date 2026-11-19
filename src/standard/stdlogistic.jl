@@ -41,8 +41,12 @@ invsmf(μ::StdLogistic, p) = transport_def(μ, StdUniform(), p)
 # logistic(-a))`, the inverses floored at the quantiles of the smallest
 # positive float:
 function smf(::StdLogistic, a, x)
-    d = ifelse(a == x, zero(a - x), a - x)
-    -expm1(d) * logistic(x) * logistic(-a)
+    reverse = x < a
+    lo = ifelse(reverse, float(x), float(a))
+    hi = ifelse(reverse, float(a), float(x))
+    d = ifelse(isinf(lo) & (lo == hi), zero(lo - hi), lo - hi)
+    mass = -expm1(d) * logistic(hi) * logistic(-lo)
+    return ifelse(reverse, -mass, mass)
 end
 
 function invsmf(::StdLogistic, a, p)
