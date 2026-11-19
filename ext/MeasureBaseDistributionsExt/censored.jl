@@ -28,16 +28,17 @@ const _CensoredMeasure = SuperpositionMeasure{
 function Distributions.Distribution(m::_CensoredMeasure)
     t, atoms = first(m.components), Base.tail(m.components)
     d0 = Distribution(t.parent)
-    at_lo = _bound_atom(atoms, t.lo, MeasureBase.logsmf(d0, t.lo))
-    at_hi = _bound_atom(atoms, t.hi, MeasureBase.logcsmf(d0, t.hi))
-    count(!isnothing, (at_lo, at_hi)) == length(atoms) || throw(ArgumentError(
+    lo, hi = _censoring_bound(t.lo), _censoring_bound(t.hi)
+    expected = (_bound_atoms(MeasureBase.logsmf, d0, lo)..., _bound_atoms(MeasureBase.logcsmf, d0, hi)...)
+    matches = length(atoms) == length(expected) &&
+        (all(map(_same_bound_atom, atoms, expected)) || all(map(_same_bound_atom, reverse(atoms), expected)))
+    matches || throw(ArgumentError(
         "Only superpositions of a truncation and of point masses with the tail masses at its bounds convert to censored distributions"
     ))
-    Distributions.censored(d0, at_lo, at_hi)
+    Distributions.censored(d0, lo, hi)
 end
 
-function _bound_atom(atoms::Tuple, x::Real, logmass::Real)
-    any(a -> a.base.x == x && isapprox(exp(a.logweight), exp(logmass)), atoms) ? x : nothing
-end
+_same_bound_atom(a, b) = a.base.x == b.base.x &&
+    (a.logweight == b.logweight || isapprox(exp(a.logweight - b.logweight), 1))
 
 Base.convert(::Type{Distribution}, m::_CensoredMeasure) = Distributions.Distribution(m)

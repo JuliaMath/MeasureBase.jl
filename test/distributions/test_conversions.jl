@@ -92,7 +92,7 @@ using MeasureBase: logdensityof, massof, insupportof
         using MeasureBase: logdensity_rel, transport_to
         # Censored continuous distributions have atoms at their finite bounds:
         for d in (censored(Normal(), -1.0, 1.0), censored(Gamma(2.0, 1.5), 0.5, 4.0), censored(Normal(0.3, 2.0); upper = 1.0),
-                  censored(Normal(), -Inf, 1.0), censored(Exponential(), 0.0, 2.0))
+                  censored(Normal(), -Inf, 1.0), censored(Normal(); lower = -1.0), censored(Exponential(), 0.0, 2.0))
             m = asmeasure(d)
             @test m isa SuperpositionMeasure && massof(m) ≈ 1
             for x in (-2.0, -1.0, 0.0, 0.5, 1.0, 2.0, 4.0, 5.0)
@@ -112,6 +112,13 @@ using MeasureBase: logdensityof, massof, insupportof
         @test count(==(-1.0), X) / 10^4 ≈ cdf(Normal(), -1.0) atol = 0.02
         @test all(x -> -1 <= x <= 1, X)
         @test count(==(1), rand(stblrng(), Float32, m^10^3)) > 0
+        t, lower, upper = m.components
+        @test convert(Distribution, MeasureBase.superpose(t, upper, lower)) == d
+        @test_throws ArgumentError convert(Distribution, MeasureBase.superpose(t, lower))
+        @test_throws ArgumentError convert(Distribution, MeasureBase.superpose(t, upper))
+        deep = asmeasure(censored(Normal(), 39.0, 40.0))
+        t_deep, left, right = deep.components
+        @test_throws ArgumentError convert(Distribution, MeasureBase.superpose(t_deep, left, 2 * right))
         # Superpositions with other atoms aren't censored distributions:
         @test_throws ArgumentError convert(Distribution, MeasureBase.superpose(truncate(asmeasure(Normal()), -1.0 .. 1.0), 0.5 * MeasureBase.Dirac(-1.0)))
     end
