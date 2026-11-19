@@ -189,3 +189,17 @@ MeasureBase.batched_transport_to_std(::Type{StdNormal}, ::_InconsistentNormal, X
         @test !any(r -> r isa Test.Error, ts.results)
     end
 end
+
+@testset "Interface test helpers use their supplied RNG" begin
+    before = copy(Random.default_rng())
+    rng = Xoshiro(981)
+    reference = copy(rng)
+    test_interface(StdNormal(); rng)
+    rand(reference, StdNormal()^3)
+    @test rng == reference
+    test_transport(StdUniform(), StdNormal(); rng)
+    rand(reference, StdNormal())
+    rand(reference, StdNormal()^3)
+    @test rng == reference
+    @test copy(Random.default_rng()) == before
+end

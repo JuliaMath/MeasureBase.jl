@@ -31,7 +31,9 @@ function dynamic_basemeasure_depth(μ::M) where {M}
     return depth
 end
 
-function test_interface(μ::M) where {M}
+_test_rng() = Xoshiro(0x6d62736d66)
+
+function test_interface(μ::M; rng::AbstractRNG = _test_rng()) where {M}
     @eval begin
         μ = $μ
         @testset "$μ" begin
@@ -63,7 +65,7 @@ function test_interface(μ::M) where {M}
 
             @test logdensity_def(μ, testvalue(Float64, μ)) isa Real
 
-            test_batched_densities(asmeasure(μ))
+            test_batched_densities(asmeasure(μ), $rng)
         end
     end
 end
@@ -78,12 +80,12 @@ batchisapprox(A, B) = size(A) == size(B) && all(map(structisapprox, A, B))
 
 # A batch of variates of `μ`: random draws, or copies of the test value if
 # `μ` has infinite mass and so no normalized law to draw from.
-test_batch(μ) = _test_batch(μ, massof(μ))
-_test_batch(μ, mass::Real) = mass == Inf ? fill(testvalue(μ), 3) : rand(μ^3)
-_test_batch(μ, ::Any) = rand(μ^3)
+test_batch(μ, rng) = _test_batch(μ, massof(μ), rng)
+_test_batch(μ, mass::Real, rng) = mass == Inf ? fill(testvalue(μ), 3) : rand(rng, μ^3)
+_test_batch(μ, ::Any, rng) = rand(rng, μ^3)
 
-function test_batched_densities(μ)
-    X = test_batch(μ)
+function test_batched_densities(μ, rng)
+    X = test_batch(μ, rng)
     ℓ = map(x -> logdensityof(μ, x), X)
     @test size(X) == (3,) && all(>(-Inf), ℓ)
     @test batchisapprox(logdensities(μ, X), ℓ)
@@ -91,13 +93,13 @@ function test_batched_densities(μ)
     @test isempty(logdensities(μ, X[1:0]))
 end
 
-function test_transport(ν, μ)
+function test_transport(ν, μ; rng::AbstractRNG = _test_rng())
     supertype(x) = Any
     supertype(x::Real) = Real
     supertype(x::AbstractArray{<:Real,N}) where {N} = AbstractArray{<:Real,N}
 
     @testset "transport_to $μ to $ν" begin
-        x = rand(μ)
+        x = rand(rng, μ)
         f = transport_to(ν, μ)
         y = @inferred f(x)
         @test structisapprox(@inferred(inverse(f)(y)), x)
@@ -110,7 +112,7 @@ function test_transport(ν, μ)
         @test isapprox(ladj_fwd, -ladj_inv, atol = 1e-10)
         @test ladj_fwd ≈ logdensityof(MeasureBase._unweighted(μ), x) - logdensityof(MeasureBase._unweighted(ν), y)
 
-        X = rand(μ^3)
+        X = rand(rng, μ^3)
         ys = map(f, X)
         @test batchisapprox(transports(f, X), ys)
         @test batchisapprox(f.(X), ys)
@@ -131,7 +133,7 @@ function _smf_range(μ)
     return isfinite(m_plain) ? m_plain : 1.0
 end
 
-function test_smf(μ, n = 100; rng::AbstractRNG = Xoshiro(0x6d62736d66))
+function test_smf(μ, n = 100; rng::AbstractRNG = _test_rng())
     @testset "smf($μ)" begin
         m = _smf_range(μ)
         # `n` sorted points in `[0, m)`, in O(n) time:

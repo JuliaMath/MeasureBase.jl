@@ -23,23 +23,24 @@ export insupportof
 export basemeasure_sequence
 
 """
-    test_interface(μ)
+    test_interface(μ; rng::AbstractRNG = ...)
 
 Test that the base measure depth, test value, density and base measure of
 `μ` are consistent and type stable, and that batched densities
 (`logdensities`, densities of powers) agree with the point densities at
 random variates of `μ` (at its test value if `μ` has infinite mass).
-Requires `using Test`.
+The default RNG has a fixed seed. Requires `using Test`.
 """
 function test_interface end
 
 """
-    test_transport(ν, μ)
+    test_transport(ν, μ; rng::AbstractRNG = ...)
 
 Test that `transport_to(ν, μ)` round-trips, is type stable and that its
 log-abs-det Jacobian matches the densities of `μ` and `ν`, and that
 batched transports (`transports`, broadcasting, `transports_with_ladj`)
-agree with the point transport at random variates of `μ`. Requires
+agree with the point transport at random variates of `μ`. The default RNG
+has a fixed seed. Requires
 `using Test`.
 """
 function test_transport end
