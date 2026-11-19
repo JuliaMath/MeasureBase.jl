@@ -11,11 +11,10 @@ export StdExponential
 insupportof(::StdExponential, x) = x ≥ zero(x)
 
 @inline function logdensityof_impl(d::StdExponential, x)
-    R = float(typeof(x))
-    _checksupport(insupportof(d, x), convert(R, -x))
+    _checksupport(insupportof(d, x), logdensity_def(d, x))
 end
 
-@inline logdensity_def(::StdExponential, x) = -x
+@inline logdensity_def(::StdExponential, x) = -float(x)
 @inline basemeasure(::StdExponential) = LebesgueBase()
 
 @inline transport_def(::StdUniform, μ::StdExponential, x) = _nan_outside(μ, x, -expm1(-x))

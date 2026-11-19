@@ -47,4 +47,7 @@ using IrrationalConstants: log2π
     # StdExponential
     @test logdensityof(StdExponential(), 1.0) ≈ -1.0
     @test logdensityof(StdExponential(), -1.0) == -Inf
+    @test logdensityof(StdExponential(), UInt(2)) === -2.0
+    @test MeasureBase.logdensities(StdExponential(), UInt[0, 2, 5]) == [0.0, -2.0, -5.0]
+    @test MeasureBase.logdensity_def(StdExponential(), UInt(2)) === -2.0
 end
