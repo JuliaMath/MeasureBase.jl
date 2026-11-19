@@ -9,6 +9,13 @@ using MeasureBase.HeterogeneousComputing: AbstractComputeUnit
 using JLArrays: JLArray, JLBackend
 using Random: Xoshiro
 
+struct _MassProbeAtom <: AbstractMeasure
+    atom::Int
+    calls::Base.RefValue{Int}
+end
+MeasureBase.massof(m::_MassProbeAtom) = (m.calls[] += 1; 1)
+MeasureBase.rand_impl(ctx::GenContext, m::_MassProbeAtom) = m.atom
+
 @testset "superpose.jl" begin
     μ = Dirac(0)
     ν = Dirac(1)
@@ -116,6 +123,15 @@ end
     end
     @test_throws ArgumentError rand(0 * Dirac(1) + 0 * Dirac(2))
     @test_throws ArgumentError rand(Counting() + Dirac(2))
+
+    calls = Ref(0)
+    probed = SuperpositionMeasure([_MassProbeAtom(1, calls), _MassProbeAtom(2, calls)])
+    draws = rand(Xoshiro(1701), probed^(4, 32))
+    @test size(draws) == (4, 32) && Set(draws) == Set((1, 2))
+    @test calls[] == 2
+    calls[] = 0
+    @test MeasureBase.batched_rand_impl(GenContext{Float64}(Xoshiro(1701)), probed, (4, 32)) == draws
+    @test calls[] == 2
 
     # Components are selected by mass, single variates like batches:
     m = superpose(0.3 * StdNormal(), 0.7 * Dirac(2.0))

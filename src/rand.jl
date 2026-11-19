@@ -122,10 +122,11 @@ end
 end
 
 function _batched_rand_pointwise(ctx::GenContext, μ, sz::SizeLike)
-    xs = map(_ -> rand_impl(ctx, μ), CartesianIndices(asnonstatic(sz)))
+    xs = _pointwise_draws(ctx, μ, CartesianIndices(asnonstatic(sz)))
     _on_compute_unit(ctx, _stack_variates(xs, μ))
 end
 @inline _batched_rand_pointwise(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
+@inline _pointwise_draws(ctx, μ, indices) = map(_ -> rand_impl(ctx, μ), indices)
 
 @inline _stack_variates(xs::AbstractArray, μ) = _stack_variates(xs)
 # Empty draws of measures without a sampler never call it, so nothing tells the variate type:

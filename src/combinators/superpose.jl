@@ -295,6 +295,19 @@ end
 _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::SizeLike, ::NoMSpaceElementSize) =
     _batched_rand_pointwise(ctx, μ, sz)
 
+# A heterogeneous vector can have no common variate rank. Its host draws
+# use one cumulative mass table for the whole batch.
+function _pointwise_draws(ctx, μ::SuperpositionMeasure{<:AbstractVector}, indices)
+    _on_host(ctx) || return map(_ -> rand_impl(ctx, μ), indices)
+    masses, _ = _component_masses(μ)
+    cumulative = cumsum(masses)
+    return map(indices) do _
+        threshold = rand(ctx) * last(cumulative)
+        i = min(searchsortedlast(cumulative, threshold) + 1, lastindex(cumulative))
+        rand_impl(ctx, μ.components[i])
+    end
+end
+
 @inline function insupportof(d::SuperpositionMeasure, x)
     mapreduce(c -> _insupport_mask(insupportof(c, x)), |, values(d.components))
 end
