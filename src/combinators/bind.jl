@@ -100,7 +100,9 @@ ab = f_c(a, b)
 This is the normalized law of `μ` if the mass of `β_a` doesn't depend on
 `a`, as for kernels that return probability measures. Otherwise, the
 normalized law of `μ` reweights `α` by the mass of `β_a`, which `rand`
-does not do.
+does not do. A draw from `normalize(μ)` applies this reweighting for
+weighted or superposed point masses. Other primary measures require a
+kernel whose mass is statically known to be one.
 
 The mass of `μ` integrates the masses of the `β_a` over `α`. It is known
 where `α` is a weighted or superposed combination of point masses, and
@@ -462,6 +464,27 @@ end
 # The secondary measure depends on the primary variate, so batches are
 # generated variate by variate:
 batched_rand_impl(ctx::GenContext, μ::Bind, sz::SizeLike) = _batched_rand_pointwise(ctx, μ, sz)
+
+
+# The normalized joint law weights each primary atom by its secondary mass.
+function rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind})
+    μ = ν.base
+    a = rand_impl(ctx, _normalized_bind_primary(ctx, μ, μ.α))
+    b = rand_impl(ctx, normalize(_get_β_a(μ, a)))
+    return _combine_variates(μ.f_c, a, b)
+end
+batched_rand_impl(ctx::GenContext, ν::NormalizedMeasure{<:Bind}, sz::SizeLike) = _batched_rand_pointwise(ctx, ν, sz)
+
+_normalized_bind_primary(ctx, μ, α::Dirac) = weightedmeasure(_sampling_logmass(_get_β_a(μ, α.x)), α)
+_normalized_bind_primary(ctx, μ, α::WeightedMeasure) = weightedmeasure(α.logweight, _normalized_bind_primary(ctx, μ, α.base))
+_normalized_bind_primary(ctx, μ, α::NormalizedMeasure) = _normalized_bind_primary(ctx, μ, α.base)
+_normalized_bind_primary(ctx, μ, α::SuperpositionMeasure) = superpose(map(c -> _normalized_bind_primary(ctx, μ, c), α.components))
+function _normalized_bind_primary(ctx, μ, α)
+    A = Core.Compiler.return_type(rand_impl, Tuple{typeof(ctx),typeof(α)})
+    M = Core.Compiler.return_type(massof ∘ asmeasure ∘ μ.f_β, Tuple{A})
+    M <: Union{StaticFloat64{1.0},StaticInt{1}} && return normalize(α)
+    throw(ArgumentError("Sampling a normalized bind with this primary measure requires a kernel of statically known unit mass"))
+end
 
 
 # Transport consumes the variate parts of the primary and secondary

@@ -3,6 +3,7 @@
 using Test
 
 using Random
+using LinearAlgebra: normalize
 using StableRNGs: StableRNG
 using AffineMaps: Mul, Add
 
@@ -323,6 +324,14 @@ MeasureBase.tpmeasure_split_combined(::_SwapCombine, α::AbstractMeasure, ba::Tu
         @test massof(mbind(f_β, α)) isa MeasureBase.UnknownMass
         # Ancestral sampling of the normalized laws of the components, the
         # primary variates follow the normalized law of `a`:
+        p = normalize(mbind(x -> (1 + 9x) * D(x), D(0) + D(1), tuple))
+        @test densityof(p, (1, 1)) ≈ 10 / 11
+        @test count(==((1, 1)), rand(Xoshiro(981), p^16384)) / 16384 ≈ 10 / 11 atol = 0.012
+        rng = Xoshiro(771)
+        @test count(_ -> rand(rng, normalize(μ))[1] == 1, 1:8192) / 8192 ≈ 27 / 29 atol = 0.016
+        varying = normalize(mbind(x -> (1 + x) * D(x), StdUniform(), tuple))
+        @test_throws ArgumentError rand(varying)
+        @test_throws ArgumentError rand(varying^2)
         rng = stblrng()
         @test count(_ -> rand(rng, μ)[1] == 1, 1:2000) / 2000 ≈ 3 / 5 atol = 0.05
     end
