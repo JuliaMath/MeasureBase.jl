@@ -249,8 +249,17 @@ end
 @inline function _direct_point_transport(ν::NU, μ::MU, X::AbstractArray{<:Number}) where {NU,MU}
     _direct_point_transport(NU, MU, _variate_type(X, _stream_ndims(μ)))
 end
-@inline function _direct_point_transport(::Type{NU}, ::Type{MU}, ::Type{X}) where {NU,MU,X}
-    @_adignore !all(m -> m.sig === Tuple{typeof(transport_def),Any,Any,Any}, static_methods(transport_def, Tuple{NU,MU,X}))
+@inline function _direct_point_transport(ν::NU, μ::MU, X::Union{Tuple,NamedTuple}) where {NU,MU}
+    # Check the pair before reconstructing structured variates on the fused path.
+    _has_direct_transport(Tuple{NU,MU,Vararg{Any}}) || return false
+    _direct_point_transport(NU, MU, _structured_variate_type(_batch_variates(X, μ)))
+end
+@inline _structured_variate_type(X::AbstractArray) = eltype(X)
+@inline _structured_variate_type(x::Union{Tuple,NamedTuple}) = typeof(x)
+@inline _direct_point_transport(::Type{NU}, ::Type{MU}, ::Type{X}) where {NU,MU,X} =
+    _has_direct_transport(Tuple{NU,MU,X})
+@inline function _has_direct_transport(::Type{T}) where {T<:Tuple}
+    @_adignore !all(m -> m.sig === Tuple{typeof(transport_def),Any,Any,Any}, static_methods(transport_def, T))
 end
 @inline _direct_point_transport(::Type, ::Type, ::Nothing) = false
 @inline _variate_type(X::AbstractArray, ::StaticInteger{0}) = eltype(X)
@@ -260,6 +269,11 @@ end
 
 @inline _point_transports(ν, μ, X::AbstractArray, ::StaticInteger{0}) = broadcast(x -> transport_def(ν, μ, x), X)
 _point_transports(ν, μ, X::AbstractArray, ::StaticInteger{K}) where {K} = stacked(map(x -> transport_def(ν, μ, x), sliced(X, Val(K))))
+@inline _point_transports(ν, μ, X::Union{Tuple,NamedTuple}, ::Any) =
+    _point_transports(ν, μ, _batch_variates(X, μ))
+@inline _point_transports(ν, μ, X::AbstractArray) =
+    _flat_batch(map(x -> transport_def(ν, μ, x), X))
+@inline _point_transports(ν, μ, x::Union{Tuple,NamedTuple}) = transport_def(ν, μ, x)
 
 
 """

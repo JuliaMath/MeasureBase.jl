@@ -4,6 +4,7 @@ using MeasureBase: LebesgueBase
 using InverseFunctions: inverse
 using LinearAlgebra: I
 using Statistics: mean, var
+using StructArrays: StructArray
 import AffineMaps
 import Distributions
 
@@ -32,6 +33,11 @@ MeasureBase.preferred_stdmeasure(::Type{<:_DirectLaplace}) = StdUniform
 MeasureBase.transport_to_std(::Type{StdUniform}, ::_DirectLaplace, x) = x < 0 ? exp(x) / 2 : 1 - exp(-x) / 2
 MeasureBase.transport_from_std(::Type{StdUniform}, ::_DirectLaplace, u) = u < 0.5 ? log(2u) : -log(2 - 2u)
 MeasureBase.transport_def(::StdExponential, ::_DirectLaplace, x) = x > 0 ? x + log(2.0) : -log1p(-exp(x) / 2)
+
+const _DirectNamedProduct = typeof(productmeasure((direct_coordinate = StdNormal(),)))
+MeasureBase.transport_def(
+    ::_DirectNamedProduct, ::_DirectNamedProduct, x::NamedTuple{(:direct_coordinate,)},
+) = (direct_coordinate = -x.direct_coordinate,)
 
 # The Laplace leaf without a declared variate rank:
 struct _RanklessLaplace <: AbstractMeasure end
@@ -256,6 +262,21 @@ test_measure_contracts(μ, x_out; kwargs...) =
         @test Y == map(f, X)
         @test ladjs ≈ map(x -> MeasureBase.with_logabsdet_jacobian(f, x)[2], X)
         @test ladjs ≈ logdensityof.(_DirectLaplace(), X) .- logdensityof.(StdExponential(), Y)
+
+        p = productmeasure((direct_coordinate = StdNormal(),))
+        g = transport_to(p, p)
+        x = [1.3, -2.4, 0.8]
+        Xn = [(direct_coordinate = xi,) for xi in x]
+        Yn = [(direct_coordinate = -xi,) for xi in x]
+        @test map(g, Xn) == Yn
+        @test transports(g, Xn) == g.(Xn) == Yn
+        @test transports(g, StructArray(Xn)) == Yn
+        @test transports(g, (direct_coordinate = x,)) == Yn
+
+        r = productmeasure((a = StdNormal(), b = StdNormal()^2))
+        h = transport_to(StdNormal()^3, r)
+        u = (a = 0.5, b = [0.7, 0.1])
+        @test transports(h, u) == h(u)
     end
 
     # Pushforwards are only defined on the image of their map, the inverse
