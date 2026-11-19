@@ -25,6 +25,9 @@ see [`mbind`](@ref).
 Floating-point variates have the precision of the context, also through
 transformations. Point masses generate their atom exactly, and integer
 variates (e.g. of counting measures) stay integers.
+Superpositions use a common number type when it preserves the draws. Otherwise
+host draws retain their original values. Device draws require a common exact
+representation.
 
 Measure types should specialize [`MeasureBase.batched_rand_impl`](@ref)
 instead of `rand`.

@@ -206,19 +206,39 @@ function _superpose_batched_rand(ctx::GenContext, μ::SuperpositionMeasure, sz::
     thresholds = _batch_mask(_rand_bulk(ctx, sz) .* total, k)
     draws = map(c -> _component_draws(ctx, c, sz), components)
     T = mapreduce(eltype, promote_type, draws)
-    Xs = _promote_draws(T, draws)
+    Xs = _promote_draws(ctx, T, draws, components)
     return _select_draws(thresholds, first(Xs), first(masses), _tail(masses), _tail(Xs))
 end
 
 @inline _component_draws(ctx::GenContext, μ, ::Tuple{}) = rand_impl(ctx, μ)
 @inline _component_draws(ctx::GenContext, μ, sz::SizeLike) = batched_rand_impl(ctx, μ, sz)
 
-@inline _promote_draws(::Type{T}, draws) where {T} = map(X -> _convert_draws(T, X), draws)
+@inline function _promote_draws(ctx, ::Type{T}, draws, components) where {T}
+    converted = map(X -> _convert_draws(T, X), draws)
+    all(map(_draws_preserved, components, draws, converted)) && return converted
+    _on_host(ctx) && return draws
+    # A wider float can hold integer atoms that exceed the context's precision.
+    _draw_numbertype(T) <: Union{Float16,Float32} && return _promote_draws(ctx, promote_type(T, Float64), draws, components)
+    throw(ArgumentError("The device cannot represent these superposition variates in a common number type exactly"))
+end
+
+@inline function _draws_preserved(c, x, y)
+    S, T = _draw_numbertype(eltype(x)), _draw_numbertype(eltype(y))
+    S === T || (S <: AbstractFloat && T <: AbstractFloat) || _preserves_values(c, T, x, y) === true
+end
+@inline _draw_numbertype(::Type{T}) where {T} = T
+@inline _preserves_values(c, T, x, y) = _same_draws(x, y)
+@inline _preserves_values(c::Dirac, T, x, y) = _same_draws(c.x, _convert_draws(T, c.x))
+@inline _preserves_values(c::AbstractWeightedMeasure, T, x, y) = _preserves_values(basemeasure(c), T, x, y)
+@inline _same_draws(x::Number, y::Number) = isequal(x, y)
+@inline _same_draws(x, y) = all(isequal.(x, y))
 
 @inline _convert_draws(::Type{T}, X::T) where {T<:Number} = X
-@inline _convert_draws(::Type{T}, x::Number) where {T} = convert(T, x)
+@inline _convert_draws(::Type{T}, x::Number) where {T} = _convert_draw_element(T, x)
 @inline _convert_draws(::Type{T}, X::AbstractArray{T}) where {T} = X
-@inline _convert_draws(::Type{T}, X) where {T} = convert.(T, X)
+@inline _convert_draws(::Type{T}, X) where {T} = broadcast(x -> _convert_draw_element(T, x), X)
+@inline _convert_draw_element(::Type{T}, x) where {T} = convert(T, x)
+@inline _convert_draw_element(::Type{T}, x::Integer) where {T<:Integer} = x % T
 
 @inline _tail(xs::Tuple) = Base.tail(xs)
 @inline _tail(xs::AbstractVector) = view(xs, firstindex(xs)+1:lastindex(xs))

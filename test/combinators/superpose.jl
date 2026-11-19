@@ -98,8 +98,15 @@ end
     @test @inferred(rand(Xoshiro(1), s)) isa Float64
     @test rand(superpose(StdNormal(), Dirac(0))^4) isa Vector{Float64}
     @test eltype(rand(superpose(asmeasure(Poisson(2.0)), Dirac(0.5))^4)) == Float64
+    for m in (Dirac(2^24 + 1) + Dirac(0.5f0), Dirac(1//3) + Dirac(0.5))
+        @test insupportof(m, rand(Xoshiro(1), m))
+        draws = rand(Xoshiro(1), m^32)
+        @test all(insupportof(m), draws) && length(unique(draws)) == 2
+    end
     dctx = GenContext{Float32}(AbstractComputeUnit(JLBackend()))
     @test MeasureBase.batched_rand_impl(dctx, s, (5,)) isa JLArray{Float64}
+    large_atom = Dirac(2^24 + 1) + Dirac(0.5f0)
+    @test all(insupportof(large_atom), Array(rand(dctx, large_atom^32)))
 
     # Components are selected by mass, single variates like batches:
     m = superpose(0.3 * StdNormal(), 0.7 * Dirac(2.0))
