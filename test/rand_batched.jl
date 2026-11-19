@@ -174,6 +174,14 @@ struct NoRandMeasure <: AbstractMeasure end
         Xc = batched_rand_impl(dctx, productmeasure((a = StdNormal(), c = Dirac(2.0f0))), (n,))
         @test Xc.c isa JLArray{Float32,1} && all(==(2.0f0), Array(Xc.c))
 
+        point = [1.0, 2.0]
+        spike = Dirac(point)
+        x = rand(dctx, spike)
+        @test x isa JLArray{Float64,1} && Array(x) == point
+        @test rand(Dirac(x)) == point
+        B = flatview(rand(dctx, spike^8))
+        @test B isa JLArray{Float64,2} && Array(B) == repeat(point, 1, 8)
+
         # Variates generated one by one on the host are moved to the device:
         b = mbind(a -> StdNormal(), StdNormal())
         bv = mbind(a -> StdNormal()^2, StdNormal(), vcat)

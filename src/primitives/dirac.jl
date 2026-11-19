@@ -53,7 +53,12 @@ logdensity_def(::Dirac, x::Number) = zero(float(typeof(x)))
 logdensity_def(::Dirac, x) = zero(_logd_numtype(x))
 
 @inline rand_impl(::GenContext, μ::Dirac) = μ.x
-@inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::SizeLike) = _const_batch(ctx, μ.x, sz)
+@inline function rand_impl(ctx::GenContext, μ::Dirac{<:Union{AbstractArray,Tuple,NamedTuple}})
+    unit = get_compute_unit(ctx)
+    _on_host(ctx) && (isbits(μ.x) || get_compute_unit(μ.x) == unit) && return μ.x
+    return Adapt.adapt(unit, μ.x)
+end
+@inline batched_rand_impl(ctx::GenContext, μ::Dirac, sz::SizeLike) = _const_batch(ctx, rand_impl(ctx, μ), sz)
 
 export dirac
 
