@@ -2,7 +2,9 @@
 #
 #     DOCUMENTER_DEBUG=true julia --color=yes make.jl local [nonstrict] [fixdoctests]
 #
-# for local builds.
+# for local builds with Julia 1.11 or later.
+
+VERSION >= v"1.11" || error("Building the documentation requires Julia 1.11 or later to identify public extension APIs.")
 
 using Documenter
 using MeasureBase
