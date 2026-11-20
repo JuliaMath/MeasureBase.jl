@@ -90,4 +90,23 @@ using MeasureBase: asmeasure, normalize
     ]
         @test Zygote.gradient(f, a)[1] ≈ fd(f_ref, a) rtol = 1e-8
     end
+
+    @testset "type-level traits" begin
+        # The layout traits of measure types are not differentiated. Traced
+        # through, their pullbacks are not type-stable, so they are
+        # generated at run time (which can crash Julia 1.10 when several
+        # tasks do it at once):
+        Ms = map(typeof, (
+            StdNormal(), StdNormal()^3, asmeasure(Normal(0.3, 1.7)),
+            MeasureBase.productmeasure((StdNormal(), StdUniform())),
+        ))
+        traits = (
+            MeasureBase.mspace_ndims, MeasureBase.stream_ndims, MeasureBase.mspace_flatsize,
+            MeasureBase.preferred_stdmeasure, MeasureBase.fixed_stream_size, MeasureBase._fused_marginals,
+        )
+        for f in traits, M in Ms
+            y, _ = @inferred Zygote.pullback(f, M)
+            @test y === f(M)
+        end
+    end
 end

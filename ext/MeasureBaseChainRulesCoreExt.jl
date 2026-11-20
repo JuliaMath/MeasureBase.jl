@@ -115,9 +115,18 @@ end
 
 # = insupportof & friends ======================================================
 
-# Variate layouts are type-level information:
+# Variate layouts are type-level information. Tracing through the traits of
+# measure types gives pullbacks that are not type-stable, which AD then
+# generates at run time:
 using MeasureBase: fixed_stream_size, _pushfwd_varsize, _unit_bounds, _prob_floor
+using MeasureBase: mspace_ndims, stream_ndims, mspace_flatsize, preferred_stdmeasure, _unit_dof, _fused_marginals
 @non_differentiable fixed_stream_size(::Type)
+@non_differentiable mspace_ndims(::Type)
+@non_differentiable stream_ndims(::Type)
+@non_differentiable mspace_flatsize(::Type)
+@non_differentiable preferred_stdmeasure(::Type)
+@non_differentiable _unit_dof(::Type)
+@non_differentiable _fused_marginals(::Type)
 @non_differentiable _pushfwd_varsize(ν)
 @non_differentiable _unit_bounds(p)
 @non_differentiable _prob_floor(p)
