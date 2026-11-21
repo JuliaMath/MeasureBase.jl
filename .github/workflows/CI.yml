@@ -21,7 +21,7 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.version == 'nightly' }}
+    continue-on-error: ${{ matrix.version == 'pre' }}
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +50,10 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
+      - name: Install development dependency
+        run: julia --project=. .github/prepare-dev-deps.jl
+      - name: Select Reactant tests on supported platforms
+        run: julia .github/enable-reactant-tests.jl
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:
@@ -71,6 +75,10 @@ jobs:
         with:
           version: '1'
       - uses: julia-actions/cache@v3
+      - name: Install development dependency
+        run: |
+          julia --project=. .github/prepare-dev-deps.jl
+          julia --project=docs .github/prepare-dev-deps.jl
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:

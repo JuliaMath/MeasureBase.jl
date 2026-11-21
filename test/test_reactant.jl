@@ -1,0 +1,312 @@
+# This file is a part of MeasureBase.jl, licensed under the MIT License (MIT).
+
+# Reactant tests. Reactant isn't a static test dependency (it only
+# supports 64-bit Linux and macOS). CI selects it before Pkg.test resolves
+# the test environment. For a local Reactant-enabled Pkg.test, run
+# `julia .github/enable-reactant-tests.jl` first to add it to test/Project.toml.
+# The backend defaults to the CPU, set the environment variable
+# `MEASUREBASE_REACTANT_BACKEND` (e.g. to "gpu") to change it; the file can
+# also be run standalone in an environment that provides Reactant.
+
+using Test
+using Reactant
+using MeasureBase
+using MeasureBase: StdNormal, StdUniform, StdExponential, StdLogistic, Lebesgue, Dirac, asmeasure
+using MeasureBase: logdensities, logdensity_rel, weightedmeasure, superpose, restrict, mintegrate_exp
+using MeasureBase: mcombine, batched_rand_impl, GenContext, likelihoodof, truncate
+using IntervalSets: (..)
+using StructArrays: StructArray
+using Statistics: mean
+using ArraysOfArrays: VectorOfSimilarVectors, sliced, flatview
+using Distributions: Normal, Uniform, Exponential, Logistic, Cauchy, Laplace, LogNormal, Weibull, Gamma, Beta
+using Distributions: Poisson, Bernoulli, Binomial, MvNormal, Dirichlet, logpdf
+using MeasureBase.InverseFunctions: inverse
+using MeasureBase.HeterogeneousComputing: get_compute_unit, rootrng
+
+Reactant.set_default_backend(get(ENV, "MEASUREBASE_REACTANT_BACKEND", "cpu"))
+
+include(joinpath(@__DIR__, "distributions", "pmf_checks.jl"))
+
+# Compiles `f` for traced copies of `args` and compares with the plain
+# result. Array results are copied inside the compiled function, so that
+# views and reshapes of device arrays come back as plain device arrays:
+function test_traced(f, args...; kwargs...)
+    expected = f(args...)
+    traced_args = map(Reactant.to_rarray, args)
+    g = (xs...) -> _contiguous(f(xs...))
+    result = @jit g(traced_args...)
+    @test _plain(result) ≈ _plain(expected) nans = true
+    return result
+end
+
+_contiguous(x::AbstractArray) = copy(x)
+_contiguous(x) = x
+_plain(x::AbstractArray) = Array(x)
+_plain(x::Number) = Float64(x)
+
+@testset "Reactant" begin
+    x = randn(10)
+    X = randn(3, 20)
+
+    @testset "powers and batches" begin
+        test_traced(x -> logdensityof(StdNormal()^10, x), x)
+        test_traced(X -> logdensities(StdNormal(), X), X)
+        test_traced(X -> logdensities(StdNormal()^3, X), X)
+        μ = mintegrate_exp(identity, Lebesgue())^2
+        test_traced(X -> logdensities(μ, X), [1.0 Inf Inf; 2.0 -Inf 1.0])
+        test_traced(X -> logdensities(StdNormal()^3, sliced(X, 1)), X)
+        test_traced(X -> logdensities((StdNormal()^3)^4, reshape(X[:, 1:16], 3, 4, 4)), X)
+        test_traced(x -> logdensityof(StdUniform()^10, x), rand(10))
+        test_traced(x -> logdensityof(StdExponential()^10, x), rand(10))
+        test_traced(x -> logdensityof(weightedmeasure(0.3, StdNormal())^10, x), x)
+        test_traced(x -> logdensityof(Lebesgue()^10, x), x)
+    end
+
+    @testset "support masks" begin
+        xu = 2 .* rand(10) .- 0.5
+        test_traced(x -> logdensities(StdUniform(), x), xu)
+        test_traced(x -> logdensities(StdExponential(), x), xu)
+        test_traced(x -> logdensities(restrict(x -> x > 0, StdNormal()), x), xu)
+        r = restrict(x -> sum(x) > 0, StdNormal()^2)
+        Xr = Float32[0.25 -1.5 0.5 -2.0; 0.5 0.25 -0.5 3.0]
+        ℓ = test_traced(X -> logdensities(r, sliced(X, Val(1))), Xr)
+        @test ℓ isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(ℓ)[2:3] == [-Inf32, -Inf32]
+    end
+
+    @testset "relative densities" begin
+        xu = 2 .* rand(10) .- 0.5
+        test_traced(x -> logdensity_rel.(Ref(StdUniform()), Ref(StdExponential()), x), xu)
+        test_traced(x -> logdensity_rel.(Ref(StdNormal()), Ref(StdLogistic()), x), x)
+        test_traced(x -> logdensity_rel.(Ref(StdNormal()^10), Ref(StdLogistic()^10), Ref(x)), x)
+    end
+
+    @testset "superpositions and density measures" begin
+        mix = superpose(weightedmeasure(log(0.3), StdNormal()), weightedmeasure(log(0.7), StdLogistic()))
+        test_traced(x -> logdensities(mix, x), x)
+        test_traced(x -> logdensityof(mix^10, x), x)
+        dm = mintegrate_exp(x -> -abs(x), StdNormal())
+        test_traced(x -> logdensities(dm, x), x)
+        W = Float32[0.1 -0.5 1.0; 0.3 0.2 2.0]
+        q = mintegrate_exp(x -> -sum(abs2, x), StdNormal()^2)
+        result = test_traced(X -> logdensities(q, X), W)
+        @test result isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(result) ≈ -Float32(log(2π)) .- 1.5f0 .* vec(sum(abs2, W; dims = 1))
+        masked = mintegrate_exp(x -> -sum(abs2, x), StdExponential()^2)
+        test_traced(X -> logdensities(masked, X), reshape(W, 2, 1, 3))
+        mx = superpose(0.4f0 * StdUniform()^2, 0.6f0 * StdExponential()^2)
+        Xm = Float32[0.5 -0.5 -1.0 2.5; 0.25 0.25 -0.5 0.25]
+        scores = test_traced(X -> logdensities(mx, X), Xm)
+        @test scores isa Reactant.ConcreteRArray{Float32,1}
+        @test Array(scores) ≈ Float32[log(0.4f0 + 0.6f0 * exp(-0.75f0)), -Inf, -Inf, log(0.6f0) - 2.75f0]
+        sm = 0.2 * StdNormal() + 0.8 * Dirac(0.0)
+        test_traced(x -> logdensities(sm, x), vcat(x, 0.0))
+    end
+
+    # Likelihoods with scalar observations over struct arrays of traced
+    # parameters, in one broadcast over the parameter columns:
+    @testset "parameter batches" begin
+        ℒ = likelihoodof(θ -> weightedmeasure(θ.w, StdNormal()), 0.3)
+        test_traced((w, s) -> logdensityof.(Ref(ℒ), StructArray((w = w, s = s))), randn(5), rand(5))
+    end
+
+    @testset "captured Normal marginal arrays" begin
+        for T in (Float32, Float64)
+            ds = [Normal(T(0), T(1)), Normal(T(1), T(2))]
+            ms = asmeasure.(ds)
+            batch = T[0.2 -0.2 0.3; 0.4 -0.4 0.1]
+            input = Reactant.to_rarray(batch)
+            expected = [sum(logpdf.(ds, col)) for col in eachcol(batch)]
+            for p in (productmeasure(ms), productmeasure(Tuple(ms)))
+                f = x -> copy(logdensities(p, x))
+                result = @jit f(input)
+                @test result isa Reactant.ConcreteRArray{T,1}
+                @test get_compute_unit(result) == get_compute_unit(input)
+                @test Array(result) ≈ expected
+            end
+            on_device = Reactant.to_rarray(productmeasure(ms))
+            @test get_compute_unit(marginals(on_device).obj.μ) == get_compute_unit(input)
+            @test get_compute_unit(marginals(on_device).obj.σ) == get_compute_unit(input)
+            evaluate = (p, x) -> copy(logdensities(p, x))
+            @test Array(@jit evaluate(on_device, input)) ≈ expected
+        end
+    end
+
+    @testset "structural batched kernels" begin
+        w = weightedmeasure(log(0.3), StdNormal()^3)
+        test_traced(X -> logdensities(w, X), X)
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(X -> logdensities(mc, X), vcat(X[1:2, :], rand(1, 20)))
+        test_traced(X -> logdensities((StdNormal()^2)^3, X), reshape(X[1:2, 1:6], 2, 3, 2))
+    end
+
+    @testset "transport of powers and products" begin
+        test_traced(x -> transport_to(StdNormal()^10, StdUniform()^10)(x), rand(10))
+        test_traced(x -> transport_to(StdExponential()^10, StdNormal()^10)(x), x)
+        test_traced(x -> transport_to(StdLogistic()^10, StdExponential()^10)(x), rand(10))
+        test_traced(x -> transport_to(StdNormal()^6, (StdUniform()^2)^3)(x), rand(2, 3))
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(x -> transport_to(StdNormal()^3, mc)(x), vcat(randn(2), rand(1)))
+        test_traced(z -> transport_to(mc, StdNormal()^3)(z), randn(3))
+    end
+
+    @testset "batched transport" begin
+        test_traced(X -> transport_to(StdNormal(), StdUniform()).(X), rand(10))
+        test_traced(X -> flatview(transport_to(StdExponential()^3, StdNormal()^3).(sliced(X, Val(1)))), X)
+        mc = mcombine(vcat, StdNormal()^2, StdUniform()^1)
+        test_traced(X -> flatview(transport_to(StdLogistic()^3, mc).(sliced(X, Val(1)))), vcat(X[1:2, :], rand(1, 20)))
+        test_traced(X -> last(transports_with_ladj(transport_to(StdNormal(), StdUniform()), X)), rand(10))
+        test_traced(X -> last(transports_with_ladj(transport_to(StdExponential()^3, StdNormal()^3), X)), X)
+        test_traced(X -> last(transports_with_ladj(transport_to(StdLogistic()^3, mc), X)), vcat(X[1:2, :], rand(1, 20)))
+    end
+
+    @testset "transport" begin
+        test_traced(x -> transport_to(StdUniform(), StdNormal()).(x), x)
+        test_traced(x -> transport_to(StdNormal(), StdUniform()).(x), rand(10))
+        test_traced(x -> transport_to(Normal(2, 3), StdNormal()).(x), x)
+        test_traced(x -> transport_to(StdNormal(), Exponential(2.0)).(x), rand(10))
+        # Tails of the traced normal quantile:
+        for p in (Float32[1f-9, 1f-30, 0.02, 0.5, 0.9, 1 - 1f-7], [1e-300, 1e-20, 0.02, 0.5, 0.9, 1 - 1e-15])
+            z = test_traced(p -> MeasureBase.Φinv.(p), p)
+            @test all(isfinite, Array(z)) && eltype(z) == eltype(p)
+        end
+        test_traced(x -> transport_to(StdNormal(), StdLogistic()).(x), Float32[-80, -40, -5, 0, 5, 40, 80])
+        test_traced(x -> transport_to(StdNormal(), StdExponential()).(x), Float32[1f-30, 1f-3, 1, 30, 80])
+        # Log-space inverse SMFs of StdNormal, also where exp(logp) underflows:
+        for lp in (Float32[-1f-7, -0.1, -0.7, -5, -80, -1f4], [-1e-15, -0.1, -0.7, -5.0, -800.0, -1e6])
+            test_traced(lp -> MeasureBase.invlogsmf.(Ref(StdNormal()), lp), lp)
+            test_traced(lp -> MeasureBase.invlogcsmf.(Ref(StdNormal()), lp), lp)
+        end
+        # Interval masses, their inverses and the transports of Half and
+        # truncations built on them, also close to the lower end:
+        a, b = [-30.0, -1.0, 0.0, 0.0, 0.5, 3.0, -Inf], [-29.99, -1.0 + 1e-12, 1e-17, 0.3, 0.5 + 1e-9, 1.0, 0.2]
+        for μ in (StdNormal(), StdLogistic(), StdExponential())
+            a_μ, b_μ = μ isa StdExponential ? (abs.(a), abs.(b)) : (a, b)
+            test_traced((a, x) -> MeasureBase.smf.(Ref(μ), a, x), a_μ, b_μ)
+            test_traced((a, p) -> MeasureBase.invsmf.(Ref(μ), a, p), a_μ, MeasureBase.smf.(Ref(μ), a_μ, b_μ))
+        end
+        for t in (Half(StdNormal()), truncate(StdNormal(), 0.5 .. 2.0), truncate(StdLogistic(), -Inf .. 0.3))
+            f = transport_to(StdNormal(), t)
+            test_traced(x -> f.(x), [0.5 + 1e-12, 0.6, 1.0, 1.9])
+            test_traced(z -> inverse(f).(z), [-9.0, -1.0, 0.0, 2.0, 7.0])
+        end
+    end
+
+    # Distribution parameters stay constants, Distributions' parameter
+    # structs can't hold traced arrays:
+    @testset "wrapped distributions" begin
+        for d in (Normal(0.3, 1.7), Uniform(-1.0, 2.5), Exponential(0.7), Logistic(0.2, 1.3), Cauchy(0.1, 0.8), Laplace(-0.4, 1.1), LogNormal(0.2, 0.6), Weibull(1.4, 0.9), Gamma(2.3, 1.2), Beta(2.5, 3.5))
+            m = asmeasure(d)
+            xd = rand(d, 10)
+            test_traced(x -> logdensities(m, x), xd)
+            f = transport_to(StdNormal(), m)
+            if d isa Union{Gamma,Beta}
+                # SpecialFunctions' incomplete gamma and beta functions have no Reactant methods:
+                @test_broken @jit((x -> copy(f.(x)))(Reactant.to_rarray(xd))) isa AbstractArray
+            else
+                test_traced(x -> f.(x), xd)
+                test_traced(z -> inverse(f).(z), randn(10))
+            end
+        end
+        test_traced(x -> logdensities(asmeasure(Poisson(2.7)), x), Float64.(rand(Poisson(2.7), 10)))
+        # Tails of the Float32 kernels:
+        test_traced(p -> transport_to(asmeasure(Cauchy(0f0, 1f0)), StdUniform()).(p), Float32[1f-30, 1f-9, 0.3, 0.5, 0.7, 1 - 6f-8])
+        test_traced(x -> logdensities(asmeasure(Logistic(0f0, 1f0)), x), Float32[-floatmax(Float32), -80, 0, 80, floatmax(Float32)])
+        test_traced(x -> logdensities(asmeasure(Cauchy(0f0, 1f0)), x), Float32[-1f30, -3, 0, 1f20, floatmax(Float32)])
+        mvn = MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])
+        mm = asmeasure(mvn)
+        Xm = rand(mvn, 10)
+        test_traced(X -> logdensities(mm, X), Xm)
+        test_traced(X -> flatview(transport_to(StdNormal()^2, mm).(sliced(X, Val(1)))), Xm)
+        test_traced(Z -> flatview(transport_to(mm, StdNormal()^2).(sliced(Z, Val(1)))), randn(2, 10))
+        dir = Dirichlet([2.0, 3.0, 4.0, 1.5])
+        md = asmeasure(dir)
+        test_traced(X -> logdensities(md, X), rand(dir, 10))
+    end
+
+    # Draws take the context with its Reactant RNG as an argument of the
+    # compiled function:
+    @testset "random variates" begin
+        ctx = GenContext{Float32}(Reactant.ReactantRNG())
+        draw_batch = c -> batched_rand_impl(c, StdNormal()^3, (500,))
+        X = @jit draw_batch(ctx)
+        @test X isa Reactant.ConcreteRArray{Float32} && size(X) == (3, 500)
+        @test all(isfinite, logdensities(StdNormal()^3, Array(X)))
+        @test isapprox(mean(Array(X)), 0, atol = 0.1)
+        @test Array(@jit draw_batch(ctx)) != Array(X)
+        draw = c -> rand(c, StdExponential()^10_000)
+        x = @jit draw(ctx)
+        @test x isa Reactant.ConcreteRArray{Float32,1} && all(>=(0), Array(x))
+        @test isapprox(mean(Array(x)), 1, atol = 0.05)
+        # Draws follow the precision of the context, also for Float64
+        # parameters and bounds:
+        for μ in (asmeasure(Normal(0.3, 1.7)), asmeasure(Exponential(0.7)), asmeasure(Normal(1.0, 2.0))^3,
+                  truncate(StdNormal(), 0.0 .. 3.0), asmeasure(MvNormal([0.3, -2.9], [1.7 0.5; 0.5 2.3])))
+            X = @jit (c -> MeasureBase.batched_rand_impl(c, μ, (4,)))(ctx)
+            @test Reactant.unwrapped_eltype(X) == Float32 && all(isfinite, Array(X))
+            y = @jit (c -> rand(c, μ))(ctx)
+            @test Reactant.unwrapped_eltype(y) == Float32
+        end
+        # Bernoulli variates compare uniform variates with the success
+        # probability:
+        b = @jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Bernoulli(0.3)), (2000,)))(ctx)
+        @test Reactant.unwrapped_eltype(b) == Bool && isapprox(count(Array(b)) / 2000, 0.3, atol = 0.05)
+        @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Bernoulli(0.3))))(ctx)) == Bool
+        # One quarter of the random bit patterns need rejection for this range.
+        # Reducing every pattern modulo its length would give 3/4 instead of 2/3.
+        large_range = Counting(1:(Int64(3) << 61))
+        counting_ctx = GenContext{Float16}(rootrng(get_compute_unit(ctx), 981))
+        k = Array(@jit (c -> rand(c, large_range^4096))(counting_ctx))
+        @test abs(count(<=(Int64(1) << 62), k) / length(k) - 2 / 3) < 0.045
+        # Poisson variates are sampled in compiled code, by inversion for
+        # small rates and in a compiled rejection loop for larger ones. The
+        # statistical tests may fail by chance with a probability of about
+        # 1e-8 each:
+        for λ in (2.7, 250.0)
+            d = Poisson(Float64(Float32(λ)))
+            xp = Array(@jit (c -> MeasureBase.batched_rand_impl(c, asmeasure(Poisson(λ)), (100_000,)))(ctx))
+            @test eltype(xp) == Int && pmf_pvalue(xp, d) > 1e-8
+            @test abs(mean_zscore(xp, d)) < 6 && abs(var_zscore(xp, d)) < 6
+            @test Reactant.unwrapped_eltype(@jit (c -> rand(c, asmeasure(Poisson(λ))))(ctx)) == Int
+        end
+        # Array products draw with the rates of their marginals as a
+        # parameter array. With traced rates one compiled function serves
+        # other rates as well, variates of unsupported rates are -1 then:
+        poisson_product(λ) = MeasureBase.productmeasure(
+            StructArray{MeasureBase.AsMeasure{Poisson{Float32}}}((obj = StructArray{Poisson{Float32}}((λ = λ,)),))
+        )
+        draw_product(c, λ) = MeasureBase.batched_rand_impl(c, poisson_product(λ), (100_000,))
+        rates = Float32[0, 0.9, 9.99, 10, 61.5, 1.0e3]
+        traced_rates = Reactant.to_rarray(rates)
+        compiled_draw = @compile draw_product(ctx, traced_rates)
+        Xp = Array(compiled_draw(ctx, traced_rates))
+        @test all(i -> pmf_pvalue(Xp[i, :], Poisson(Float64(rates[i]))) > 1e-8, eachindex(rates))
+        other_rates = Float32[3, 30, 0, 1.0e6, 12, 2.0e7]
+        Xo = Array(compiled_draw(ctx, Reactant.to_rarray(other_rates)))
+        @test all(i -> pmf_pvalue(Xo[i, :], Poisson(Float64(other_rates[i]))) > 1e-8, 1:5)
+        @test all(==(-1), Xo[6, :])
+        host_product = MeasureBase.productmeasure(asmeasure.(Poisson.(Float64.(rates))))
+        Xh = Array(@jit (c -> MeasureBase.batched_rand_impl(c, host_product, (100_000,)))(ctx))
+        @test all(i -> pmf_pvalue(Xh[i, :], Poisson(Float64(rates[i]))) > 1e-8, eachindex(rates))
+        @test size(@jit (c -> rand(c, host_product))(ctx)) == (6,)
+        # Distributions without a standard transport or a sampler of their
+        # own are refused on other compute units:
+        @test_throws "host compute units" @jit (c -> rand(c, asmeasure(Binomial(5, 0.3))))(ctx)
+        # RNGs with stream keys draw in compiled code like the RNGs they
+        # wrap, the same key reproduces the draws:
+        keyed_ctx(seed) = GenContext{Float32}(get_compute_unit(ctx), rootrng(get_compute_unit(ctx), seed))
+        keyed_draw(c) = Array(@jit (c -> MeasureBase.batched_rand_impl(c, StdNormal()^2, (8,)))(c))
+        @test keyed_draw(keyed_ctx(1)) == keyed_draw(keyed_ctx(1))
+        @test keyed_draw(keyed_ctx(1)) != keyed_draw(keyed_ctx(2))
+        # Single variates of scalar and array superpositions, drawn
+        # branch-free:
+        scalar = superpose(StdNormal(), Dirac(0.5f0))
+        y = @jit (c -> rand(c, scalar))(ctx)
+        @test Reactant.unwrapped_eltype(y) == Float32 && size(y) == () && isfinite(_plain(y))
+        for T in (Float32, Float64)
+            μ = superpose(StdNormal()^3, Dirac(fill(T(0.5), 3)))
+            y = @jit (c -> rand(c, μ))(ctx)
+            @test y isa Reactant.ConcreteRArray{T,1} && size(y) == (3,) && all(isfinite, Array(y))
+        end
+    end
+end

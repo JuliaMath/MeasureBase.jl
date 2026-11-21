@@ -1,0 +1,56 @@
+using Test, Distributions, MeasureBase
+import ForwardDiff, Zygote
+using MeasureBase: asmeasure, StdUniform, transport_to, smf, csmf, invsmf
+
+@testset "Beta transport accuracy ($T)" for T in (Float32, Float64)
+    p = T[1e-6, 0.01, 0.25, 0.5, 0.9]
+    singular = asmeasure(Beta(T(1) / 2, T(1) / 2))
+    expected = T.(sinpi.(BigFloat.(p) ./ 2) .^ 2)
+    @test invsmf.(Ref(singular), p) ≈ expected rtol=64eps(T)
+
+    polynomial = asmeasure(Beta(T(2), T(3)))
+    threshold = T(3) / 7
+    x = T[0.01, prevfloat(threshold), threshold, nextfloat(threshold), 0.9999]
+    # Direct integration gives F=x²(6-8x+3x²), Q=(1-x)³(1+3x).
+    xb = BigFloat.(x)
+    @test smf.(Ref(polynomial), x) ≈ T.(xb .^ 2 .* (6 .- 8xb .+ 3xb .^ 2)) rtol=64eps(T)
+    @test csmf.(Ref(polynomial), x) ≈ T.((1 .- xb) .^ 3 .* (1 .+ 3xb)) rtol=64eps(T)
+
+    # A rounded complement must not erase an O(1) term multiplied by a large shape.
+    b, x = T(1e7), T(1e-8)
+    expected_small = T(-expm1(BigFloat(b) * log1p(-BigFloat(x)) + log1p(BigFloat(b) * x)))
+    @test smf(asmeasure(Beta(T(2), b)), x) ≈ expected_small rtol=64eps(T)
+
+    # The Beta coordinate rounds to one in Float32, but its complement is useful.
+    ratio = asmeasure(Distributions.BetaPrime(T(1), T(0.02)))
+    expected_ratio = T(expm1(-log1p(-BigFloat(T(0.3))) / BigFloat(T(0.02))))
+    @test invsmf(ratio, T(0.3)) ≈ expected_ratio rtol=64eps(T)
+
+    @test invsmf(asmeasure(Beta(T(1e-4), T(2))), T(0.3)) == 0
+    @test invsmf(asmeasure(Beta(T(2), T(1e-4))), T(0.3)) == 1
+
+    concentrated = asmeasure(Beta(T(1e5), T(1e5)))
+    @test transport_to(concentrated, StdUniform())(T(0.5)) ≈ T(0.5) rtol=64eps(T)
+end
+
+@testset "Sparse Beta quantiles near the median" begin
+    m = asmeasure(Beta(1f-5, 1f-5))
+    ps = [prevfloat(0.5f0), 0.5f0, nextfloat(0.5f0)]
+    # From the incomplete beta power series and bisection at 256 bits.
+    @test invsmf.(Ref(m), ps) ≈ Float32[0.4985098675974319, 0.5, 0.5029802383349887] rtol = 4eps(Float32)
+
+    median_at(a) = invsmf(asmeasure(Beta(a, a)), 0.5)
+    @test ForwardDiff.derivative(median_at, 1e-6) == 0
+    @test only(Zygote.gradient(median_at, 1e-6)) == 0
+end
+
+@testset "Concentrated Beta CDF near the mean" begin
+    d = asmeasure(Beta(1e9, 1e9))
+    # Integrating the beta density at 256 bits on both sides of the mean.
+    x = [0.4999999, 0.5, 0.5000001]
+    @test smf.(Ref(d), x) ≈ [0.49643179934411, 0.5, 0.5035682006539093] rtol=16eps()
+    @test invsmf(d, 0.5035682006539093) ≈ x[3] rtol=8eps()
+    skewed = asmeasure(Beta(1e8, 2.3e8))
+    @test smf(skewed, 1e8 / 3.3e8) ≈ 0.5000062749646685 rtol=16eps()
+    @test smf(asmeasure(Beta(8f9, 8f9)), 0.5f0) == 0.5f0
+end

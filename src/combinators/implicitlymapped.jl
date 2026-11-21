@@ -179,13 +179,13 @@ struct TakeAny{T<:IntegerLike}
     n::T
 end
 
-_takeany_range(f::TakeAny, idxs) = first(idxs):first(idxs)+dynamic(f.n)-1
+_takeany_range(f::TakeAny, idxs) = first(idxs):(first(idxs)+dynamic(f.n)-1)
 @inline _takeany_range(f::TakeAny, ::OneTo) = OneTo(dynamic(f.n))
 
 @inline _takeany_range(::TakeAny{<:Static.StaticInteger{N}}, ::OneTo) where {N} = SOneTo(N)
 @inline _takeany_range(::TakeAny{<:Static.StaticInteger{N}}, ::SOneTo) where {N} = SOneTo(N)
 
-@inline (f::TakeAny)(xs::Tuple) = xs[begin:begin+f.n-1]
+@inline (f::TakeAny)(xs::Tuple) = xs[begin:(begin+f.n-1)]
 @inline (f::TakeAny)(xs::AbstractVector) = xs[_takeany_range(f, eachindex(xs))]
 
 function (f::TakeAny)(xs)

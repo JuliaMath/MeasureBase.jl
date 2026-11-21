@@ -1,6 +1,6 @@
 using Test
 using MeasureBase
-using MeasureBase: insupport as measure_insupport
+using MeasureBase: insupportof as measure_insupport
 
 using DensityInterface: logdensityof
 import Distributions: insupport as dist_insupport
@@ -14,6 +14,10 @@ using Distributions: Normal, Exponential, Logistic, Uniform
         (StdNormal(), Normal()),
     ]
         @testset "$(nameof(typeof(m)))" begin
+            for x in (1 + 2im, "a")
+                @test_throws ArgumentError logdensityof(m, x)
+                @test_throws ArgumentError logdensities(m, [x])
+            end
             for x in [-Inf, -1.2, -1, 0, 0.0, 1 // 2, 0.5, 1, 1.0, 2, 2.3]
                 @test @inferred(logdensityof(m, x)) ≈ logdensityof(d, x)
                 @test @inferred(logdensityof(m, x)) ≈ logdensity_rel(m, rootmeasure(m), x)
@@ -47,4 +51,7 @@ using IrrationalConstants: log2π
     # StdExponential
     @test logdensityof(StdExponential(), 1.0) ≈ -1.0
     @test logdensityof(StdExponential(), -1.0) == -Inf
+    @test logdensityof(StdExponential(), UInt(2)) === -2.0
+    @test MeasureBase.logdensities(StdExponential(), UInt[0, 2, 5]) == [0.0, -2.0, -5.0]
+    @test MeasureBase.logdensity_def(StdExponential(), UInt(2)) === -2.0
 end
